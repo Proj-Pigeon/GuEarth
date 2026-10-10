@@ -76,7 +76,8 @@ export function normalizeAiSettings(value: unknown): AiSettings {
     searchProviders,
     activeSearchProviderId,
     skipDeleteConversationConfirm: source.skipDeleteConversationConfirm === true,
-    memoryEnabled: source.memoryEnabled !== false
+    memoryEnabled: source.memoryEnabled !== false,
+    socraticEnabled: source.socraticEnabled === true
   }
 }
 

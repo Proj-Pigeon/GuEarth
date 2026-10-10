@@ -8,6 +8,7 @@ import { useLandformStore, type LandformPanel } from '@renderer/stores/landform'
 import { usePopulationStore } from '@renderer/stores/population'
 import { useTransportStore } from '@renderer/stores/transport'
 import { useEnvironmentStore } from '@renderer/stores/environment'
+import { useDecisionStore } from '@renderer/stores/decision'
 import { useDrawingStore } from '@renderer/stores/drawing'
 
 interface LabEntry {
@@ -36,6 +37,7 @@ const landformStore = useLandformStore()
 const populationStore = usePopulationStore()
 const transportStore = useTransportStore()
 const environmentStore = useEnvironmentStore()
+const decisionStore = useDecisionStore()
 const drawingStore = useDrawingStore()
 
 function closeAllPanels(): void {
@@ -46,6 +48,7 @@ function closeAllPanels(): void {
   populationStore.setPanel(null)
   transportStore.setPanel(null)
   environmentStore.setPanel(null)
+  decisionStore.setPanel(null)
 }
 
 function layerEntry(id: ThematicLayerId): LabEntry {
@@ -167,6 +170,20 @@ function environmentPanelEntry(name: string, description: string): LabEntry {
       const next = environmentStore.panel !== 'environment'
       closeAllPanels()
       if (next) environmentStore.setPanel('environment')
+    }
+  }
+}
+
+function decisionPanelEntry(name: string, description: string): LabEntry {
+  return {
+    key: 'decision',
+    name,
+    description,
+    active: () => decisionStore.panel === 'location',
+    toggle: () => {
+      const next = decisionStore.panel !== 'location'
+      closeAllPanels()
+      if (next) decisionStore.setPanel('location')
     }
   }
 }
@@ -302,6 +319,13 @@ const chapters: LabChapter[] = [
     entries: [
       environmentPanelEntry('海平面上升淹没模拟', '选择上升情景，观察沿海低地淹没范围（需真实地形源）'),
       layerEntry('sea-level-rise')
+    ]
+  },
+  {
+    id: 'sandbox',
+    title: '决策沙盘 · 复习评价',
+    entries: [
+      decisionPanelEntry('区位决策沙盘', '电子装配厂/制糖厂/港口/酒庄情境，勾选区位因素请 AI 按高考结构点评')
     ]
   }
 ]

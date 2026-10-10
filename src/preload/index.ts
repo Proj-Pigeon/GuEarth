@@ -128,6 +128,7 @@ export interface AiSettings {
   activeSearchProviderId: string
   skipDeleteConversationConfirm: boolean
   memoryEnabled: boolean
+  socraticEnabled: boolean
 }
 
 export interface AgentMemory {

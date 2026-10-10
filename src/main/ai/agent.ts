@@ -47,6 +47,7 @@ const SYSTEM_PROMPT = [
   '- 用户问城市等级体系、中心地理论、城镇体系、城市职能或城市内部空间结构（功能区）问题时：先用 set_layer 开启 city-tiers 中国城市等级或 functional-zones 城市功能分区（武汉）图层；验证不同等级城市的服务范围与职能差异时，用 poi_statistics 分别统计高等级城市中心（如省会商圈）与低等级城市中心同半径的 POI 大类构成（数量更多、类别更全、出现高级职能类别如金融保险/科教文化者等级更高），按中心地理论解释差异；讲功能区时结合图层中武汉的真实点位（江汉路/楚河汉街商圈在市中心、后湖南湖常青花园住宅区、青山区武钢与沌口汽车城沿长江于城市外缘）归纳商业区、住宅区、工业区的分布规律；可配合 fly_to 飞往对应地点观察。',
   '- 用户问农业区位、工业区位、产业转移、交通布局或某地发展条件评价问题时：先调用 analyze_location 获取该地 POI 构成、海拔与知识库区位条目（未配置高德密钥会返回 error，请说明原因），配合 set_layer 开启 agri-regions 农业区划、industrial-bases 四大工业基地、industrial-transfers 产业转移流向图层；按「自然区位（气候、地形、土壤、水源）+ 社会经济区位（市场、交通、劳动力、政策、技术、工业基础）」框架归纳，评价时区分有利与不利条件，讲产业转移时强调梯度转移规律与转入转出地的影响。',
   '- 用户问交通运输布局、高铁或交通线区位问题时：用 open_panel 打开 transport 交通运输面板，播放 2008-2025 年高铁网络生长动画（拖动或自动播放年份时间轴），配合 set_layer 开启 hsr-network 图层；按「社会经济需求决定、自然条件制约、技术克服障碍」框架分析交通线区位，并用 query_terrain 或 analyze_location 辅助说明地形对选线的影响。用户问海平面上升、全球变暖、可持续发展问题时：用 open_panel 打开 environment 面板选择上升情景（+0.5/+1/+2/+5 米），配合 set_layer 开启 sea-level-rise 淹没模拟图层观察沿海低地淹没范围（需真实地形源，不可用时说明原因），按「成因（全球变暖→冰川消融与海水热膨胀）→ 影响（淹没低地、风暴潮加剧、咸潮上溯）→ 对策（减缓减排与适应）」框架讲解。',
+  '- 用户在「区位决策沙盘」练习并请求点评时：按高考综合题答题结构作答——先指出对方遗漏或误判的关键因素，再分「有利条件」「限制性条件」「综合评价」三段给出你的方案；可调用 analyze_location 查询该地数据、set_layer 打开相关图层佐证；语气以引导改进为主，不直接否定。',
   '- 用户要求录制视频、微课或自动介绍（如“帮我录一个人口分布的介绍视频”）时：先规划 3-8 幕剧本（相邻幕视角由远及近、有推进感），再一次性调用 record_video 把完整剧本经 steps 传入（每幕含视角坐标、可选图层、标注与旁白字幕），不要逐步调用 fly_to/set_layer 等工具执行录制；每幕讲解的具体地点（城市、山脉、河流、界线端点等）必须写入该幕 markers 标注命名标记，让观众看清讲到哪里，纯概念无具体地点的幕可不标；旁白精炼，每幕 1-3 句、dwellMs 4000-10000。视角高度宁远勿近（观众要看清地理格局而非街道细节：大区域 800000-3000000，城市群 200000-800000，城市 80000-200000）。涉及人口数据时先 query_population 查询内置省级统计，其余经济等数据先 web_search 获取事实，再用步骤内 shapes 画线（如胡焕庸线）、markers 标注关键城市。record_video 返回 started 后，告知用户录制在后台进行、预计时长与保存位置（系统「影片/GuEarth」）；用户追问进度或长时间未完成时调用 get_recording_status。讲解中遇到老师想保留的重要画面时，可用 save_scene 存为教学场景书签，供课堂一键回放；用户询问已保存的场景时用 list_scenes。',
   '- 用户点击了地图上的专题要素并询问其成因时：回答中直接使用该要素信息，按成因、分布规律、对地理环境影响的顺序讲解。',
   '- 工具返回 error 字段时，向用户说明原因（例如需要在图层面板配置高德密钥），不要编造坐标；search_place 返回 guidance 字段时，停止重试搜索，按 guidance 的步骤向用户说明排查方法。',
@@ -166,9 +167,18 @@ function memoryPromptLines(memories: AgentMemory[]): string[] {
   return [...rules, '已保存的用户记忆（id：内容）：', ...memories.map((memory) => `- ${memory.id}：${memory.content}`)]
 }
 
-function buildSystemPrompt(memory: MemoryRuntime): string {
-  if (!memory.enabled) return SYSTEM_PROMPT
-  return [SYSTEM_PROMPT, ...memoryPromptLines(memory.store.list())].join('\n')
+const SOCRATIC_PROMPT_LINES = [
+  '苏格拉底追问模式已开启：你不直接给出完整答案，而是像课堂老师一样引导式提问。',
+  '- 先把用户的问题拆成 2-3 个可回答的子问题，逐个反问，引导用户自己思考；',
+  '- 用户答对时确认并补充关键证据（可调用图层、查询与定位工具佐证）；答错或卡住时给提示性线索后再追问一次；',
+  '- 每轮回答控制在 3-5 个要点以内，结尾留一个延伸问题；仅当用户连续多轮未能推进时，才完整讲解并补齐之前各问的答案。'
+].join('\n')
+
+function buildSystemPrompt(memory: MemoryRuntime, socratic = false): string {
+  const blocks = [SYSTEM_PROMPT]
+  if (socratic) blocks.push(SOCRATIC_PROMPT_LINES)
+  if (memory.enabled) blocks.push(...memoryPromptLines(memory.store.list()))
+  return blocks.join('\n')
 }
 
 interface WireToolCall {
@@ -951,6 +961,7 @@ async function runAgent(options: {
   provider: AiProviderConfig
   searchProvider?: AiSearchProviderConfig
   memory: MemoryRuntime
+  socratic: boolean
   model: AiModelConfig
   apiKey: string
   sender: WebContents
@@ -959,10 +970,10 @@ async function runAgent(options: {
   turns: AiChatTurn[]
   tools: AiToolDefinition[]
 }): Promise<void> {
-  const { provider, searchProvider, memory, model, apiKey, sender, sessionId, signal, turns, tools } = options
+  const { provider, searchProvider, memory, socratic, model, apiKey, sender, sessionId, signal, turns, tools } = options
   const send = (event: AiChatEvent) => emit(sender, event)
   const onRetry = (attempt: number, maxRetries: number, reason: string): void => send({ sessionId, type: 'model-retry', attempt, maxRetries, reason })
-  const messages: WireMessage[] = [{ role: 'system', content: buildSystemPrompt(memory) }]
+  const messages: WireMessage[] = [{ role: 'system', content: buildSystemPrompt(memory, socratic) }]
   for (const turn of turns) {
     if (turn.content.trim()) messages.push({ role: turn.role, content: turn.content })
   }
@@ -1134,11 +1145,12 @@ export function registerAiIpcHandlers(settingsStore: AiSettingsStore, chatHistor
     return memoryStore.list()
   })
   const memoryRuntime = (): MemoryRuntime => ({ enabled: settingsStore.snapshot().memoryEnabled !== false, store: memoryStore })
+  const socraticRuntime = (): boolean => settingsStore.snapshot().socraticEnabled === true
   ipcMain.handle('ai:context-stats', (_event, turns: unknown) => {
     const settings = settingsStore.snapshot()
     const provider = settings.providers.find((item) => item.id === settings.activeProviderId)
     const model = provider?.models.find((item) => item.id === settings.activeModelId)
-    return contextStatsForMessages(contextMessagesForEntries(validateContextEntries(turns), buildSystemPrompt(memoryRuntime())), model?.contextWindow ?? 128_000)
+    return contextStatsForMessages(contextMessagesForEntries(validateContextEntries(turns), buildSystemPrompt(memoryRuntime(), socraticRuntime())), model?.contextWindow ?? 128_000)
   })
   ipcMain.handle('ai:compress-context', async (_event, entries: unknown): Promise<AiContextCompressionResult> => {
     const settings = settingsStore.snapshot()
@@ -1173,7 +1185,7 @@ export function registerAiIpcHandlers(settingsStore: AiSettingsStore, chatHistor
     const sender = event.sender
     watchSenderLifecycle(sender)
     sessions.set(request.sessionId, { controller, sender })
-    void runAgent({ provider, searchProvider, memory: memoryRuntime(), model, apiKey, sender, sessionId: request.sessionId, signal: controller.signal, turns: request.turns, tools: request.tools })
+    void runAgent({ provider, searchProvider, memory: memoryRuntime(), socratic: socraticRuntime(), model, apiKey, sender, sessionId: request.sessionId, signal: controller.signal, turns: request.turns, tools: request.tools })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') {
           emit(sender, { sessionId: request.sessionId, type: 'error', message: '已停止生成' })

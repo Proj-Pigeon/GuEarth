@@ -482,6 +482,12 @@ export const useAiStore = defineStore('ai', () => {
     await saveSettings(next)
   }
 
+  async function setSocraticEnabled(value: boolean): Promise<void> {
+    const next = JSON.parse(JSON.stringify(settings.value)) as AiSettings
+    next.socraticEnabled = value
+    await saveSettings(next)
+  }
+
   function activeModelReady(): boolean {
     const provider = settings.value.providers.find((item) => item.id === settings.value.activeProviderId)
     return Boolean(provider?.models.some((model) => model.id === settings.value.activeModelId))
@@ -652,7 +658,7 @@ export const useAiStore = defineStore('ai', () => {
 
   return {
     settings, messages, conversations, currentConversationId, isStreaming, isPanelOpen, isSettingsOpen, hydrated, contextStats, contextCompressionStatus, contextCompressionNotice, modelRetryNotice,
-    hydrate, registerTool, saveSettings, setSkipDeleteConversationConfirm, setMemoryEnabled, setActiveModel, send, stop, resendFrom, regenerate, retryLast, compressContext, newConversation, openConversation, deleteConversation, persistConversation, setPanelOpen, setSettingsOpen,
+    hydrate, registerTool, saveSettings, setSkipDeleteConversationConfirm, setMemoryEnabled, setSocraticEnabled, setActiveModel, send, stop, resendFrom, regenerate, retryLast, compressContext, newConversation, openConversation, deleteConversation, persistConversation, setPanelOpen, setSettingsOpen,
     activeModelVisionEnabled
   }
 })

@@ -204,7 +204,8 @@ async function handleSave(): Promise<void> {
     searchProviders: draftSearchProviders.value.map((provider) => ({ ...provider })),
     activeSearchProviderId: activeSearchProviderId.value,
     skipDeleteConversationConfirm: store.settings.skipDeleteConversationConfirm,
-    memoryEnabled: store.settings.memoryEnabled
+    memoryEnabled: store.settings.memoryEnabled,
+    socraticEnabled: store.settings.socraticEnabled
   }
   try {
     await store.saveSettings(next)
@@ -333,6 +334,21 @@ async function handleSave(): Promise<void> {
     <a-tab-pane key="memory" tab="记忆">
       <MemorySettings v-if="visible" :active="activeTab === 'memory'" />
     </a-tab-pane>
+    <a-tab-pane key="teaching" tab="教学">
+      <section class="section">
+        <div class="teaching-toggle">
+          <div class="teaching-toggle-text">
+            <div class="teaching-toggle-title">苏格拉底追问模式</div>
+            <p class="teaching-toggle-desc">开启后 EOQ 不直接给出完整答案，而是把问题拆成小问逐步反问、引导思考，适合课堂问答与复习巩固；关闭时恢复直接讲解。</p>
+          </div>
+          <a-switch
+            :checked="store.settings.socraticEnabled"
+            aria-label="苏格拉底追问模式开关"
+            @change="(value: string | number | boolean) => store.setSocraticEnabled(value === true)"
+          />
+        </div>
+      </section>
+    </a-tab-pane>
     </a-tabs>
     <div class="modal-footer">
       <a-button @click="visible = false">取消</a-button>
@@ -371,6 +387,10 @@ async function handleSave(): Promise<void> {
 .level-select{width:76px}
 .provider-danger{margin-top:8px;display:flex;justify-content:flex-end}
 .modal-footer{display:flex;justify-content:flex-end;gap:8px;padding-top:8px;border-top:1px solid rgba(5,5,5,.06)}
+.teaching-toggle{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.teaching-toggle-text{flex:1}
+.teaching-toggle-title{color:rgba(0,0,0,.88);font-size:14px;line-height:22px}
+.teaching-toggle-desc{margin-top:4px;color:rgba(0,0,0,.45);font-size:12px;line-height:20px}
 @media(max-width:640px){
   .provider-layout{flex-direction:column}
   .provider-rail{width:100%}

@@ -20,6 +20,7 @@ import { useLandformStore } from '@renderer/stores/landform'
 import { usePopulationStore } from '@renderer/stores/population'
 import { useTransportStore } from '@renderer/stores/transport'
 import { useEnvironmentStore } from '@renderer/stores/environment'
+import { useDecisionStore } from '@renderer/stores/decision'
 import { registerPopulationTools } from '@renderer/ai/populationTools'
 import { useCesiumViewer } from '@renderer/composables/useCesiumViewer'
 import { useDrawing } from '@renderer/composables/useDrawing'
@@ -62,6 +63,7 @@ import PopulationPanel from '@renderer/components/PopulationPanel.vue'
 import CitiesPanel from '@renderer/components/CitiesPanel.vue'
 import TransportPanel from '@renderer/components/TransportPanel.vue'
 import EnvironmentPanel from '@renderer/components/EnvironmentPanel.vue'
+import LocationDecisionPanel from '@renderer/components/LocationDecisionPanel.vue'
 import HuLineOverlay from '@renderer/components/HuLineOverlay.vue'
 import ThematicLegend from '@renderer/components/ThematicLegend.vue'
 import FrontalCyclone from '@renderer/components/FrontalCyclone.vue'
@@ -110,6 +112,7 @@ const landformStore = useLandformStore()
 const populationStore = usePopulationStore()
 const transportStore = useTransportStore()
 const environmentStore = useEnvironmentStore()
+const decisionStore = useDecisionStore()
 const { overlays: thematicOverlays } = storeToRefs(climateStore)
 useThematicLayers(viewer)
 registerPopulationTools()
@@ -134,7 +137,7 @@ const levelSwitcherVisible = computed(() => isGlobeReady.value && camera.value.h
 const showGlobeLoading = computed(() => !isGlobeReady.value && !globeError.value)
 const isLabOpen = ref(false)
 const nightBasemapActive = computed(() => store.selectedLayerId === 'viirs-night')
-const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || environmentStore.panel !== null || activeTool.value === 'timezone')
+const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || environmentStore.panel !== null || decisionStore.panel !== null || activeTool.value === 'timezone')
 watch(nightBasemapActive, (active) => {
   if (active) isLabOpen.value = false
 })
@@ -455,6 +458,12 @@ const teachingPanelCatalog: { id: string; name: string; hint: string; open: () =
     open: () => environmentStore.setPanel('environment')
   },
   {
+    id: 'decision',
+    name: '区位决策沙盘',
+    hint: '在真实情境中勾选区位因素，请 AI 按高考答题结构点评你的取舍',
+    open: () => decisionStore.setPanel('location')
+  },
+  {
     id: 'timezone-compare',
     name: '地方时对比',
     hint: '已进入地方时点选模式，请提示用户在地球上依次单击两个地点，出现「地方时对比」面板后即可讲解两地时差；按 Esc 退出点选模式',
@@ -488,6 +497,7 @@ aiStore.registerTool({
       populationStore.setPanel(null)
       transportStore.setPanel(null)
       environmentStore.setPanel(null)
+      decisionStore.setPanel(null)
       if (activeTool.value === 'timezone') drawingStore.setActiveTool(null)
       clearTimezone()
       return { status: 'ok', closed: true, message: '已关闭全部教学演示面板' }
@@ -1149,6 +1159,7 @@ function deleteSelectedShape(): void {
       <CitiesPanel v-if="populationStore.panel === 'cities'" @close="populationStore.setPanel(null)" />
       <TransportPanel v-if="transportStore.panel === 'transport'" :viewer="viewer" @close="transportStore.setPanel(null)" />
       <EnvironmentPanel v-if="environmentStore.panel === 'environment'" :viewer="viewer" @close="environmentStore.setPanel(null)" />
+      <LocationDecisionPanel v-if="decisionStore.panel === 'location'" :viewer="viewer" @close="decisionStore.setPanel(null)" />
       <TimezonePanel v-if="timezoneComparison" :comparison="timezoneComparison" @clear="clearTimezone" />
       <ThematicLegend />
       <ThematicInfoCard />
