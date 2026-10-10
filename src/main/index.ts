@@ -555,11 +555,16 @@ function recordingExtension(mimeType: unknown): string {
 
 function finalizeMp4Recording(inputPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const process = spawn(ffmpegInstaller.path, ['-hide_banner', '-loglevel', 'error', '-y', '-i', inputPath, '-map', '0', '-c', 'copy', '-movflags', '+faststart', outputPath], { windowsHide: true, stdio: 'ignore' })
+    const stderr: Buffer[] = []
+    const process = spawn(ffmpegInstaller.path, ['-hide_banner', '-loglevel', 'error', '-y', '-i', inputPath, '-map', '0:v:0', '-c:v', 'copy', '-movflags', '+faststart', outputPath], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+    process.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
     process.once('error', reject)
     process.once('close', (code) => {
       if (code === 0) resolve()
-      else reject(new Error(`视频容器最终化失败（FFmpeg 退出码 ${code ?? '未知'}）`))
+      else {
+        const detail = Buffer.concat(stderr).toString('utf8').trim()
+        reject(new Error(`视频容器最终化失败（FFmpeg 退出码 ${code ?? '未知'}）${detail ? `：${detail.slice(-1000)}` : ''}`))
+      }
     })
   })
 }
@@ -800,15 +805,19 @@ function registerIpcHandlers(): void {
       await writer.queue
       if (writer.bytes === 0) throw new Error('未能生成视频数据')
       await writer.handle.close()
-      const finalizedPath = `${writer.path}.final.part`
-      await unlink(finalizedPath).catch(() => undefined)
-      try {
-        await finalizeMp4Recording(writer.temporaryPath, finalizedPath)
-        await renameFile(finalizedPath, writer.path)
-        await unlink(writer.temporaryPath).catch(() => undefined)
-      } catch (error) {
+      if (writer.path.toLowerCase().endsWith('.mp4')) {
+        const finalizedPath = `${writer.path}.final.part`
         await unlink(finalizedPath).catch(() => undefined)
-        throw error
+        try {
+          await finalizeMp4Recording(writer.temporaryPath, finalizedPath)
+          await renameFile(finalizedPath, writer.path)
+          await unlink(writer.temporaryPath).catch(() => undefined)
+        } catch (error) {
+          await unlink(finalizedPath).catch(() => undefined)
+          throw error
+        }
+      } else {
+        await renameFile(writer.temporaryPath, writer.path)
       }
       recordingWriters.delete(recordingId as string)
       shell.showItemInFolder(writer.path)
