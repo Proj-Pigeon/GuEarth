@@ -6,6 +6,8 @@ import { koppenZones } from '@renderer/thematic/koppenZones'
 import { windRampStops } from '@renderer/thematic/windField'
 import { densityBins } from '@renderer/thematic/populationCensus'
 import { CITY_TIER_META, FUNCTIONAL_ZONES } from '@renderer/thematic/urbanCities'
+import { AGRI_CATEGORY_META } from '@renderer/thematic/agriculturalRegions'
+import { industrialBases } from '@renderer/thematic/industrialBases'
 
 const store = useClimateStore()
 
@@ -15,6 +17,8 @@ const koppenEntries = koppenZones.map((zone) => ({ name: zone.name, color: zone.
 const densityEntries = densityBins.map((bin) => ({ label: bin.label, color: bin.color }))
 const tierEntries = CITY_TIER_META.map((meta) => ({ name: meta.name, color: meta.color }))
 const functionalZoneEntries = FUNCTIONAL_ZONES.map((spec) => ({ name: spec.name, color: spec.color }))
+const agriCategoryEntries = AGRI_CATEGORY_META.map((meta) => ({ name: meta.name, color: meta.color }))
+const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, color: base.color }))
 </script>
 
 <template>
@@ -118,6 +122,25 @@ const functionalZoneEntries = FUNCTIONAL_ZONES.map((spec) => ({ name: spec.name,
       <div v-for="zone in functionalZoneEntries" :key="zone.name" class="legend-item">
         <span class="swatch" :style="{ background: zone.color }"></span><span>{{ zone.name }}</span>
       </div>
+    </div>
+    <div v-if="store.overlays['agri-regions']" class="legend-group">
+      <div class="legend-heading">农业区划</div>
+      <div v-for="category in agriCategoryEntries" :key="category.name" class="legend-item">
+        <span class="swatch" :style="{ background: category.color }"></span><span>{{ category.name }}</span>
+      </div>
+      <div class="legend-item legend-hint"><span>点击产区查看作物与区位因素</span></div>
+    </div>
+    <div v-if="store.overlays['industrial-bases']" class="legend-group">
+      <div class="legend-heading">四大工业基地</div>
+      <div v-for="base in industrialBaseEntries" :key="base.name" class="legend-item">
+        <span class="swatch" :style="{ background: base.color }"></span><span>{{ base.name }}</span>
+      </div>
+    </div>
+    <div v-if="store.overlays['industrial-transfers']" class="legend-group">
+      <div class="legend-heading">产业转移流向</div>
+      <div class="legend-item"><span class="swatch" style="height: 5px; background: #722ed1"></span><span>主要转移方向</span></div>
+      <div class="legend-item"><span class="swatch" style="height: 3px; background: rgba(114, 46, 209, 0.72)"></span><span>次要转移方向</span></div>
+      <div class="legend-item legend-hint"><span>自东向西、由沿海向内陆梯度转移</span></div>
     </div>
   </div>
 </template>

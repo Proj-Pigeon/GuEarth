@@ -19,6 +19,8 @@ import { ensoAnomalyColor, ensoPhaseMeta } from '@renderer/thematic/ensoPhases'
 import { subsolarPointDeg } from '@renderer/thematic/solarMath'
 import { densityColor, densityOf, fanMigrationEndpoints, huLineEndpoints, huLineFacts, huLinePath, migrationFacts, migrationFlows, provincePopulation, provinceSummary, smoothMigrationPath } from '@renderer/thematic/populationCensus'
 import { cityTierOf, FUNCTIONAL_ZONES, urbanCities, wuhanFunctionalDistricts } from '@renderer/thematic/urbanCities'
+import { agriCategoryOf, agriculturalRegions, agriFacts, agriRegionSummary } from '@renderer/thematic/agriculturalRegions'
+import { industrialBases, industrialTransferFacts, industrialTransferFlows } from '@renderer/thematic/industrialBases'
 
 const WARM_COLOR = '#f5222d'
 const COLD_COLOR = '#1677ff'
@@ -46,6 +48,7 @@ const LABEL_FONT_FAMILY = '"Microsoft YaHei", "PingFang SC", sans-serif'
 const HU_LINE_COLOR = '#531dab'
 const MIGRATION_FLOW_COLOR = '#fa8c16'
 const PROVINCE_BORDER_COLOR = 'rgba(0, 0, 0, 0.35)'
+const INDUSTRIAL_TRANSFER_COLOR = '#722ed1'
 const HU_LINE_MID_LON = 112.5
 const HU_LINE_MID_LAT = 36.5
 
@@ -1094,6 +1097,153 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     }
   }
 
+  function buildAgriRegions(dataSource: Cesium.CustomDataSource): void {
+    const overview = agriFacts[0]
+    for (const region of agriculturalRegions) {
+      const meta = agriCategoryOf(region.category)
+      const color = Cesium.Color.fromCssColorString(meta.color)
+      const properties = new Cesium.PropertyBag({
+        name: `${region.name}（${meta.name}·${region.crop}）`,
+        layerId: 'agri-regions',
+        summary: `${agriRegionSummary(region)}${overview}`
+      })
+      for (const ring of region.rings) {
+        dataSource.entities.add({
+          properties,
+          polygon: {
+            hierarchy: new Cesium.PolygonHierarchy(toRingCartesians(ring)),
+            material: new Cesium.ColorMaterialProperty(color.withAlpha(0.22))
+          }
+        })
+        dataSource.entities.add({
+          properties,
+          polyline: {
+            positions: toCartesians(ring),
+            clampToGround: true,
+            width: 1.6,
+            material: color.withAlpha(0.8)
+          }
+        })
+      }
+      dataSource.entities.add({
+        properties,
+        position: Cesium.Cartesian3.fromDegrees(region.labelAt[0], region.labelAt[1]),
+        label: {
+          text: region.name,
+          font: labelFont(12, 600),
+          fillColor: color,
+          showBackground: true,
+          backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
+          backgroundPadding: new Cesium.Cartesian2(6, 3),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, region.category === 'grain' ? 10500000 : 7800000)
+        }
+      })
+    }
+  }
+
+  function buildIndustrialBases(dataSource: Cesium.CustomDataSource): void {
+    for (const base of industrialBases) {
+      const color = Cesium.Color.fromCssColorString(base.color)
+      const properties = new Cesium.PropertyBag({
+        name: base.name,
+        layerId: 'industrial-bases',
+        summary: `${base.summary}主导区位：${base.pillars.join('；')}。`
+      })
+      for (const ring of base.rings) {
+        dataSource.entities.add({
+          properties,
+          polygon: {
+            hierarchy: new Cesium.PolygonHierarchy(toRingCartesians(ring)),
+            material: new Cesium.ColorMaterialProperty(color.withAlpha(0.24))
+          }
+        })
+        dataSource.entities.add({
+          properties,
+          polyline: {
+            positions: toCartesians(ring),
+            clampToGround: true,
+            width: 2,
+            material: color.withAlpha(0.85)
+          }
+        })
+      }
+      dataSource.entities.add({
+        properties,
+        position: Cesium.Cartesian3.fromDegrees(base.labelAt[0], base.labelAt[1]),
+        label: {
+          text: base.name,
+          font: labelFont(13, 600),
+          fillColor: color,
+          showBackground: true,
+          backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
+          backgroundPadding: new Cesium.Cartesian2(7, 4),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY
+        }
+      })
+    }
+  }
+
+  function buildIndustrialTransfers(dataSource: Cesium.CustomDataSource): void {
+    const color = Cesium.Color.fromCssColorString(INDUSTRIAL_TRANSFER_COLOR)
+    const overview = industrialTransferFacts[0] + industrialTransferFacts[1]
+    const fannedEndpoints = fanMigrationEndpoints(industrialTransferFlows)
+    for (const flow of industrialTransferFlows) {
+      const rawPath = flow.path ?? [flow.from, flow.to]
+      const endpoint = fannedEndpoints.get(flow) ?? flow.to
+      const adjustedPath: Array<[number, number]> = [...rawPath.slice(0, -1), endpoint]
+      const path = smoothMigrationPath(adjustedPath)
+      const label = `${flow.fromName}→${flow.toName}`
+      const properties = new Cesium.PropertyBag({
+        name: `产业转移：${label}`,
+        layerId: 'industrial-transfers',
+        summary: `产业由${flow.fromName}向${flow.toName}转移${flow.note ? `（${flow.note}）` : ''}。${overview}`
+      })
+      const lengthDeg = migrationPathLength(path)
+      const arcHeight = Math.min(380000, Math.max(40000, lengthDeg * 22000))
+      const heights = path.map((_, index) => {
+        const t = index / (path.length - 1)
+        return arcHeight * Math.sin(Math.PI * t)
+      })
+      dataSource.entities.add({
+        properties,
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights(path.flatMap((point, index) => [point[0], point[1], heights[index]])),
+          arcType: Cesium.ArcType.NONE,
+          width: flow.weight === 'major' ? 3.5 : 2.2,
+          material: color.withAlpha(flow.weight === 'major' ? 0.9 : 0.72)
+        }
+      })
+      dataSource.entities.add({
+        properties,
+        polygon: {
+          hierarchy: new Cesium.PolygonHierarchy(migrationArrowHeadPositions(path, migrationHeadSize(path))),
+          height: 0,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          material: color.withAlpha(0.96)
+        }
+      })
+      const primaryLabel = flow.weight === 'major'
+      const [lon, lat] = migrationLabelAt(path, primaryLabel ? 0.9 : 0.75)
+      dataSource.entities.add({
+        properties,
+        position: Cesium.Cartesian3.fromDegrees(lon, lat, arcHeight),
+        label: {
+          text: label,
+          font: labelFont(12, 600),
+          fillColor: color,
+          showBackground: true,
+          backgroundColor: Cesium.Color.WHITE.withAlpha(0.78),
+          backgroundPadding: new Cesium.Cartesian2(6, 3),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, primaryLabel ? 15000000 : 4600000)
+        }
+      })
+    }
+  }
+
   function provinceRingsToHierarchy(rings: number[][][]): Cesium.PolygonHierarchy | null {
     const [outer, ...holes] = rings.map((ring) => toRingCartesians(ring.map(([lon, lat]) => [lon, lat] as [number, number])))
     if (!outer || outer.length < 3) return null
@@ -1162,7 +1312,10 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'hu-line': buildHuLine,
     'migration-flows': buildMigrationFlows,
     'city-tiers': buildCityTiers,
-    'functional-zones': buildFunctionalZones
+    'functional-zones': buildFunctionalZones,
+    'agri-regions': buildAgriRegions,
+    'industrial-bases': buildIndustrialBases,
+    'industrial-transfers': buildIndustrialTransfers
   }
 
   const enableViews: Partial<Record<ThematicLayerId, LayerView>> = {
@@ -1182,7 +1335,10 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'hu-line': { longitude: 112, latitude: 36, height: 9000000 },
     'migration-flows': { longitude: 110, latitude: 30, height: 10000000 },
     'city-tiers': { longitude: 108, latitude: 33, height: 10500000 },
-    'functional-zones': { longitude: 114.34, latitude: 30.56, height: 130000 }
+    'functional-zones': { longitude: 114.34, latitude: 30.56, height: 130000 },
+    'agri-regions': { longitude: 108, latitude: 34, height: 9500000 },
+    'industrial-bases': { longitude: 118, latitude: 32, height: 8500000 },
+    'industrial-transfers': { longitude: 112, latitude: 28, height: 9000000 }
   }
 
   function syncOverlays(): void {

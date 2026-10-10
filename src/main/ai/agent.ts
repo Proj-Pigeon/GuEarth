@@ -14,6 +14,7 @@ import type {
 } from '../../preload'
 import { readProviderKey } from '../keyVault'
 import { poiStatistics, searchPlaces } from './amap'
+import { analyzeLocation } from './locationAnalysis'
 import { searchWeb } from './search'
 import { retrieveKnowledge } from './knowledge'
 import type { AiChatHistoryStore } from './chatHistoryStore'
@@ -44,6 +45,7 @@ const SYSTEM_PROMPT = [
   '- 用户问板块构造、地震、火山、山脉海沟成因等地表形态塑造问题时：用 set_layer 开启 plate-tectonics 板块运动与地震火山图层（可点击边界、火山、地震要素查看成因）；分析具体地点地貌时，先 fly_to 飞往该处，再用 explain_landform 获取海拔与最近板块边界（名称、类型、距离），按内力作用（板块运动、岩浆活动、变质作用）与外力作用（流水、风力、冰川、海浪）框架讲解；讲解地震火山分布规律时强调其集中于板块边界，与消亡、生长边界的对应关系。',
   '- 用户问中国人口分布、省级人口数量、人口密度、城镇化率或胡焕庸线问题时：先调用 query_population 查询内置的第七次人口普查省级数据（province 传「全国」可查全国总量），依据返回数据讲规律，不要编造数字；配合 set_layer 开启 province-population 省级人口密度、hu-line 胡焕庸线、migration-flows 人口迁移流动图层展示；讲人口分布成因时按地形、气候、水源、交通、开发历史与经济发展差异归纳。',
   '- 用户问城市等级体系、中心地理论、城镇体系、城市职能或城市内部空间结构（功能区）问题时：先用 set_layer 开启 city-tiers 中国城市等级或 functional-zones 城市功能分区（武汉）图层；验证不同等级城市的服务范围与职能差异时，用 poi_statistics 分别统计高等级城市中心（如省会商圈）与低等级城市中心同半径的 POI 大类构成（数量更多、类别更全、出现高级职能类别如金融保险/科教文化者等级更高），按中心地理论解释差异；讲功能区时结合图层中武汉的真实点位（江汉路/楚河汉街商圈在市中心、后湖南湖常青花园住宅区、青山区武钢与沌口汽车城沿长江于城市外缘）归纳商业区、住宅区、工业区的分布规律；可配合 fly_to 飞往对应地点观察。',
+  '- 用户问农业区位、工业区位、产业转移、交通布局或某地发展条件评价问题时：先调用 analyze_location 获取该地 POI 构成、海拔与知识库区位条目（未配置高德密钥会返回 error，请说明原因），配合 set_layer 开启 agri-regions 农业区划、industrial-bases 四大工业基地、industrial-transfers 产业转移流向图层；按「自然区位（气候、地形、土壤、水源）+ 社会经济区位（市场、交通、劳动力、政策、技术、工业基础）」框架归纳，评价时区分有利与不利条件，讲产业转移时强调梯度转移规律与转入转出地的影响。',
   '- 用户要求录制视频、微课或自动介绍（如“帮我录一个人口分布的介绍视频”）时：先规划 3-8 幕剧本（相邻幕视角由远及近、有推进感），再一次性调用 record_video 把完整剧本经 steps 传入（每幕含视角坐标、可选图层、标注与旁白字幕），不要逐步调用 fly_to/set_layer 等工具执行录制；每幕讲解的具体地点（城市、山脉、河流、界线端点等）必须写入该幕 markers 标注命名标记，让观众看清讲到哪里，纯概念无具体地点的幕可不标；旁白精炼，每幕 1-3 句、dwellMs 4000-10000。视角高度宁远勿近（观众要看清地理格局而非街道细节：大区域 800000-3000000，城市群 200000-800000，城市 80000-200000）。涉及人口数据时先 query_population 查询内置省级统计，其余经济等数据先 web_search 获取事实，再用步骤内 shapes 画线（如胡焕庸线）、markers 标注关键城市。record_video 返回 started 后，告知用户录制在后台进行、预计时长与保存位置（系统「影片/GuEarth」）；用户追问进度或长时间未完成时调用 get_recording_status。讲解中遇到老师想保留的重要画面时，可用 save_scene 存为教学场景书签，供课堂一键回放；用户询问已保存的场景时用 list_scenes。',
   '- 用户点击了地图上的专题要素并询问其成因时：回答中直接使用该要素信息，按成因、分布规律、对地理环境影响的顺序讲解。',
   '- 工具返回 error 字段时，向用户说明原因（例如需要在图层面板配置高德密钥），不要编造坐标；search_place 返回 guidance 字段时，停止重试搜索，按 guidance 的步骤向用户说明排查方法。',
@@ -103,6 +105,23 @@ const WEB_SEARCH_TOOL: AiToolDefinition = {
     type: 'object',
     properties: { query: { type: 'string', description: '清晰、具体的搜索关键词或问题', maxLength: 500 } },
     required: ['query'],
+    additionalProperties: false
+  }
+}
+
+const ANALYZE_LOCATION_TOOL: AiToolDefinition = {
+  name: 'analyze_location',
+  description: '综合分析某地点的区位条件：定位地点后返回周边 POI 大类构成（高德 20 大类）、高级职能判定、地表海拔（如地形可用）与本地知识库中的区位条目。用于农业区位、工业区位、交通区位分析与某地发展条件评价。',
+  parameters: {
+    type: 'object',
+    properties: {
+      centerName: { type: 'string', description: '地点名称（如「昆山」「吐鲁番」「鞍山」），与经纬度二选一；可与 city 搭配消歧' },
+      longitude: { type: 'number', description: '可选，经度（WGS-84）' },
+      latitude: { type: 'number', description: '可选，纬度（WGS-84）' },
+      city: { type: 'string', description: '可选，限定所在城市名称，用于消歧' },
+      radiusMeters: { type: 'number', description: '可选，POI 统计半径（米，200-50000，默认 5000）' },
+      focus: { type: 'string', description: '可选，分析侧重：agriculture（农业）/ industry（工业）/ transport（交通）/ general（综合，默认）' }
+    },
     additionalProperties: false
   }
 }
@@ -193,6 +212,7 @@ interface AgentSession {
 const MAX_TOOL_ROUNDS = 16
 const TOOL_RESULT_LIMIT = 24_000
 const RENDERER_TOOL_TIMEOUT_MS = 60_000
+const ANALYZE_TERRAIN_TIMEOUT_MS = 8_000
 const SEARCH_FAILURE_GUIDANCE_THRESHOLD = 3
 
 const SEARCH_FAILURE_GUIDANCE = [
@@ -812,6 +832,29 @@ async function executeTool(sender: WebContents, sessionId: string, name: string,
         keywords: typeof args.keywords === 'string' ? args.keywords : undefined
       })
       outcome = { ok: !result.error, content: clampToolResult(JSON.stringify(result)) }
+    } else if (name === 'analyze_location') {
+      const result = await analyzeLocation({
+        centerName: typeof args.centerName === 'string' ? args.centerName : undefined,
+        longitude: typeof args.longitude === 'number' ? args.longitude : undefined,
+        latitude: typeof args.latitude === 'number' ? args.latitude : undefined,
+        city: typeof args.city === 'string' ? args.city : undefined,
+        radiusMeters: typeof args.radiusMeters === 'number' ? args.radiusMeters : undefined,
+        focus: typeof args.focus === 'string' ? args.focus : undefined
+      })
+      if (!result.error && Number.isFinite(result.center.longitude) && Number.isFinite(result.center.latitude) && (result.center.longitude !== 0 || result.center.latitude !== 0)) {
+        const terrainCallId = `query_terrain:${Date.now()}:analyze`
+        let terrainTimer: NodeJS.Timeout | undefined
+        const terrainOutcome = await Promise.race([
+          dispatchRendererTool(sender, sessionId, terrainCallId, 'query_terrain', { longitude: result.center.longitude, latitude: result.center.latitude }),
+          new Promise<ToolOutcome>((resolve) => {
+            terrainTimer = setTimeout(() => resolve({ ok: false, content: JSON.stringify({ error: '地形查询超时' }) }), ANALYZE_TERRAIN_TIMEOUT_MS)
+          })
+        ])
+        if (terrainTimer) clearTimeout(terrainTimer)
+        const terrain = safeParseJson(terrainOutcome.content)
+        if (typeof terrain.height === 'number') result.elevationMeters = terrain.height
+      }
+      outcome = { ok: !result.error, content: clampToolResult(JSON.stringify(result)) }
     } else if (name === 'save_memory') {
       if (!memory?.enabled) {
         outcome = { ok: false, content: JSON.stringify({ error: '记忆功能未开启，请在 AI 设置 → 记忆 中开启' }) }
@@ -923,7 +966,7 @@ async function runAgent(options: {
     if (turn.content.trim()) messages.push({ role: turn.role, content: turn.content })
   }
   const memoryTools = memory.enabled ? [MEMORY_SAVE_TOOL, MEMORY_DELETE_TOOL] : []
-  const toolset: AiToolDefinition[] = [...tools.filter((tool) => !['retrieve_knowledge', 'search_place', 'web_search', 'save_memory', 'delete_memory'].includes(tool.name)), KNOWLEDGE_TOOL, SEARCH_PLACE_TOOL, POI_STATISTICS_TOOL, WEB_SEARCH_TOOL, ...memoryTools]
+  const toolset: AiToolDefinition[] = [...tools.filter((tool) => !['retrieve_knowledge', 'search_place', 'web_search', 'save_memory', 'delete_memory', 'poi_statistics', 'analyze_location'].includes(tool.name)), KNOWLEDGE_TOOL, SEARCH_PLACE_TOOL, POI_STATISTICS_TOOL, ANALYZE_LOCATION_TOOL, WEB_SEARCH_TOOL, ...memoryTools]
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
     const currentStats = contextStatsForMessages(messages, model.contextWindow)
@@ -1022,6 +1065,12 @@ function summarizeToolResult(content: string): string {
     return `${parsed.province}：${population}密度约 ${parsed.densityPerKm2} 人/km²`
   }
   if (typeof parsed.longitude === 'number') return '已定位'
+  const center = typeof parsed.center === 'object' && parsed.center !== null ? parsed.center as { name?: unknown } : null
+  if (center && Array.isArray(parsed.categories)) {
+    const name = typeof center.name === 'string' && center.name ? center.name : '该地点'
+    const elevation = typeof parsed.elevationMeters === 'number' ? `、海拔 ${Math.round(parsed.elevationMeters)} m` : ''
+    return `区位分析「${name}」：${parsed.categories.length} 类 POI${elevation}`
+  }
   return '完成'
 }
 

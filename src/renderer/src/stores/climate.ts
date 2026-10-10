@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { summerFactor, winterFactor } from '@renderer/thematic/windField'
 import type { EnsoPhase } from '@renderer/thematic/ensoPhases'
 
-export type ThematicLayerId = 'wind-particles' | 'pressure-belts' | 'koppen-zones' | 'frontal-cyclone' | 'rain-belt' | 'summer-monsoon' | 'winter-monsoon' | 'ocean-currents' | 'climate-zones' | 'coriolis-demo' | 'plate-tectonics' | 'temperature-zones' | 'typhoon' | 'enso' | 'province-population' | 'hu-line' | 'migration-flows' | 'city-tiers' | 'functional-zones'
+export type ThematicLayerId = 'wind-particles' | 'pressure-belts' | 'koppen-zones' | 'frontal-cyclone' | 'rain-belt' | 'summer-monsoon' | 'winter-monsoon' | 'ocean-currents' | 'climate-zones' | 'coriolis-demo' | 'plate-tectonics' | 'temperature-zones' | 'typhoon' | 'enso' | 'province-population' | 'hu-line' | 'migration-flows' | 'city-tiers' | 'functional-zones' | 'agri-regions' | 'industrial-bases' | 'industrial-transfers'
 
 export interface ThematicLayerMeta {
   id: ThematicLayerId
@@ -31,7 +31,10 @@ export const thematicLayerCatalog: ThematicLayerMeta[] = [
   { id: 'hu-line', name: '胡焕庸线', description: '黑河—腾冲线与东西两侧人口对比' },
   { id: 'migration-flows', name: '人口迁移流动', description: '主要省际人口迁移流向示意（可点击查看）' },
   { id: 'city-tiers', name: '中国城市等级', description: '全国/区域/省会/地级/县级五级城市与服务范围示意（可点击查看）' },
-  { id: 'functional-zones', name: '城市功能分区（武汉）', description: '武汉真实功能分区锚定：江汉路商圈、武钢青山区、沌口汽车城、光谷等（可点击查看）' }
+  { id: 'functional-zones', name: '城市功能分区（武汉）', description: '武汉真实功能分区锚定：江汉路商圈、武钢青山区、沌口汽车城、光谷等（可点击查看）' },
+  { id: 'agri-regions', name: '农业区划', description: '九大商品粮基地与商品棉、甘蔗、甜菜产区分布（可点击查看区位）' },
+  { id: 'industrial-bases', name: '四大工业基地', description: '辽中南、京津唐、沪宁杭、珠三角基地与主导区位（可点击查看）' },
+  { id: 'industrial-transfers', name: '产业转移流向', description: '东部沿海向中西部与海外的产业转移弧线（可点击查看）' }
 ]
 
 const MONTHS_PER_SECOND = 0.5
@@ -59,7 +62,10 @@ export const useClimateStore = defineStore('climate', () => {
     'hu-line': false,
     'migration-flows': false,
     'city-tiers': false,
-    'functional-zones': false
+    'functional-zones': false,
+    'agri-regions': false,
+    'industrial-bases': false,
+    'industrial-transfers': false
   })
   const ensoPhase = ref<EnsoPhase>('normal')
 

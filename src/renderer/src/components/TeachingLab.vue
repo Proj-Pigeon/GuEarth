@@ -244,6 +244,15 @@ const chapters: LabChapter[] = [
       layerEntry('city-tiers'),
       layerEntry('functional-zones')
     ]
+  },
+  {
+    id: 'industry',
+    title: '必修二 · 产业区位',
+    entries: [
+      layerEntry('agri-regions'),
+      layerEntry('industrial-bases'),
+      layerEntry('industrial-transfers')
+    ]
   }
 ]
 
