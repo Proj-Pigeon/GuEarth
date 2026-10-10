@@ -26,7 +26,7 @@ export const useTransportStore = defineStore('transport', () => {
   function advance(dtSeconds: number): void {
     if (!isPlaying.value) return
     const next = year.value + dtSeconds * YEARS_PER_SECOND
-    year.value = next > HSR_END_YEAR ? HSR_START_YEAR + (next - HSR_END_YEAR - 1) : next
+    year.value = next > HSR_END_YEAR ? HSR_START_YEAR + (next - HSR_END_YEAR) : next
   }
 
   return { year, isPlaying, panel, setYear, setPanel, togglePlaying, advance }
