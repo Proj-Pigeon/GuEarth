@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { summerFactor, winterFactor } from '@renderer/thematic/windField'
 import type { EnsoPhase } from '@renderer/thematic/ensoPhases'
 
-export type ThematicLayerId = 'wind-particles' | 'pressure-belts' | 'koppen-zones' | 'frontal-cyclone' | 'rain-belt' | 'summer-monsoon' | 'winter-monsoon' | 'ocean-currents' | 'climate-zones' | 'coriolis-demo' | 'plate-tectonics' | 'temperature-zones' | 'typhoon' | 'enso' | 'province-population' | 'hu-line' | 'migration-flows' | 'city-tiers' | 'functional-zones' | 'agri-regions' | 'industrial-bases' | 'industrial-transfers' | 'hsr-network'
+export type ThematicLayerId = 'wind-particles' | 'pressure-belts' | 'koppen-zones' | 'frontal-cyclone' | 'rain-belt' | 'summer-monsoon' | 'winter-monsoon' | 'ocean-currents' | 'climate-zones' | 'coriolis-demo' | 'plate-tectonics' | 'temperature-zones' | 'typhoon' | 'enso' | 'province-population' | 'hu-line' | 'migration-flows' | 'city-tiers' | 'functional-zones' | 'agri-regions' | 'industrial-bases' | 'industrial-transfers' | 'hsr-network' | 'sea-level-rise'
 
 export interface ThematicLayerMeta {
   id: ThematicLayerId
@@ -35,7 +35,8 @@ export const thematicLayerCatalog: ThematicLayerMeta[] = [
   { id: 'agri-regions', name: '农业区划', description: '九大商品粮基地与商品棉、甘蔗、甜菜产区分布（可点击查看区位）' },
   { id: 'industrial-bases', name: '四大工业基地', description: '辽中南、京津唐、沪宁杭、珠三角基地与主导区位（可点击查看）' },
   { id: 'industrial-transfers', name: '产业转移流向', description: '东部沿海向中西部与海外的产业转移弧线（可点击查看）' },
-  { id: 'hsr-network', name: '高铁网络生长', description: '2008 年以来主要高铁干线随年份生长（配合面板时间轴播放）' }
+  { id: 'hsr-network', name: '高铁网络生长', description: '2008 年以来主要高铁干线随年份生长（配合面板时间轴播放）' },
+  { id: 'sea-level-rise', name: '海平面上升淹没模拟', description: '沿海低地格网地形采样，按上升情景着色被淹没陆地（可点击查看）' }
 ]
 
 const MONTHS_PER_SECOND = 0.5
@@ -67,9 +68,11 @@ export const useClimateStore = defineStore('climate', () => {
     'agri-regions': false,
     'industrial-bases': false,
     'industrial-transfers': false,
-    'hsr-network': false
+    'hsr-network': false,
+    'sea-level-rise': false
   })
   const ensoPhase = ref<EnsoPhase>('normal')
+  const seaLevelRise = ref<number>(1)
 
   const summerStrength = computed(() => summerFactor(month.value))
   const winterStrength = computed(() => winterFactor(month.value))
@@ -82,6 +85,10 @@ export const useClimateStore = defineStore('climate', () => {
 
   function setEnsoPhase(value: EnsoPhase): void {
     ensoPhase.value = value
+  }
+
+  function setSeaLevelRise(value: number): void {
+    seaLevelRise.value = value
   }
 
   function setMonth(value: number): void {
@@ -98,5 +105,5 @@ export const useClimateStore = defineStore('climate', () => {
     month.value = next >= MONTH_MAX ? next - 12 : next
   }
 
-  return { month, isPlaying, overlays, ensoPhase, summerStrength, winterStrength, hasActiveOverlay, hasSeasonalOverlay, setOverlay, setEnsoPhase, setMonth, togglePlaying, advance }
+  return { month, isPlaying, overlays, ensoPhase, seaLevelRise, summerStrength, winterStrength, hasActiveOverlay, hasSeasonalOverlay, setOverlay, setEnsoPhase, setSeaLevelRise, setMonth, togglePlaying, advance }
 })

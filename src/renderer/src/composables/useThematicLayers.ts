@@ -22,6 +22,7 @@ import { cityTierOf, FUNCTIONAL_ZONES, urbanCities, wuhanFunctionalDistricts } f
 import { agriCategoryOf, agriculturalRegions, agriFacts, agriRegionSummary } from '@renderer/thematic/agriculturalRegions'
 import { industrialBases, industrialTransferFacts, industrialTransferFlows } from '@renderer/thematic/industrialBases'
 import { HSR_COLOR, hsrFacts, hsrLines } from '@renderer/thematic/hsrLines'
+import { cacheKeyOf, coastalZones, gridPointsOf, heightCache, isInundated, recordSamples, scenarioSummary, SEA_COLOR } from '@renderer/thematic/seaLevelRise'
 import { useTransportStore } from '@renderer/stores/transport'
 
 const WARM_COLOR = '#f5222d'
@@ -1287,6 +1288,107 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     }
   }
 
+  function buildSeaLevelRise(dataSource: Cesium.CustomDataSource): void {
+    void addInundationCells(dataSource)
+  }
+
+  async function addInundationCells(dataSource: Cesium.CustomDataSource): Promise<void> {
+    const current = viewer.value
+    if (!current || current.isDestroyed()) return
+    const allCached = coastalZones.every((zone) =>
+      gridPointsOf(zone).every(([lon, lat]) => heightCache.has(cacheKeyOf(lon, lat)))
+    )
+    if (!allCached) {
+      if (current.scene.terrainProvider instanceof Cesium.EllipsoidTerrainProvider) {
+        if (sources.get('sea-level-rise') === dataSource) {
+          failureStore.reportFailure({ scope: 'sea-level-terrain', message: '未加载真实地形，淹没模拟不可用', detail: '请在「图层管理 → 地形」中开启真实地形源后重试', retryable: true })
+        }
+        return
+      }
+      const points = coastalZones.flatMap((zone) => gridPointsOf(zone))
+      const cartographics = points.map(([lon, lat]) => Cesium.Cartographic.fromDegrees(lon, lat))
+      try {
+        const sampled = await Cesium.sampleTerrainMostDetailed(current.terrainProvider, cartographics)
+        recordSamples(points, sampled.map((cartographic) => cartographic.height))
+      } catch {
+        recordSamples(
+          points,
+          cartographics.map((cartographic) => current.scene.globe.getHeight(cartographic) ?? Number.NaN)
+        )
+        if (!heightCache.size) {
+          if (sources.get('sea-level-rise') === dataSource) {
+            failureStore.reportFailure({ scope: 'sea-level-terrain', message: '地形采样失败，淹没模拟不可用', detail: '地形源不可达或网络受限，稍后点击重试', retryable: true })
+          }
+          return
+        }
+      }
+    }
+    failureStore.clearFailure('sea-level-terrain')
+    if (sources.get('sea-level-rise') !== dataSource) return
+    const rise = store.seaLevelRise
+    const color = Cesium.Color.fromCssColorString(SEA_COLOR)
+    const properties = new Cesium.PropertyBag({
+      name: `海平面上升 +${rise} 米情景`,
+      layerId: 'sea-level-rise',
+      summary: scenarioSummary(rise)
+    })
+    for (const zone of coastalZones) {
+      for (const [lon, lat] of gridPointsOf(zone)) {
+        const height = heightCache.get(cacheKeyOf(lon, lat))
+        if (height === undefined || !isInundated(height, rise)) continue
+        const half = zone.step / 2
+        dataSource.entities.add({
+          properties,
+          polygon: {
+            hierarchy: new Cesium.PolygonHierarchy(
+              Cesium.Cartesian3.fromDegreesArray([lon - half, lat - half, lon + half, lat - half, lon + half, lat + half, lon - half, lat + half])
+            ),
+            height: rise,
+            material: color.withAlpha(0.5)
+          }
+        })
+      }
+    }
+    for (const zone of coastalZones) {
+      dataSource.entities.add({
+        properties: new Cesium.PropertyBag({
+          name: zone.name,
+          layerId: 'sea-level-rise',
+          summary: `${zone.note}。${scenarioSummary(store.seaLevelRise)}`
+        }),
+        position: Cesium.Cartesian3.fromDegrees(zone.center[0], zone.center[1]),
+        label: {
+          text: zone.name,
+          font: labelFont(12, 600),
+          fillColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.65)'),
+          showBackground: true,
+          backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
+          backgroundPadding: new Cesium.Cartesian2(6, 3),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 9000000)
+        }
+      })
+    }
+  }
+
+  function rebuildSeaLevelRise(): void {
+    const current = viewer.value
+    if (!current || current.isDestroyed()) return
+    const existing = sources.get('sea-level-rise')
+    if (!existing) return
+    current.dataSources.remove(existing, true)
+    sources.delete('sea-level-rise')
+    const dataSource = new Cesium.CustomDataSource('sea-level-rise')
+    try {
+      buildSeaLevelRise(dataSource)
+    } catch (error) {
+      console.error('[thematic] failed to rebuild sea-level layer', error)
+    }
+    void current.dataSources.add(dataSource)
+    sources.set('sea-level-rise', dataSource)
+  }
+
   function provinceRingsToHierarchy(rings: number[][][]): Cesium.PolygonHierarchy | null {
     const [outer, ...holes] = rings.map((ring) => toRingCartesians(ring.map(([lon, lat]) => [lon, lat] as [number, number])))
     if (!outer || outer.length < 3) return null
@@ -1359,7 +1461,8 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'agri-regions': buildAgriRegions,
     'industrial-bases': buildIndustrialBases,
     'industrial-transfers': buildIndustrialTransfers,
-    'hsr-network': buildHsrNetwork
+    'hsr-network': buildHsrNetwork,
+    'sea-level-rise': buildSeaLevelRise
   }
 
   const enableViews: Partial<Record<ThematicLayerId, LayerView>> = {
@@ -1383,7 +1486,8 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'agri-regions': { longitude: 108, latitude: 34, height: 9500000 },
     'industrial-bases': { longitude: 118, latitude: 32, height: 8500000 },
     'industrial-transfers': { longitude: 112, latitude: 28, height: 9000000 },
-    'hsr-network': { longitude: 113, latitude: 33, height: 10000000 }
+    'hsr-network': { longitude: 113, latitude: 33, height: 10000000 },
+    'sea-level-rise': { longitude: 119.6, latitude: 31.6, height: 9500000 }
   }
 
   function syncOverlays(): void {
@@ -1439,7 +1543,15 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     }
     await addEarthquakeEntities(dataSource)
   })
+  failureStore.registerRetry('sea-level-terrain', async () => {
+    if (!sources.get('sea-level-rise')) {
+      failureStore.clearFailure('sea-level-terrain')
+      return
+    }
+    rebuildSeaLevelRise()
+  })
   watch(() => Math.round(store.month * 4) / 4, (month) => refreshPressureBeltGeometry(month))
+  watch(() => store.seaLevelRise, rebuildSeaLevelRise)
   watch(viewer, (previous) => {
     if (previous && !previous.isDestroyed()) {
       sources.clear()

@@ -7,6 +7,7 @@ import { useHydrologyStore, type HydrologyPanel } from '@renderer/stores/hydrolo
 import { useLandformStore, type LandformPanel } from '@renderer/stores/landform'
 import { usePopulationStore } from '@renderer/stores/population'
 import { useTransportStore } from '@renderer/stores/transport'
+import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useDrawingStore } from '@renderer/stores/drawing'
 
 interface LabEntry {
@@ -34,6 +35,7 @@ const hydrologyStore = useHydrologyStore()
 const landformStore = useLandformStore()
 const populationStore = usePopulationStore()
 const transportStore = useTransportStore()
+const environmentStore = useEnvironmentStore()
 const drawingStore = useDrawingStore()
 
 function closeAllPanels(): void {
@@ -43,6 +45,7 @@ function closeAllPanels(): void {
   landformStore.setPanel(null)
   populationStore.setPanel(null)
   transportStore.setPanel(null)
+  environmentStore.setPanel(null)
 }
 
 function layerEntry(id: ThematicLayerId): LabEntry {
@@ -150,6 +153,20 @@ function transportPanelEntry(name: string, description: string): LabEntry {
       const next = transportStore.panel !== 'transport'
       closeAllPanels()
       if (next) transportStore.setPanel('transport')
+    }
+  }
+}
+
+function environmentPanelEntry(name: string, description: string): LabEntry {
+  return {
+    key: 'environment',
+    name,
+    description,
+    active: () => environmentStore.panel === 'environment',
+    toggle: () => {
+      const next = environmentStore.panel !== 'environment'
+      closeAllPanels()
+      if (next) environmentStore.setPanel('environment')
     }
   }
 }
@@ -277,6 +294,14 @@ const chapters: LabChapter[] = [
     entries: [
       transportPanelEntry('交通运输布局', '高铁网络生长时间轴、营业里程曲线与线路实地察看'),
       layerEntry('hsr-network')
+    ]
+  },
+  {
+    id: 'environment',
+    title: '必修二 · 环境与发展',
+    entries: [
+      environmentPanelEntry('海平面上升淹没模拟', '选择上升情景，观察沿海低地淹没范围（需真实地形源）'),
+      layerEntry('sea-level-rise')
     ]
   }
 ]
