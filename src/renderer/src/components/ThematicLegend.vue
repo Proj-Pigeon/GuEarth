@@ -142,6 +142,11 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
       <div class="legend-item"><span class="swatch" style="height: 3px; background: rgba(114, 46, 209, 0.72)"></span><span>次要转移方向</span></div>
       <div class="legend-item legend-hint"><span>自东向西、由沿海向内陆梯度转移</span></div>
     </div>
+    <div v-if="store.overlays['hsr-network']" class="legend-group">
+      <div class="legend-heading">高铁网络（随年份生长）</div>
+      <div class="legend-item"><span class="swatch" style="height: 5px; background: #d4380d"></span><span>已开通高铁干线</span></div>
+      <div class="legend-item legend-hint"><span>打开「交通运输布局」面板播放年份动画</span></div>
+    </div>
   </div>
 </template>
 

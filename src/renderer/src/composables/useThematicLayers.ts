@@ -21,6 +21,8 @@ import { densityColor, densityOf, fanMigrationEndpoints, huLineEndpoints, huLine
 import { cityTierOf, FUNCTIONAL_ZONES, urbanCities, wuhanFunctionalDistricts } from '@renderer/thematic/urbanCities'
 import { agriCategoryOf, agriculturalRegions, agriFacts, agriRegionSummary } from '@renderer/thematic/agriculturalRegions'
 import { industrialBases, industrialTransferFacts, industrialTransferFlows } from '@renderer/thematic/industrialBases'
+import { HSR_COLOR, hsrFacts, hsrLines } from '@renderer/thematic/hsrLines'
+import { useTransportStore } from '@renderer/stores/transport'
 
 const WARM_COLOR = '#f5222d'
 const COLD_COLOR = '#1677ff'
@@ -150,6 +152,7 @@ function migrationLabelAt(path: Array<[number, number]>, offset: number): [numbe
 export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void {
   const store = useClimateStore()
   const solarStore = useSolarStore()
+  const transportStore = useTransportStore()
   const failureStore = useFailureStore()
   const sources = new Map<ThematicLayerId, Cesium.CustomDataSource>()
   const coriolisProgress = ref(0)
@@ -1244,6 +1247,46 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     }
   }
 
+  function buildHsrNetwork(dataSource: Cesium.CustomDataSource): void {
+    const color = Cesium.Color.fromCssColorString(HSR_COLOR)
+    const overview = hsrFacts[0]
+    for (const line of hsrLines) {
+      const properties = new Cesium.PropertyBag({
+        name: `${line.name}（${line.openedYear} 年开通）`,
+        layerId: 'hsr-network',
+        summary: `${line.note}。全长约 ${line.lengthKm} 公里，设计时速 ${line.designSpeed} 公里。${overview}`
+      })
+      const opened = new Cesium.CallbackProperty(() => line.openedYear <= Math.floor(transportStore.year), false)
+      dataSource.entities.add({
+        properties,
+        polyline: {
+          positions: toCartesians(line.path),
+          clampToGround: true,
+          width: 2.6,
+          material: color.withAlpha(0.9),
+          show: opened
+        }
+      })
+      const mid = line.path[Math.floor(line.path.length / 2)]
+      dataSource.entities.add({
+        properties,
+        position: Cesium.Cartesian3.fromDegrees(mid[0], mid[1]),
+        label: {
+          text: `${line.name}·${line.openedYear}`,
+          font: labelFont(11, 600),
+          fillColor: color,
+          showBackground: true,
+          backgroundColor: Cesium.Color.WHITE.withAlpha(0.78),
+          backgroundPadding: new Cesium.Cartesian2(5, 3),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, line.lengthKm > 1000 ? 12000000 : 7500000),
+          show: opened
+        }
+      })
+    }
+  }
+
   function provinceRingsToHierarchy(rings: number[][][]): Cesium.PolygonHierarchy | null {
     const [outer, ...holes] = rings.map((ring) => toRingCartesians(ring.map(([lon, lat]) => [lon, lat] as [number, number])))
     if (!outer || outer.length < 3) return null
@@ -1315,7 +1358,8 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'functional-zones': buildFunctionalZones,
     'agri-regions': buildAgriRegions,
     'industrial-bases': buildIndustrialBases,
-    'industrial-transfers': buildIndustrialTransfers
+    'industrial-transfers': buildIndustrialTransfers,
+    'hsr-network': buildHsrNetwork
   }
 
   const enableViews: Partial<Record<ThematicLayerId, LayerView>> = {
@@ -1338,7 +1382,8 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'functional-zones': { longitude: 114.34, latitude: 30.56, height: 130000 },
     'agri-regions': { longitude: 108, latitude: 34, height: 9500000 },
     'industrial-bases': { longitude: 118, latitude: 32, height: 8500000 },
-    'industrial-transfers': { longitude: 112, latitude: 28, height: 9000000 }
+    'industrial-transfers': { longitude: 112, latitude: 28, height: 9000000 },
+    'hsr-network': { longitude: 113, latitude: 33, height: 10000000 }
   }
 
   function syncOverlays(): void {

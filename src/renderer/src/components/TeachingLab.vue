@@ -6,6 +6,7 @@ import { useAtmosphereStore, type AtmospherePanel } from '@renderer/stores/atmos
 import { useHydrologyStore, type HydrologyPanel } from '@renderer/stores/hydrology'
 import { useLandformStore, type LandformPanel } from '@renderer/stores/landform'
 import { usePopulationStore } from '@renderer/stores/population'
+import { useTransportStore } from '@renderer/stores/transport'
 import { useDrawingStore } from '@renderer/stores/drawing'
 
 interface LabEntry {
@@ -32,6 +33,7 @@ const atmosphereStore = useAtmosphereStore()
 const hydrologyStore = useHydrologyStore()
 const landformStore = useLandformStore()
 const populationStore = usePopulationStore()
+const transportStore = useTransportStore()
 const drawingStore = useDrawingStore()
 
 function closeAllPanels(): void {
@@ -40,6 +42,7 @@ function closeAllPanels(): void {
   hydrologyStore.setPanel(null)
   landformStore.setPanel(null)
   populationStore.setPanel(null)
+  transportStore.setPanel(null)
 }
 
 function layerEntry(id: ThematicLayerId): LabEntry {
@@ -133,6 +136,20 @@ function citiesPanelEntry(name: string, description: string): LabEntry {
       const next = populationStore.panel !== 'cities'
       closeAllPanels()
       if (next) populationStore.setPanel('cities')
+    }
+  }
+}
+
+function transportPanelEntry(name: string, description: string): LabEntry {
+  return {
+    key: 'transport',
+    name,
+    description,
+    active: () => transportStore.panel === 'transport',
+    toggle: () => {
+      const next = transportStore.panel !== 'transport'
+      closeAllPanels()
+      if (next) transportStore.setPanel('transport')
     }
   }
 }
@@ -252,6 +269,14 @@ const chapters: LabChapter[] = [
       layerEntry('agri-regions'),
       layerEntry('industrial-bases'),
       layerEntry('industrial-transfers')
+    ]
+  },
+  {
+    id: 'transport',
+    title: '必修二 · 交通运输',
+    entries: [
+      transportPanelEntry('交通运输布局', '高铁网络生长时间轴、营业里程曲线与线路实地察看'),
+      layerEntry('hsr-network')
     ]
   }
 ]

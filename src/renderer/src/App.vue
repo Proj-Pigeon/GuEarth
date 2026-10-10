@@ -18,6 +18,7 @@ import { useAtmosphereStore } from '@renderer/stores/atmosphere'
 import { useHydrologyStore } from '@renderer/stores/hydrology'
 import { useLandformStore } from '@renderer/stores/landform'
 import { usePopulationStore } from '@renderer/stores/population'
+import { useTransportStore } from '@renderer/stores/transport'
 import { registerPopulationTools } from '@renderer/ai/populationTools'
 import { useCesiumViewer } from '@renderer/composables/useCesiumViewer'
 import { useDrawing } from '@renderer/composables/useDrawing'
@@ -58,6 +59,7 @@ import EarthLayersPanel from '@renderer/components/EarthLayersPanel.vue'
 import TimezonePanel from '@renderer/components/TimezonePanel.vue'
 import PopulationPanel from '@renderer/components/PopulationPanel.vue'
 import CitiesPanel from '@renderer/components/CitiesPanel.vue'
+import TransportPanel from '@renderer/components/TransportPanel.vue'
 import HuLineOverlay from '@renderer/components/HuLineOverlay.vue'
 import ThematicLegend from '@renderer/components/ThematicLegend.vue'
 import FrontalCyclone from '@renderer/components/FrontalCyclone.vue'
@@ -104,6 +106,7 @@ const atmosphereStore = useAtmosphereStore()
 const hydrologyStore = useHydrologyStore()
 const landformStore = useLandformStore()
 const populationStore = usePopulationStore()
+const transportStore = useTransportStore()
 const { overlays: thematicOverlays } = storeToRefs(climateStore)
 useThematicLayers(viewer)
 registerPopulationTools()
@@ -128,7 +131,7 @@ const levelSwitcherVisible = computed(() => isGlobeReady.value && camera.value.h
 const showGlobeLoading = computed(() => !isGlobeReady.value && !globeError.value)
 const isLabOpen = ref(false)
 const nightBasemapActive = computed(() => store.selectedLayerId === 'viirs-night')
-const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || activeTool.value === 'timezone')
+const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || activeTool.value === 'timezone')
 watch(nightBasemapActive, (active) => {
   if (active) isLabOpen.value = false
 })
@@ -437,6 +440,12 @@ const teachingPanelCatalog: { id: string; name: string; hint: string; open: () =
     open: () => populationStore.setPanel('cities')
   },
   {
+    id: 'transport',
+    name: '交通运输布局',
+    hint: '播放 2008 年以来高铁网络生长动画，结合营业里程曲线与实地察看讲解',
+    open: () => transportStore.setPanel('transport')
+  },
+  {
     id: 'timezone-compare',
     name: '地方时对比',
     hint: '已进入地方时点选模式，请提示用户在地球上依次单击两个地点，出现「地方时对比」面板后即可讲解两地时差；按 Esc 退出点选模式',
@@ -468,6 +477,7 @@ aiStore.registerTool({
       hydrologyStore.setPanel(null)
       landformStore.setPanel(null)
       populationStore.setPanel(null)
+      transportStore.setPanel(null)
       if (activeTool.value === 'timezone') drawingStore.setActiveTool(null)
       clearTimezone()
       return { status: 'ok', closed: true, message: '已关闭全部教学演示面板' }
@@ -1127,6 +1137,7 @@ function deleteSelectedShape(): void {
       <EarthLayersPanel v-if="landformStore.panel === 'earth-layers'" @close="landformStore.setPanel(null)" />
       <PopulationPanel v-if="populationStore.panel === 'population'" @close="populationStore.setPanel(null)" />
       <CitiesPanel v-if="populationStore.panel === 'cities'" @close="populationStore.setPanel(null)" />
+      <TransportPanel v-if="transportStore.panel === 'transport'" :viewer="viewer" @close="transportStore.setPanel(null)" />
       <TimezonePanel v-if="timezoneComparison" :comparison="timezoneComparison" @clear="clearTimezone" />
       <ThematicLegend />
       <ThematicInfoCard />

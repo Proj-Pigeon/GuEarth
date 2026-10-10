@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { summerFactor, winterFactor } from '@renderer/thematic/windField'
 import type { EnsoPhase } from '@renderer/thematic/ensoPhases'
 
-export type ThematicLayerId = 'wind-particles' | 'pressure-belts' | 'koppen-zones' | 'frontal-cyclone' | 'rain-belt' | 'summer-monsoon' | 'winter-monsoon' | 'ocean-currents' | 'climate-zones' | 'coriolis-demo' | 'plate-tectonics' | 'temperature-zones' | 'typhoon' | 'enso' | 'province-population' | 'hu-line' | 'migration-flows' | 'city-tiers' | 'functional-zones' | 'agri-regions' | 'industrial-bases' | 'industrial-transfers'
+export type ThematicLayerId = 'wind-particles' | 'pressure-belts' | 'koppen-zones' | 'frontal-cyclone' | 'rain-belt' | 'summer-monsoon' | 'winter-monsoon' | 'ocean-currents' | 'climate-zones' | 'coriolis-demo' | 'plate-tectonics' | 'temperature-zones' | 'typhoon' | 'enso' | 'province-population' | 'hu-line' | 'migration-flows' | 'city-tiers' | 'functional-zones' | 'agri-regions' | 'industrial-bases' | 'industrial-transfers' | 'hsr-network'
 
 export interface ThematicLayerMeta {
   id: ThematicLayerId
@@ -34,7 +34,8 @@ export const thematicLayerCatalog: ThematicLayerMeta[] = [
   { id: 'functional-zones', name: '城市功能分区（武汉）', description: '武汉真实功能分区锚定：江汉路商圈、武钢青山区、沌口汽车城、光谷等（可点击查看）' },
   { id: 'agri-regions', name: '农业区划', description: '九大商品粮基地与商品棉、甘蔗、甜菜产区分布（可点击查看区位）' },
   { id: 'industrial-bases', name: '四大工业基地', description: '辽中南、京津唐、沪宁杭、珠三角基地与主导区位（可点击查看）' },
-  { id: 'industrial-transfers', name: '产业转移流向', description: '东部沿海向中西部与海外的产业转移弧线（可点击查看）' }
+  { id: 'industrial-transfers', name: '产业转移流向', description: '东部沿海向中西部与海外的产业转移弧线（可点击查看）' },
+  { id: 'hsr-network', name: '高铁网络生长', description: '2008 年以来主要高铁干线随年份生长（配合面板时间轴播放）' }
 ]
 
 const MONTHS_PER_SECOND = 0.5
@@ -65,7 +66,8 @@ export const useClimateStore = defineStore('climate', () => {
     'functional-zones': false,
     'agri-regions': false,
     'industrial-bases': false,
-    'industrial-transfers': false
+    'industrial-transfers': false,
+    'hsr-network': false
   })
   const ensoPhase = ref<EnsoPhase>('normal')
 
