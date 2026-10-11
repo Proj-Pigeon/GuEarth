@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository. Read this file before 
 
 ## Project
 
-**GuEarth** (`E:\Code\GuEarth`, GitHub: `HikaruQwQ/GuEarth`) is an Electron desktop "digital
+**GuEarth** (`E:\Code\GuEarth`, GitHub: `Proj-Pigeon/GuEarth`) is an Electron desktop "digital
 earth" for geography education — a local, Google-Earth-style 3D globe with terrain, integrated
 map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing tools.
 
@@ -30,6 +30,9 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 - Electron binaries must be installed manually with the npmmirror mirror:
   `ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" node node_modules/electron/install.js`
   (otherwise `npm run dev` fails with "Electron uninstall").
+- `npm run build:win` needs the electron-builder binaries mirror on networks without GitHub access:
+  `ELECTRON_BUILDER_BINARIES_MIRROR="https://npmmirror.com/mirrors/electron-builder-binaries/" npx electron-builder --win --publish never`
+  (otherwise the winCodeSign download fails with "fetch failed" during packaging).
 
 ## Architecture
 
@@ -104,8 +107,12 @@ npm test           # node:test unit tests (tests/*.test.mjs), run by CI
   backslash-separated segments.
 - Verify UI changes by running `npm run dev` and exercising the feature; report explicitly if a
   change could not be visually verified.
-- **Updater contract**: the update manifest at `GET {base}/update/win32/{currentVersion}` must
-  ship a `sha256` field (lowercase hex, or base64 with a `sha256-`/`sha256:` prefix) for the
-  installer it advertises; the client rejects updates without a valid digest, re-verifies cached
-  and about-to-launch installers, and ignores non-upgrade versions. Release tooling must publish
-  the digest alongside the artifact.
+- **Updater contract**: the update manifest at `GET {base}/update/win32/{currentVersion}` may ship
+  a `sha256` field (lowercase hex) for the installer it advertises. The stock hazel deployment
+  (`guearth-updater.isla.fan`) does not, so the client resolves the digest itself from the GitHub
+  releases API (`asset.digest` of the asset the manifest `url` points at — computed by GitHub at
+  upload time). When neither source yields a valid lowercase-hex digest the update is ignored
+  (fail closed). The client re-verifies cached and about-to-launch installers and ignores
+  non-upgrade versions. `updater-server/` is an optional zero-dependency Vercel replacement that
+  attaches `sha256` server-side to save the client an API round-trip; it needs Vercel access and
+  is not required for updates to work.
