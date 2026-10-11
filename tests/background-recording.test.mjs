@@ -20,6 +20,12 @@ test('recording enables continuous Cesium rendering and restores the previous mo
   assert.match(scenePlayerSource, /scene\.maximumRenderTimeChange = originalMaximumRenderTimeChange/)
 })
 
+test('AI micro-lesson recording uses the offscreen encoder', () => {
+  assert.match(scenePlayerSource, /const script: OffscreenRecordingScript = \{ title, scenes, width: 1920, height: 1080, fps: 30 \}/)
+  assert.match(scenePlayerSource, /window\.guEarth\.recordings\.offscreenEncode\(script\)/)
+  assert.match(scenePlayerSource, /正在启动离屏录制渲染/)
+})
+
 test('manual capture keeps scheduling frames while the recorder is active', () => {
   assert.match(recorderSource, /pacingTimer = window\.setTimeout\(frameTick, Math\.max\(0, nextFrameAt - performance\.now\(\)\)\)/)
 })

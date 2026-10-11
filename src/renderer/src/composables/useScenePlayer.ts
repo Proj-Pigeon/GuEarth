@@ -1,6 +1,6 @@
 import { reactive, watch, type Ref } from 'vue'
 import * as Cesium from 'cesium'
-import type { RecordingSaveResult, SceneCamera, SceneSimTime, SceneSnapshot, TeachingScene } from '../../../preload'
+import type { OffscreenRecordingScript, RecordingSaveResult, SceneCamera, SceneSimTime, SceneSnapshot, TeachingScene } from '../../../preload'
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useClimateStore, thematicLayerCatalog } from '@renderer/stores/climate'
 import { useSolarStore, type MotionPanel } from '@renderer/stores/solar'
@@ -430,6 +430,16 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     }
   }
 
+  async function saveOffscreenRecording(script: OffscreenRecordingScript): Promise<void> {
+    scenesStore.setRecording({ state: 'recording' })
+    try {
+      const result = await window.guEarth.recordings.offscreenEncode(script)
+      scenesStore.applyRecordingResult(result)
+    } catch (error) {
+      scenesStore.setRecording({ state: 'error', error: error instanceof Error ? error.message : '离屏视频保存失败' })
+    }
+  }
+
   async function play(options: { scenes: TeachingScene[]; mode: 'manual' | 'auto'; title?: string; recording?: { tempShapeIds: string[] }; centerTarget?: boolean }): Promise<void> {
     const current = viewer.value
     if (!current || current.isDestroyed() || !options.scenes.length) return
@@ -566,7 +576,26 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       }
     }
     const estimatedSeconds = Math.round(scenes.reduce((total, scene) => total + scene.flyDurationMs / 1000 + scene.dwellMs / 1000, 0)) + 3
-    void play({ scenes, mode: 'auto', title, recording: { tempShapeIds }, centerTarget: true })
+    const script: OffscreenRecordingScript = { title, scenes, width: 1920, height: 1080, fps: 30 }
+    playerState.active = true
+    playerState.mode = 'auto'
+    playerState.title = title
+    playerState.total = scenes.length
+    playerState.currentIndex = 0
+    playerState.sceneName = scenes[0]?.name ?? ''
+    playerState.narration = ''
+    playerState.recording = true
+    scenesStore.setPresenting(true)
+    scenesStore.setRecording({ state: 'preparing', title, currentStep: 0, totalSteps: scenes.length, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '正在启动离屏录制渲染…', prewarmTimedOut: false, skipPrewarm: false, videoPath: '', error: '', cancelled: false })
+    void saveOffscreenRecording(script).finally(() => {
+      for (const shapeId of tempShapeIds) drawingStore.removeShape(shapeId)
+      scenesStore.setPresenting(false)
+      playerState.active = false
+      playerState.recording = false
+      playerState.currentIndex = -1
+      playerState.sceneName = ''
+      playerState.narration = ''
+    })
     return { status: 'started', totalSteps: scenes.length, estimatedSeconds }
   }
 
