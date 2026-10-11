@@ -769,6 +769,7 @@ function registerIpcHandlers(): void {
     return startOffscreenRecordingWindow(normalizeOffscreenRecordingScript(script))
   })
   ipcMain.handle('recordings:offscreen-encode', async (_event, script: unknown): Promise<RecordingSaveResult> => encodeOffscreenRecording(normalizeOffscreenRecordingScript(script)))
+  ipcMain.handle('recordings:offscreen-self-test', async (): Promise<RecordingSaveResult> => runOffscreenSelfTest())
   ipcMain.handle('recordings:offscreen-stats', (): OffscreenRecordingProbeResult => offscreenRecordingStats())
   ipcMain.handle('recordings:start', async (event, mimeType: unknown): Promise<string> => {
     const extension = recordingExtension(mimeType)
@@ -969,28 +970,39 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       offscreenPaintStartedAt = Date.now()
       offscreenPaintFrames = 0
       let settled = false
+      let ffmpeg!: ReturnType<typeof spawn>
+      let ffmpegStdin!: NonNullable<ReturnType<typeof spawn>['stdin']>
       const fail = async (error: unknown): Promise<void> => {
         if (settled) return
         settled = true
         stopOffscreenRecordingWindow()
+        if (ffmpeg && !ffmpeg.killed) ffmpeg.kill()
+        if (ffmpegStdin && !ffmpegStdin.destroyed) ffmpegStdin.destroy()
         await rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
         reject(error instanceof Error ? error : new Error(String(error)))
       }
-      const ffmpeg = spawn(ffmpegInstaller.path, [
+      ffmpeg = spawn(ffmpegInstaller.path, [
         '-hide_banner', '-loglevel', 'error', '-y',
         '-f', 'image2pipe', '-framerate', String(targetFps), '-i', 'pipe:0',
         '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
       ], { windowsHide: true, stdio: ['pipe', 'ignore', 'pipe'] })
+      ffmpegStdin = ffmpeg.stdin!
+      if (!ffmpegStdin) throw new Error('FFmpeg 输入管道创建失败')
       const stderr: Buffer[] = []
       ffmpeg.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
       ffmpeg.once('error', (error) => { void fail(error) })
+      ffmpegStdin.on('error', (error) => { void fail(error) })
       window.webContents.on('paint', (_event, _dirty, image) => {
         offscreenPaintFrames += 1
-        if (settled || ffmpeg.stdin.destroyed) return
-        const png = image.toPNG()
-        if (!ffmpeg.stdin.write(png)) window.webContents.stopPainting()
+        if (settled || ffmpegStdin.destroyed || ffmpegStdin.closed || !ffmpegStdin.writable) return
+        try {
+          const png = image.toPNG()
+          if (!ffmpegStdin.write(png)) window.webContents.stopPainting()
+        } catch (error) {
+          void fail(error)
+        }
       })
-      ffmpeg.stdin.on('drain', () => {
+      ffmpegStdin.on('drain', () => {
         if (!settled && !window.isDestroyed()) window.webContents.startPainting()
       })
       const ready = new Promise<void>((resolveReady, rejectReady) => {
@@ -1007,7 +1019,7 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       await new Promise((resolveTimer) => setTimeout(resolveTimer, offscreenScriptDurationMs(script)))
       if (settled) return
       window.webContents.stopPainting()
-      ffmpeg.stdin.end()
+      if (!ffmpegStdin.destroyed && !ffmpegStdin.closed && ffmpegStdin.writable) ffmpegStdin.end()
       ffmpeg.once('close', async (code) => {
         if (settled) return
         if (code !== 0) {
@@ -1030,6 +1042,45 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       })
     })().catch((error) => reject(error instanceof Error ? error : new Error(String(error))))
   })
+}
+
+function createOffscreenSelfTestScript(): OffscreenRecordingScript {
+  const now = Date.now()
+  return {
+    title: 'Offscreen Recording Self Test',
+    width: 640,
+    height: 360,
+    fps: 15,
+    scenes: [
+      {
+        id: 'offscreen-self-test',
+        name: '离屏录制自测',
+        narration: '',
+        dwellMs: 1000,
+        flyDurationMs: 500,
+        createdAt: now,
+        snapshot: {
+          camera: { longitude: 105, latitude: 35, height: 15000000, heading: 0, pitch: -90 },
+          basemapId: 'osm',
+          overlays: [],
+          month: 7,
+          simTime: null,
+          motionPanel: null
+        }
+      }
+    ]
+  }
+}
+
+async function runOffscreenSelfTest(): Promise<RecordingSaveResult> {
+  const previousDirectory = settings.recordingDirectory
+  const directory = await mkdtemp(join(tmpdir(), 'guearth-offscreen-test-'))
+  settings.recordingDirectory = directory
+  try {
+    return await encodeOffscreenRecording(createOffscreenSelfTestScript())
+  } finally {
+    settings.recordingDirectory = previousDirectory
+  }
 }
 
 function displayAppName(): string {

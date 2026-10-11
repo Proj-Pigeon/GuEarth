@@ -31,7 +31,14 @@ test('offscreen recording can encode paint frames through ffmpeg', () => {
   assert.match(mainSource, /function encodeOffscreenRecording\(script: OffscreenRecordingScript\): Promise<RecordingSaveResult>/)
   assert.match(mainSource, /'-f', 'image2pipe'/)
   assert.match(mainSource, /image\.toPNG\(\)/)
-  assert.match(mainSource, /ipcMain\.handle\('recordings:offscreen-encode'/)
+  assert.match(mainSource, /ffmpegStdin\.on\('error'/)
+  assert.match(mainSource, /image\.toPNG\(\)/)
+})
+
+test('offscreen recording exposes a local encode self-test', () => {
+  assert.match(mainSource, /function createOffscreenSelfTestScript\(\): OffscreenRecordingScript/)
+  assert.match(mainSource, /ipcMain\.handle\('recordings:offscreen-self-test'/)
+  assert.match(preloadSource, /offscreenSelfTest: \(\): Promise<RecordingSaveResult>/)
 })
 
 test('offscreen recording controls stay behind typed preload IPC', () => {
