@@ -122,6 +122,7 @@ const { activeTool, shapes, entries, selectedShapeId, saveError } = storeToRefs(
 const aiStore = useAiStore()
 const updaterStore = useUpdaterStore()
 const failureStore = useFailureStore()
+window.guEarth.tiles.onDegrade((message) => failureStore.reportDegrade(message))
 const scenesStore = useScenesStore()
 const isScenesPanelOpen = ref(false)
 const scenePlayer = useScenePlayer(viewer, switchBasemap)

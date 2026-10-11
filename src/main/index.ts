@@ -314,6 +314,19 @@ const fallbackEligibleProviders: Record<string, 'vector' | 'satellite'> = {
   opentopomap: 'vector'
 }
 
+const FALLBACK_PROVIDER_NAMES: Record<string, string> = {
+  osm: 'OpenStreetMap',
+  'esri-imagery': 'ArcGIS 影像',
+  opentopomap: 'OpenTopoMap'
+}
+
+function broadcastTileDegrade(providerId: string): void {
+  const providerName = FALLBACK_PROVIDER_NAMES[providerId] ?? providerId
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('tiles:degrade', `${providerName}瓦片直连失败，本次运行已自动改用高德镜像瓦片（坐标已纠偏回 WGS-84），原源恢复后将自动切回`)
+  }
+}
+
 async function fetchTileWithRetry(url: string): Promise<Response> {
   let lastError: unknown
   for (let attempt = 0; attempt < TILE_FETCH_ATTEMPTS; attempt++) {
@@ -372,6 +385,7 @@ async function fallbackTileResponse(providerId: string, key: TileKey): Promise<R
   if (!fallbackLoggedProviders.has(providerId)) {
     fallbackLoggedProviders.add(providerId)
     logger.warn('tiles', `原始源直连失败，${providerId} 本次运行改用国内镜像瓦片`, 'GCJ-02 已纠偏回 WGS84')
+    broadcastTileDegrade(providerId)
   }
   const shift = tileWgs84ShiftPixels(level, x, y)
   if (!shift) {
