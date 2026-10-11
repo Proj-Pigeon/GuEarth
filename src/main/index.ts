@@ -3,6 +3,7 @@ import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, s
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
 import { mirrorEligibleProviders } from '../common/tileMirror'
+import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 
 attachConsoleLogTee('main')
 
@@ -74,9 +75,6 @@ const defaultSettings: PersistedSettings = {
 
 const TILE_TTL_MS = 86_400_000
 
-function viirsTileDate(): string {
-  return new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-}
 const TILE_CACHE_MAX_BYTES = 512 * 1024 * 1024
 const TILE_CACHE_PRUNE_INTERVAL_MS = 10 * 60 * 1000
 
@@ -291,7 +289,7 @@ function tileRemoteUrl(providerId: string, styleId: string, level: number, x: nu
   if (providerId === 'osm') return `https://tile.openstreetmap.org/${level}/${x}/${y}.png`
   if (providerId === 'viirs-night') {
     if (level > 8) return undefined
-    return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_DayNightBand_AtSensor_M15/default/${viirsTileDate()}/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`
+    return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_DayNightBand_AtSensor_M15/default/${viirsGranuleDate()}/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`
   }
   if (providerId === 'esri-imagery') return `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${level}/${y}/${x}`
   if (providerId === 'opentopomap') return `https://${['a', 'b', 'c'][((x % 3) + 3) % 3]}.tile.opentopomap.org/${level}/${x}/${y}.png`
@@ -434,7 +432,7 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   const coordinates = parts.slice(1).map(Number)
   if (!Number.isInteger(coordinates[0]) || coordinates[0] < 0 || !Number.isInteger(coordinates[1]) || !Number.isInteger(coordinates[2])) return new Response('Bad tile path', { status: 400 })
   const [level, x, y] = coordinates
-  const styleId = providerId === 'viirs-night' ? `${safeId(parts[0])}-${viirsTileDate().replaceAll('-', '')}` : safeId(parts[0])
+  const styleId = providerId === 'viirs-night' ? viirsCacheStyleId(safeId(parts[0])) : safeId(parts[0])
   const key = { providerId, styleId, level, x, y }
   const cached = await cachedTileResponse(key, false)
   if (cached) return cached

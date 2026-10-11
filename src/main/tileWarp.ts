@@ -77,7 +77,8 @@ export async function warpTileToWgs84(level: number, x: number, y: number, fetch
     if (!tile) return null
     const pixels = decodeTilePixels(tile)
     if (!pixels) return null
-    if (contentType === null) contentType = tile.contentType.includes('png') ? 'image/png' : 'image/jpeg'
+    if (tile.contentType.includes('png')) contentType = 'image/png'
+    else if (contentType === null) contentType = 'image/jpeg'
     const canvasX = (index % columns) * TILE_SIZE
     const canvasY = Math.floor(index / columns) * TILE_SIZE
     for (let line = 0; line < TILE_SIZE; line += 1) {
