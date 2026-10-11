@@ -72,6 +72,34 @@ function splitVersion(version: string): [number[], string] {
   return [numbers, prerelease]
 }
 
+function isNumericIdentifier(identifier: string): boolean {
+  return /^\d+$/.test(identifier)
+}
+
+function comparePrerelease(left: string, right: string): number {
+  if (left === right) return 0
+  if (!left) return 1
+  if (!right) return -1
+  const leftParts = left.split('.')
+  const rightParts = right.split('.')
+  const length = Math.max(leftParts.length, rightParts.length)
+  for (let index = 0; index < length; index += 1) {
+    const leftPart = leftParts[index]
+    const rightPart = rightParts[index]
+    if (leftPart === undefined) return -1
+    if (rightPart === undefined) return 1
+    if (isNumericIdentifier(leftPart) && isNumericIdentifier(rightPart)) {
+      const diff = Number(leftPart) - Number(rightPart)
+      if (diff !== 0) return diff < 0 ? -1 : 1
+    } else if (isNumericIdentifier(leftPart) !== isNumericIdentifier(rightPart)) {
+      return isNumericIdentifier(leftPart) ? -1 : 1
+    } else if (leftPart !== rightPart) {
+      return leftPart < rightPart ? -1 : 1
+    }
+  }
+  return 0
+}
+
 export function compareVersions(left: string, right: string): number {
   const [leftCore, leftPre] = splitVersion(left)
   const [rightCore, rightPre] = splitVersion(right)
@@ -80,8 +108,5 @@ export function compareVersions(left: string, right: string): number {
     const diff = (leftCore[index] ?? 0) - (rightCore[index] ?? 0)
     if (diff !== 0) return diff < 0 ? -1 : 1
   }
-  if (leftPre === rightPre) return 0
-  if (!leftPre) return 1
-  if (!rightPre) return -1
-  return leftPre < rightPre ? -1 : 1
+  return comparePrerelease(leftPre, rightPre)
 }

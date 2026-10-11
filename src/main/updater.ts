@@ -127,26 +127,28 @@ async function cachedInstallerIsTrustworthy(path: string): Promise<boolean> {
 async function downloadUpdate(): Promise<void> {
   if (status !== 'available' || !downloadUrl) throw new Error('当前没有可用更新')
   const finalPath = installerPathFor(version)
-  if (existsSync(finalPath)) {
-    if (await cachedInstallerIsTrustworthy(finalPath)) {
-      installerPath = finalPath
-      status = 'ready'
-      emit({ type: 'downloaded', version })
-      return
-    }
-    rmSync(finalPath, { force: true })
+  if (existsSync(finalPath) && (await cachedInstallerIsTrustworthy(finalPath))) {
+    installerPath = finalPath
+    status = 'ready'
+    emit({ type: 'downloaded', version })
+    return
   }
   const tempPath = `${finalPath}.tmp`
   status = 'downloading'
   receivedBytes = 0
   totalBytes = 0
   emit({ type: 'progress', received: 0, total: 0 })
-  const stream = createWriteStream(tempPath)
-  stream.on('error', () => void 0)
   const hash = createHash('sha256')
+  let stream: WriteStream | null = null
   try {
     mkdirSync(downloadsDir, { recursive: true })
+    rmSync(finalPath, { force: true })
     rmSync(tempPath, { force: true })
+    const activeStream = createWriteStream(tempPath)
+    stream = activeStream
+    const streamFailure = new Promise<never>((_, reject) => {
+      activeStream.once('error', (error) => reject(error))
+    })
     const response = await net.fetch(downloadUrl, { redirect: 'follow' })
     if (!response.ok || !response.body) throw new Error(`下载失败（HTTP ${response.status}）`)
     const contentType = response.headers.get('content-type') ?? ''
@@ -161,7 +163,9 @@ async function downloadUpdate(): Promise<void> {
       if (!value?.byteLength) continue
       receivedBytes += value.byteLength
       hash.update(value)
-      if (!stream.write(Buffer.from(value))) await new Promise<void>((resolve) => stream.once('drain', () => resolve()))
+      if (!activeStream.write(Buffer.from(value))) {
+        await Promise.race([new Promise<void>((resolve) => activeStream.once('drain', () => resolve())), streamFailure])
+      }
       const now = Date.now()
       if (now - lastEmitAt >= PROGRESS_EMIT_INTERVAL_MS) {
         lastEmitAt = now
@@ -169,7 +173,7 @@ async function downloadUpdate(): Promise<void> {
       }
     }
     if (totalBytes > 0 && receivedBytes !== totalBytes) throw new Error('更新下载不完整')
-    await finishStream(stream)
+    await Promise.race([finishStream(activeStream), streamFailure])
     if (hash.digest('hex') !== expectedSha256) throw new Error('更新包校验失败，安装包可能与发布版本不一致')
     renameSync(tempPath, finalPath)
     installerPath = finalPath
@@ -178,8 +182,12 @@ async function downloadUpdate(): Promise<void> {
     emit({ type: 'downloaded', version })
     cleanupStaleInstallers(finalPath)
   } catch (error) {
-    stream.destroy()
-    rmSync(tempPath, { force: true })
+    stream?.destroy()
+    try {
+      rmSync(tempPath, { force: true })
+    } catch {
+      void 0
+    }
     status = 'available'
     const reason = error instanceof Error ? error.message : '未知错误'
     logger.error('updater', '更新下载失败', reason)

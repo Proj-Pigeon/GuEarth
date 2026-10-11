@@ -47,6 +47,23 @@ test('compareVersions orders core, prerelease, and build segments', () => {
   assert.equal(compareVersions('1.0.0+build9', '1.0.0+build2'), 0)
 })
 
+test('compareVersions orders prerelease identifiers numerically, not lexically', () => {
+  assert.equal(compareVersions('1.0.0-beta.10', '1.0.0-beta.2'), 1)
+  assert.equal(compareVersions('1.0.0-beta.2', '1.0.0-beta.10'), -1)
+  assert.equal(compareVersions('1.0.0-beta.2', '1.0.0-beta.2'), 0)
+  assert.equal(compareVersions('1.0.0-beta.11', '1.0.0-beta.20'), -1)
+  assert.equal(compareVersions('1.0.0-beta.9', '1.0.0-beta.10'), -1)
+})
+
+test('compareVersions follows semver prerelease precedence rules', () => {
+  assert.equal(compareVersions('1.0.0-beta', '1.0.0-beta.1'), -1)
+  assert.equal(compareVersions('1.0.0-beta.1', '1.0.0-beta'), 1)
+  assert.equal(compareVersions('1.0.0-alpha.1', '1.0.0-beta.1'), -1)
+  assert.equal(compareVersions('1.0.0-1', '1.0.0-alpha'), -1)
+  assert.equal(compareVersions('1.0.0-alpha', '1.0.0-alpha.1'), -1)
+  assert.equal(compareVersions('1.0.0-beta.2.3', '1.0.0-beta.2'), 1)
+})
+
 async function withTempFile(content, run) {
   const dir = mkdtempSync(join(tmpdir(), 'guearth-hash-'))
   const path = join(dir, 'installer.bin')
