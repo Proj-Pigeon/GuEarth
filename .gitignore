@@ -6,3 +6,4 @@ dist
 *.log
 *.tsbuildinfo
 csdn-blog.md
+updater-server/.vercel

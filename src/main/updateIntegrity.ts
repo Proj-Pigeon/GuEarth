@@ -33,6 +33,36 @@ export function hashFile(path: string): Promise<string> {
   })
 }
 
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function releaseTagCandidates(rawName: unknown, version: string): string[] {
+  const candidates: string[] = []
+  if (typeof rawName === 'string') {
+    const name = rawName.trim()
+    if (name) candidates.push(name)
+  }
+  for (const candidate of [`v${version}`, version]) {
+    if (!candidates.includes(candidate)) candidates.push(candidate)
+  }
+  return candidates
+}
+
+export function extractAssetDigest(release: unknown, downloadUrl: string): string | null {
+  if (!isRecord(release) || !Array.isArray(release['assets'])) return null
+  const fileName = downloadUrl.split('/').pop() ?? ''
+  for (const entry of release['assets']) {
+    if (!isRecord(entry) || entry['state'] !== 'uploaded') continue
+    const urlMatches = entry['browser_download_url'] === downloadUrl
+    const nameMatches = fileName !== '' && entry['name'] === fileName
+    if (!urlMatches && !nameMatches) continue
+    const digest = parseSha256(entry['digest'])
+    if (digest) return digest
+  }
+  return null
+}
+
 function splitVersion(version: string): [number[], string] {
   const withoutBuild = version.trim().replace(/^v/, '').split('+')[0]
   const hyphen = withoutBuild.indexOf('-')

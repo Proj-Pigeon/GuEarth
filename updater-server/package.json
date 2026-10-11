@@ -1,0 +1,5 @@
+{
+  "name": "guearth-updater-server",
+  "private": true,
+  "type": "module"
+}

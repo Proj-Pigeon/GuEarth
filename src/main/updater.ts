@@ -5,9 +5,11 @@ import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSy
 import { join } from 'path'
 import { logger } from '../common/logger'
 import type { UpdateState, UpdaterEvent } from '../preload'
-import { compareVersions, hashFile, parseSha256 } from './updateIntegrity'
+import { compareVersions, extractAssetDigest, hashFile, isRecord, parseSha256, releaseTagCandidates } from './updateIntegrity'
 
 const DEFAULT_UPDATE_BASE_URL = 'https://guearth-updater.isla.fan'
+const GITHUB_API_BASE = 'https://api.github.com'
+const RELEASES_REPO = 'Proj-Pigeon/GuEarth'
 const CHECK_TIMEOUT_MS = 15000
 const PROGRESS_EMIT_INTERVAL_MS = 400
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/
@@ -22,10 +24,6 @@ let installerPath = ''
 let receivedBytes = 0
 let totalBytes = 0
 let expectedSha256 = ''
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 function updateCheckEnabled(): boolean {
   return process.platform === 'win32' && (app.isPackaged || process.env['GUEARTH_UPDATE_URL'] !== undefined)
@@ -63,6 +61,26 @@ function cleanupStaleInstallers(keepPath: string): void {
   }
 }
 
+async function resolveDigestFromGitHub(rawName: unknown, version: string, downloadUrl: string): Promise<string | null> {
+  for (const tag of releaseTagCandidates(rawName, version)) {
+    try {
+      const response = await net.fetch(`${GITHUB_API_BASE}/repos/${RELEASES_REPO}/releases/tags/${encodeURIComponent(tag)}`, {
+        headers: { Accept: 'application/vnd.github+json' },
+        signal: AbortSignal.timeout(CHECK_TIMEOUT_MS)
+      })
+      if (response.status !== 200) continue
+      const digest = extractAssetDigest(await response.json(), downloadUrl)
+      if (digest) {
+        logger.info('updater', '清单未携带 sha256，已从 GitHub 发布资产摘要解析校验值', { tag })
+        return digest
+      }
+    } catch {
+      void 0
+    }
+  }
+  return null
+}
+
 async function checkForUpdate(): Promise<void> {
   if (status === 'downloading' || status === 'ready') return
   try {
@@ -74,9 +92,9 @@ async function checkForUpdate(): Promise<void> {
     const url = typeof payload.url === 'string' ? payload.url.trim() : ''
     if (!VERSION_PATTERN.test(remoteVersion) || compareVersions(remoteVersion, app.getVersion()) <= 0) return
     if (!/^https?:\/\/\S+$/i.test(url)) return
-    const sha256 = parseSha256(payload.sha256)
+    const sha256 = parseSha256(payload.sha256) ?? (await resolveDigestFromGitHub(payload.name, remoteVersion, url))
     if (!sha256) {
-      logger.warn('updater', '更新清单缺少有效的 sha256，已忽略该更新', { version: remoteVersion })
+      logger.warn('updater', '更新清单与 GitHub 发布资产均未提供有效 sha256，已忽略该更新', { version: remoteVersion })
       return
     }
     version = remoteVersion
