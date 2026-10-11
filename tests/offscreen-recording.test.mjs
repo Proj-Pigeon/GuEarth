@@ -27,7 +27,16 @@ test('offscreen recording renderer can execute scene scripts', () => {
   assert.match(mainSource, /executeJavaScript\(`window\.guEarthOffscreenRecorder\.play/)
 })
 
+test('offscreen recording can encode paint frames through ffmpeg', () => {
+  assert.match(mainSource, /function encodeOffscreenRecording\(script: OffscreenRecordingScript\): Promise<RecordingSaveResult>/)
+  assert.match(mainSource, /'-f', 'image2pipe'/)
+  assert.match(mainSource, /image\.toPNG\(\)/)
+  assert.match(mainSource, /ipcMain\.handle\('recordings:offscreen-encode'/)
+})
+
 test('offscreen recording controls stay behind typed preload IPC', () => {
   assert.match(preloadSource, /offscreenProbe: \(script\?: OffscreenRecordingScript\): Promise<OffscreenRecordingProbeResult>/)
   assert.match(preloadSource, /ipcRenderer\.invoke\('recordings:offscreen-probe', script\)/)
+  assert.match(preloadSource, /offscreenEncode: \(script: OffscreenRecordingScript\): Promise<RecordingSaveResult>/)
+  assert.match(preloadSource, /ipcRenderer\.invoke\('recordings:offscreen-encode', script\)/)
 })

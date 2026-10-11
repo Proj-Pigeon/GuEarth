@@ -386,6 +386,7 @@ const api = {
     finish: (recordingId: string): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:finish', recordingId),
     abort: (recordingId: string): Promise<void> => ipcRenderer.invoke('recordings:abort', recordingId),
     offscreenProbe: (script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-probe', script),
+    offscreenEncode: (script: OffscreenRecordingScript): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:offscreen-encode', script),
     offscreenStats: (): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-stats')
   },
   system: {
