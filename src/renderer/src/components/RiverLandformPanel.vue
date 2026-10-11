@@ -50,6 +50,7 @@ const reaches: RiverReach[] = [
 const activeReach = ref<RiverReach>(reaches[0])
 const profile = ref<Array<[number, number]>>([])
 const sampling = ref(false)
+const degraded = ref(false)
 
 const series = computed<ChartSeries[]>(() => [{ name: '沿河高程剖面', color: '#722ed1', points: profile.value }])
 
@@ -71,6 +72,7 @@ async function sampleProfile(reach: RiverReach): Promise<void> {
   profile.value = []
   if (!current) return
   sampling.value = true
+  degraded.value = false
   try {
     const points = interpolate(reach.waypoints)
     const cartographics = points.map(([lon, lat]) => Cesium.Cartographic.fromDegrees(lon, lat))
@@ -78,8 +80,10 @@ async function sampleProfile(reach: RiverReach): Promise<void> {
     try {
       const sampled = await Cesium.sampleTerrainMostDetailed(current.terrainProvider, cartographics)
       heights = sampled.map((item) => (Number.isFinite(item.height) ? item.height : current.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(item.longitude * 180 / Math.PI, item.latitude * 180 / Math.PI)) ?? 0))
+      degraded.value = sampled.some((item) => !Number.isFinite(item.height))
     } catch {
       heights = cartographics.map((item) => current.scene.globe.getHeight(item) ?? 0)
+      degraded.value = true
     }
     let distance = 0
     profile.value = points.map((point, index) => {
@@ -129,8 +133,9 @@ watch(
       <LoadingOutlined v-if="sampling" class="loading-icon" />
     </div>
     <LineChart :series="series" :x-min="0" :x-max="Math.max(60, Math.ceil(profile[profile.length - 1]?.[0] ?? 60))" x-name="沿河距离(千米)" y-name="海拔(米)" :y-min="Math.min(0, Math.floor((profile.length ? Math.min(...profile.map((p) => p[1])) : 0) / 500) * 500)" :y-max="Math.ceil((profile.length ? Math.max(...profile.map((p) => p[1])) : 1000) / 500) * 500" :height="150" />
+    <a-alert v-if="degraded" type="warning" show-icon message="地形源不可用或部分格网未取到，本剖面为粗略估算值" />
     <div v-for="fact in activeReach.facts" :key="fact" class="fact">· {{ fact }}</div>
-    <div class="panel-note">全程链条：上游 V 形谷（下切侵蚀）→ 中游河曲与凸凹岸（侧蚀搬运）→ 下游三角洲（堆积），“侵蚀—搬运—堆积”沿程演变。相机已飞往所选河段，剖面图由真实地形数据采样生成。</div>
+    <div class="panel-note">全程链条：上游 V 形谷（下切侵蚀）→ 中游河曲与凸凹岸（侧蚀搬运）→ 下游三角洲（堆积），“侵蚀—搬运—堆积”沿程演变。相机已飞往所选河段，剖面图由地形数据采样生成，地形源不可用时退化为粗略估算。</div>
   </div>
 </template>
 
