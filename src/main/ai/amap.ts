@@ -1,7 +1,8 @@
 import { createHash } from 'crypto'
 import { net } from 'electron'
-import { gcj02ToWgs84 } from '../geo'
+import { gcj02ToWgs84, wgs84ToGcj02 } from '../geo'
 import { readProviderKey } from '../keyVault'
+import { POI_CATEGORY_LABELS, poiBigCategory } from './poiCategories'
 import { createSearchThrottle, delay, isPlacesRequestSuperseded } from './searchThrottle'
 
 export interface AmapPlace {
@@ -31,6 +32,7 @@ interface AmapPoi {
   adname?: unknown
   address?: unknown
   type?: unknown
+  typecode?: unknown
   location?: unknown
 }
 
@@ -57,29 +59,6 @@ function toPlaces(pois: AmapPoi[]): AmapPlace[] {
       latitude: roundCoordinate(wgsLatitude)
     }]
   })
-}
-
-export const POI_CATEGORY_LABELS: Record<string, string> = {
-  '01': '汽车服务',
-  '02': '汽车销售',
-  '03': '汽车维修',
-  '04': '机动车公共停车场',
-  '05': '餐饮服务',
-  '06': '购物服务',
-  '07': '生活服务',
-  '08': '体育休闲服务',
-  '09': '医疗保健服务',
-  '10': '住宿服务',
-  '11': '风景名胜',
-  '12': '商务住宅',
-  '13': '政府机构及社会团体',
-  '14': '科教文化服务',
-  '15': '交通设施服务',
-  '16': '金融保险服务',
-  '17': '公司企业',
-  '18': '道路附属设施',
-  '19': '地名地址信息',
-  '20': '公共设施'
 }
 
 interface AmapPoisResponse {
@@ -140,10 +119,6 @@ const SEARCH_RETRY_DELAY_MS = 2_000
 const SEARCH_REQUEST_TIMEOUT_MS = 10_000
 const amapThrottle = createSearchThrottle(SEARCH_MIN_INTERVAL_MS)
 
-function parsePoiType(poi: AmapPoi): string {
-  return typeof poi.type === 'string' ? poi.type : ''
-}
-
 export interface PoiCategoryCount {
   code: string
   label: string
@@ -177,10 +152,6 @@ export interface PoiStatisticsRequest {
 const POI_STATS_MAX_SAMPLES = 900
 const POI_STATS_PAGE_SIZE = 25
 const POI_STATS_MAX_PAGES = 36
-
-function bigCategoryCode(type: string): string | undefined {
-  return POI_CATEGORY_LABELS[type.slice(0, 2)] !== undefined ? type.slice(0, 2) : undefined
-}
 
 export async function poiStatistics(request: PoiStatisticsRequest): Promise<PoiStatisticsResult> {
   const key = readProviderKey('amap')
@@ -236,9 +207,10 @@ export async function poiStatistics(request: PoiStatisticsRequest): Promise<PoiS
     .filter((item) => /^\d{2}$|^\d{4}$|^\d{6}$/.test(item))
     .map((item) => item.padEnd(6, '0'))
     .join('|') ?? ''
+  const [gcjLongitude, gcjLatitude] = wgs84ToGcj02(longitude, latitude)
   const aroundParams: Record<string, string> = {
     key,
-    location: `${roundCoordinate(longitude)},${roundCoordinate(latitude)}`,
+    location: `${roundCoordinate(gcjLongitude)},${roundCoordinate(gcjLatitude)}`,
     radius: String(radius),
     offset: String(POI_STATS_PAGE_SIZE),
     page: '1',
@@ -277,7 +249,7 @@ export async function poiStatistics(request: PoiStatisticsRequest): Promise<PoiS
   let sampled = 0
   const collect = (pois: AmapPoi[]): void => {
     for (const poi of pois) {
-      const code = bigCategoryCode(parsePoiType(poi))
+      const code = poiBigCategory(poi)
       if (!code) continue
       counts.set(code, (counts.get(code) ?? 0) + 1)
       sampled += 1
