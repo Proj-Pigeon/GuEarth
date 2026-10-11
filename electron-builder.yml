@@ -6,7 +6,7 @@ directories:
 files:
   - out/**
   - package.json
-  - resources/geo/**
+  - resources/**
   - '!node_modules/**'
 asarUnpack:
   - out/renderer/cesium/**

@@ -388,7 +388,12 @@ const api = {
     get: (key: TileKey): Promise<TileCacheEntry | null> => ipcRenderer.invoke('tiles:get', key),
     put: (entry: TileCacheEntry): Promise<void> => ipcRenderer.invoke('tiles:put', entry),
     clear: (providerId?: string): Promise<void> => ipcRenderer.invoke('tiles:clear', providerId),
-    stats: (): Promise<TileCacheStats> => ipcRenderer.invoke('tiles:stats')
+    stats: (): Promise<TileCacheStats> => ipcRenderer.invoke('tiles:stats'),
+    onMirrorChanged: (listener: (enabled: boolean) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: boolean): void => listener(payload)
+      ipcRenderer.on('tiles:mirror-changed', wrapped)
+      return () => ipcRenderer.removeListener('tiles:mirror-changed', wrapped)
+    }
   },
   annotations: {
     load: (): Promise<AnnotationDocument> => ipcRenderer.invoke('annotations:load'),

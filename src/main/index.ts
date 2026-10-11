@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/electron/main'
 import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, session } from 'electron'
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
+import { mirrorEligibleProviders } from '../common/tileMirror'
 
 attachConsoleLogTee('main')
 
@@ -330,12 +331,6 @@ function amapFallbackTileUrl(kind: 'vector' | 'satellite', level: number, x: num
   return `https://webrd${subdomain}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x=${x}&y=${y}&z=${level}`
 }
 
-const fallbackEligibleProviders: Record<string, 'vector' | 'satellite'> = {
-  osm: 'vector',
-  'esri-imagery': 'satellite',
-  opentopomap: 'vector'
-}
-
 async function fetchTileWithRetry(url: string): Promise<Response> {
   let lastError: unknown
   for (let attempt = 0; attempt < TILE_FETCH_ATTEMPTS; attempt++) {
@@ -349,6 +344,18 @@ async function fetchTileWithRetry(url: string): Promise<Response> {
 }
 
 const mirrorLoggedProviders = new Set<string>()
+
+async function clearMirrorProviderTileCache(): Promise<void> {
+  for (const providerId of Object.keys(mirrorEligibleProviders)) {
+    await rm(join(tileCachePath, safeId(providerId)), { recursive: true, force: true })
+  }
+}
+
+function broadcastTileMirrorChanged(enabled: boolean): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('tiles:mirror-changed', enabled)
+  }
+}
 
 const amapSourceTileInFlight = new Map<string, Promise<WarpSourceTile | null>>()
 
@@ -365,7 +372,7 @@ function fetchAmapSourceTile(kind: 'vector' | 'satellite', level: number, x: num
 
 async function loadAmapSourceTile(kind: 'vector' | 'satellite', level: number, x: number, y: number): Promise<WarpSourceTile | null> {
   const key: TileKey = { providerId: `amap-${kind}`, styleId: 'raw', level, x, y }
-  const cached = cachedTileResponse(key, false)
+  const cached = await cachedTileResponse(key, false)
   if (cached) {
     try {
       return { buffer: await cached.arrayBuffer(), contentType: cached.headers.get('content-type') ?? 'image/png' }
@@ -388,7 +395,7 @@ async function loadAmapSourceTile(kind: 'vector' | 'satellite', level: number, x
 }
 
 async function mirrorTileResponse(providerId: string, key: TileKey): Promise<Response | null> {
-  const kind = fallbackEligibleProviders[providerId]
+  const kind = mirrorEligibleProviders[providerId]
   if (!kind) return null
   const { level, x, y } = key
   if (!mirrorLoggedProviders.has(providerId)) {
@@ -430,10 +437,10 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   if (cached) return cached
   const remoteUrl = tileRemoteUrl(providerId, styleId, level, x, y)
   if (!remoteUrl) return new Response('Unknown provider', { status: 404 })
-  if (settings.tileMirrorEnabled && fallbackEligibleProviders[providerId]) {
+  if (settings.tileMirrorEnabled && mirrorEligibleProviders[providerId]) {
     const mirror = await mirrorTileResponse(providerId, key)
     if (mirror) return mirror
-    const stale = cachedTileResponse(key, true)
+    const stale = await cachedTileResponse(key, true)
     if (stale) return stale
     return new Response('Tile unavailable', { status: 502 })
   }
@@ -709,6 +716,8 @@ function registerIpcHandlers(): void {
   ipcMain.handle('settings:get', () => settingsSnapshot())
   ipcMain.handle('settings:update', async (_event, patch: GuEarthSettingsPatch): Promise<GuEarthSettings> => {
     if (!isRecord(patch)) throw new Error('无效的设置')
+    let tileMirrorToggled = false
+    let tileMirrorEnabledNow = false
     await saveSettings((settings) => {
       const nextSettings: PersistedSettings = {
         ...settings,
@@ -730,6 +739,8 @@ function registerIpcHandlers(): void {
       }
       if (patch.tileMirrorEnabled !== undefined) {
         if (typeof patch.tileMirrorEnabled !== 'boolean') throw new Error('无效的镜像瓦片设置')
+        tileMirrorToggled = patch.tileMirrorEnabled !== nextSettings.tileMirrorEnabled
+        tileMirrorEnabledNow = patch.tileMirrorEnabled
         nextSettings.tileMirrorEnabled = patch.tileMirrorEnabled
       }
       if (patch.networkProxy !== undefined) {
@@ -753,6 +764,11 @@ function registerIpcHandlers(): void {
       return nextSettings
     })
     if (patch.networkProxy !== undefined) void applyNetworkProxy()
+    if (tileMirrorToggled) {
+      mirrorLoggedProviders.clear()
+      logger.info('tiles', `镜像瓦片源已${tileMirrorEnabledNow ? '开启' : '关闭'}，已清空相关底图瓦片缓存`)
+      void clearMirrorProviderTileCache().then(() => broadcastTileMirrorChanged(tileMirrorEnabledNow))
+    }
     return settingsSnapshot()
   })
   ipcMain.handle('settings:set-provider-api-key', async (_event, providerId: string, apiKey: string): Promise<ProviderCredentialStatus> => {
