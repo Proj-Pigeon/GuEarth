@@ -1,7 +1,9 @@
 import { nativeImage } from 'electron'
+import { endianness } from 'os'
 import { tileCenter, wgs84ToGcj02 } from './geo'
 
 const TILE_SIZE = 256
+const NATIVE_BITMAP_IS_BGRA = endianness() === 'LE'
 
 export interface WarpSourceTile {
   buffer: ArrayBuffer
@@ -34,12 +36,23 @@ export function tileWgs84ShiftPixels(level: number, x: number, y: number): { dx:
   return { dx, dy }
 }
 
+function swapRedBlueChannels(pixels: Buffer): void {
+  if (!NATIVE_BITMAP_IS_BGRA) return
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    const first = pixels[offset]
+    pixels[offset] = pixels[offset + 2]
+    pixels[offset + 2] = first
+  }
+}
+
 function decodeTilePixels(tile: WarpSourceTile): Buffer | null {
   const image = nativeImage.createFromBuffer(Buffer.from(tile.buffer))
   if (image.isEmpty()) return null
   const size = image.getSize()
   if (size.width !== TILE_SIZE || size.height !== TILE_SIZE) return null
-  return image.toBitmap()
+  const pixels = image.toBitmap()
+  swapRedBlueChannels(pixels)
+  return pixels
 }
 
 function bufferToArrayBuffer(data: Buffer): ArrayBuffer {
@@ -167,6 +180,7 @@ export async function warpTileToWgs84(level: number, x: number, y: number, fetch
       outOffset += 4
     }
   }
+  swapRedBlueChannels(output)
   const image = nativeImage.createFromBitmap(output, { width: TILE_SIZE, height: TILE_SIZE })
   if (image.isEmpty()) return null
   const data = contentType === 'image/png' ? image.toPNG() : image.toJPEG(92)
