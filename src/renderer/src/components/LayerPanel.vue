@@ -25,7 +25,6 @@ const props = defineProps<{
   selectedLayerId: string
   error: string
   terrainError: string
-  loading: boolean
   terrainProviderId: string
   activeTerrainId: string
   terrainExaggeration: number
@@ -191,7 +190,7 @@ async function testProxy(): Promise<void> {
     <a-alert v-if="error" type="error" show-icon :message="error" class="panel-alert">
       <template #action><a-button type="text" size="small" @click="emit('retry')"><ReloadOutlined />重试</a-button></template>
     </a-alert>
-    <a-spin :spinning="loading" class="layer-spin">
+    <div class="layer-spin">
       <section class="panel-section">
         <div class="basemap-list">
           <div
@@ -238,7 +237,7 @@ async function testProxy(): Promise<void> {
       <section class="panel-section mirror-row">
         <div class="mirror-copy">
           <span class="mirror-name">高德镜像瓦片源</span>
-          <p class="mirror-description">OSM / OpenTopoMap / ArcGIS 影像改用高德境内瓦片并纠偏回 WGS-84，适合原始源无法直连的国内网络环境</p>
+          <p class="mirror-description">OSM / OpenTopoMap / ArcGIS 影像改用高德境内瓦片并纠偏回 WGS-84，适合原始源无法直连的国内网络环境；切换时会清空相关底图缓存并重载，海外区域影像最高约 12 级</p>
         </div>
         <a-switch size="small" :checked="tileMirrorEnabled" @change="(value: boolean) => emit('mirror', value)" />
       </section>
@@ -269,7 +268,7 @@ async function testProxy(): Promise<void> {
           <a-button size="small" :disabled="!selectedCredentialStatus?.configured && !selectedSecurityCredentialStatus?.configured" @click="clearCredential"><DeleteOutlined />清除</a-button>
         </div>
       </section>
-    </a-spin>
+    </div>
 
     <a-modal
       :open="settingsCategory !== undefined"

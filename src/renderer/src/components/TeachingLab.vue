@@ -49,6 +49,7 @@ function closeAllPanels(): void {
   transportStore.setPanel(null)
   environmentStore.setPanel(null)
   decisionStore.setPanel(null)
+  drawingStore.setActiveTool(null)
 }
 
 function layerEntry(id: ThematicLayerId): LabEntry {
@@ -219,7 +220,11 @@ const chapters: LabChapter[] = [
         name: '时区对比',
         description: '在地球上选取两地，对比地方时与区时',
         active: () => drawingStore.activeTool === 'timezone',
-        toggle: () => drawingStore.setActiveTool(drawingStore.activeTool === 'timezone' ? null : 'timezone')
+        toggle: () => {
+          const next = drawingStore.activeTool !== 'timezone'
+          closeAllPanels()
+          if (next) drawingStore.setActiveTool('timezone')
+        }
       },
       layerEntry('coriolis-demo')
     ]

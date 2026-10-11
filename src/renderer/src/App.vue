@@ -104,7 +104,7 @@ const {
 const globeContainer = ref<HTMLDivElement>()
 const { viewer, switchBasemap, setLayerOpacity, flyTo, flyToPlace, toggleLevelView, setTerrain, setTerrainExaggeration, setTerrainLighting } = useCesiumViewer(globeContainer)
 const { flyToShape } = useDrawing(viewer)
-const { comparison: timezoneComparison, clearComparison: clearTimezone } = useTimezoneCompare(viewer)
+const { comparison: timezoneComparison, closeTimezoneCompare } = useTimezoneCompare(viewer)
 const climateStore = useClimateStore()
 const solarStore = useSolarStore()
 const atmosphereStore = useAtmosphereStore()
@@ -151,8 +151,7 @@ function closeAllTeachingPanels(): void {
   transportStore.setPanel(null)
   environmentStore.setPanel(null)
   decisionStore.setPanel(null)
-  if (activeTool.value === 'timezone') drawingStore.setActiveTool(null)
-  clearTimezone()
+  closeTimezoneCompare()
 }
 
 function closeAllTeachingFeatures(): void {
@@ -1115,6 +1114,7 @@ function deleteSelectedShape(): void {
         <a-spin :spinning="!globeLoadTimedOut && !globeError" size="small" />
         <span class="globe-loading-text">{{ globeLoadingText }}</span>
         <span v-if="globeLoadStage" class="globe-loading-stage">{{ globeLoadStage }}</span>
+        <span v-if="globeLoadingRetryable" class="globe-loading-stage">境内网络可在「图层管理」开启高德镜像瓦片源</span>
         <a-button v-if="globeLoadingRetryable" type="text" size="small" @click="handleRetry"><ReloadOutlined />重试</a-button>
       </div>
       <FailureBanner />
@@ -1179,7 +1179,7 @@ function deleteSelectedShape(): void {
       <TransportPanel v-if="transportStore.panel === 'transport'" :viewer="viewer" @close="transportStore.setPanel(null)" />
       <EnvironmentPanel v-if="environmentStore.panel === 'environment'" :viewer="viewer" @close="environmentStore.setPanel(null)" />
       <LocationDecisionPanel v-if="decisionStore.panel === 'location'" :viewer="viewer" @close="decisionStore.setPanel(null)" />
-      <TimezonePanel v-if="timezoneComparison" :comparison="timezoneComparison" @clear="clearTimezone" />
+      <TimezonePanel v-if="timezoneComparison" :comparison="timezoneComparison" @clear="closeTimezoneCompare" />
       <ThematicLegend />
       <ThematicInfoCard />
       <div v-if="drawHint" class="draw-hint">{{ drawHint }}</div>
@@ -1205,7 +1205,6 @@ function deleteSelectedShape(): void {
         :selected-layer-id="selectedLayerId"
         :error="globeError"
         :terrain-error="terrainError"
-        :loading="!isGlobeReady"
         :terrain-provider-id="terrainProviderId"
         :active-terrain-id="activeTerrainId"
         :terrain-exaggeration="terrainExaggeration"
