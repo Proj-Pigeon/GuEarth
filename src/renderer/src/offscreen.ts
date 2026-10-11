@@ -1,6 +1,7 @@
 import * as Cesium from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
-import type { OffscreenRecordingScript, SceneCamera } from '../../preload'
+import type { OffscreenRecordingScript, SceneCamera, TeachingScene } from '../../preload'
+import { createBasemapImageryProvider } from './composables/basemapImagery'
 
 const container = document.getElementById('cesium-container')
 if (!container) throw new Error('Offscreen Cesium 容器不存在')
@@ -23,8 +24,23 @@ const viewer = new Cesium.Viewer(container, {
   contextOptions: { webgl: { preserveDrawingBuffer: true } }
 })
 
+const imageryLayers = new Map<string, Cesium.ImageryLayer>()
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+async function applySnapshot(snapshot: TeachingScene['snapshot']): Promise<void> {
+  const basemapId = snapshot.basemapId || 'osm'
+  if (!imageryLayers.has(basemapId)) {
+    try {
+      const provider = createBasemapImageryProvider(basemapId, 'standard')
+      imageryLayers.set(basemapId, viewer.imageryLayers.addImageryProvider(provider, 0))
+    } catch {
+      return
+    }
+  }
+  imageryLayers.forEach((layer, id) => { layer.show = id === basemapId })
 }
 
 function cameraDestination(camera: SceneCamera): Cesium.Cartesian3 {
@@ -60,6 +76,7 @@ async function play(script: OffscreenRecordingScript): Promise<void> {
   viewer.resize()
   for (let index = 0; index < script.scenes.length; index += 1) {
     const scene = script.scenes[index]
+    await applySnapshot(scene.snapshot)
     if (index === 0) {
       setCamera(scene.snapshot.camera)
     } else {
