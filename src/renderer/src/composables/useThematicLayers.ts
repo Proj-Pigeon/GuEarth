@@ -1456,6 +1456,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'rain-belt': { longitude: 112, latitude: 30, height: 4500000 },
     'summer-monsoon': { longitude: 96, latitude: 24, height: 7500000 },
     'winter-monsoon': { longitude: 108, latitude: 32, height: 7500000 },
+    'ocean-currents': { longitude: 150, latitude: 8, height: 17000000 },
     'climate-zones': { longitude: 104, latitude: 34, height: 5200000 },
     'coriolis-demo': { longitude: 100, latitude: 0, height: 12000000 },
     'plate-tectonics': { longitude: 180, latitude: 5, height: 17000000 },
