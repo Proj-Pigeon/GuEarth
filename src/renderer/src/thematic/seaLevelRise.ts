@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 export interface CoastalZone {
   id: string
@@ -90,10 +90,98 @@ export const gridPointsOf = (zone: CoastalZone): Array<[number, number]> => {
   return points
 }
 
+export const totalGridCellCount = coastalZones.reduce((sum, zone) => {
+  const columns = Math.max(1, Math.round((zone.east - zone.west) / zone.step))
+  const rows = Math.max(1, Math.round((zone.north - zone.south) / zone.step))
+  return sum + columns * rows
+}, 0)
+
+export interface LandMaskSource {
+  polygons: number[][][][]
+}
+
+interface MaskedPolygon {
+  outer: number[][]
+  holes: number[][][]
+  west: number
+  east: number
+  south: number
+  north: number
+}
+
+function pointInRing(lon: number, lat: number, ring: number[][]): boolean {
+  let inside = false
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+    const [currentLon, currentLat] = ring[index]
+    const [previousLon, previousLat] = ring[previous]
+    if ((currentLat > lat) === (previousLat > lat)) continue
+    const crossingLon = ((previousLon - currentLon) * (lat - currentLat)) / (previousLat - currentLat) + currentLon
+    if (lon < crossingLon) inside = !inside
+  }
+  return inside
+}
+
+export function buildLandMask(provinces: LandMaskSource[]): (lon: number, lat: number) => boolean {
+  const polygons: MaskedPolygon[] = []
+  for (const province of provinces) {
+    for (const rings of province.polygons) {
+      const [outer, ...holes] = rings
+      if (!outer || outer.length < 3) continue
+      let west = Number.POSITIVE_INFINITY
+      let east = Number.NEGATIVE_INFINITY
+      let south = Number.POSITIVE_INFINITY
+      let north = Number.NEGATIVE_INFINITY
+      for (const [lon, lat] of outer) {
+        if (lon < west) west = lon
+        if (lon > east) east = lon
+        if (lat < south) south = lat
+        if (lat > north) north = lat
+      }
+      polygons.push({ outer, holes: holes.filter((hole) => hole.length >= 3), west, east, south, north })
+    }
+  }
+  return (lon: number, lat: number): boolean => {
+    for (const polygon of polygons) {
+      if (lon < polygon.west || lon > polygon.east || lat < polygon.south || lat > polygon.north) continue
+      if (pointInRing(lon, lat, polygon.outer) && !polygon.holes.some((hole) => pointInRing(lon, lat, hole))) return true
+    }
+    return false
+  }
+}
+
 export const heightCache = new Map<string, number>()
 export const sampleVersion = ref(0)
 
 export const cacheKeyOf = (lon: number, lat: number): string => `${lon.toFixed(4)},${lat.toFixed(4)}`
+
+export type LandMaskPredicate = (lon: number, lat: number) => boolean
+export const landMask = ref<LandMaskPredicate | null>(null)
+
+export function setLandMask(mask: LandMaskPredicate | null): void {
+  landMask.value = mask
+}
+
+export type SeaSamplingStatus = 'idle' | 'sampling' | 'ready' | 'terrain-required'
+export const seaSamplingStatus = ref<SeaSamplingStatus>('idle')
+
+export const sampledCoverage = computed(() => {
+  void sampleVersion.value
+  let sampled = 0
+  for (const zone of coastalZones) {
+    for (const [lon, lat] of gridPointsOf(zone)) {
+      if (heightCache.has(cacheKeyOf(lon, lat))) sampled += 1
+    }
+  }
+  return sampled / totalGridCellCount
+})
+
+export const FALLBACK_LAND_HEIGHT = 0.05
+
+export function isLandCell(lon: number, lat: number, height: number): boolean {
+  const mask = landMask.value
+  if (mask && mask(lon, lat)) return true
+  return height > FALLBACK_LAND_HEIGHT
+}
 
 export function recordSamples(points: Array<[number, number]>, heights: Array<number>): void {
   points.forEach(([lon, lat], index) => {
@@ -130,6 +218,7 @@ export interface ZoneInundation {
 }
 
 export function inundationByZone(rise: number): ZoneInundation[] {
+  void sampleVersion.value
   const results: ZoneInundation[] = []
   for (const zone of coastalZones) {
     let sampled = 0
@@ -139,6 +228,7 @@ export function inundationByZone(rise: number): ZoneInundation[] {
       const height = heightCache.get(cacheKeyOf(lon, lat))
       if (height === undefined) continue
       sampled += 1
+      if (!isLandCell(lon, lat, height)) continue
       if (isInundated(height, rise)) {
         floodedCells += 1
         areaKm2 += cellAreaKm2(zone, lat)

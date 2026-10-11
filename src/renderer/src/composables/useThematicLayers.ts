@@ -22,7 +22,9 @@ import { cityTierOf, FUNCTIONAL_ZONES, urbanCities, wuhanFunctionalDistricts } f
 import { agriCategoryOf, agriculturalRegions, agriFacts, agriRegionSummary } from '@renderer/thematic/agriculturalRegions'
 import { industrialBases, industrialTransferFacts, industrialTransferFlows } from '@renderer/thematic/industrialBases'
 import { HSR_COLOR, hsrFacts, hsrLines } from '@renderer/thematic/hsrLines'
-import { cacheKeyOf, coastalZones, gridPointsOf, heightCache, isInundated, recordSamples, scenarioSummary, SEA_COLOR } from '@renderer/thematic/seaLevelRise'
+import { cacheKeyOf, coastalZones, gridPointsOf, heightCache, isLandCell, isInundated, scenarioSummary, SEA_COLOR } from '@renderer/thematic/seaLevelRise'
+import { ensureSeaLevelSamples } from '@renderer/composables/seaLevelSampling'
+import { useGlobeStore } from '@renderer/stores/globe'
 import { useTransportStore } from '@renderer/stores/transport'
 
 const WARM_COLOR = '#f5222d'
@@ -155,6 +157,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
   const solarStore = useSolarStore()
   const transportStore = useTransportStore()
   const failureStore = useFailureStore()
+  const globeStore = useGlobeStore()
   const sources = new Map<ThematicLayerId, Cesium.CustomDataSource>()
   const coriolisProgress = ref(0)
   let coriolisRaf = 0
@@ -1295,36 +1298,17 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
   async function addInundationCells(dataSource: Cesium.CustomDataSource): Promise<void> {
     const current = viewer.value
     if (!current || current.isDestroyed()) return
-    const allCached = coastalZones.every((zone) =>
-      gridPointsOf(zone).every(([lon, lat]) => heightCache.has(cacheKeyOf(lon, lat)))
-    )
-    if (!allCached) {
-      if (current.scene.terrainProvider instanceof Cesium.EllipsoidTerrainProvider) {
-        if (sources.get('sea-level-rise') === dataSource) {
-          failureStore.reportFailure({ scope: 'sea-level-terrain', message: '未加载真实地形，淹没模拟不可用', detail: '请在「图层管理 → 地形」中开启真实地形源后重试', retryable: true })
-        }
-        return
-      }
-      const points = coastalZones.flatMap((zone) => gridPointsOf(zone))
-      const cartographics = points.map(([lon, lat]) => Cesium.Cartographic.fromDegrees(lon, lat))
-      try {
-        const sampled = await Cesium.sampleTerrainMostDetailed(current.terrainProvider, cartographics)
-        recordSamples(points, sampled.map((cartographic) => cartographic.height))
-      } catch {
-        recordSamples(
-          points,
-          cartographics.map((cartographic) => current.scene.globe.getHeight(cartographic) ?? Number.NaN)
-        )
-        if (!heightCache.size) {
-          if (sources.get('sea-level-rise') === dataSource) {
-            failureStore.reportFailure({ scope: 'sea-level-terrain', message: '地形采样失败，淹没模拟不可用', detail: '地形源不可达或网络受限，稍后点击重试', retryable: true })
-          }
-          return
-        }
-      }
+    const outcome = await ensureSeaLevelSamples(current)
+    if (sources.get('sea-level-rise') !== dataSource) return
+    if (outcome === 'terrain-required') {
+      failureStore.reportFailure({ scope: 'sea-level-terrain', message: '未加载真实地形，淹没模拟不可用', detail: '可能因启动时网络较慢，地形源已被自动降级为椭球。请在「图层管理 → 地形」选择「全球 3D 地形」，切换后本图层会自动重建', retryable: true })
+      return
+    }
+    if (outcome === 'failed') {
+      failureStore.reportFailure({ scope: 'sea-level-terrain', message: '地形采样失败，淹没模拟不可用', detail: '地形源不可达或网络受限，稍后点击重试', retryable: true })
+      return
     }
     failureStore.clearFailure('sea-level-terrain')
-    if (sources.get('sea-level-rise') !== dataSource) return
     const rise = store.seaLevelRise
     const color = Cesium.Color.fromCssColorString(SEA_COLOR)
     const properties = new Cesium.PropertyBag({
@@ -1335,7 +1319,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     for (const zone of coastalZones) {
       for (const [lon, lat] of gridPointsOf(zone)) {
         const height = heightCache.get(cacheKeyOf(lon, lat))
-        if (height === undefined || !isInundated(height, rise)) continue
+        if (height === undefined || !isLandCell(lon, lat, height) || !isInundated(height, rise)) continue
         const half = zone.step / 2
         dataSource.entities.add({
           properties,
@@ -1552,6 +1536,9 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
   })
   watch(() => Math.round(store.month * 4) / 4, (month) => refreshPressureBeltGeometry(month))
   watch(() => store.seaLevelRise, rebuildSeaLevelRise)
+  watch(() => globeStore.activeTerrainId, () => {
+    if (sources.get('sea-level-rise')) rebuildSeaLevelRise()
+  })
   watch(viewer, (previous) => {
     if (previous && !previous.isDestroyed()) {
       sources.clear()

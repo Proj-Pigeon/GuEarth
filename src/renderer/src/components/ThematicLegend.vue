@@ -149,7 +149,7 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
     </div>
     <div v-if="store.overlays['sea-level-rise']" class="legend-group">
       <div class="legend-heading">海平面上升淹没模拟</div>
-      <div class="legend-item"><span class="swatch" style="background: #1677ff"></span><span>被淹没的低地格网（+{{ store.seaLevelRise }} m 情景）</span></div>
+      <div class="legend-item"><span class="swatch" style="background: #1677ff"></span><span>被淹没的沿海陆地格网（+{{ store.seaLevelRise }} m 情景）</span></div>
       <div class="legend-item legend-hint"><span>在「海平面上升淹没模拟」面板切换情景</span></div>
     </div>
   </div>
