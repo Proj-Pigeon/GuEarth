@@ -139,8 +139,29 @@ const showGlobeLoading = computed(() => !isGlobeReady.value && !globeError.value
 const isLabOpen = ref(false)
 const nightBasemapActive = computed(() => store.selectedLayerId === 'viirs-night')
 const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || environmentStore.panel !== null || decisionStore.panel !== null || activeTool.value === 'timezone')
+
+function closeAllTeachingPanels(): void {
+  solarStore.setMotionPanel(null)
+  atmosphereStore.setPanel(null)
+  hydrologyStore.setPanel(null)
+  landformStore.setPanel(null)
+  populationStore.setPanel(null)
+  transportStore.setPanel(null)
+  environmentStore.setPanel(null)
+  decisionStore.setPanel(null)
+  if (activeTool.value === 'timezone') drawingStore.setActiveTool(null)
+  clearTimezone()
+}
+
+function closeAllTeachingFeatures(): void {
+  closeAllTeachingPanels()
+  for (const layer of thematicLayerCatalog) climateStore.setOverlay(layer.id, false)
+}
+
 watch(nightBasemapActive, (active) => {
-  if (active) isLabOpen.value = false
+  if (!active) return
+  closeAllTeachingFeatures()
+  isLabOpen.value = false
 })
 const drawHint = computed(() => {
   if (!activeTool.value) return ''
@@ -491,16 +512,7 @@ aiStore.registerTool({
   },
   execute: async (args) => {
     if (args.close === true) {
-      solarStore.setMotionPanel(null)
-      atmosphereStore.setPanel(null)
-      hydrologyStore.setPanel(null)
-      landformStore.setPanel(null)
-      populationStore.setPanel(null)
-      transportStore.setPanel(null)
-      environmentStore.setPanel(null)
-      decisionStore.setPanel(null)
-      if (activeTool.value === 'timezone') drawingStore.setActiveTool(null)
-      clearTimezone()
+      closeAllTeachingPanels()
       return { status: 'ok', closed: true, message: '已关闭全部教学演示面板' }
     }
     const panel = teachingPanelCatalog.find((item) => item.id === args.panelId)
