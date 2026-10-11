@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, toRaw, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue'
 import * as Cesium from 'cesium'
 import { CloseOutlined } from '@ant-design/icons-vue'
 
@@ -36,6 +36,13 @@ onMounted(() => {
   startTimer()
   const current = props.viewer && !props.viewer.isDestroyed() ? toRaw(props.viewer) : undefined
   current?.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(128, 22, 7200000), duration: 1.2 })
+})
+
+onBeforeUnmount(() => {
+  if (timer) {
+    clearInterval(timer)
+    timer = undefined
+  }
 })
 
 watch(
