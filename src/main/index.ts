@@ -556,7 +556,7 @@ function recordingExtension(mimeType: unknown): string {
 function finalizeMp4Recording(inputPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const stderr: Buffer[] = []
-    const process = spawn(ffmpegInstaller.path, ['-hide_banner', '-loglevel', 'error', '-y', '-i', inputPath, '-map', '0:v:0', '-c:v', 'copy', '-movflags', '+faststart', outputPath], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+    const process = spawn(ffmpegInstaller.path, ['-hide_banner', '-loglevel', 'error', '-y', '-i', inputPath, '-map', '0:v:0', '-c:v', 'copy', '-movflags', '+faststart', '-f', 'mp4', outputPath], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
     process.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
     process.once('error', reject)
     process.once('close', (code) => {
