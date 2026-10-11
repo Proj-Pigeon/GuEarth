@@ -237,7 +237,7 @@ async function testProxy(): Promise<void> {
       <section class="panel-section mirror-row">
         <div class="mirror-copy">
           <span class="mirror-name">高德镜像瓦片源</span>
-          <p class="mirror-description">OSM / OpenTopoMap / ArcGIS 影像改用高德境内瓦片并纠偏回 WGS-84，适合原始源无法直连的国内网络环境；切换时会清空相关底图缓存并重载，海外区域影像最高约 12 级</p>
+          <p class="mirror-description">若您位于中国大陆，推荐开启此选项</p>
         </div>
         <a-switch size="small" :checked="tileMirrorEnabled" @change="(value: boolean) => emit('mirror', value)" />
       </section>

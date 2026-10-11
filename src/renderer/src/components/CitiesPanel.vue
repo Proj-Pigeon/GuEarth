@@ -30,8 +30,13 @@ const missingKey = computed(() => !globeStore.providerCredentials.amap?.configur
 function selectCase(tier: 'high' | 'low', name: string): void {
   const item = CENTRAL_PLACE_CASES.find((candidate) => candidate.name === name)
   if (!item) return
-  if (tier === 'high') selectedHigh.value = item
-  else selectedLow.value = item
+  if (tier === 'high') {
+    if (item.name === selectedLow.value.name) selectedLow.value = selectedHigh.value
+    selectedHigh.value = item
+  } else {
+    if (item.name === selectedHigh.value.name) selectedHigh.value = selectedLow.value
+    selectedLow.value = item
+  }
   highResult.value = null
   lowResult.value = null
   statusText.value = ''
