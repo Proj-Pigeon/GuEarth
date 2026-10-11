@@ -16,11 +16,18 @@ test('offscreen recording has an isolated Cesium entry', () => {
 
 test('offscreen recording requests a fixed paint rate and counts frames', () => {
   assert.match(mainSource, /offscreen: true/)
-  assert.match(mainSource, /window\.webContents\.setFrameRate\(30\)/)
+  assert.match(mainSource, /window\.webContents\.setFrameRate\(targetFps\)/)
   assert.match(mainSource, /window\.webContents\.on\('paint'/)
 })
 
+test('offscreen recording renderer can execute scene scripts', () => {
+  assert.match(offscreenSource, /async function play\(script: OffscreenRecordingScript\)/)
+  assert.match(offscreenSource, /viewer\.camera\.flyTo/)
+  assert.match(offscreenSource, /guEarthOffscreenRecorder: \{ play \}/)
+  assert.match(mainSource, /executeJavaScript\(`window\.guEarthOffscreenRecorder\.play/)
+})
+
 test('offscreen recording controls stay behind typed preload IPC', () => {
-  assert.match(preloadSource, /offscreenProbe: \(\): Promise<\{ fps: number; frames: number \}>/)
-  assert.match(preloadSource, /ipcRenderer\.invoke\('recordings:offscreen-probe'\)/)
+  assert.match(preloadSource, /offscreenProbe: \(script\?: OffscreenRecordingScript\): Promise<OffscreenRecordingProbeResult>/)
+  assert.match(preloadSource, /ipcRenderer\.invoke\('recordings:offscreen-probe', script\)/)
 })

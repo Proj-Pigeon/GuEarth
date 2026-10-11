@@ -22,7 +22,7 @@ import type { FileHandle } from 'fs/promises'
 import { createHash, randomUUID } from 'crypto'
 import icon from '../../resources/icon.png?asset'
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg'
-import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey } from '../preload'
+import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, OffscreenRecordingProbeResult, OffscreenRecordingScript, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey } from '../preload'
 import { assertEncryptionAvailable, assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
 import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
 import { AiSettingsStore } from './ai/settingsStore'
@@ -763,8 +763,12 @@ function registerIpcHandlers(): void {
     await saveSettings((current) => ({ ...current, recordingDirectory: directory }))
     return directory
   })
-  ipcMain.handle('recordings:offscreen-probe', async (): Promise<{ fps: number; frames: number }> => startOffscreenRecordingWindow())
-  ipcMain.handle('recordings:offscreen-stats', (): { fps: number; frames: number } => offscreenRecordingStats())
+  ipcMain.handle('recordings:offscreen-probe', async (_event, script: unknown): Promise<OffscreenRecordingProbeResult> => {
+    if (script === undefined) return startOffscreenRecordingWindow()
+    if (!isRecord(script) || !Array.isArray(script.scenes)) throw new Error('无效的离屏录制脚本')
+    return startOffscreenRecordingWindow(script as unknown as OffscreenRecordingScript)
+  })
+  ipcMain.handle('recordings:offscreen-stats', (): OffscreenRecordingProbeResult => offscreenRecordingStats())
   ipcMain.handle('recordings:start', async (event, mimeType: unknown): Promise<string> => {
     const extension = recordingExtension(mimeType)
     const directory = await usableRecordingDirectory()
@@ -863,12 +867,15 @@ function stopOffscreenRecordingWindow(): void {
   window.destroy()
 }
 
-async function startOffscreenRecordingWindow(): Promise<{ fps: number; frames: number }> {
+async function startOffscreenRecordingWindow(script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> {
   stopOffscreenRecordingWindow()
+  const targetWidth = Math.min(1920, Math.max(320, Math.round(script?.width ?? 1280)))
+  const targetHeight = Math.min(1080, Math.max(240, Math.round(script?.height ?? 720)))
+  const targetFps = Math.min(60, Math.max(1, Math.round(script?.fps ?? 30)))
   const window = new BrowserWindow({
     show: false,
-    width: 1280,
-    height: 720,
+    width: targetWidth,
+    height: targetHeight,
     webPreferences: {
       offscreen: true,
       backgroundThrottling: false,
@@ -883,7 +890,7 @@ async function startOffscreenRecordingWindow(): Promise<{ fps: number; frames: n
   window.webContents.on('paint', () => {
     offscreenPaintFrames += 1
   })
-  window.webContents.setFrameRate(30)
+  window.webContents.setFrameRate(targetFps)
   const ready = new Promise<void>((resolve, reject) => {
     window.webContents.once('did-finish-load', () => resolve())
     window.webContents.once('did-fail-load', (_event, code, description) => reject(new Error(`${code}: ${description}`)))
@@ -894,8 +901,13 @@ async function startOffscreenRecordingWindow(): Promise<{ fps: number; frames: n
     await window.loadFile(join(__dirname, '../renderer/offscreen.html'))
   }
   await ready
+  if (script) {
+    const serialized = JSON.stringify(script).replace(/</g, '\\u003c')
+    await window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.play(${serialized})`)
+  }
   window.webContents.startPainting()
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  const durationMs = script ? Math.max(1000, script.scenes.reduce((total, scene) => total + Math.max(0, scene.flyDurationMs) + Math.max(0, scene.dwellMs), 0)) : 1000
+  await new Promise((resolve) => setTimeout(resolve, durationMs))
   const elapsed = Math.max(1, Date.now() - offscreenPaintStartedAt)
   const result = { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
   stopOffscreenRecordingWindow()

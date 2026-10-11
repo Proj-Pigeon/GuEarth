@@ -323,6 +323,19 @@ export interface RecordingSaveResult {
   bytes: number
 }
 
+export interface OffscreenRecordingScript {
+  title: string
+  scenes: TeachingScene[]
+  width: number
+  height: number
+  fps: number
+}
+
+export interface OffscreenRecordingProbeResult {
+  fps: number
+  frames: number
+}
+
 export interface UpdateState {
   status: 'idle' | 'available' | 'downloading' | 'ready'
   currentVersion: string
@@ -372,8 +385,8 @@ const api = {
     append: (recordingId: string, data: ArrayBuffer): Promise<void> => ipcRenderer.invoke('recordings:append', recordingId, data),
     finish: (recordingId: string): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:finish', recordingId),
     abort: (recordingId: string): Promise<void> => ipcRenderer.invoke('recordings:abort', recordingId),
-    offscreenProbe: (): Promise<{ fps: number; frames: number }> => ipcRenderer.invoke('recordings:offscreen-probe'),
-    offscreenStats: (): Promise<{ fps: number; frames: number }> => ipcRenderer.invoke('recordings:offscreen-stats')
+    offscreenProbe: (script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-probe', script),
+    offscreenStats: (): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-stats')
   },
   system: {
     fonts: (): Promise<string[]> => ipcRenderer.invoke('system:fonts')
