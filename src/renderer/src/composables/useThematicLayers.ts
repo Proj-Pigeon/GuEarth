@@ -76,6 +76,101 @@ function toRingCartesians(points: Array<[number, number]>): Cesium.Cartesian3[] 
   return toCartesians(points).filter((cartesian, index, all) => index === 0 || !Cesium.Cartesian3.equals(cartesian, all[index - 1]))
 }
 
+interface LabeledPolygonRegionSpec {
+  properties: Cesium.PropertyBag
+  rings: Array<Array<[number, number]>>
+  color: Cesium.Color
+  fillAlpha: number
+  lineAlpha: number
+  lineWidth: number
+  labelText: string
+  labelAt: [number, number]
+  labelFontSize: number
+  labelPadding: [number, number]
+  labelMaxDistance?: number
+}
+
+function addLabeledPolygonRegion(dataSource: Cesium.CustomDataSource, spec: LabeledPolygonRegionSpec): void {
+  for (const ring of spec.rings) {
+    dataSource.entities.add({
+      properties: spec.properties,
+      polygon: {
+        hierarchy: new Cesium.PolygonHierarchy(toRingCartesians(ring)),
+        material: new Cesium.ColorMaterialProperty(spec.color.withAlpha(spec.fillAlpha))
+      }
+    })
+    dataSource.entities.add({
+      properties: spec.properties,
+      polyline: {
+        positions: toCartesians(ring),
+        clampToGround: true,
+        width: spec.lineWidth,
+        material: spec.color.withAlpha(spec.lineAlpha)
+      }
+    })
+  }
+  dataSource.entities.add({
+    properties: spec.properties,
+    position: Cesium.Cartesian3.fromDegrees(spec.labelAt[0], spec.labelAt[1]),
+    label: {
+      text: spec.labelText,
+      font: labelFont(spec.labelFontSize, 600),
+      fillColor: spec.color,
+      showBackground: true,
+      backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
+      backgroundPadding: new Cesium.Cartesian2(spec.labelPadding[0], spec.labelPadding[1]),
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      distanceDisplayCondition: spec.labelMaxDistance !== undefined
+        ? new Cesium.DistanceDisplayCondition(0, spec.labelMaxDistance)
+        : undefined
+    }
+  })
+}
+
+interface LabeledPointOverlaySpec {
+  properties: Cesium.PropertyBag
+  longitude: number
+  latitude: number
+  color: Cesium.Color
+  labelText: string
+  pixelSize: number
+  labelFontWeight?: number
+  labelFillColor?: Cesium.Color
+  backgroundAlpha?: number
+  pixelOffset?: [number, number]
+  labelMaxDistance?: number
+}
+
+function addLabeledPointOverlay(dataSource: Cesium.CustomDataSource, spec: LabeledPointOverlaySpec): void {
+  dataSource.entities.add({
+    properties: spec.properties,
+    position: Cesium.Cartesian3.fromDegrees(spec.longitude, spec.latitude),
+    point: {
+      pixelSize: spec.pixelSize,
+      color: spec.color,
+      outlineColor: Cesium.Color.WHITE,
+      outlineWidth: 1.6,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    },
+    label: {
+      text: spec.labelText,
+      font: labelFont(12, spec.labelFontWeight ?? 600),
+      fillColor: spec.labelFillColor ?? spec.color,
+      showBackground: true,
+      backgroundColor: Cesium.Color.WHITE.withAlpha(spec.backgroundAlpha ?? 0.78),
+      backgroundPadding: new Cesium.Cartesian2(6, 3),
+      pixelOffset: new Cesium.Cartesian2(spec.pixelOffset?.[0] ?? 0, spec.pixelOffset?.[1] ?? -18),
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      distanceDisplayCondition: spec.labelMaxDistance !== undefined
+        ? new Cesium.DistanceDisplayCondition(0, spec.labelMaxDistance)
+        : undefined
+    }
+  })
+}
+
 function arrowHeadPositions(from: [number, number], to: [number, number], size: number): Cesium.Cartesian3[] {
   const latMidRad = (((from[1] + to[1]) / 2) * Math.PI) / 180
   const cosLat = Math.max(0.25, Math.cos(latMidRad))
@@ -1012,29 +1107,18 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
         summary: `${city.role}。常住人口 ${city.populationWan} 万${city.urbanizationPct !== null ? `，城镇化率 ${city.urbanizationPct}%` : ''}。${tier.description}。`
       })
       const pointSize = city.tier === 'national-center' ? 14 : city.tier === 'regional-center' ? 12 : city.tier === 'provincial-center' ? 10 : city.tier === 'prefecture' ? 8 : 6
-      dataSource.entities.add({
+      addLabeledPointOverlay(dataSource, {
         properties,
-        position: Cesium.Cartesian3.fromDegrees(city.longitude, city.latitude),
-        point: {
-          pixelSize: pointSize,
-          color,
-          outlineColor: Cesium.Color.WHITE,
-          outlineWidth: 1.6,
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY
-        },
-        label: {
-          text: city.name,
-          font: labelFont(12, city.tier === 'county' ? 400 : 600),
-          fillColor: Cesium.Color.fromCssColorString(city.tier === 'county' ? 'rgba(0,0,0,0.65)' : tier.color),
-          showBackground: true,
-          backgroundColor: Cesium.Color.WHITE.withAlpha(0.72),
-          backgroundPadding: new Cesium.Cartesian2(6, 3),
-          pixelOffset: new Cesium.Cartesian2(0, -(pointSize + 9)),
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, city.tier === 'county' ? 6500000 : 17000000)
-        }
+        longitude: city.longitude,
+        latitude: city.latitude,
+        color,
+        labelText: city.name,
+        pixelSize: pointSize,
+        labelFontWeight: city.tier === 'county' ? 400 : 600,
+        labelFillColor: Cesium.Color.fromCssColorString(city.tier === 'county' ? 'rgba(0,0,0,0.65)' : tier.color),
+        backgroundAlpha: 0.72,
+        pixelOffset: [0, -(pointSize + 9)],
+        labelMaxDistance: city.tier === 'county' ? 6500000 : 17000000
       })
       const ring = circleRingDegrees(city.longitude, city.latitude, tier.serviceRadiusKm)
       dataSource.entities.add({
@@ -1077,29 +1161,14 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
           material: color.withAlpha(0.9)
         }
       })
-      dataSource.entities.add({
+      addLabeledPointOverlay(dataSource, {
         properties,
-        position: Cesium.Cartesian3.fromDegrees(district.longitude, district.latitude),
-        point: {
-          pixelSize: 9,
-          color,
-          outlineColor: Cesium.Color.WHITE,
-          outlineWidth: 1.6,
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY
-        },
-        label: {
-          text: district.name,
-          font: labelFont(12, 600),
-          fillColor: color,
-          showBackground: true,
-          backgroundColor: Cesium.Color.WHITE.withAlpha(0.78),
-          backgroundPadding: new Cesium.Cartesian2(6, 3),
-          pixelOffset: new Cesium.Cartesian2(0, -18),
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 600000)
-        }
+        longitude: district.longitude,
+        latitude: district.latitude,
+        color,
+        labelText: district.name,
+        pixelSize: 9,
+        labelMaxDistance: 600000
       })
     }
   }
@@ -1108,87 +1177,43 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     const overview = agriFacts[0]
     for (const region of agriculturalRegions) {
       const meta = agriCategoryOf(region.category)
-      const color = Cesium.Color.fromCssColorString(meta.color)
-      const properties = new Cesium.PropertyBag({
-        name: `${region.name}（${meta.name}·${region.crop}）`,
-        layerId: 'agri-regions',
-        summary: `${agriRegionSummary(region)}${overview}`
-      })
-      for (const ring of region.rings) {
-        dataSource.entities.add({
-          properties,
-          polygon: {
-            hierarchy: new Cesium.PolygonHierarchy(toRingCartesians(ring)),
-            material: new Cesium.ColorMaterialProperty(color.withAlpha(0.22))
-          }
-        })
-        dataSource.entities.add({
-          properties,
-          polyline: {
-            positions: toCartesians(ring),
-            clampToGround: true,
-            width: 1.6,
-            material: color.withAlpha(0.8)
-          }
-        })
-      }
-      dataSource.entities.add({
-        properties,
-        position: Cesium.Cartesian3.fromDegrees(region.labelAt[0], region.labelAt[1]),
-        label: {
-          text: region.name,
-          font: labelFont(12, 600),
-          fillColor: color,
-          showBackground: true,
-          backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
-          backgroundPadding: new Cesium.Cartesian2(6, 3),
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, region.category === 'grain' ? 10500000 : 7800000)
-        }
+      addLabeledPolygonRegion(dataSource, {
+        properties: new Cesium.PropertyBag({
+          name: `${region.name}（${meta.name}·${region.crop}）`,
+          layerId: 'agri-regions',
+          summary: `${agriRegionSummary(region)}${overview}`
+        }),
+        rings: region.rings,
+        color: Cesium.Color.fromCssColorString(meta.color),
+        fillAlpha: 0.22,
+        lineAlpha: 0.8,
+        lineWidth: 1.6,
+        labelText: region.name,
+        labelAt: region.labelAt,
+        labelFontSize: 12,
+        labelPadding: [6, 3],
+        labelMaxDistance: region.category === 'grain' ? 10500000 : 7800000
       })
     }
   }
 
   function buildIndustrialBases(dataSource: Cesium.CustomDataSource): void {
     for (const base of industrialBases) {
-      const color = Cesium.Color.fromCssColorString(base.color)
-      const properties = new Cesium.PropertyBag({
-        name: base.name,
-        layerId: 'industrial-bases',
-        summary: `${base.summary}主导区位：${base.pillars.join('；')}。`
-      })
-      for (const ring of base.rings) {
-        dataSource.entities.add({
-          properties,
-          polygon: {
-            hierarchy: new Cesium.PolygonHierarchy(toRingCartesians(ring)),
-            material: new Cesium.ColorMaterialProperty(color.withAlpha(0.24))
-          }
-        })
-        dataSource.entities.add({
-          properties,
-          polyline: {
-            positions: toCartesians(ring),
-            clampToGround: true,
-            width: 2,
-            material: color.withAlpha(0.85)
-          }
-        })
-      }
-      dataSource.entities.add({
-        properties,
-        position: Cesium.Cartesian3.fromDegrees(base.labelAt[0], base.labelAt[1]),
-        label: {
-          text: base.name,
-          font: labelFont(13, 600),
-          fillColor: color,
-          showBackground: true,
-          backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
-          backgroundPadding: new Cesium.Cartesian2(7, 4),
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY
-        }
+      addLabeledPolygonRegion(dataSource, {
+        properties: new Cesium.PropertyBag({
+          name: base.name,
+          layerId: 'industrial-bases',
+          summary: `${base.summary}主导区位：${base.pillars.join('；')}。`
+        }),
+        rings: base.rings,
+        color: Cesium.Color.fromCssColorString(base.color),
+        fillAlpha: 0.24,
+        lineAlpha: 0.85,
+        lineWidth: 2,
+        labelText: base.name,
+        labelAt: base.labelAt,
+        labelFontSize: 13,
+        labelPadding: [7, 4]
       })
     }
   }

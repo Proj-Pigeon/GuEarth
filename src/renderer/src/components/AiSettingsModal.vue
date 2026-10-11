@@ -30,6 +30,7 @@ const apiKeyDraft = ref('')
 const activeTab = ref('llm')
 const draftSearchProviders = ref<AiSearchProviderConfig[]>([])
 const activeSearchProviderId = ref('')
+const draftSocraticEnabled = ref(false)
 
 const baseUrlPlaceholder = computed(() => (selectedProvider.value?.protocol ?? 'openai') === 'anthropic'
   ? 'https://api.anthropic.com'
@@ -80,6 +81,7 @@ watch(visible, async (open) => {
   draftProviders.value = store.settings.providers.map(toProviderDraft)
   draftSearchProviders.value = store.settings.searchProviders.map((provider) => ({ ...provider }))
   activeSearchProviderId.value = store.settings.activeSearchProviderId
+  draftSocraticEnabled.value = store.settings.socraticEnabled
   activeChoice.value = store.settings.activeProviderId && store.settings.activeModelId
     ? `${store.settings.activeProviderId}:${store.settings.activeModelId}`
     : ''
@@ -205,7 +207,7 @@ async function handleSave(): Promise<void> {
     activeSearchProviderId: activeSearchProviderId.value,
     skipDeleteConversationConfirm: store.settings.skipDeleteConversationConfirm,
     memoryEnabled: store.settings.memoryEnabled,
-    socraticEnabled: store.settings.socraticEnabled
+    socraticEnabled: draftSocraticEnabled.value
   }
   try {
     await store.saveSettings(next)
@@ -342,9 +344,8 @@ async function handleSave(): Promise<void> {
             <p class="teaching-toggle-desc">开启后 EOQ 不直接给出完整答案，而是把问题拆成小问逐步反问、引导思考，适合课堂问答与复习巩固；关闭时恢复直接讲解。</p>
           </div>
           <a-switch
-            :checked="store.settings.socraticEnabled"
+            v-model:checked="draftSocraticEnabled"
             aria-label="苏格拉底追问模式开关"
-            @change="(value: string | number | boolean) => store.setSocraticEnabled(value === true)"
           />
         </div>
       </section>

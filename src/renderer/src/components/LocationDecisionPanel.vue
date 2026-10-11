@@ -76,15 +76,15 @@ async function flyToPlace(): Promise<void> {
         <div class="factor-main">
           <a-switch size="small" :checked="selectedFactorIds.includes(factor.id)" :aria-label="`因素开关：${factor.name}`" @change="() => toggleFactor(factor.id)" />
           <span class="factor-name">{{ factor.name }}<span v-if="factor.essential" class="factor-essential" title="该情境的关键因素">★</span></span>
-          <a-button type="text" size="small" class="factor-fly" aria-label="飞往该地" @click="flyToPlace">
-            <EnvironmentOutlined />
-          </a-button>
         </div>
         <p v-if="selectedFactorIds.includes(factor.id)" class="factor-hint">{{ factor.hint }}</p>
       </div>
     </div>
 
     <div class="action-row">
+      <a-button type="text" size="small" class="case-fly" aria-label="飞往该地" @click="flyToPlace">
+        <EnvironmentOutlined /> 飞往该地
+      </a-button>
       <a-button size="small" :disabled="selectedFactorIds.length === 0" @click="resetSelection">
         <UndoOutlined /> 重置
       </a-button>
@@ -195,11 +195,6 @@ async function flyToPlace(): Promise<void> {
   cursor: help;
 }
 
-.factor-fly {
-  color: rgba(0, 0, 0, 0.45);
-  flex: none;
-}
-
 .factor-hint {
   margin: 4px 0 0 34px;
   color: rgba(0, 0, 0, 0.65);
@@ -209,7 +204,13 @@ async function flyToPlace(): Promise<void> {
 
 .action-row {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.case-fly {
+  flex: none;
+  color: rgba(0, 0, 0, 0.45);
 }
 
 .critique-button {
