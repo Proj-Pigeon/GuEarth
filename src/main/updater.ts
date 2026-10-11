@@ -126,6 +126,7 @@ async function cachedInstallerIsTrustworthy(path: string): Promise<boolean> {
 
 async function downloadUpdate(): Promise<void> {
   if (status !== 'available' || !downloadUrl) throw new Error('当前没有可用更新')
+  status = 'downloading'
   const finalPath = installerPathFor(version)
   if (existsSync(finalPath) && (await cachedInstallerIsTrustworthy(finalPath))) {
     installerPath = finalPath
@@ -134,7 +135,6 @@ async function downloadUpdate(): Promise<void> {
     return
   }
   const tempPath = `${finalPath}.tmp`
-  status = 'downloading'
   receivedBytes = 0
   totalBytes = 0
   emit({ type: 'progress', received: 0, total: 0 })
