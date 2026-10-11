@@ -42,3 +42,10 @@ test('hsr facts are informative', () => {
   assert.ok(hsrFacts.length >= 3)
   for (const fact of hsrFacts) assert.ok(fact.length >= 12)
 })
+
+test('growth series covers the full timeline window', () => {
+  const lastEntry = hsrGrowthSeries[hsrGrowthSeries.length - 1]
+  assert.equal(lastEntry[0], HSR_END_YEAR)
+  assert.equal(hsrMileageAt(HSR_END_YEAR), lastEntry[1])
+  assert.ok(lastEntry[1] >= 50000)
+})

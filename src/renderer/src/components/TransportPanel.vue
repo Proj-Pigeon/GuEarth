@@ -4,7 +4,7 @@ import * as Cesium from 'cesium'
 import { CloseOutlined, EnvironmentOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { useClimateStore } from '@renderer/stores/climate'
 import { useTransportStore } from '@renderer/stores/transport'
-import { hsrFacts, hsrGrowthSeries, hsrLines, hsrLinesUpTo, hsrMileageAt, type HsrLine } from '@renderer/thematic/hsrLines'
+import { HSR_END_YEAR, hsrFacts, hsrGrowthSeries, hsrLines, hsrLinesUpTo, hsrMileageAt, type HsrLine } from '@renderer/thematic/hsrLines'
 import { resolveFlightDestination } from '@renderer/composables/terrainFlight'
 import LineChart, { type ChartSeries } from '@renderer/components/charts/LineChart.vue'
 import YearTimeline from '@renderer/components/YearTimeline.vue'
@@ -57,7 +57,7 @@ async function flyToLine(line: HsrLine): Promise<void> {
     <YearTimeline />
 
     <div class="chart-title">高铁营业里程增长（万公里）</div>
-    <LineChart :series="growthSeries" :x-min="2008" :x-max="2024" x-name="年份" y-name="万公里" :height="170" />
+    <LineChart :series="growthSeries" :x-min="2008" :x-max="HSR_END_YEAR" x-name="年份" y-name="万公里" :height="170" />
 
     <div class="fact">
       截至 {{ displayYear }} 年：全国高铁营业里程约 {{ mileageWan }} 万公里；图中已开通干线 {{ openedCount }} / {{ hsrLines.length }} 条。拖动时间轴或播放动画，观察高铁网络如何从京津城际生长为「八纵八横」。
