@@ -95,6 +95,7 @@ const {
   terrainExaggeration,
   terrainLighting,
   tileCacheEnabled,
+  tileMirrorEnabled,
   networkProxy,
   providerCredentials
 } =
@@ -122,7 +123,6 @@ const { activeTool, shapes, entries, selectedShapeId, saveError } = storeToRefs(
 const aiStore = useAiStore()
 const updaterStore = useUpdaterStore()
 const failureStore = useFailureStore()
-window.guEarth.tiles.onDegrade((message) => failureStore.reportDegrade(message))
 const scenesStore = useScenesStore()
 const isScenesPanelOpen = ref(false)
 const scenePlayer = useScenePlayer(viewer, switchBasemap)
@@ -949,6 +949,10 @@ function handleCacheChange(value: boolean): void {
   store.setTileCacheEnabled(value)
 }
 
+function handleMirrorChange(value: boolean): void {
+  store.setTileMirrorEnabled(value)
+}
+
 function handleNetworkProxy(value: string): void {
   store.setNetworkProxy(value)
 }
@@ -1193,6 +1197,7 @@ function deleteSelectedShape(): void {
         :terrain-exaggeration="terrainExaggeration"
         :terrain-lighting="terrainLighting"
         :tile-cache-enabled="tileCacheEnabled"
+        :tile-mirror-enabled="tileMirrorEnabled"
         :network-proxy="networkProxy"
         :provider-credentials="providerCredentials"
         @close="handleClosePanel"
@@ -1203,6 +1208,7 @@ function deleteSelectedShape(): void {
         @terrain-exaggeration="handleTerrainExaggeration"
         @terrain-lighting="handleTerrainLighting"
         @cache="handleCacheChange"
+        @mirror="handleMirrorChange"
         @network-proxy="handleNetworkProxy"
         @credential-save="handleCredentialSave"
         @credential-clear="handleCredentialClear"

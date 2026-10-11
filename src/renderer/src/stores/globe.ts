@@ -113,6 +113,7 @@ export const useGlobeStore = defineStore('globe', () => {
   const terrainExaggeration = ref(2)
   const terrainLighting = ref(false)
   const tileCacheEnabled = ref(true)
+  const tileMirrorEnabled = ref(false)
   const networkProxy = ref('')
   const providerCredentials = ref<Record<string, { configured: boolean; updatedAt: number | null }>>({})
   const isLayerPanelOpen = ref(false)
@@ -136,6 +137,7 @@ export const useGlobeStore = defineStore('globe', () => {
       terrainExaggeration.value = Math.min(5, Math.max(1, settings.terrainExaggeration))
       terrainLighting.value = settings.terrainLighting
       tileCacheEnabled.value = settings.tileCacheEnabled
+      tileMirrorEnabled.value = settings.tileMirrorEnabled
       networkProxy.value = settings.networkProxy ?? ''
       providerStyles.value = Object.fromEntries(providerCatalog.map((provider) => [provider.id, styleFor(provider.id, settings.providerStyles?.[provider.id] ?? provider.defaultStyleId)]))
       providerCredentials.value = settings.providerCredentials
@@ -154,6 +156,7 @@ export const useGlobeStore = defineStore('globe', () => {
       terrainExaggeration: terrainExaggeration.value,
       terrainLighting: terrainLighting.value,
       tileCacheEnabled: tileCacheEnabled.value,
+      tileMirrorEnabled: tileMirrorEnabled.value,
       networkProxy: networkProxy.value,
       providerStyles: { ...providerStyles.value },
       sceneMode: sceneMode.value
@@ -199,15 +202,16 @@ export const useGlobeStore = defineStore('globe', () => {
   function setTerrainExaggeration(value: number): void { terrainExaggeration.value = Math.min(5, Math.max(1, value)); void persistSettings() }
   function setTerrainLighting(value: boolean): void { terrainLighting.value = value; void persistSettings() }
   function setTileCacheEnabled(value: boolean): void { tileCacheEnabled.value = value; void persistSettings() }
+  function setTileMirrorEnabled(value: boolean): void { tileMirrorEnabled.value = value; void persistSettings() }
   function setNetworkProxy(value: string): void { networkProxy.value = value; void persistSettings() }
   function setCredentialStatus(id: string, status: { configured: boolean; updatedAt: number | null }): void { providerCredentials.value = { ...providerCredentials.value, [id]: status } }
   function setSceneMode(mode: SceneMode): void { sceneMode.value = mode; void persistSettings() }
   function setLevelViewActive(value: boolean): void { levelViewActive.value = value }
 
   return {
-    layers, selectedLayerId, providerStyles, terrainProviderId, terrainExaggeration, terrainLighting, tileCacheEnabled, networkProxy,
+    layers, selectedLayerId, providerStyles, terrainProviderId, terrainExaggeration, terrainLighting, tileCacheEnabled, tileMirrorEnabled, networkProxy,
     providerCredentials, isLayerPanelOpen, isGlobeReady, globeLoadTimedOut, globeLoadStage, activeTerrainId, globeError, terrainError, camera, sceneMode, levelViewActive, hydrateSettings,
     setLayerPanelOpen, setGlobeReady, setGlobeLoadTimedOut, setGlobeLoadStage, setActiveTerrainId, setGlobeError, setTerrainError, setCameraReadout, selectBasemap, setLayerOpacity,
-    setProviderStyle, setTerrainProvider, setTerrainExaggeration, setTerrainLighting, setTileCacheEnabled, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
+    setProviderStyle, setTerrainProvider, setTerrainExaggeration, setTerrainLighting, setTileCacheEnabled, setTileMirrorEnabled, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
   }
 })

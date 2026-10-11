@@ -40,6 +40,7 @@ interface PersistedSettings {
   terrainExaggeration: number
   terrainLighting: boolean
   tileCacheEnabled: boolean
+  tileMirrorEnabled: boolean
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -54,6 +55,7 @@ const defaultSettings: PersistedSettings = {
   terrainExaggeration: 2,
   terrainLighting: false,
   tileCacheEnabled: true,
+  tileMirrorEnabled: false,
   networkProxy: '',
   providerStyles: {
     osm: 'standard',
@@ -119,6 +121,7 @@ function readSettings(): PersistedSettings {
       terrainExaggeration: typeof parsed.terrainExaggeration === 'number' && Number.isFinite(parsed.terrainExaggeration) ? Math.min(5, Math.max(1, parsed.terrainExaggeration)) : defaultSettings.terrainExaggeration,
       terrainLighting: parsed.terrainLighting === true,
       tileCacheEnabled: parsed.tileCacheEnabled !== false,
+      tileMirrorEnabled: parsed.tileMirrorEnabled === true,
       networkProxy: normalizeNetworkProxy(parsed.networkProxy),
       providerStyles: normalizedStyles,
       providerCredentials,
@@ -314,19 +317,6 @@ const fallbackEligibleProviders: Record<string, 'vector' | 'satellite'> = {
   opentopomap: 'vector'
 }
 
-const FALLBACK_PROVIDER_NAMES: Record<string, string> = {
-  osm: 'OpenStreetMap',
-  'esri-imagery': 'ArcGIS 影像',
-  opentopomap: 'OpenTopoMap'
-}
-
-function broadcastTileDegrade(providerId: string): void {
-  const providerName = FALLBACK_PROVIDER_NAMES[providerId] ?? providerId
-  for (const window of BrowserWindow.getAllWindows()) {
-    window.webContents.send('tiles:degrade', `${providerName}瓦片直连失败，本次运行已自动改用高德镜像瓦片（坐标已纠偏回 WGS-84），原源恢复后将自动切回`)
-  }
-}
-
 async function fetchTileWithRetry(url: string): Promise<Response> {
   let lastError: unknown
   for (let attempt = 0; attempt < TILE_FETCH_ATTEMPTS; attempt++) {
@@ -339,7 +329,7 @@ async function fetchTileWithRetry(url: string): Promise<Response> {
   throw lastError
 }
 
-const fallbackLoggedProviders = new Set<string>()
+const mirrorLoggedProviders = new Set<string>()
 
 const amapSourceTileInFlight = new Map<string, Promise<WarpSourceTile | null>>()
 
@@ -378,14 +368,13 @@ async function loadAmapSourceTile(kind: 'vector' | 'satellite', level: number, x
   }
 }
 
-async function fallbackTileResponse(providerId: string, key: TileKey): Promise<Response | null> {
+async function mirrorTileResponse(providerId: string, key: TileKey): Promise<Response | null> {
   const kind = fallbackEligibleProviders[providerId]
   if (!kind) return null
   const { level, x, y } = key
-  if (!fallbackLoggedProviders.has(providerId)) {
-    fallbackLoggedProviders.add(providerId)
-    logger.warn('tiles', `原始源直连失败，${providerId} 本次运行改用国内镜像瓦片`, 'GCJ-02 已纠偏回 WGS84')
-    broadcastTileDegrade(providerId)
+  if (!mirrorLoggedProviders.has(providerId)) {
+    mirrorLoggedProviders.add(providerId)
+    logger.info('tiles', `镜像瓦片源已开启，${providerId} 使用高德境内瓦片（GCJ-02 纠偏回 WGS84）`)
   }
   const shift = tileWgs84ShiftPixels(level, x, y)
   if (!shift) {
@@ -397,7 +386,7 @@ async function fallbackTileResponse(providerId: string, key: TileKey): Promise<R
       const data = await response.arrayBuffer()
       const contentType = response.headers.get('content-type') ?? 'image/png'
       if (settings.tileCacheEnabled) writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
-      return new Response(data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-fallback': 'amap' } })
+      return new Response(data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'amap' } })
     } catch {
       return null
     }
@@ -405,7 +394,7 @@ async function fallbackTileResponse(providerId: string, key: TileKey): Promise<R
   const warped = await warpTileToWgs84(level, x, y, (sourceLevel, sourceX, sourceY) => fetchAmapSourceTile(kind, sourceLevel, sourceX, sourceY))
   if (!warped) return null
   if (settings.tileCacheEnabled) writeTile({ ...key, data: warped.data, contentType: warped.contentType, expiresAt: Date.now() + TILE_TTL_MS })
-  return new Response(warped.data, { headers: { 'content-type': warped.contentType, 'x-guearth-cache': 'miss', 'x-guearth-fallback': 'amap-warped' } })
+  return new Response(warped.data, { headers: { 'content-type': warped.contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'amap-warped' } })
 }
 
 async function handleTileProtocol(request: Request): Promise<Response> {
@@ -422,6 +411,13 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   if (cached) return cached
   const remoteUrl = tileRemoteUrl(providerId, styleId, level, x, y)
   if (!remoteUrl) return new Response('Unknown provider', { status: 404 })
+  if (settings.tileMirrorEnabled && fallbackEligibleProviders[providerId]) {
+    const mirror = await mirrorTileResponse(providerId, key)
+    if (mirror) return mirror
+    const stale = cachedTileResponse(key, true)
+    if (stale) return stale
+    return new Response('Tile unavailable', { status: 502 })
+  }
   try {
     const response = await fetchTileWithRetry(remoteUrl)
     if (!response.ok) {
@@ -433,8 +429,6 @@ async function handleTileProtocol(request: Request): Promise<Response> {
     if (settings.tileCacheEnabled) writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
     return new Response(data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss' } })
   } catch {
-    const fallback = await fallbackTileResponse(providerId, key)
-    if (fallback) return fallback
     const stale = cachedTileResponse(key, true)
     if (stale) return stale
     return new Response('Tile unavailable', { status: 502 })
@@ -710,6 +704,10 @@ function registerIpcHandlers(): void {
     if (patch.tileCacheEnabled !== undefined) {
       if (typeof patch.tileCacheEnabled !== 'boolean') throw new Error('无效的缓存设置')
       nextSettings.tileCacheEnabled = patch.tileCacheEnabled
+    }
+    if (patch.tileMirrorEnabled !== undefined) {
+      if (typeof patch.tileMirrorEnabled !== 'boolean') throw new Error('无效的镜像瓦片设置')
+      nextSettings.tileMirrorEnabled = patch.tileMirrorEnabled
     }
     if (patch.networkProxy !== undefined) {
       if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')

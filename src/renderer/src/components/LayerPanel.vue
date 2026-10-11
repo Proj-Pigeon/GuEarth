@@ -31,6 +31,7 @@ const props = defineProps<{
   terrainExaggeration: number
   terrainLighting: boolean
   tileCacheEnabled: boolean
+  tileMirrorEnabled: boolean
   networkProxy: string
   providerCredentials: Record<string, CredentialStatus>
 }>()
@@ -44,6 +45,7 @@ const emit = defineEmits<{
   terrainExaggeration: [value: number]
   terrainLighting: [value: boolean]
   cache: [value: boolean]
+  mirror: [value: boolean]
   networkProxy: [value: string]
   credentialSave: [id: string, apiKey: string, securityKey?: string]
   credentialClear: [id: string]
@@ -233,6 +235,13 @@ async function testProxy(): Promise<void> {
       <section class="panel-section cache-row">
         <span>瓦片缓存</span><a-switch :checked="tileCacheEnabled" @change="(value: boolean) => emit('cache', value)" />
       </section>
+      <section class="panel-section mirror-row">
+        <div class="mirror-copy">
+          <span class="mirror-name">高德镜像瓦片源</span>
+          <p class="mirror-description">OSM / OpenTopoMap / ArcGIS 影像改用高德境内瓦片并纠偏回 WGS-84，适合原始源无法直连的国内网络环境</p>
+        </div>
+        <a-switch size="small" :checked="tileMirrorEnabled" @change="(value: boolean) => emit('mirror', value)" />
+      </section>
 
       <section class="panel-section">
         <div class="section-heading"><span>网络代理</span></div>
@@ -300,5 +309,5 @@ async function testProxy(): Promise<void> {
 </template>
 
 <style scoped>
-.panel-title{display:flex;align-items:center;justify-content:space-between;width:100%}h2{margin:0;color:rgba(0,0,0,.88);font-size:20px;font-weight:600;line-height:28px}.panel-alert{margin-bottom:16px}.layer-spin{display:block;min-height:168px}.panel-section{padding:0 0 16px;margin:0 0 16px;border-bottom:1px solid rgba(5,5,5,.06)}.panel-section:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}.section-heading{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px;color:rgba(0,0,0,.65);font-size:12px;line-height:20px}.full-select{width:100%}.cache-row{display:flex;align-items:center;justify-content:space-between}.terrain-slider-head{display:flex;align-items:center;justify-content:space-between;margin-top:12px;color:rgba(0,0,0,.65);font-size:13px;line-height:20px}.terrain-lighting-row{display:flex;align-items:center;justify-content:space-between;margin-top:4px;color:rgba(0,0,0,.65);font-size:13px;line-height:20px}.terrain-alert{margin-top:8px}.key-input{margin-top:8px}.credential-hint{margin-top:8px}.key-actions{display:flex;gap:8px;margin-top:8px}.basemap-item{display:flex;align-items:center;gap:4px;min-height:48px;padding:6px 8px;border-radius:6px;cursor:pointer}.basemap-item.selected{background:rgba(22,119,255,.06)}.basemap-copy{flex:1;min-width:0;margin-left:4px}.basemap-name{color:rgba(0,0,0,.88);font-size:14px;line-height:22px}.basemap-description{overflow:hidden;color:rgba(0,0,0,.45);font-size:12px;line-height:20px;text-overflow:ellipsis;white-space:nowrap}.more-button{color:rgba(0,0,0,.45)}.modal-block{margin-bottom:16px}.proxy-mode-group{display:flex;width:100%}.proxy-mode-group :deep(.ant-radio-button-wrapper){flex:1;text-align:center}.proxy-input{margin-top:8px}.proxy-actions{display:flex;gap:8px;margin-top:8px}.proxy-result{margin-top:8px;color:rgba(0,0,0,.65);font-size:12px;line-height:20px;word-break:break-all}.proxy-result-ok{color:#389e0d}.proxy-result-fail{color:#cf1322}.setting-head{display:flex;align-items:center;justify-content:space-between;color:rgba(0,0,0,.65);font-size:12px;line-height:20px}.provider-group{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:8px}.provider-radio{display:flex;align-items:flex-start;margin:0}.provider-radio :deep(.ant-radio){margin-top:1px}.provider-copy{min-width:0}.provider-name{color:rgba(0,0,0,.88);font-size:14px;line-height:22px}.provider-description{color:rgba(0,0,0,.45);font-size:12px;line-height:20px}
+.panel-title{display:flex;align-items:center;justify-content:space-between;width:100%}h2{margin:0;color:rgba(0,0,0,.88);font-size:20px;font-weight:600;line-height:28px}.panel-alert{margin-bottom:16px}.layer-spin{display:block;min-height:168px}.panel-section{padding:0 0 16px;margin:0 0 16px;border-bottom:1px solid rgba(5,5,5,.06)}.panel-section:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}.section-heading{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px;color:rgba(0,0,0,.65);font-size:12px;line-height:20px}.full-select{width:100%}.cache-row{display:flex;align-items:center;justify-content:space-between}.mirror-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.mirror-copy{flex:1;min-width:0}.mirror-name{color:rgba(0,0,0,.88);font-size:13px;line-height:22px}.mirror-description{margin:2px 0 0;color:rgba(0,0,0,.45);font-size:12px;line-height:18px}.terrain-slider-head{display:flex;align-items:center;justify-content:space-between;margin-top:12px;color:rgba(0,0,0,.65);font-size:13px;line-height:20px}.terrain-lighting-row{display:flex;align-items:center;justify-content:space-between;margin-top:4px;color:rgba(0,0,0,.65);font-size:13px;line-height:20px}.terrain-alert{margin-top:8px}.key-input{margin-top:8px}.credential-hint{margin-top:8px}.key-actions{display:flex;gap:8px;margin-top:8px}.basemap-item{display:flex;align-items:center;gap:4px;min-height:48px;padding:6px 8px;border-radius:6px;cursor:pointer}.basemap-item.selected{background:rgba(22,119,255,.06)}.basemap-copy{flex:1;min-width:0;margin-left:4px}.basemap-name{color:rgba(0,0,0,.88);font-size:14px;line-height:22px}.basemap-description{overflow:hidden;color:rgba(0,0,0,.45);font-size:12px;line-height:20px;text-overflow:ellipsis;white-space:nowrap}.more-button{color:rgba(0,0,0,.45)}.modal-block{margin-bottom:16px}.proxy-mode-group{display:flex;width:100%}.proxy-mode-group :deep(.ant-radio-button-wrapper){flex:1;text-align:center}.proxy-input{margin-top:8px}.proxy-actions{display:flex;gap:8px;margin-top:8px}.proxy-result{margin-top:8px;color:rgba(0,0,0,.65);font-size:12px;line-height:20px;word-break:break-all}.proxy-result-ok{color:#389e0d}.proxy-result-fail{color:#cf1322}.setting-head{display:flex;align-items:center;justify-content:space-between;color:rgba(0,0,0,.65);font-size:12px;line-height:20px}.provider-group{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:8px}.provider-radio{display:flex;align-items:flex-start;margin:0}.provider-radio :deep(.ant-radio){margin-top:1px}.provider-copy{min-width:0}.provider-name{color:rgba(0,0,0,.88);font-size:14px;line-height:22px}.provider-description{color:rgba(0,0,0,.45);font-size:12px;line-height:20px}
 </style>
