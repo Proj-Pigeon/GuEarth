@@ -5,6 +5,9 @@ import { climateZones } from '@renderer/thematic/climateZones'
 import { koppenZones } from '@renderer/thematic/koppenZones'
 import { windRampStops } from '@renderer/thematic/windField'
 import { densityBins } from '@renderer/thematic/populationCensus'
+import { CITY_TIER_META, FUNCTIONAL_ZONES } from '@renderer/thematic/urbanCities'
+import { AGRI_CATEGORY_META } from '@renderer/thematic/agriculturalRegions'
+import { industrialBases } from '@renderer/thematic/industrialBases'
 
 const store = useClimateStore()
 
@@ -12,6 +15,10 @@ const windGradient = computed(() => `linear-gradient(90deg, ${windRampStops.join
 const zoneEntries = climateZones.map((zone) => ({ name: zone.name, color: zone.color }))
 const koppenEntries = koppenZones.map((zone) => ({ name: zone.name, color: zone.borderColor ?? zone.color }))
 const densityEntries = densityBins.map((bin) => ({ label: bin.label, color: bin.color }))
+const tierEntries = CITY_TIER_META.map((meta) => ({ name: meta.name, color: meta.color }))
+const functionalZoneEntries = FUNCTIONAL_ZONES.map((spec) => ({ name: spec.name, color: spec.color }))
+const agriCategoryEntries = AGRI_CATEGORY_META.map((meta) => ({ name: meta.name, color: meta.color }))
+const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, color: base.color }))
 </script>
 
 <template>
@@ -103,6 +110,48 @@ const densityEntries = densityBins.map((bin) => ({ label: bin.label, color: bin.
       <div class="legend-item"><span class="swatch" style="height: 3px; background: rgba(250, 140, 22, 0.72)"></span><span>次要迁移流向</span></div>
       <div class="legend-item legend-hint"><span>线宽表示规模，放大后显示次要路线标签</span></div>
     </div>
+    <div v-if="store.overlays['city-tiers']" class="legend-group">
+      <div class="legend-heading">城市等级（服务半径示意）</div>
+      <div v-for="tier in tierEntries" :key="tier.name" class="legend-item">
+        <span class="swatch swatch-dot" :style="{ background: tier.color }"></span><span>{{ tier.name }}</span>
+      </div>
+      <div class="legend-item legend-hint"><span>圆圈为该等级典型服务范围示意</span></div>
+    </div>
+    <div v-if="store.overlays['functional-zones']" class="legend-group">
+      <div class="legend-heading">武汉城市功能分区（真实区位）</div>
+      <div v-for="zone in functionalZoneEntries" :key="zone.name" class="legend-item">
+        <span class="swatch" :style="{ background: zone.color }"></span><span>{{ zone.name }}</span>
+      </div>
+    </div>
+    <div v-if="store.overlays['agri-regions']" class="legend-group">
+      <div class="legend-heading">农业区划</div>
+      <div v-for="category in agriCategoryEntries" :key="category.name" class="legend-item">
+        <span class="swatch" :style="{ background: category.color }"></span><span>{{ category.name }}</span>
+      </div>
+      <div class="legend-item legend-hint"><span>点击产区查看作物与区位因素</span></div>
+    </div>
+    <div v-if="store.overlays['industrial-bases']" class="legend-group">
+      <div class="legend-heading">四大工业基地</div>
+      <div v-for="base in industrialBaseEntries" :key="base.name" class="legend-item">
+        <span class="swatch" :style="{ background: base.color }"></span><span>{{ base.name }}</span>
+      </div>
+    </div>
+    <div v-if="store.overlays['industrial-transfers']" class="legend-group">
+      <div class="legend-heading">产业转移流向</div>
+      <div class="legend-item"><span class="swatch" style="height: 5px; background: #722ed1"></span><span>主要转移方向</span></div>
+      <div class="legend-item"><span class="swatch" style="height: 3px; background: rgba(114, 46, 209, 0.72)"></span><span>次要转移方向</span></div>
+      <div class="legend-item legend-hint"><span>自东向西、由沿海向内陆梯度转移</span></div>
+    </div>
+    <div v-if="store.overlays['hsr-network']" class="legend-group">
+      <div class="legend-heading">高铁网络（随年份生长）</div>
+      <div class="legend-item"><span class="swatch" style="height: 5px; background: #d4380d"></span><span>已开通高铁干线</span></div>
+      <div class="legend-item legend-hint"><span>打开「交通运输布局」面板播放年份动画</span></div>
+    </div>
+    <div v-if="store.overlays['sea-level-rise']" class="legend-group">
+      <div class="legend-heading">海平面上升淹没模拟</div>
+      <div class="legend-item"><span class="swatch" style="background: #1677ff"></span><span>被淹没的沿海陆地格网（+{{ store.seaLevelRise }} m 情景）</span></div>
+      <div class="legend-item legend-hint"><span>在「海平面上升淹没模拟」面板切换情景</span></div>
+    </div>
   </div>
 </template>
 
@@ -170,6 +219,12 @@ const densityEntries = densityBins.map((bin) => ({ label: bin.label, color: bin.
   height: 0;
   border-radius: 0;
   border-top: 2px dashed rgba(0, 0, 0, 0.45);
+}
+
+.swatch-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
 }
 
 .wind-ramp {

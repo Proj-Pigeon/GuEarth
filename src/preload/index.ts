@@ -1,5 +1,6 @@
 import '@sentry/electron/preload'
 import { contextBridge, ipcRenderer } from 'electron'
+import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
 
 export interface ProviderCredentialStatus {
   configured: boolean
@@ -12,6 +13,7 @@ export interface GuEarthSettings {
   terrainExaggeration: number
   terrainLighting: boolean
   tileCacheEnabled: boolean
+  tileMirrorEnabled: boolean
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -25,6 +27,7 @@ export interface GuEarthSettingsPatch {
   terrainExaggeration?: number
   terrainLighting?: boolean
   tileCacheEnabled?: boolean
+  tileMirrorEnabled?: boolean
   networkProxy?: string
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'
@@ -128,6 +131,7 @@ export interface AiSettings {
   activeSearchProviderId: string
   skipDeleteConversationConfirm: boolean
   memoryEnabled: boolean
+  socraticEnabled: boolean
 }
 
 export interface AgentMemory {
@@ -282,6 +286,8 @@ export interface ProvinceGeoDocument {
 
 export type PlaceSearchProvider = 'amap' | 'baidu'
 
+export type { PoiCategoryCount, PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
+
 export interface SceneCamera {
   longitude: number
   latitude: number
@@ -355,7 +361,12 @@ const api = {
     get: (key: TileKey): Promise<TileCacheEntry | null> => ipcRenderer.invoke('tiles:get', key),
     put: (entry: TileCacheEntry): Promise<void> => ipcRenderer.invoke('tiles:put', entry),
     clear: (providerId?: string): Promise<void> => ipcRenderer.invoke('tiles:clear', providerId),
-    stats: (): Promise<TileCacheStats> => ipcRenderer.invoke('tiles:stats')
+    stats: (): Promise<TileCacheStats> => ipcRenderer.invoke('tiles:stats'),
+    onMirrorChanged: (listener: (enabled: boolean) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: boolean): void => listener(payload)
+      ipcRenderer.on('tiles:mirror-changed', wrapped)
+      return () => ipcRenderer.removeListener('tiles:mirror-changed', wrapped)
+    }
   },
   annotations: {
     load: (): Promise<AnnotationDocument> => ipcRenderer.invoke('annotations:load'),
@@ -380,7 +391,8 @@ const api = {
     copy: (rendererDump: string): Promise<void> => ipcRenderer.invoke('logging:copy-report', rendererDump)
   },
   places: {
-    search: (keyword: string, provider?: PlaceSearchProvider): Promise<PlaceSearchResult> => ipcRenderer.invoke('places:search', keyword, provider)
+    search: (keyword: string, provider?: PlaceSearchProvider): Promise<PlaceSearchResult> => ipcRenderer.invoke('places:search', keyword, provider),
+    poiStatistics: (request: PoiStatisticsRequest): Promise<PoiStatisticsResult> => ipcRenderer.invoke('places:poi-statistics', request)
   },
   datasets: {
     getEarthquakes: (): Promise<EarthquakeFeed> => ipcRenderer.invoke('datasets:earthquakes'),

@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository. Read this file before 
 
 ## Project
 
-**GuEarth** (`E:\Code\GuEarth`, GitHub: `HikaruQwQ/GuEarth`) is an Electron desktop "digital
+**GuEarth** (`E:\Code\GuEarth`, GitHub: `Proj-Pigeon/GuEarth`) is an Electron desktop "digital
 earth" for geography education — a local, Google-Earth-style 3D globe with terrain, integrated
 map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing tools.
 
@@ -30,6 +30,9 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 - Electron binaries must be installed manually with the npmmirror mirror:
   `ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" node node_modules/electron/install.js`
   (otherwise `npm run dev` fails with "Electron uninstall").
+- `npm run build:win` needs the electron-builder binaries mirror on networks without GitHub access:
+  `ELECTRON_BUILDER_BINARIES_MIRROR="https://npmmirror.com/mirrors/electron-builder-binaries/" npx electron-builder --win --publish never`
+  (otherwise the winCodeSign download fails with "fetch failed" during packaging).
 
 ## Architecture
 
@@ -57,7 +60,7 @@ Core platform:
 | 2 | Multi-provider layers, API-key settings (encrypted), terrain providers, tile cache | Done |
 | 3 | Teaching tools: draw point/line/polygon, measure distance/area, annotations, persistence | Done |
 | 4 | EOQ agent: provider-agnostic AI settings, streaming chat, tool-calling bridge | Done |
-| 5 | Packaging, auto-update stub, offline groundwork, performance | Pending |
+| 5 | Packaging (CI-built NSIS + GitHub Release), hash-verified auto-updater, offline groundwork, performance | In progress (offline packs & perf open, see issue #33) |
 
 Teaching modules (人教版高中地理 mapping; thematic layers live in `src/renderer/src/thematic/`, registered in `useThematicLayers.ts`):
 
@@ -69,8 +72,12 @@ Teaching modules (人教版高中地理 mapping; thematic layers live in `src/re
 | M4 | Ocean: ENSO phase layer (El Niño / La Niña SST anomaly + Walker circulation overlay + Niño3.4 box + phase panel), water-cycle animated panel with camera linkage, ocean temperature/salinity latitude profiles, tide & wave panel, river recharge & discharge panel, ocean-current + wind-belt linkage entry | Done |
 | M5 | Integrality/zonation: `find_peaks`, mountain vertical zonation profile, guided transect flights (`fly_transect`) | Planned |
 | M6 | Population (choropleth foundation, issue #39 Phase A): province GeoJSON served from `resources/geo/china-provinces.geojson` (vendored DataV GeoAtlas, GCJ-02, read via `datasets:provinces` IPC), province-level choropleth layer with census-binned coloring + click info cards, Hu line layer with east/west anchored overlay cards, migration-flow arrow layer, PopulationPanel (pyramid / urbanization / Hu-line tabs) + `BarChart` wrapper, `query_population` AI tool, `entries-human.json` knowledge file | Done |
-| M7 | Cities & towns: amap POI types/count/around expansion + `poi_statistics` tool, central-place verification panel, functional-zone anchored overlays, optional VIIRS night-lights WMTS imagery layer | Planned |
-| M8-M10 + far-term | Industry location, transport networks, environment & development (sea-level inundation), decision sandbox & Socratic agent (issue #39 Phase B/C) | Planned |
+| M7 | Cities & towns (issue #39 Phase B): amap `place/around` POI statistics with 20-category aggregation (`poiStatistics` in `src/main/ai/amap.ts`, main-process `poi_statistics` AI tool + `places:poi-statistics` IPC), city-tiers layer (five-tier cities with service-radius rings, clickable), functional-zones layer anchored on real Wuhan districts (`wuhanFunctionalDistricts`: Jianghan Road CBD, Qingshan WISCO, Zhuankou auto city, Optics Valley, etc.), CitiesPanel (tier table + central-place POI verification via high/low center comparison), `urbanCities.ts` data file, four new knowledge entries, optional VIIRS night-lights basemap (`viirs-night` provider via NASA GIBS Black Marble through the `guearth-tile` proxy, layer-manager "夜光" category) | Done |
+| M8 | Industry & agriculture location (issue #39 Phase C): `agri-regions` layer (nine commodity-grain bases + cotton/sugarcane/beet belts as hand-traced polygons, `agriculturalRegions.ts`), `industrial-bases` layer (four bases with pillar factors, `industrialBases.ts`), `industrial-transfers` flow-arc layer reusing the migration-arc primitives, main-process `analyze_location` AI tool (`locationAnalysis.ts`: POI composition + knowledge retrieval, elevation via `query_terrain` renderer round-trip in the agent), three knowledge entries, `tests/agri-regions.test.mjs` | Done |
+| M9 | Transportation (issue #39 Phase C): `hsr-network` layer (fifteen trunk lines with `openedYear`, per-year visibility via CallbackProperty, `hsrLines.ts`), `YearTimeline.vue` (slider + rAF playback 2008-2025) + `TransportPanel` (mileage growth chart, opened-line counter, terrain-safe case flyovers), `transport` Pinia store wired into TeachingLab/open_panel, two knowledge entries, `tests/hsr-lines.test.mjs` | Done |
+| M10 | Environment & development (issue #39 Phase C): `sea-level-rise` inundation simulation (coastal lowland grids for Bohai rim / Yellow River delta / Subei / Yangtze delta / PRD sampled via `sampleTerrainMostDetailed` with `globe.getHeight` fallback, results cached in `seaLevelRise.ts`, +0.5/1/2/5 m scenarios via destroy-rebuild watcher, retryable `sea-level-terrain` failure scope), EnvironmentPanel (scenario picker, per-zone area chart, zone flyovers), two knowledge entries, `tests/sea-level.test.mjs` | Done |
+| Phase C tooling | Decision & evaluation tooling (issue #39 Phase C): LocationDecisionPanel location-decision sandbox (four real-site cases with factor toggles + gaokao-structured AI critique prompt, `decisionSandbox.ts`), Socratic agent mode (`socraticEnabled` across preload/shared/settingsStore/agent system prompt + AI-settings "教学" tab), decision knowledge entry, `tests/decision-sandbox.test.mjs` | Done |
+| Far-term (Sel. Compulsory 2–3) | Food security, regional development, industrial-transfer deep-dive (issue #39 Beyond) | Planned |
 
 ## Commands
 
@@ -78,6 +85,7 @@ Teaching modules (人教版高中地理 mapping; thematic layers live in `src/re
 npm run dev        # electron-vite dev server + app
 npm run build      # production build
 npm run typecheck  # tsc (node) + vue-tsc (web)
+npm test           # node:test unit tests (tests/*.test.mjs), run by CI
 ```
 
 ## Docs
@@ -99,3 +107,14 @@ npm run typecheck  # tsc (node) + vue-tsc (web)
   backslash-separated segments.
 - Verify UI changes by running `npm run dev` and exercising the feature; report explicitly if a
   change could not be visually verified.
+- **Updater contract**: the update manifest at `GET {base}/update/win32/{currentVersion}` may ship
+  a `sha256` field (lowercase hex) for the installer it advertises. The stock hazel deployment
+  (`guearth-updater.isla.fan`) does not, so the client resolves the digest itself from the GitHub
+  releases API (`asset.digest` of the asset the manifest `url` points at — computed by GitHub at
+  upload time). When neither source yields a valid lowercase-hex digest the update is ignored
+  (fail closed). The client re-verifies cached and about-to-launch installers and ignores
+  non-upgrade versions. Ops note: the hazel deployment still points at the pre-transfer slug
+  `HikaruQwQ/GuEarth` and only works through GitHub's transfer redirect — a replacement update
+  source must take over the `guearth-updater.isla.fan` domain. Do not add a self-deployed
+  update-server implementation to this repository; client-side digest resolution makes one
+  unnecessary.

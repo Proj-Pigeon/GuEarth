@@ -12,6 +12,7 @@ const props = defineProps<{
   levelViewActive: boolean
   levelViewVisible: boolean
   labActive: boolean
+  nightBasemapActive: boolean
   updateStatus: UpdateStatus
   updateVersion: string
   updatePercent: number
@@ -41,6 +42,7 @@ const tools: { id: DrawTool; label: string; icon: Component }[] = [
 
 const levelViewIcon = computed(() => (props.levelViewActive ? EyeOutlined : AimOutlined))
 const levelViewTooltip = computed(() => (props.levelViewActive ? '恢复俯视视角' : '平视 3D 地形'))
+const labTooltip = computed(() => (props.nightBasemapActive ? '夜光模式下地理实验室不可用，切换回其他底图后恢复' : '地理实验室'))
 const updateVisible = computed(() => props.updateStatus !== 'idle')
 const updateTooltip = computed(() => {
   if (props.updateStatus === 'downloading') return props.updatePercent > 0 ? `正在下载新版本 ${props.updatePercent}%` : '正在下载新版本…'
@@ -62,8 +64,8 @@ const updateTooltip = computed(() => {
           <AppstoreOutlined />
         </a-button>
       </a-tooltip>
-      <a-tooltip title="地理实验室" placement="top">
-        <a-button type="text" class="toolbar-btn" :class="{ active: labActive }" aria-label="地理实验室" data-guide-target="lab" @click="$emit('toggleLab')">
+      <a-tooltip :title="labTooltip" placement="top">
+        <a-button type="text" class="toolbar-btn" :class="{ active: labActive }" :disabled="nightBasemapActive" aria-label="地理实验室" data-guide-target="lab" @click="$emit('toggleLab')">
           <ExperimentOutlined />
         </a-button>
       </a-tooltip>

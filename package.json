@@ -9,7 +9,8 @@
     "build:win": "npm run build && electron-builder --win --publish never",
     "build:mac": "npm run build && electron-builder --mac --publish never",
     "start": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json",
+    "test": "node --test \"tests/*.test.mjs\""
   },
   "overrides": {
     "app-builder-lib": {
@@ -20,7 +21,6 @@
   "devDependencies": {
     "@ant-design/x": "2.9.0",
     "@sentry/electron": "^8.0.0",
-    "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.6.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

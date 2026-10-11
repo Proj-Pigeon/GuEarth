@@ -19,6 +19,14 @@ import { typhoonIntensityStyles, typhoonTracks } from '@renderer/thematic/typhoo
 import { ensoAnomalyColor, ensoPhaseMeta } from '@renderer/thematic/ensoPhases'
 import { subsolarPointDeg } from '@renderer/thematic/solarMath'
 import { densityColor, densityOf, fanMigrationEndpoints, huLineEndpoints, huLineFacts, huLinePath, migrationFacts, migrationFlows, provincePopulation, provinceSummary, smoothMigrationPath } from '@renderer/thematic/populationCensus'
+import { cityTierOf, FUNCTIONAL_ZONES, urbanCities, wuhanFunctionalDistricts } from '@renderer/thematic/urbanCities'
+import { agriCategoryOf, agriculturalRegions, agriFacts, agriRegionSummary } from '@renderer/thematic/agriculturalRegions'
+import { industrialBases, industrialTransferFacts, industrialTransferFlows } from '@renderer/thematic/industrialBases'
+import { HSR_COLOR, hsrFacts, hsrLines } from '@renderer/thematic/hsrLines'
+import { cacheKeyOf, coastalZones, gridPointsOf, heightCache, isLandCell, isInundated, scenarioSummary, SEA_COLOR } from '@renderer/thematic/seaLevelRise'
+import { ensureSeaLevelSamples } from '@renderer/composables/seaLevelSampling'
+import { useGlobeStore } from '@renderer/stores/globe'
+import { useTransportStore } from '@renderer/stores/transport'
 
 const WARM_COLOR = '#f5222d'
 const COLD_COLOR = '#1677ff'
@@ -46,6 +54,7 @@ const LABEL_FONT_FAMILY = '"Microsoft YaHei", "PingFang SC", sans-serif'
 const HU_LINE_COLOR = '#531dab'
 const MIGRATION_FLOW_COLOR = '#fa8c16'
 const PROVINCE_BORDER_COLOR = 'rgba(0, 0, 0, 0.35)'
+const INDUSTRIAL_TRANSFER_COLOR = '#722ed1'
 const HU_LINE_MID_LON = 112.5
 const HU_LINE_MID_LAT = 36.5
 
@@ -65,6 +74,101 @@ function toCartesians(points: Array<[number, number]>): Cesium.Cartesian3[] {
 
 function toRingCartesians(points: Array<[number, number]>): Cesium.Cartesian3[] {
   return toCartesians(points).filter((cartesian, index, all) => index === 0 || !Cesium.Cartesian3.equals(cartesian, all[index - 1]))
+}
+
+interface LabeledPolygonRegionSpec {
+  properties: Cesium.PropertyBag
+  rings: Array<Array<[number, number]>>
+  color: Cesium.Color
+  fillAlpha: number
+  lineAlpha: number
+  lineWidth: number
+  labelText: string
+  labelAt: [number, number]
+  labelFontSize: number
+  labelPadding: [number, number]
+  labelMaxDistance?: number
+}
+
+function addLabeledPolygonRegion(dataSource: Cesium.CustomDataSource, spec: LabeledPolygonRegionSpec): void {
+  for (const ring of spec.rings) {
+    dataSource.entities.add({
+      properties: spec.properties,
+      polygon: {
+        hierarchy: new Cesium.PolygonHierarchy(toRingCartesians(ring)),
+        material: new Cesium.ColorMaterialProperty(spec.color.withAlpha(spec.fillAlpha))
+      }
+    })
+    dataSource.entities.add({
+      properties: spec.properties,
+      polyline: {
+        positions: toCartesians(ring),
+        clampToGround: true,
+        width: spec.lineWidth,
+        material: spec.color.withAlpha(spec.lineAlpha)
+      }
+    })
+  }
+  dataSource.entities.add({
+    properties: spec.properties,
+    position: Cesium.Cartesian3.fromDegrees(spec.labelAt[0], spec.labelAt[1]),
+    label: {
+      text: spec.labelText,
+      font: labelFont(spec.labelFontSize, 600),
+      fillColor: spec.color,
+      showBackground: true,
+      backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
+      backgroundPadding: new Cesium.Cartesian2(spec.labelPadding[0], spec.labelPadding[1]),
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      distanceDisplayCondition: spec.labelMaxDistance !== undefined
+        ? new Cesium.DistanceDisplayCondition(0, spec.labelMaxDistance)
+        : undefined
+    }
+  })
+}
+
+interface LabeledPointOverlaySpec {
+  properties: Cesium.PropertyBag
+  longitude: number
+  latitude: number
+  color: Cesium.Color
+  labelText: string
+  pixelSize: number
+  labelFontWeight?: number
+  labelFillColor?: Cesium.Color
+  backgroundAlpha?: number
+  pixelOffset?: [number, number]
+  labelMaxDistance?: number
+}
+
+function addLabeledPointOverlay(dataSource: Cesium.CustomDataSource, spec: LabeledPointOverlaySpec): void {
+  dataSource.entities.add({
+    properties: spec.properties,
+    position: Cesium.Cartesian3.fromDegrees(spec.longitude, spec.latitude),
+    point: {
+      pixelSize: spec.pixelSize,
+      color: spec.color,
+      outlineColor: Cesium.Color.WHITE,
+      outlineWidth: 1.6,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    },
+    label: {
+      text: spec.labelText,
+      font: labelFont(12, spec.labelFontWeight ?? 600),
+      fillColor: spec.labelFillColor ?? spec.color,
+      showBackground: true,
+      backgroundColor: Cesium.Color.WHITE.withAlpha(spec.backgroundAlpha ?? 0.78),
+      backgroundPadding: new Cesium.Cartesian2(6, 3),
+      pixelOffset: new Cesium.Cartesian2(spec.pixelOffset?.[0] ?? 0, spec.pixelOffset?.[1] ?? -18),
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      distanceDisplayCondition: spec.labelMaxDistance !== undefined
+        ? new Cesium.DistanceDisplayCondition(0, spec.labelMaxDistance)
+        : undefined
+    }
+  })
 }
 
 function arrowHeadPositions(from: [number, number], to: [number, number], size: number): Cesium.Cartesian3[] {
@@ -147,7 +251,9 @@ function migrationLabelAt(path: Array<[number, number]>, offset: number): [numbe
 export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void {
   const store = useClimateStore()
   const solarStore = useSolarStore()
+  const transportStore = useTransportStore()
   const failureStore = useFailureStore()
+  const globeStore = useGlobeStore()
   const sources = new Map<ThematicLayerId, Cesium.CustomDataSource>()
   const coriolisProgress = ref(0)
   useVisibleAnimation(() => store.overlays['coriolis-demo'] && Boolean(viewer.value), (dt) => {
@@ -977,6 +1083,321 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     }
   }
 
+  function circleRingDegrees(longitude: number, latitude: number, km: number, segments = 48): Array<[number, number]> {
+    const ring: Array<[number, number]> = []
+    const latRad = (latitude * Math.PI) / 180
+    const degPerKmLng = 111.32 * Math.cos(latRad)
+    for (let index = 0; index <= segments; index += 1) {
+      const angle = (index / segments) * 2 * Math.PI
+      ring.push([
+        Number((longitude + (km * Math.cos(angle)) / Math.max(degPerKmLng, 1e-6)).toFixed(4)),
+        Number((latitude + (km * Math.sin(angle)) / 110.57).toFixed(4))
+      ])
+    }
+    return ring
+  }
+
+  function buildCityTiers(dataSource: Cesium.CustomDataSource): void {
+    for (const city of urbanCities) {
+      const tier = cityTierOf(city.tier)
+      const color = Cesium.Color.fromCssColorString(tier.color)
+      const properties = new Cesium.PropertyBag({
+        name: `${city.name}（${tier.name}）`,
+        layerId: 'city-tiers',
+        summary: `${city.role}。常住人口 ${city.populationWan} 万${city.urbanizationPct !== null ? `，城镇化率 ${city.urbanizationPct}%` : ''}。${tier.description}。`
+      })
+      const pointSize = city.tier === 'national-center' ? 14 : city.tier === 'regional-center' ? 12 : city.tier === 'provincial-center' ? 10 : city.tier === 'prefecture' ? 8 : 6
+      addLabeledPointOverlay(dataSource, {
+        properties,
+        longitude: city.longitude,
+        latitude: city.latitude,
+        color,
+        labelText: city.name,
+        pixelSize: pointSize,
+        labelFontWeight: city.tier === 'county' ? 400 : 600,
+        labelFillColor: Cesium.Color.fromCssColorString(city.tier === 'county' ? 'rgba(0,0,0,0.65)' : tier.color),
+        backgroundAlpha: 0.72,
+        pixelOffset: [0, -(pointSize + 9)],
+        labelMaxDistance: city.tier === 'county' ? 6500000 : 17000000
+      })
+      const ring = circleRingDegrees(city.longitude, city.latitude, tier.serviceRadiusKm)
+      dataSource.entities.add({
+        properties,
+        polyline: {
+          positions: toCartesians(ring),
+          clampToGround: true,
+          width: 1.4,
+          material: color.withAlpha(0.45)
+        }
+      })
+    }
+  }
+
+  function buildFunctionalZones(dataSource: Cesium.CustomDataSource): void {
+    for (const district of wuhanFunctionalDistricts) {
+      const spec = FUNCTIONAL_ZONES.find((item) => item.kind === district.kind) ?? FUNCTIONAL_ZONES[0]
+      const color = Cesium.Color.fromCssColorString(spec.color)
+      const properties = new Cesium.PropertyBag({
+        name: `${district.name}（${spec.name}）`,
+        layerId: 'functional-zones',
+        summary: `${district.note}。${spec.summary}`
+      })
+      const ringCartesians = toRingCartesians(circleRingDegrees(district.longitude, district.latitude, district.radiusKm, 48))
+      dataSource.entities.add({
+        properties,
+        polygon: {
+          hierarchy: new Cesium.PolygonHierarchy(ringCartesians),
+          height: 0,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          material: color.withAlpha(0.25)
+        }
+      })
+      dataSource.entities.add({
+        properties,
+        polyline: {
+          positions: ringCartesians,
+          clampToGround: true,
+          width: 2.2,
+          material: color.withAlpha(0.9)
+        }
+      })
+      addLabeledPointOverlay(dataSource, {
+        properties,
+        longitude: district.longitude,
+        latitude: district.latitude,
+        color,
+        labelText: district.name,
+        pixelSize: 9,
+        labelMaxDistance: 600000
+      })
+    }
+  }
+
+  function buildAgriRegions(dataSource: Cesium.CustomDataSource): void {
+    const overview = agriFacts[0]
+    for (const region of agriculturalRegions) {
+      const meta = agriCategoryOf(region.category)
+      addLabeledPolygonRegion(dataSource, {
+        properties: new Cesium.PropertyBag({
+          name: `${region.name}（${meta.name}·${region.crop}）`,
+          layerId: 'agri-regions',
+          summary: `${agriRegionSummary(region)}${overview}`
+        }),
+        rings: region.rings,
+        color: Cesium.Color.fromCssColorString(meta.color),
+        fillAlpha: 0.22,
+        lineAlpha: 0.8,
+        lineWidth: 1.6,
+        labelText: region.name,
+        labelAt: region.labelAt,
+        labelFontSize: 12,
+        labelPadding: [6, 3],
+        labelMaxDistance: region.category === 'grain' ? 10500000 : 7800000
+      })
+    }
+  }
+
+  function buildIndustrialBases(dataSource: Cesium.CustomDataSource): void {
+    for (const base of industrialBases) {
+      addLabeledPolygonRegion(dataSource, {
+        properties: new Cesium.PropertyBag({
+          name: base.name,
+          layerId: 'industrial-bases',
+          summary: `${base.summary}主导区位：${base.pillars.join('；')}。`
+        }),
+        rings: base.rings,
+        color: Cesium.Color.fromCssColorString(base.color),
+        fillAlpha: 0.24,
+        lineAlpha: 0.85,
+        lineWidth: 2,
+        labelText: base.name,
+        labelAt: base.labelAt,
+        labelFontSize: 13,
+        labelPadding: [7, 4]
+      })
+    }
+  }
+
+  function buildIndustrialTransfers(dataSource: Cesium.CustomDataSource): void {
+    const color = Cesium.Color.fromCssColorString(INDUSTRIAL_TRANSFER_COLOR)
+    const overview = industrialTransferFacts[0] + industrialTransferFacts[1]
+    const fannedEndpoints = fanMigrationEndpoints(industrialTransferFlows)
+    for (const flow of industrialTransferFlows) {
+      const rawPath = flow.path ?? [flow.from, flow.to]
+      const endpoint = fannedEndpoints.get(flow) ?? flow.to
+      const adjustedPath: Array<[number, number]> = [...rawPath.slice(0, -1), endpoint]
+      const path = smoothMigrationPath(adjustedPath)
+      const label = `${flow.fromName}→${flow.toName}`
+      const properties = new Cesium.PropertyBag({
+        name: `产业转移：${label}`,
+        layerId: 'industrial-transfers',
+        summary: `产业由${flow.fromName}向${flow.toName}转移${flow.note ? `（${flow.note}）` : ''}。${overview}`
+      })
+      const lengthDeg = migrationPathLength(path)
+      const arcHeight = Math.min(380000, Math.max(40000, lengthDeg * 22000))
+      const heights = path.map((_, index) => {
+        const t = index / (path.length - 1)
+        return arcHeight * Math.sin(Math.PI * t)
+      })
+      dataSource.entities.add({
+        properties,
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights(path.flatMap((point, index) => [point[0], point[1], heights[index]])),
+          arcType: Cesium.ArcType.NONE,
+          width: flow.weight === 'major' ? 3.5 : 2.2,
+          material: color.withAlpha(flow.weight === 'major' ? 0.9 : 0.72)
+        }
+      })
+      dataSource.entities.add({
+        properties,
+        polygon: {
+          hierarchy: new Cesium.PolygonHierarchy(migrationArrowHeadPositions(path, migrationHeadSize(path))),
+          height: 0,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          material: color.withAlpha(0.96)
+        }
+      })
+      const primaryLabel = flow.weight === 'major'
+      const [lon, lat] = migrationLabelAt(path, primaryLabel ? 0.9 : 0.75)
+      dataSource.entities.add({
+        properties,
+        position: Cesium.Cartesian3.fromDegrees(lon, lat, arcHeight),
+        label: {
+          text: label,
+          font: labelFont(12, 600),
+          fillColor: color,
+          showBackground: true,
+          backgroundColor: Cesium.Color.WHITE.withAlpha(0.78),
+          backgroundPadding: new Cesium.Cartesian2(6, 3),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, primaryLabel ? 15000000 : 4600000)
+        }
+      })
+    }
+  }
+
+  function buildHsrNetwork(dataSource: Cesium.CustomDataSource): void {
+    const color = Cesium.Color.fromCssColorString(HSR_COLOR)
+    const overview = hsrFacts[0]
+    for (const line of hsrLines) {
+      const properties = new Cesium.PropertyBag({
+        name: `${line.name}（${line.openedYear} 年开通）`,
+        layerId: 'hsr-network',
+        summary: `${line.note}。全长约 ${line.lengthKm} 公里，设计时速 ${line.designSpeed} 公里。${overview}`
+      })
+      const opened = new Cesium.CallbackProperty(() => line.openedYear <= Math.floor(transportStore.year), false)
+      dataSource.entities.add({
+        properties,
+        polyline: {
+          positions: toCartesians(line.path),
+          clampToGround: true,
+          width: 2.6,
+          material: color.withAlpha(0.9),
+          show: opened
+        }
+      })
+      const mid = line.path[Math.floor(line.path.length / 2)]
+      dataSource.entities.add({
+        properties,
+        position: Cesium.Cartesian3.fromDegrees(mid[0], mid[1]),
+        label: {
+          text: `${line.name}·${line.openedYear}`,
+          font: labelFont(11, 600),
+          fillColor: color,
+          showBackground: true,
+          backgroundColor: Cesium.Color.WHITE.withAlpha(0.78),
+          backgroundPadding: new Cesium.Cartesian2(5, 3),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, line.lengthKm > 1000 ? 12000000 : 7500000),
+          show: opened
+        }
+      })
+    }
+  }
+
+  function buildSeaLevelRise(dataSource: Cesium.CustomDataSource): void {
+    void addInundationCells(dataSource)
+  }
+
+  async function addInundationCells(dataSource: Cesium.CustomDataSource): Promise<void> {
+    const current = viewer.value
+    if (!current || current.isDestroyed()) return
+    const outcome = await ensureSeaLevelSamples(current)
+    if (sources.get('sea-level-rise') !== dataSource) return
+    if (outcome === 'terrain-required') {
+      failureStore.reportFailure({ scope: 'sea-level-terrain', message: '未加载真实地形，淹没模拟不可用', detail: '可能因启动时网络较慢，地形源已被自动降级为椭球。请在「图层管理 → 地形」选择「全球 3D 地形」，切换后本图层会自动重建', retryable: true })
+      return
+    }
+    if (outcome === 'failed') {
+      failureStore.reportFailure({ scope: 'sea-level-terrain', message: '地形采样失败，淹没模拟不可用', detail: '地形源不可达或网络受限，稍后点击重试', retryable: true })
+      return
+    }
+    failureStore.clearFailure('sea-level-terrain')
+    const rise = store.seaLevelRise
+    const color = Cesium.Color.fromCssColorString(SEA_COLOR)
+    const properties = new Cesium.PropertyBag({
+      name: `海平面上升 +${rise} 米情景`,
+      layerId: 'sea-level-rise',
+      summary: scenarioSummary(rise)
+    })
+    for (const zone of coastalZones) {
+      for (const [lon, lat] of gridPointsOf(zone)) {
+        const height = heightCache.get(cacheKeyOf(lon, lat))
+        if (height === undefined || !isLandCell(lon, lat, height) || !isInundated(height, rise)) continue
+        const half = zone.step / 2
+        dataSource.entities.add({
+          properties,
+          polygon: {
+            hierarchy: new Cesium.PolygonHierarchy(
+              Cesium.Cartesian3.fromDegreesArray([lon - half, lat - half, lon + half, lat - half, lon + half, lat + half, lon - half, lat + half])
+            ),
+            height: rise,
+            material: color.withAlpha(0.5)
+          }
+        })
+      }
+    }
+    for (const zone of coastalZones) {
+      dataSource.entities.add({
+        properties: new Cesium.PropertyBag({
+          name: zone.name,
+          layerId: 'sea-level-rise',
+          summary: `${zone.note}。${scenarioSummary(store.seaLevelRise)}`
+        }),
+        position: Cesium.Cartesian3.fromDegrees(zone.center[0], zone.center[1]),
+        label: {
+          text: zone.name,
+          font: labelFont(12, 600),
+          fillColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.65)'),
+          showBackground: true,
+          backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
+          backgroundPadding: new Cesium.Cartesian2(6, 3),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 9000000)
+        }
+      })
+    }
+  }
+
+  function rebuildSeaLevelRise(): void {
+    const current = viewer.value
+    if (!current || current.isDestroyed()) return
+    const existing = sources.get('sea-level-rise')
+    if (!existing) return
+    current.dataSources.remove(existing, true)
+    sources.delete('sea-level-rise')
+    const dataSource = new Cesium.CustomDataSource('sea-level-rise')
+    try {
+      buildSeaLevelRise(dataSource)
+    } catch (error) {
+      console.error('[thematic] failed to rebuild sea-level layer', error)
+    }
+    void current.dataSources.add(dataSource)
+    sources.set('sea-level-rise', dataSource)
+  }
+
   function provinceRingsToHierarchy(rings: number[][][]): Cesium.PolygonHierarchy | null {
     const [outer, ...holes] = rings.map((ring) => toRingCartesians(ring.map(([lon, lat]) => [lon, lat] as [number, number])))
     if (!outer || outer.length < 3) return null
@@ -1046,7 +1467,14 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'enso': buildEnso,
     'province-population': buildProvincePopulation,
     'hu-line': buildHuLine,
-    'migration-flows': buildMigrationFlows
+    'migration-flows': buildMigrationFlows,
+    'city-tiers': buildCityTiers,
+    'functional-zones': buildFunctionalZones,
+    'agri-regions': buildAgriRegions,
+    'industrial-bases': buildIndustrialBases,
+    'industrial-transfers': buildIndustrialTransfers,
+    'hsr-network': buildHsrNetwork,
+    'sea-level-rise': buildSeaLevelRise
   }
 
   const enableViews: Partial<Record<ThematicLayerId, LayerView>> = {
@@ -1056,6 +1484,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'rain-belt': { longitude: 112, latitude: 30, height: 4500000 },
     'summer-monsoon': { longitude: 96, latitude: 24, height: 7500000 },
     'winter-monsoon': { longitude: 108, latitude: 32, height: 7500000 },
+    'ocean-currents': { longitude: 150, latitude: 8, height: 17000000 },
     'climate-zones': { longitude: 104, latitude: 34, height: 5200000 },
     'coriolis-demo': { longitude: 100, latitude: 0, height: 12000000 },
     'plate-tectonics': { longitude: 180, latitude: 5, height: 17000000 },
@@ -1064,7 +1493,14 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'enso': { longitude: -155, latitude: 0, height: 9500000 },
     'province-population': { longitude: 104, latitude: 35, height: 11000000 },
     'hu-line': { longitude: 112, latitude: 36, height: 9000000 },
-    'migration-flows': { longitude: 110, latitude: 30, height: 10000000 }
+    'migration-flows': { longitude: 110, latitude: 30, height: 10000000 },
+    'city-tiers': { longitude: 108, latitude: 33, height: 10500000 },
+    'functional-zones': { longitude: 114.34, latitude: 30.56, height: 130000 },
+    'agri-regions': { longitude: 108, latitude: 34, height: 9500000 },
+    'industrial-bases': { longitude: 118, latitude: 32, height: 8500000 },
+    'industrial-transfers': { longitude: 112, latitude: 28, height: 9000000 },
+    'hsr-network': { longitude: 113, latitude: 33, height: 10000000 },
+    'sea-level-rise': { longitude: 119.6, latitude: 31.6, height: 9500000 }
   }
 
   function buildEntities(dataSource: Cesium.CustomDataSource, build: () => void): void {
@@ -1145,6 +1581,13 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     }
     await addEarthquakeEntities(dataSource)
   })
+  failureStore.registerRetry('sea-level-terrain', async () => {
+    if (!sources.get('sea-level-rise')) {
+      failureStore.clearFailure('sea-level-terrain')
+      return
+    }
+    rebuildSeaLevelRise()
+  })
   watch(() => Math.round(store.month * 4) / 4, refreshPressureBeltGeometry)
   function requestRender(): void {
     const current = viewer.value
@@ -1153,6 +1596,10 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
   watch(() => Math.round(store.month * 20) / 20, (month) => { refreshRainBelt(month); requestRender() })
   watch([() => store.summerStrength > 0.5, () => store.winterStrength > 0.5], () => { refreshSeasonalCurrents(); requestRender() })
   watch(() => solarStore.utcMs, () => { refreshSubsolarPoint(); requestRender() })
+  watch(() => store.seaLevelRise, rebuildSeaLevelRise)
+  watch(() => globeStore.activeTerrainId, () => {
+    if (sources.get('sea-level-rise')) rebuildSeaLevelRise()
+  })
   watch(viewer, (_current, previous) => {
     clearSources(previous)
     syncOverlays()

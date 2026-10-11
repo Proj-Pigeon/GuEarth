@@ -12,6 +12,7 @@ export function defaultAiSettings(): AiSettings {
     searchProviders: defaultSearchProviders(),
     activeSearchProviderId: 'baidu',
     skipDeleteConversationConfirm: false,
-    memoryEnabled: true
+    memoryEnabled: true,
+    socraticEnabled: false
   }
 }

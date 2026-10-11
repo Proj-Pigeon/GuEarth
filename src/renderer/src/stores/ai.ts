@@ -61,6 +61,8 @@ export interface RendererTool {
 
 const MAIN_PROCESS_TOOL_LABELS: Record<string, string> = {
   search_place: '地点检索',
+  poi_statistics: 'POI 统计',
+  analyze_location: '区位分析',
   web_search: '联网搜索',
   retrieve_knowledge: '知识库检索',
   save_memory: '写入记忆',
@@ -69,7 +71,8 @@ const MAIN_PROCESS_TOOL_LABELS: Record<string, string> = {
 
 const MAIN_PROCESS_RUNNING_LABELS: Record<string, string> = {
   save_memory: '正在写入记忆',
-  delete_memory: '正在删除记忆'
+  delete_memory: '正在删除记忆',
+  analyze_location: '正在分析区位'
 }
 
 export function toolLabel(name: string, running = false): string {
@@ -509,6 +512,12 @@ export const useAiStore = defineStore('ai', () => {
     await saveSettings(next)
   }
 
+  async function setSocraticEnabled(value: boolean): Promise<void> {
+    const next = JSON.parse(JSON.stringify(settings.value)) as AiSettings
+    next.socraticEnabled = value
+    await saveSettings(next)
+  }
+
   function activeModelReady(): boolean {
     const provider = settings.value.providers.find((item) => item.id === settings.value.activeProviderId)
     return Boolean(provider?.models.some((model) => model.id === settings.value.activeModelId))
@@ -690,7 +699,7 @@ export const useAiStore = defineStore('ai', () => {
 
   return {
     settings, messages, conversations, currentConversationId, isStreaming, isPanelOpen, isSettingsOpen, hydrated, contextStats, contextCompressionStatus, contextCompressionNotice, modelRetryNotice,
-    hydrate, registerTool, saveSettings, setSkipDeleteConversationConfirm, setMemoryEnabled, setActiveModel, send, stop, resendFrom, regenerate, retryLast, compressContext, newConversation, openConversation, deleteConversation, persistConversation, setPanelOpen, setSettingsOpen,
+    hydrate, registerTool, saveSettings, setSkipDeleteConversationConfirm, setMemoryEnabled, setSocraticEnabled, setActiveModel, send, stop, resendFrom, regenerate, retryLast, compressContext, newConversation, openConversation, deleteConversation, persistConversation, setPanelOpen, setSettingsOpen,
     activeModelVisionEnabled
   }
 })

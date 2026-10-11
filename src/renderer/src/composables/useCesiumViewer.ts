@@ -5,6 +5,7 @@ import { useSolarStore } from '@renderer/stores/solar'
 import { useFailureStore } from '@renderer/stores/failure'
 import { captureError, captureWarning } from '@renderer/lib/crashReporter'
 import { logger, stringifyLogValue } from '../../../common/logger'
+import { isMirrorSatelliteProvider, mirrorEligibleProviders, withinMirrorSatelliteDetail } from '../../../common/tileMirror'
 import type { PlaceSuggestion } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
@@ -21,7 +22,8 @@ const layerRegistry: Record<string, LayerProvider> = {
   osm: { meta: providerMeta('osm'), createImageryProvider: async (styleId) => createBasemapImageryProvider('osm', styleId) },
   'esri-imagery': { meta: providerMeta('esri-imagery'), createImageryProvider: async (styleId) => createBasemapImageryProvider('esri-imagery', styleId) },
   opentopomap: { meta: providerMeta('opentopomap'), createImageryProvider: async (styleId) => createBasemapImageryProvider('opentopomap', styleId) },
-  baidu: { meta: providerMeta('baidu'), createImageryProvider: async (styleId) => createBasemapImageryProvider('baidu', styleId) }
+  baidu: { meta: providerMeta('baidu'), createImageryProvider: async (styleId) => createBasemapImageryProvider('baidu', styleId) },
+  'viirs-night': { meta: providerMeta('viirs-night'), createImageryProvider: async (styleId) => createBasemapImageryProvider('viirs-night', styleId) }
 }
 
 const terrainRegistry: Record<string, () => Promise<Cesium.TerrainProvider>> = {
@@ -36,6 +38,7 @@ const providerName = (id: string): string => layerRegistry[id]?.meta.name ?? id
 const GLOBE_LOAD_TIMEOUT_MS = 20_000
 const TILE_RECOVERY_GRACE_MS = 3_000
 const TERRAIN_RESOLVE_BUDGET_MS = 4_000
+const MIRROR_OVERSEAS_MIN_CAMERA_HEIGHT_M = 150_000
 
 type LayerLoadResult =
   | { ok: true }
@@ -80,6 +83,8 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   let tileProgressListener: ((pending: number) => void) | undefined
   let selectedPlaceMarker: Cesium.Entity | undefined
   let polarCaps: Cesium.Primitive | undefined
+  let mirrorListenerDisposer: (() => void) | undefined
+  let mirrorOverseasNoticeShown = false
 
   function updatePolarCapsVisibility(): void {
     if (polarCaps && viewer.value) polarCaps.show = viewer.value.scene.mode === Cesium.SceneMode.SCENE3D
@@ -595,6 +600,45 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     await setTerrain(store.terrainProviderId, generation)
   }
 
+  function reloadMirrorBasemapLayers(): void {
+    for (const id of Object.keys(mirrorEligibleProviders)) {
+      const layer = imageryLayers.get(id)
+      if (!layer) continue
+      imageryLayers.delete(id)
+      retireImageryLayer(layer)
+    }
+    const id = store.selectedLayerId
+    if (!mirrorEligibleProviders[id]) return
+    void addLayer(id, generation).then((result) => {
+      if (result.ok) {
+        if (store.selectedLayerId === id) revealBasemap(id)
+        return
+      }
+      if (result.reason === 'cancelled' || result.reason === 'inflight') return
+      store.setGlobeError(result.message, result.detail)
+    })
+  }
+
+  function clampMirrorOverseasZoom(): void {
+    const currentViewer = viewer.value
+    if (!currentViewer || currentViewer.isDestroyed()) return
+    if (!store.tileMirrorEnabled || !isMirrorSatelliteProvider(activeBasemapId)) return
+    const camera = currentViewer.camera
+    const cartographic = camera.positionCartographic
+    if (cartographic.height >= MIRROR_OVERSEAS_MIN_CAMERA_HEIGHT_M) return
+    const longitude = Cesium.Math.toDegrees(cartographic.longitude)
+    const latitude = Cesium.Math.toDegrees(cartographic.latitude)
+    if (withinMirrorSatelliteDetail(longitude, latitude)) return
+    camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, MIRROR_OVERSEAS_MIN_CAMERA_HEIGHT_M),
+      orientation: { heading: camera.heading, pitch: camera.pitch, roll: camera.roll }
+    })
+    if (!mirrorOverseasNoticeShown) {
+      mirrorOverseasNoticeShown = true
+      failureStore.reportDegrade('海外区域卫星影像层级有限，已抬升视角')
+    }
+  }
+
   function applyTerrainRendering(): void {
     const currentViewer = viewer.value
     if (!currentViewer || currentViewer.isDestroyed()) return
@@ -731,6 +775,12 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
         attachHorizonTracking(currentViewer)
         currentViewer.scene.renderError.addEventListener(handleSceneRenderError)
         currentViewer.camera.moveEnd.addEventListener(updateCameraState)
+        currentViewer.camera.moveEnd.addEventListener(clampMirrorOverseasZoom)
+        mirrorListenerDisposer = window.guEarth.tiles.onMirrorChanged((enabled) => {
+          mirrorOverseasNoticeShown = false
+          reloadMirrorBasemapLayers()
+          failureStore.reportDegrade(`高德镜像源已${enabled ? '开启' : '关闭'}`)
+        })
         updateCameraState()
         let terrainSetup: { provider: Cesium.TerrainProvider; id: string } | undefined
         let terrainApplied = false
@@ -795,6 +845,9 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     const currentViewer = viewer.value
     if (!currentViewer || currentViewer.isDestroyed()) return
     currentViewer.camera.moveEnd.removeEventListener(updateCameraState)
+    currentViewer.camera.moveEnd.removeEventListener(clampMirrorOverseasZoom)
+    mirrorListenerDisposer?.()
+    mirrorListenerDisposer = undefined
     currentViewer.scene.preUpdate.removeEventListener(updatePolarCapsVisibility)
     currentViewer.scene.preUpdate.removeEventListener(updateDepthTestDistance)
     currentViewer.scene.preUpdate.removeEventListener(updateCollectionDepthTestDistances)

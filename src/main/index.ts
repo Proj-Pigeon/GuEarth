@@ -2,6 +2,8 @@ import * as Sentry from '@sentry/electron/main'
 import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, session } from 'electron'
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
+import { mirrorEligibleProviders } from '../common/tileMirror'
+import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 
 attachConsoleLogTee('main')
 
@@ -24,11 +26,13 @@ import icon from '../../resources/icon.png?asset'
 import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey } from '../preload'
 import { assertEncryptionAvailable, assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
 import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
+import { tileWgs84ShiftPixels, warpTileToWgs84 } from './tileWarp'
+import type { WarpSourceTile } from './tileWarp'
 import { AiSettingsStore } from './ai/settingsStore'
 import { AiChatHistoryStore } from './ai/chatHistoryStore'
 import { AiMemoryStore } from './ai/memoryStore'
 import { registerAiIpcHandlers } from './ai/agent'
-import { searchPlaces } from './ai/amap'
+import { poiStatistics, searchPlaces } from './ai/amap'
 import { searchBaiduPlaces } from './ai/baidu'
 import { beginPlacesRequest } from './ai/searchThrottle'
 import { initDatasets, loadEarthquakeFeed, loadProvinceGeometry } from './datasets'
@@ -40,6 +44,7 @@ interface PersistedSettings {
   terrainExaggeration: number
   terrainLighting: boolean
   tileCacheEnabled: boolean
+  tileMirrorEnabled: boolean
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -54,6 +59,7 @@ const defaultSettings: PersistedSettings = {
   terrainExaggeration: 2,
   terrainLighting: false,
   tileCacheEnabled: true,
+  tileMirrorEnabled: false,
   networkProxy: '',
   providerStyles: {
     osm: 'standard',
@@ -68,6 +74,7 @@ const defaultSettings: PersistedSettings = {
 }
 
 const TILE_TTL_MS = 86_400_000
+
 const TILE_CACHE_MAX_BYTES = 512 * 1024 * 1024
 const TILE_CACHE_PRUNE_INTERVAL_MS = 10 * 60 * 1000
 
@@ -120,6 +127,7 @@ async function readSettings(): Promise<PersistedSettings> {
       terrainExaggeration: typeof parsed.terrainExaggeration === 'number' && Number.isFinite(parsed.terrainExaggeration) ? Math.min(5, Math.max(1, parsed.terrainExaggeration)) : defaultSettings.terrainExaggeration,
       terrainLighting: parsed.terrainLighting === true,
       tileCacheEnabled: parsed.tileCacheEnabled !== false,
+      tileMirrorEnabled: parsed.tileMirrorEnabled === true,
       networkProxy: normalizeNetworkProxy(parsed.networkProxy),
       providerStyles: normalizedStyles,
       providerCredentials,
@@ -277,8 +285,12 @@ function computeBaiduSn(path: string, queryString: string, sk: string): string {
   return createHash('md5').update(plaintext).digest('hex')
 }
 
-function tileRemoteUrl(providerId: string, styleId: string, level: number, x: number, y: number): string | undefined {
+function tileRemoteUrl(providerId: string, styleId: string, level: number, x: number, y: number, granuleDate?: string): string | undefined {
   if (providerId === 'osm') return `https://tile.openstreetmap.org/${level}/${x}/${y}.png`
+  if (providerId === 'viirs-night') {
+    if (level > 8) return undefined
+    return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_DayNightBand_AtSensor_M15/default/${granuleDate ?? viirsGranuleDate()}/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`
+  }
   if (providerId === 'esri-imagery') return `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${level}/${y}/${x}`
   if (providerId === 'opentopomap') return `https://${['a', 'b', 'c'][((x % 3) + 3) % 3]}.tile.opentopomap.org/${level}/${x}/${y}.png`
   if (providerId === 'baidu') {
@@ -310,6 +322,16 @@ const TILE_FETCH_HEADERS = {
   'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
 }
 
+const AMAP_FALLBACK_MAX_LEVEL = 18
+const amapFallbackSubdomains = ['01', '02', '03', '04']
+
+function amapFallbackTileUrl(kind: 'vector' | 'satellite', level: number, x: number, y: number): string | undefined {
+  if (level > AMAP_FALLBACK_MAX_LEVEL) return undefined
+  const subdomain = amapFallbackSubdomains[((x + y) % amapFallbackSubdomains.length + amapFallbackSubdomains.length) % amapFallbackSubdomains.length]
+  if (kind === 'satellite') return `https://webst${subdomain}.is.autonavi.com/appmaptile?style=6&x=${x}&y=${y}&z=${level}`
+  return `https://webrd${subdomain}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x=${x}&y=${y}&z=${level}`
+}
+
 async function fetchTileWithRetry(url: string): Promise<Response> {
   let lastError: unknown
   for (let attempt = 0; attempt < TILE_FETCH_ATTEMPTS; attempt++) {
@@ -322,20 +344,108 @@ async function fetchTileWithRetry(url: string): Promise<Response> {
   throw lastError
 }
 
+const mirrorLoggedProviders = new Set<string>()
+
+async function clearMirrorProviderTileCache(): Promise<void> {
+  for (const providerId of Object.keys(mirrorEligibleProviders)) {
+    await rm(join(tileCachePath, safeId(providerId)), { recursive: true, force: true })
+  }
+}
+
+function broadcastTileMirrorChanged(enabled: boolean): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('tiles:mirror-changed', enabled)
+  }
+}
+
+const amapSourceTileInFlight = new Map<string, Promise<WarpSourceTile | null>>()
+
+function fetchAmapSourceTile(kind: 'vector' | 'satellite', level: number, x: number, y: number): Promise<WarpSourceTile | null> {
+  const mapKey = `${kind}/${level}/${x}/${y}`
+  const inFlight = amapSourceTileInFlight.get(mapKey)
+  if (inFlight) return inFlight
+  const request = loadAmapSourceTile(kind, level, x, y).finally(() => {
+    amapSourceTileInFlight.delete(mapKey)
+  })
+  amapSourceTileInFlight.set(mapKey, request)
+  return request
+}
+
+async function loadAmapSourceTile(kind: 'vector' | 'satellite', level: number, x: number, y: number): Promise<WarpSourceTile | null> {
+  const key: TileKey = { providerId: `amap-${kind}`, styleId: 'raw', level, x, y }
+  const cached = await cachedTileResponse(key, false)
+  if (cached) {
+    try {
+      return { buffer: await cached.arrayBuffer(), contentType: cached.headers.get('content-type') ?? 'image/png' }
+    } catch {
+      return null
+    }
+  }
+  const url = amapFallbackTileUrl(kind, level, x, y)
+  if (!url) return null
+  try {
+    const response = await fetchTileWithRetry(url)
+    if (!response.ok) return null
+    const buffer = await response.arrayBuffer()
+    const contentType = response.headers.get('content-type') ?? 'image/png'
+    if (settings.tileCacheEnabled) void writeTile({ ...key, data: buffer, contentType, expiresAt: Date.now() + TILE_TTL_MS })
+    return { buffer, contentType }
+  } catch {
+    return null
+  }
+}
+
+async function mirrorTileResponse(providerId: string, key: TileKey): Promise<Response | null> {
+  const kind = mirrorEligibleProviders[providerId]
+  if (!kind) return null
+  const { level, x, y } = key
+  if (!mirrorLoggedProviders.has(providerId)) {
+    mirrorLoggedProviders.add(providerId)
+    logger.info('tiles', `镜像瓦片源已开启，${providerId} 使用高德境内瓦片（GCJ-02 纠偏回 WGS84）`)
+  }
+  const shift = tileWgs84ShiftPixels(level, x, y)
+  if (!shift) {
+    const fallbackUrl = amapFallbackTileUrl(kind, level, x, y)
+    if (!fallbackUrl) return null
+    try {
+      const response = await fetchTileWithRetry(fallbackUrl)
+      if (!response.ok) return null
+      const data = await response.arrayBuffer()
+      const contentType = response.headers.get('content-type') ?? 'image/png'
+      if (settings.tileCacheEnabled) void writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
+      return new Response(data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'amap' } })
+    } catch {
+      return null
+    }
+  }
+  const warped = await warpTileToWgs84(level, x, y, (sourceLevel, sourceX, sourceY) => fetchAmapSourceTile(kind, sourceLevel, sourceX, sourceY))
+  if (!warped) return null
+  if (settings.tileCacheEnabled) void writeTile({ ...key, data: warped.data, contentType: warped.contentType, expiresAt: Date.now() + TILE_TTL_MS })
+  return new Response(warped.data, { headers: { 'content-type': warped.contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'amap-warped' } })
+}
+
 async function handleTileProtocol(request: Request): Promise<Response> {
   const parsed = new URL(request.url)
   const providerId = safeId(parsed.hostname)
   const parts = parsed.pathname.split('/').filter(Boolean)
   if (parts.length !== 4) return new Response('Bad tile path', { status: 400 })
-  const styleId = safeId(parts[0])
   const coordinates = parts.slice(1).map(Number)
   if (!Number.isInteger(coordinates[0]) || coordinates[0] < 0 || !Number.isInteger(coordinates[1]) || !Number.isInteger(coordinates[2])) return new Response('Bad tile path', { status: 400 })
   const [level, x, y] = coordinates
+  const granuleDate = viirsGranuleDate()
+  const styleId = providerId === 'viirs-night' ? viirsCacheStyleId(safeId(parts[0]), granuleDate) : safeId(parts[0])
   const key = { providerId, styleId, level, x, y }
   const cached = await cachedTileResponse(key, false)
   if (cached) return cached
-  const remoteUrl = tileRemoteUrl(providerId, styleId, level, x, y)
+  const remoteUrl = tileRemoteUrl(providerId, styleId, level, x, y, granuleDate)
   if (!remoteUrl) return new Response('Unknown provider', { status: 404 })
+  if (settings.tileMirrorEnabled && mirrorEligibleProviders[providerId]) {
+    const mirror = await mirrorTileResponse(providerId, key)
+    if (mirror) return mirror
+    const stale = await cachedTileResponse(key, true)
+    if (stale) return stale
+    return new Response('Tile unavailable', { status: 502 })
+  }
   try {
     const response = await fetchTileWithRetry(remoteUrl)
     if (!response.ok) {
@@ -608,6 +718,8 @@ function registerIpcHandlers(): void {
   ipcMain.handle('settings:get', () => settingsSnapshot())
   ipcMain.handle('settings:update', async (_event, patch: GuEarthSettingsPatch): Promise<GuEarthSettings> => {
     if (!isRecord(patch)) throw new Error('无效的设置')
+    let tileMirrorToggled = false
+    let tileMirrorEnabledNow = false
     await saveSettings((settings) => {
       const nextSettings: PersistedSettings = {
         ...settings,
@@ -626,6 +738,12 @@ function registerIpcHandlers(): void {
       if (patch.tileCacheEnabled !== undefined) {
         if (typeof patch.tileCacheEnabled !== 'boolean') throw new Error('无效的缓存设置')
         nextSettings.tileCacheEnabled = patch.tileCacheEnabled
+      }
+      if (patch.tileMirrorEnabled !== undefined) {
+        if (typeof patch.tileMirrorEnabled !== 'boolean') throw new Error('无效的镜像瓦片设置')
+        tileMirrorToggled = patch.tileMirrorEnabled !== nextSettings.tileMirrorEnabled
+        tileMirrorEnabledNow = patch.tileMirrorEnabled
+        nextSettings.tileMirrorEnabled = patch.tileMirrorEnabled
       }
       if (patch.networkProxy !== undefined) {
         if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')
@@ -648,6 +766,11 @@ function registerIpcHandlers(): void {
       return nextSettings
     })
     if (patch.networkProxy !== undefined) void applyNetworkProxy()
+    if (tileMirrorToggled) {
+      mirrorLoggedProviders.clear()
+      logger.info('tiles', `镜像瓦片源已${tileMirrorEnabledNow ? '开启' : '关闭'}，已清空相关底图瓦片缓存`)
+      void clearMirrorProviderTileCache().then(() => broadcastTileMirrorChanged(tileMirrorEnabledNow))
+    }
     return settingsSnapshot()
   })
   ipcMain.handle('settings:set-provider-api-key', async (_event, providerId: string, apiKey: string): Promise<ProviderCredentialStatus> => {
@@ -693,6 +816,21 @@ function registerIpcHandlers(): void {
     const fallback = alternative === 'baidu' ? await searchBaiduPlaces(keyword) : await searchPlaces(keyword)
     if (fallback.error || fallback.superseded) return { ...primary, source: preferred }
     return { ...fallback, source: alternative, fellBackFrom: preferred }
+  })
+  ipcMain.handle('places:poi-statistics', async (_event, request: unknown) => {
+    if (!isRecord(request)) throw new Error('无效的 POI 统计请求')
+    const numberArg = (value: unknown): number | undefined => typeof value === 'number' && Number.isFinite(value) ? value : undefined
+    const stringArg = (value: unknown): string | undefined => typeof value === 'string' && value.trim() ? value : undefined
+    return poiStatistics({
+      centerName: stringArg(request.centerName),
+      longitude: numberArg(request.longitude),
+      latitude: numberArg(request.latitude),
+      city: stringArg(request.city),
+      radiusMeters: numberArg(request.radiusMeters),
+      types: stringArg(request.types),
+      keywords: stringArg(request.keywords),
+      maxSamples: numberArg(request.maxSamples)
+    })
   })
   ipcMain.handle('datasets:earthquakes', () => loadEarthquakeFeed())
   ipcMain.handle('datasets:provinces', () => loadProvinceGeometry())

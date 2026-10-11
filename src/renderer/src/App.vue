@@ -18,6 +18,9 @@ import { useAtmosphereStore } from '@renderer/stores/atmosphere'
 import { useHydrologyStore } from '@renderer/stores/hydrology'
 import { useLandformStore } from '@renderer/stores/landform'
 import { usePopulationStore } from '@renderer/stores/population'
+import { useTransportStore } from '@renderer/stores/transport'
+import { useEnvironmentStore } from '@renderer/stores/environment'
+import { useDecisionStore } from '@renderer/stores/decision'
 import { registerPopulationTools } from '@renderer/ai/populationTools'
 import { useCesiumViewer } from '@renderer/composables/useCesiumViewer'
 import { useDrawing } from '@renderer/composables/useDrawing'
@@ -57,6 +60,10 @@ import ExogenicPanel from '@renderer/components/ExogenicPanel.vue'
 import EarthLayersPanel from '@renderer/components/EarthLayersPanel.vue'
 import TimezonePanel from '@renderer/components/TimezonePanel.vue'
 import PopulationPanel from '@renderer/components/PopulationPanel.vue'
+import CitiesPanel from '@renderer/components/CitiesPanel.vue'
+import TransportPanel from '@renderer/components/TransportPanel.vue'
+import EnvironmentPanel from '@renderer/components/EnvironmentPanel.vue'
+import LocationDecisionPanel from '@renderer/components/LocationDecisionPanel.vue'
 import HuLineOverlay from '@renderer/components/HuLineOverlay.vue'
 import ThematicLegend from '@renderer/components/ThematicLegend.vue'
 import FrontalCyclone from '@renderer/components/FrontalCyclone.vue'
@@ -88,6 +95,7 @@ const {
   terrainExaggeration,
   terrainLighting,
   tileCacheEnabled,
+  tileMirrorEnabled,
   networkProxy,
   providerCredentials
 } =
@@ -96,13 +104,16 @@ const {
 const globeContainer = ref<HTMLDivElement>()
 const { viewer, switchBasemap, setLayerOpacity, flyTo, flyToPlace, toggleLevelView, setTerrain, setTerrainExaggeration, setTerrainLighting } = useCesiumViewer(globeContainer)
 const { flyToShape } = useDrawing(viewer)
-const { comparison: timezoneComparison, clearComparison: clearTimezone } = useTimezoneCompare(viewer)
+const { comparison: timezoneComparison, closeTimezoneCompare } = useTimezoneCompare(viewer)
 const climateStore = useClimateStore()
 const solarStore = useSolarStore()
 const atmosphereStore = useAtmosphereStore()
 const hydrologyStore = useHydrologyStore()
 const landformStore = useLandformStore()
 const populationStore = usePopulationStore()
+const transportStore = useTransportStore()
+const environmentStore = useEnvironmentStore()
+const decisionStore = useDecisionStore()
 const { overlays: thematicOverlays } = storeToRefs(climateStore)
 useThematicLayers(viewer)
 registerPopulationTools()
@@ -128,7 +139,31 @@ const showGlobeLoading = computed(() => !isGlobeReady.value)
 const globeLoadingText = computed(() => globeError.value ? '地图尚未显示，请检查网络或重试' : globeLoadTimedOut.value ? '地图加载较慢，请检查网络' : '正在加载地图…')
 const globeLoadingRetryable = computed(() => globeLoadTimedOut.value || Boolean(globeError.value))
 const isLabOpen = ref(false)
-const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || activeTool.value === 'timezone')
+const nightBasemapActive = computed(() => store.selectedLayerId === 'viirs-night')
+const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || environmentStore.panel !== null || decisionStore.panel !== null || activeTool.value === 'timezone')
+
+function closeAllTeachingPanels(): void {
+  solarStore.setMotionPanel(null)
+  atmosphereStore.setPanel(null)
+  hydrologyStore.setPanel(null)
+  landformStore.setPanel(null)
+  populationStore.setPanel(null)
+  transportStore.setPanel(null)
+  environmentStore.setPanel(null)
+  decisionStore.setPanel(null)
+  closeTimezoneCompare()
+}
+
+function closeAllTeachingFeatures(): void {
+  closeAllTeachingPanels()
+  for (const layer of thematicLayerCatalog) climateStore.setOverlay(layer.id, false)
+}
+
+watch(nightBasemapActive, (active) => {
+  if (!active) return
+  closeAllTeachingFeatures()
+  isLabOpen.value = false
+})
 const drawHint = computed(() => {
   if (!activeTool.value) return ''
   if (activeTool.value === 'timezone') return '单击选取两个地点对比地方时 · Esc 退出'
@@ -422,6 +457,36 @@ const teachingPanelCatalog: { id: string; name: string; hint: string; open: () =
   { id: 'exogenic', name: '外力作用过程', hint: '演示风化、侵蚀、搬运、堆积的外力作用链条', open: () => landformStore.setPanel('exogenic') },
   { id: 'earth-layers', name: '地球的圈层结构', hint: '展示地球内部圈层划分剖面', open: () => landformStore.setPanel('earth-layers') },
   {
+    id: 'population',
+    name: '人口数据面板',
+    hint: '展示人口金字塔、城镇化曲线与胡焕庸线对比',
+    open: () => populationStore.setPanel('population')
+  },
+  {
+    id: 'cities',
+    name: '城镇与中心地验证',
+    hint: '展示城市等级体系，并可用 POI 统计对比验证中心地理论（需配置高德密钥）',
+    open: () => populationStore.setPanel('cities')
+  },
+  {
+    id: 'transport',
+    name: '交通运输布局',
+    hint: '播放 2008 年以来高铁网络生长动画，结合营业里程曲线与实地察看讲解',
+    open: () => transportStore.setPanel('transport')
+  },
+  {
+    id: 'environment',
+    name: '海平面上升淹没模拟',
+    hint: '选择上升情景，观察沿海低地淹没范围并查看面积估算（需真实地形源）',
+    open: () => environmentStore.setPanel('environment')
+  },
+  {
+    id: 'decision',
+    name: '区位决策沙盘',
+    hint: '在真实情境中勾选区位因素，请 AI 按高考答题结构点评你的取舍',
+    open: () => decisionStore.setPanel('location')
+  },
+  {
     id: 'timezone-compare',
     name: '地方时对比',
     hint: '已进入地方时点选模式，请提示用户在地球上依次单击两个地点，出现「地方时对比」面板后即可讲解两地时差；按 Esc 退出点选模式',
@@ -433,7 +498,7 @@ aiStore.registerTool({
   label: '打开教学面板',
   definition: {
     name: 'open_panel',
-    description: '打开教学演示面板配合讲解：热力环流、大气受热过程、大气垂直分层、水循环、海水温度与盐度、潮汐与波浪、陆地水体与河流补给、褶皱与断层、河流地貌发育、典型地貌识别、外力作用过程、地球的圈层结构、太阳视运动轨迹、黄赤交角可调探究、自转速度与周期、地方时对比。close 为 true 时关闭全部教学面板。',
+    description: '打开教学演示面板配合讲解：热力环流、大气受热过程、大气垂直分层、水循环、海水温度与盐度、潮汐与波浪、陆地水体与河流补给、褶皱与断层、河流地貌发育、典型地貌识别、外力作用过程、地球的圈层结构、太阳视运动轨迹、黄赤交角可调探究、自转速度与周期、人口数据面板、城镇与中心地验证、交通运输布局、海平面上升淹没模拟、区位决策沙盘、地方时对比。close 为 true 时关闭全部教学面板。',
     parameters: {
       type: 'object',
       properties: {
@@ -448,17 +513,12 @@ aiStore.registerTool({
   },
   execute: async (args) => {
     if (args.close === true) {
-      solarStore.setMotionPanel(null)
-      atmosphereStore.setPanel(null)
-      hydrologyStore.setPanel(null)
-      landformStore.setPanel(null)
-      populationStore.setPanel(null)
-      if (activeTool.value === 'timezone') drawingStore.setActiveTool(null)
-      clearTimezone()
+      closeAllTeachingPanels()
       return { status: 'ok', closed: true, message: '已关闭全部教学演示面板' }
     }
     const panel = teachingPanelCatalog.find((item) => item.id === args.panelId)
     if (!panel) return { error: `未知面板 ${String(args.panelId)}，可用面板：${teachingPanelCatalog.map((item) => `${item.id}（${item.name}）`).join('、')}` }
+    if (nightBasemapActive.value) return { error: '夜光模式下教学面板不可用，请先用 set_basemap 切回其他底图' }
     panel.open()
     return { status: 'ok', panelId: panel.id, name: panel.name, message: `已打开「${panel.name}」面板：${panel.hint}` }
   }
@@ -902,6 +962,10 @@ function handleCacheChange(value: boolean): void {
   store.setTileCacheEnabled(value)
 }
 
+function handleMirrorChange(value: boolean): void {
+  store.setTileMirrorEnabled(value)
+}
+
 function handleNetworkProxy(value: string): void {
   store.setNetworkProxy(value)
 }
@@ -964,6 +1028,10 @@ function handleUpdateClick(): void {
 }
 
 function handleToggleLab(): void {
+  if (nightBasemapActive.value) {
+    message.info('夜光模式下地理实验室不可用，切换回其他底图后恢复')
+    return
+  }
   isLabOpen.value = !isLabOpen.value
 }
 
@@ -1046,6 +1114,7 @@ function deleteSelectedShape(): void {
         <a-spin :spinning="!globeLoadTimedOut && !globeError" size="small" />
         <span class="globe-loading-text">{{ globeLoadingText }}</span>
         <span v-if="globeLoadStage" class="globe-loading-stage">{{ globeLoadStage }}</span>
+        <span v-if="globeLoadingRetryable" class="globe-loading-stage">境内网络可在「图层管理」开启高德镜像瓦片源</span>
         <a-button v-if="globeLoadingRetryable" type="text" size="small" @click="handleRetry"><ReloadOutlined />重试</a-button>
       </div>
       <FailureBanner />
@@ -1062,6 +1131,7 @@ function deleteSelectedShape(): void {
         :level-view-active="levelViewActive"
         :level-view-visible="levelSwitcherVisible"
         :lab-active="labActive"
+        :night-basemap-active="nightBasemapActive"
         :update-status="updaterStore.status"
         :update-version="updaterStore.version"
         :update-percent="updaterStore.percent"
@@ -1105,7 +1175,11 @@ function deleteSelectedShape(): void {
       <ExogenicPanel v-if="landformStore.panel === 'exogenic'" :viewer="viewer" @close="landformStore.setPanel(null)" />
       <EarthLayersPanel v-if="landformStore.panel === 'earth-layers'" @close="landformStore.setPanel(null)" />
       <PopulationPanel v-if="populationStore.panel === 'population'" @close="populationStore.setPanel(null)" />
-      <TimezonePanel v-if="timezoneComparison" :comparison="timezoneComparison" @clear="clearTimezone" />
+      <CitiesPanel v-if="populationStore.panel === 'cities'" @close="populationStore.setPanel(null)" />
+      <TransportPanel v-if="transportStore.panel === 'transport'" :viewer="viewer" @close="transportStore.setPanel(null)" />
+      <EnvironmentPanel v-if="environmentStore.panel === 'environment'" :viewer="viewer" @close="environmentStore.setPanel(null)" />
+      <LocationDecisionPanel v-if="decisionStore.panel === 'location'" :viewer="viewer" @close="decisionStore.setPanel(null)" />
+      <TimezonePanel v-if="timezoneComparison" :comparison="timezoneComparison" @clear="closeTimezoneCompare" />
       <ThematicLegend />
       <ThematicInfoCard />
       <div v-if="drawHint" class="draw-hint">{{ drawHint }}</div>
@@ -1131,12 +1205,12 @@ function deleteSelectedShape(): void {
         :selected-layer-id="selectedLayerId"
         :error="globeError"
         :terrain-error="terrainError"
-        :loading="!isGlobeReady"
         :terrain-provider-id="terrainProviderId"
         :active-terrain-id="activeTerrainId"
         :terrain-exaggeration="terrainExaggeration"
         :terrain-lighting="terrainLighting"
         :tile-cache-enabled="tileCacheEnabled"
+        :tile-mirror-enabled="tileMirrorEnabled"
         :network-proxy="networkProxy"
         :provider-credentials="providerCredentials"
         @close="handleClosePanel"
@@ -1147,6 +1221,7 @@ function deleteSelectedShape(): void {
         @terrain-exaggeration="handleTerrainExaggeration"
         @terrain-lighting="handleTerrainLighting"
         @cache="handleCacheChange"
+        @mirror="handleMirrorChange"
         @network-proxy="handleNetworkProxy"
         @credential-save="handleCredentialSave"
         @credential-clear="handleCredentialClear"

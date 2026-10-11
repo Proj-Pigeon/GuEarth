@@ -6,6 +6,9 @@ import { useAtmosphereStore, type AtmospherePanel } from '@renderer/stores/atmos
 import { useHydrologyStore, type HydrologyPanel } from '@renderer/stores/hydrology'
 import { useLandformStore, type LandformPanel } from '@renderer/stores/landform'
 import { usePopulationStore } from '@renderer/stores/population'
+import { useTransportStore } from '@renderer/stores/transport'
+import { useEnvironmentStore } from '@renderer/stores/environment'
+import { useDecisionStore } from '@renderer/stores/decision'
 import { useDrawingStore } from '@renderer/stores/drawing'
 
 interface LabEntry {
@@ -32,6 +35,9 @@ const atmosphereStore = useAtmosphereStore()
 const hydrologyStore = useHydrologyStore()
 const landformStore = useLandformStore()
 const populationStore = usePopulationStore()
+const transportStore = useTransportStore()
+const environmentStore = useEnvironmentStore()
+const decisionStore = useDecisionStore()
 const drawingStore = useDrawingStore()
 
 function closeAllPanels(): void {
@@ -40,6 +46,10 @@ function closeAllPanels(): void {
   hydrologyStore.setPanel(null)
   landformStore.setPanel(null)
   populationStore.setPanel(null)
+  transportStore.setPanel(null)
+  environmentStore.setPanel(null)
+  decisionStore.setPanel(null)
+  drawingStore.setActiveTool(null)
 }
 
 function layerEntry(id: ThematicLayerId): LabEntry {
@@ -123,6 +133,62 @@ function populationPanelEntry(name: string, description: string): LabEntry {
   }
 }
 
+function citiesPanelEntry(name: string, description: string): LabEntry {
+  return {
+    key: 'cities',
+    name,
+    description,
+    active: () => populationStore.panel === 'cities',
+    toggle: () => {
+      const next = populationStore.panel !== 'cities'
+      closeAllPanels()
+      if (next) populationStore.setPanel('cities')
+    }
+  }
+}
+
+function transportPanelEntry(name: string, description: string): LabEntry {
+  return {
+    key: 'transport',
+    name,
+    description,
+    active: () => transportStore.panel === 'transport',
+    toggle: () => {
+      const next = transportStore.panel !== 'transport'
+      closeAllPanels()
+      if (next) transportStore.setPanel('transport')
+    }
+  }
+}
+
+function environmentPanelEntry(name: string, description: string): LabEntry {
+  return {
+    key: 'environment',
+    name,
+    description,
+    active: () => environmentStore.panel === 'environment',
+    toggle: () => {
+      const next = environmentStore.panel !== 'environment'
+      closeAllPanels()
+      if (next) environmentStore.setPanel('environment')
+    }
+  }
+}
+
+function decisionPanelEntry(name: string, description: string): LabEntry {
+  return {
+    key: 'decision',
+    name,
+    description,
+    active: () => decisionStore.panel === 'location',
+    toggle: () => {
+      const next = decisionStore.panel !== 'location'
+      closeAllPanels()
+      if (next) decisionStore.setPanel('location')
+    }
+  }
+}
+
 const chapters: LabChapter[] = [
   {
     id: 'earth-motion',
@@ -154,7 +220,11 @@ const chapters: LabChapter[] = [
         name: '时区对比',
         description: '在地球上选取两地，对比地方时与区时',
         active: () => drawingStore.activeTool === 'timezone',
-        toggle: () => drawingStore.setActiveTool(drawingStore.activeTool === 'timezone' ? null : 'timezone')
+        toggle: () => {
+          const next = drawingStore.activeTool !== 'timezone'
+          closeAllPanels()
+          if (next) drawingStore.setActiveTool('timezone')
+        }
       },
       layerEntry('coriolis-demo')
     ]
@@ -225,7 +295,42 @@ const chapters: LabChapter[] = [
       populationPanelEntry('人口数据面板', '人口金字塔、城镇化曲线与胡焕庸线对比'),
       layerEntry('province-population'),
       layerEntry('hu-line'),
-      layerEntry('migration-flows')
+      layerEntry('migration-flows'),
+      citiesPanelEntry('城镇与中心地验证', '城市等级体系、中心地理论 POI 对比验证'),
+      layerEntry('city-tiers'),
+      layerEntry('functional-zones')
+    ]
+  },
+  {
+    id: 'industry',
+    title: '必修二 · 产业区位',
+    entries: [
+      layerEntry('agri-regions'),
+      layerEntry('industrial-bases'),
+      layerEntry('industrial-transfers')
+    ]
+  },
+  {
+    id: 'transport',
+    title: '必修二 · 交通运输',
+    entries: [
+      transportPanelEntry('交通运输布局', '高铁网络生长时间轴、营业里程曲线与线路实地察看'),
+      layerEntry('hsr-network')
+    ]
+  },
+  {
+    id: 'environment',
+    title: '必修二 · 环境与发展',
+    entries: [
+      environmentPanelEntry('海平面上升淹没模拟', '选择上升情景，观察沿海低地淹没范围（需真实地形源）'),
+      layerEntry('sea-level-rise')
+    ]
+  },
+  {
+    id: 'sandbox',
+    title: '决策沙盘 · 复习评价',
+    entries: [
+      decisionPanelEntry('区位决策沙盘', '电子装配厂/制糖厂/港口/酒庄情境，勾选区位因素请 AI 按高考结构点评')
     ]
   }
 ]

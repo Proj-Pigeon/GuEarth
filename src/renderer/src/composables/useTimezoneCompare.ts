@@ -56,6 +56,11 @@ export function useTimezoneCompare(viewer: Ref<Cesium.Viewer | undefined>) {
     comparison.value = null
   }
 
+  function closeTimezoneCompare(): void {
+    drawingStore.setActiveTool(null)
+    clearComparison()
+  }
+
   function addPick(pick: TimezonePick, color: string): void {
     const current = currentViewer()
     if (!current || !dataSource) return
@@ -131,6 +136,7 @@ export function useTimezoneCompare(viewer: Ref<Cesium.Viewer | undefined>) {
       } else if (tool !== 'timezone' && handler) {
         handler.destroy()
         handler = undefined
+        clearComparison()
       }
     },
     { flush: 'post' }
@@ -144,5 +150,5 @@ export function useTimezoneCompare(viewer: Ref<Cesium.Viewer | undefined>) {
     clearEntities()
   })
 
-  return { comparison, clearComparison }
+  return { comparison, clearComparison, closeTimezoneCompare }
 }
