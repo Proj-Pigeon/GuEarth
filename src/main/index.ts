@@ -76,6 +76,9 @@ let settingsPath = ''
 let tileCachePath = ''
 let annotationsPath = ''
 let scenesPath = ''
+let offscreenRecordingWindow: BrowserWindow | null = null
+let offscreenPaintStartedAt = 0
+let offscreenPaintFrames = 0
 let settings: PersistedSettings = { ...defaultSettings, providerCredentials: {} }
 let annotations: AnnotationDocument = { shapes: [], entries: [] }
 let scenes: SceneDocument = { scenes: [] }
@@ -760,6 +763,8 @@ function registerIpcHandlers(): void {
     await saveSettings((current) => ({ ...current, recordingDirectory: directory }))
     return directory
   })
+  ipcMain.handle('recordings:offscreen-probe', async (): Promise<{ fps: number; frames: number }> => startOffscreenRecordingWindow())
+  ipcMain.handle('recordings:offscreen-stats', (): { fps: number; frames: number } => offscreenRecordingStats())
   ipcMain.handle('recordings:start', async (event, mimeType: unknown): Promise<string> => {
     const extension = recordingExtension(mimeType)
     const directory = await usableRecordingDirectory()
@@ -848,6 +853,58 @@ function registerIpcHandlers(): void {
       logger.dump() || '（无日志）'
     ].join('\n'))
   })
+}
+
+function stopOffscreenRecordingWindow(): void {
+  const window = offscreenRecordingWindow
+  offscreenRecordingWindow = null
+  if (!window || window.isDestroyed()) return
+  window.webContents.stopPainting()
+  window.destroy()
+}
+
+async function startOffscreenRecordingWindow(): Promise<{ fps: number; frames: number }> {
+  stopOffscreenRecordingWindow()
+  const window = new BrowserWindow({
+    show: false,
+    width: 1280,
+    height: 720,
+    webPreferences: {
+      offscreen: true,
+      backgroundThrottling: false,
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  })
+  offscreenRecordingWindow = window
+  offscreenPaintStartedAt = Date.now()
+  offscreenPaintFrames = 0
+  window.webContents.on('paint', () => {
+    offscreenPaintFrames += 1
+  })
+  window.webContents.setFrameRate(30)
+  const ready = new Promise<void>((resolve, reject) => {
+    window.webContents.once('did-finish-load', () => resolve())
+    window.webContents.once('did-fail-load', (_event, code, description) => reject(new Error(`${code}: ${description}`)))
+  })
+  if (process.env['ELECTRON_RENDERER_URL']) {
+    await window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/offscreen.html`)
+  } else {
+    await window.loadFile(join(__dirname, '../renderer/offscreen.html'))
+  }
+  await ready
+  window.webContents.startPainting()
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+  const elapsed = Math.max(1, Date.now() - offscreenPaintStartedAt)
+  const result = { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
+  stopOffscreenRecordingWindow()
+  return result
+}
+
+function offscreenRecordingStats(): { fps: number; frames: number } {
+  const elapsed = Math.max(1, Date.now() - offscreenPaintStartedAt)
+  return { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
 }
 
 function displayAppName(): string {

@@ -371,7 +371,9 @@ const api = {
     start: (mimeType: string): Promise<string> => ipcRenderer.invoke('recordings:start', mimeType),
     append: (recordingId: string, data: ArrayBuffer): Promise<void> => ipcRenderer.invoke('recordings:append', recordingId, data),
     finish: (recordingId: string): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:finish', recordingId),
-    abort: (recordingId: string): Promise<void> => ipcRenderer.invoke('recordings:abort', recordingId)
+    abort: (recordingId: string): Promise<void> => ipcRenderer.invoke('recordings:abort', recordingId),
+    offscreenProbe: (): Promise<{ fps: number; frames: number }> => ipcRenderer.invoke('recordings:offscreen-probe'),
+    offscreenStats: (): Promise<{ fps: number; frames: number }> => ipcRenderer.invoke('recordings:offscreen-stats')
   },
   system: {
     fonts: (): Promise<string[]> => ipcRenderer.invoke('system:fonts')
