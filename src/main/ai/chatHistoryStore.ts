@@ -1,5 +1,8 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'fs'
-import type { AiSearchReference, StoredAiCompression, StoredAiConversation, StoredAiMessage, StoredAiPart, StoredAiToolStep } from '../../preload'
+import { copyFile, mkdir, unlink } from 'fs/promises'
+import { randomUUID } from 'crypto'
+import { storageChildPath } from '../storagePath'
+import { readJson, serialQueue, writeJson } from '../jsonStore'
+import type { AiSearchReference, StoredAiCompression, StoredAiConversation, StoredAiConversationSummary, StoredAiMessage, StoredAiPart, StoredAiToolStep } from '../../preload'
 
 const MAX_CONVERSATIONS = 50
 const MAX_MESSAGES = 400
@@ -115,59 +118,205 @@ export function normalizeConversation(value: unknown): StoredAiConversation | nu
   }
 }
 
+function summary(conversation: StoredAiConversationSummary): StoredAiConversationSummary {
+  const { id, title, createdAt, updatedAt } = conversation
+  return { id, title, createdAt, updatedAt }
+}
+
+interface HistoryEntry extends StoredAiConversationSummary {
+  file: string
+}
+
+type MigrationState = 'pending' | 'complete'
+
+interface RecoveryManifest {
+  entries: HistoryEntry[]
+  migration: MigrationState | null
+}
+
+function sortedEntries(list: HistoryEntry[]): HistoryEntry[] {
+  const unique = new Map<string, HistoryEntry>()
+  for (const item of list) if (!unique.has(item.id)) unique.set(item.id, item)
+  return [...unique.values()].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_CONVERSATIONS)
+}
+
+function normalizeEntries(value: unknown): HistoryEntry[] {
+  if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.conversations)) throw new Error('无效的会话索引')
+  return sortedEntries(value.conversations.flatMap((item): HistoryEntry[] => {
+    if (!isRecord(item) || typeof item.id !== 'string' || !ID_PATTERN.test(item.id)) return []
+    const updatedAt = clampTimestamp(item.updatedAt, Date.now())
+    const file = typeof item.file === 'string' ? item.file : `${item.id}.json`
+    if (file === 'index.json' || file === 'recovery.json' || !/^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)?\.json$/.test(file)) return []
+    return [{ id: item.id, title: clampString(item.title, 80), createdAt: clampTimestamp(item.createdAt, updatedAt), updatedAt, file }]
+  }))
+}
+
+function normalizeRecoveryManifest(value: unknown): RecoveryManifest {
+  if (!isRecord(value)) throw new Error('无效的会话恢复名单')
+  const migration = value.migration === 'pending' || value.migration === 'complete' ? value.migration : null
+  return { entries: normalizeEntries(value), migration }
+}
+
 export class AiChatHistoryStore {
-  private path = ''
-  private conversations: StoredAiConversation[] = []
+  private directory = ''
+  private conversations: HistoryEntry[] = []
+  private migration: MigrationState = 'complete'
+  private enqueue = serialQueue()
 
-  init(path: string): void {
-    this.path = path
-    this.conversations = this.read()
-  }
-
-  private read(): StoredAiConversation[] {
-    if (!this.path || !existsSync(this.path)) return []
+  async init(path: string): Promise<void> {
+    this.directory = `${path}.d`
+    this.conversations = []
+    this.migration = 'complete'
+    const created = await mkdir(this.directory, { recursive: true })
+    let indexed: HistoryEntry[] | undefined
     try {
-      const parsed: unknown = JSON.parse(readFileSync(this.path, 'utf8'))
-      const list = Array.isArray(parsed) ? parsed.map(normalizeConversation) : []
-      return this.dedupeSorted(list)
-    } catch {
-      return []
+      indexed = normalizeEntries(await readJson(this.indexPath()))
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        await copyFile(this.indexPath(), `${this.indexPath()}.${randomUUID()}.bak`)
+      }
     }
-  }
-
-  private dedupeSorted(list: (StoredAiConversation | null)[]): StoredAiConversation[] {
-    const seen = new Set<string>()
-    const result: StoredAiConversation[] = []
-    for (const conversation of list) {
-      if (!conversation || seen.has(conversation.id)) continue
-      seen.add(conversation.id)
-      result.push(conversation)
+    if (indexed) {
+      this.migration = 'complete'
+      await this.persistRecovery(indexed, 'complete')
+      this.conversations = indexed
+      return
     }
-    return result.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_CONVERSATIONS)
+    if (created === undefined) {
+      let recovery: RecoveryManifest = { entries: [], migration: null }
+      try {
+        recovery = normalizeRecoveryManifest(await readJson(this.recoveryPath()))
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          await copyFile(this.recoveryPath(), `${this.recoveryPath()}.${randomUUID()}.bak`)
+          console.warn('[ai] 会话恢复名单读取失败', error)
+        }
+      }
+      if (recovery.migration === 'pending') {
+        await this.migrateLegacy(path)
+        return
+      }
+      this.migration = 'complete'
+      const recoverable = recovery.entries
+      this.conversations = await this.recoverEntries(recoverable)
+      await this.persistIndex(this.conversations)
+      return
+    }
+    await this.migrateLegacy(path)
   }
 
-  private persist(): void {
-    if (!this.path) return
-    const tempPath = `${this.path}.tmp`
-    writeFileSync(tempPath, JSON.stringify(this.conversations, null, 2), 'utf8')
-    renameSync(tempPath, this.path)
+  private async migrateLegacy(path: string): Promise<void> {
+    this.migration = 'pending'
+    await this.persistRecovery([], 'pending')
+    let legacy: unknown
+    try {
+      legacy = await readJson(path)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') console.warn('[ai] 会话历史读取失败', error)
+    }
+    const normalized = Array.isArray(legacy) ? legacy.map(normalizeConversation).filter((item): item is StoredAiConversation => item !== null) : []
+    const migrated = sortedEntries(normalized.map((item) => ({ ...summary(item), file: `${item.id}.${randomUUID()}.json` })))
+    for (const item of migrated) {
+      const conversation = normalized.find((entry) => entry.id === item.id)
+      if (conversation) await writeJson(this.conversationPath(item.file), conversation)
+    }
+    await this.persistIndex(migrated)
+    this.migration = 'complete'
+    await this.persistRecovery(migrated, 'complete')
   }
 
-  list(): StoredAiConversation[] {
-    return this.conversations
+  private indexPath(): string {
+    return storageChildPath(this.directory, 'index.json')
   }
 
-  save(value: unknown): StoredAiConversation[] {
+  private conversationPath(file: string): string {
+    return storageChildPath(this.directory, file)
+  }
+
+  private recoveryPath(): string {
+    return storageChildPath(this.directory, 'recovery.json')
+  }
+
+  private async recoverEntries(entries: HistoryEntry[]): Promise<HistoryEntry[]> {
+    const recovered: HistoryEntry[] = []
+    for (const entry of entries) {
+      try {
+        const item = normalizeConversation(await readJson(this.conversationPath(entry.file)))
+        if (item?.id === entry.id) recovered.push({ ...summary(item), file: entry.file })
+      } catch {
+        continue
+      }
+    }
+    return sortedEntries(recovered.sort((a, b) => b.updatedAt - a.updatedAt))
+  }
+
+  private persistRecovery(list: HistoryEntry[], migration = this.migration): Promise<void> {
+    return writeJson(this.recoveryPath(), { version: 1, migration, conversations: list })
+  }
+
+  private async persistIndex(list: HistoryEntry[]): Promise<void> {
+    const previous = this.conversations
+    await this.persistRecovery(previous.filter((item) => list.some((retained) => retained.file === item.file)))
+    try {
+      await writeJson(this.indexPath(), { version: 1, conversations: list })
+    } catch (error) {
+      await this.persistRecovery(previous).catch((recoveryError) => console.warn('[ai] 会话恢复名单回滚失败', recoveryError))
+      throw error
+    }
+    try {
+      await this.persistRecovery(list)
+    } catch (error) {
+      try {
+        await writeJson(this.indexPath(), { version: 1, conversations: previous })
+        await this.persistRecovery(previous)
+        this.conversations = previous
+      } catch (rollbackError) {
+        console.warn('[ai] 会话索引回滚失败', rollbackError)
+      }
+      throw error
+    }
+    this.conversations = list
+  }
+
+  list(): StoredAiConversationSummary[] {
+    return this.conversations.map(summary)
+  }
+
+  get(id: string): Promise<StoredAiConversation | null> {
+    return this.enqueue(async () => {
+      const entry = this.conversations.find((item) => item.id === id)
+      if (!entry) return null
+      return normalizeConversation(await readJson(this.conversationPath(entry.file)))
+    })
+  }
+
+  save(value: unknown): Promise<StoredAiConversationSummary[]> {
     const conversation = normalizeConversation(value)
-    if (!conversation) throw new Error('无效的会话数据')
-    this.conversations = this.dedupeSorted([conversation, ...this.conversations.filter((item) => item.id !== conversation.id)])
-    this.persist()
-    return this.conversations
+    if (!conversation) return Promise.reject(new Error('无效的会话数据'))
+    return this.enqueue(async () => {
+      const entry = { ...summary(conversation), file: `${conversation.id}.${randomUUID()}.json` }
+      const next = sortedEntries([entry, ...this.conversations.filter((item) => item.id !== conversation.id)])
+      const removed = this.conversations.filter((item) => !next.some((retained) => retained.file === item.file))
+      await writeJson(this.conversationPath(entry.file), conversation)
+      try {
+        await this.persistIndex(next)
+      } catch (error) {
+        await unlink(this.conversationPath(entry.file)).catch(() => undefined)
+        throw error
+      }
+      await Promise.all(removed.map((item) => unlink(this.conversationPath(item.file)).catch(() => undefined)))
+      if (!next.some((item) => item.file === entry.file)) await unlink(this.conversationPath(entry.file)).catch(() => undefined)
+      return this.list()
+    })
   }
 
-  delete(id: string): StoredAiConversation[] {
-    this.conversations = this.conversations.filter((item) => item.id !== id)
-    this.persist()
-    return this.conversations
+  delete(id: string): Promise<StoredAiConversationSummary[]> {
+    return this.enqueue(async () => {
+      const removed = this.conversations.find((item) => item.id === id)
+      const next = this.conversations.filter((item) => item.id !== id)
+      await this.persistIndex(next)
+      if (removed) await unlink(this.conversationPath(removed.file)).catch(() => undefined)
+      return this.list()
+    })
   }
 }

@@ -224,11 +224,14 @@ export interface StoredAiCompression {
   coveredMessageIds: string[]
 }
 
-export interface StoredAiConversation {
+export interface StoredAiConversationSummary {
   id: string
   title: string
   createdAt: number
   updatedAt: number
+}
+
+export interface StoredAiConversation extends StoredAiConversationSummary {
   messages: StoredAiMessage[]
   compression?: StoredAiCompression
 }
@@ -436,9 +439,10 @@ const api = {
     stop: (sessionId: string): Promise<void> => ipcRenderer.invoke('ai:stop', sessionId),
     toolResult: (sessionId: string, callId: string, ok: boolean, result: unknown): Promise<void> => ipcRenderer.invoke('ai:tool-result', sessionId, callId, ok, result),
     chatHistory: {
-      list: (): Promise<StoredAiConversation[]> => ipcRenderer.invoke('ai:history-list'),
-      save: (conversation: StoredAiConversation): Promise<StoredAiConversation[]> => ipcRenderer.invoke('ai:history-save', conversation),
-      delete: (id: string): Promise<StoredAiConversation[]> => ipcRenderer.invoke('ai:history-delete', id)
+      list: (): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-list'),
+      get: (id: string): Promise<StoredAiConversation | null> => ipcRenderer.invoke('ai:history-get', id),
+      save: (conversation: StoredAiConversation): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-save', conversation),
+      delete: (id: string): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-delete', id)
     },
     memory: {
       list: (): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-list'),

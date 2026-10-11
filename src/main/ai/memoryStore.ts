@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'fs'
+import { readJson, serialQueue, writeJson } from '../jsonStore'
 import type { AgentMemory } from '../../preload'
 
 const MAX_MEMORIES = 100
@@ -26,15 +26,16 @@ export class AiMemoryStore {
   private path = ''
   private memories: AgentMemory[] = []
 
-  init(path: string): void {
+  private enqueue = serialQueue()
+
+  async init(path: string): Promise<void> {
     this.path = path
-    this.memories = this.read()
+    this.memories = await this.read()
   }
 
-  private read(): AgentMemory[] {
-    if (!this.path || !existsSync(this.path)) return []
+  private async read(): Promise<AgentMemory[]> {
     try {
-      const parsed: unknown = JSON.parse(readFileSync(this.path, 'utf8'))
+      const parsed: unknown = await readJson(this.path)
       const list = Array.isArray(parsed) ? parsed.map(normalizeMemory) : []
       const seen = new Set<string>()
       const memories: AgentMemory[] = []
@@ -49,37 +50,35 @@ export class AiMemoryStore {
     }
   }
 
-  private persist(): void {
-    if (!this.path) return
-    const tempPath = `${this.path}.tmp`
-    writeFileSync(tempPath, JSON.stringify(this.memories, null, 2), 'utf8')
-    renameSync(tempPath, this.path)
-  }
-
   list(): AgentMemory[] {
     return this.memories
   }
 
-  add(content: string, source: AgentMemory['source']): AgentMemory {
-    const trimmed = typeof content === 'string' ? content.trim().slice(0, MAX_CONTENT_LENGTH) : ''
-    if (!trimmed) throw new Error('记忆内容不能为空')
-    if (this.memories.length >= MAX_MEMORIES) throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)
-    const memory: AgentMemory = {
-      id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
-      content: trimmed,
-      source,
-      createdAt: Date.now()
-    }
-    this.memories = [...this.memories, memory]
-    this.persist()
-    return memory
+  add(content: string, source: AgentMemory['source']): Promise<AgentMemory> {
+    return this.enqueue(async () => {
+      const trimmed = typeof content === 'string' ? content.trim().slice(0, MAX_CONTENT_LENGTH) : ''
+      if (!trimmed) throw new Error('记忆内容不能为空')
+      if (this.memories.length >= MAX_MEMORIES) throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)
+      const memory: AgentMemory = {
+        id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+        content: trimmed,
+        source,
+        createdAt: Date.now()
+      }
+      const next = [...this.memories, memory]
+      await writeJson(this.path, next)
+      this.memories = next
+      return memory
+    })
   }
 
-  delete(id: string): boolean {
-    const next = this.memories.filter((memory) => memory.id !== id)
-    if (next.length === this.memories.length) return false
-    this.memories = next
-    this.persist()
-    return true
+  delete(id: string): Promise<boolean> {
+    return this.enqueue(async () => {
+      const next = this.memories.filter((memory) => memory.id !== id)
+      if (next.length === this.memories.length) return false
+      await writeJson(this.path, next)
+      this.memories = next
+      return true
+    })
   }
 }

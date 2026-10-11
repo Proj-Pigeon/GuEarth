@@ -58,6 +58,17 @@ export default defineConfig({
       }
     },
     plugins: [vue(), cesiumStaticPlugin()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            const normalizedId = id.replaceAll('\\', '/')
+            if (normalizedId.includes('/node_modules/cesium/') || normalizedId.includes('/node_modules/@cesium/')) return 'cesium'
+            return undefined
+          }
+        }
+      }
+    },
     define: {
       CESIUM_BASE_URL: JSON.stringify('./cesium/')
     }

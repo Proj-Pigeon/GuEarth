@@ -13,9 +13,11 @@ Sentry.init({
   }
 })
 import { execFileSync } from 'child_process'
-import { join } from 'path'
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'fs'
-import { access, constants, open, rename as renameFile, stat, unlink } from 'fs/promises'
+import { dirname, join } from 'path'
+import { flushJsonWrites, readJson, serialQueue, writeAtomic, writeJson } from './jsonStore'
+import { listTileFiles, pruneTileFiles } from './tileCacheFiles'
+import { storageChildPath } from './storagePath'
+import { access, constants, mkdir, open, readFile, rename as renameFile, stat, rm, unlink } from 'fs/promises'
 import type { FileHandle } from 'fs/promises'
 import { createHash, randomUUID } from 'crypto'
 import icon from '../../resources/icon.png?asset'
@@ -70,6 +72,8 @@ const defaultSettings: PersistedSettings = {
 }
 
 const TILE_TTL_MS = 86_400_000
+const TILE_CACHE_MAX_BYTES = 512 * 1024 * 1024
+const TILE_CACHE_PRUNE_INTERVAL_MS = 10 * 60 * 1000
 
 let settingsPath = ''
 let tileCachePath = ''
@@ -92,10 +96,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const safeId = assertSafeId
 
-function readSettings(): PersistedSettings {
-  if (!existsSync(settingsPath)) return { ...defaultSettings, providerCredentials: {} }
+async function readSettings(): Promise<PersistedSettings> {
   try {
-    const parsed: unknown = JSON.parse(readFileSync(settingsPath, 'utf8'))
+    const parsed: unknown = await readJson(settingsPath)
     if (!isRecord(parsed)) return { ...defaultSettings, providerCredentials: {} }
     const credentials = isRecord(parsed.providerCredentials) ? parsed.providerCredentials : {}
     const providerCredentials: Record<string, ProviderCredentialStatus> = {}
@@ -135,8 +138,14 @@ function readSettings(): PersistedSettings {
   }
 }
 
-function saveSettings(): void {
-  writeFileSync(settingsPath, JSON.stringify(settings), 'utf8')
+const enqueueSettings = serialQueue()
+
+function saveSettings(update: (current: PersistedSettings) => PersistedSettings): Promise<void> {
+  return enqueueSettings(async () => {
+    const next = update(structuredClone(settings))
+    await writeJson(settingsPath, next)
+    settings = next
+  })
 }
 
 function proxyConfig(proxy: string): Parameters<Electron.Session['setProxy']>[0] {
@@ -186,7 +195,7 @@ function pathPart(value: number): string {
 }
 
 function tileBasePath(key: TileKey): string {
-  return join(tileCachePath, safeId(key.providerId), safeId(key.styleId), pathPart(key.level), pathPart(key.x), pathPart(key.y))
+  return storageChildPath(tileCachePath, safeId(key.providerId), safeId(key.styleId), pathPart(key.level), pathPart(key.x), pathPart(key.y))
 }
 
 function tileDataPath(key: TileKey): string {
@@ -201,59 +210,69 @@ function toArrayBuffer(data: Buffer): ArrayBuffer {
   return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
 }
 
-function readTile(key: TileKey, allowExpired = false): TileCacheEntry | null {
+async function readTile(key: TileKey, allowExpired = false): Promise<TileCacheEntry | null> {
   const dataPath = tileDataPath(key)
   const metaPath = tileMetaPath(key)
-  if (!existsSync(dataPath) || !existsSync(metaPath)) return null
   try {
-    const metadata: unknown = JSON.parse(readFileSync(metaPath, 'utf8'))
+    const [metadataText, data] = await Promise.all([readFile(metaPath, 'utf8'), readFile(dataPath)])
+    const metadata: unknown = JSON.parse(metadataText)
     if (!isRecord(metadata) || typeof metadata.contentType !== 'string') return null
     const expiresAt = typeof metadata.expiresAt === 'number' ? metadata.expiresAt : null
     if (expiresAt !== null && expiresAt <= Date.now() && !allowExpired) return null
-    return { ...key, data: toArrayBuffer(readFileSync(dataPath)), contentType: metadata.contentType, expiresAt }
+    return { ...key, data: toArrayBuffer(data), contentType: metadata.contentType, expiresAt }
   } catch {
     return null
   }
 }
 
-function cachedTileResponse(key: TileKey, allowExpired: boolean): Response | null {
+async function cachedTileResponse(key: TileKey, allowExpired: boolean): Promise<Response | null> {
   if (!settings.tileCacheEnabled) return null
-  const cached = readTile(key, allowExpired)
+  const cached = await readTile(key, allowExpired)
   if (!cached) return null
   const expired = cached.expiresAt !== null && cached.expiresAt <= Date.now()
   return new Response(cached.data, { headers: { 'content-type': cached.contentType, 'x-guearth-cache': expired ? 'stale' : 'hit' } })
 }
 
-function writeTile(entry: TileCacheEntry): void {
-  const key: TileKey = { providerId: entry.providerId, styleId: entry.styleId, level: entry.level, x: entry.x, y: entry.y }
-  const basePath = tileBasePath(key)
-  try {
-    mkdirSync(join(tileCachePath, safeId(key.providerId), safeId(key.styleId), pathPart(key.level), pathPart(key.x)), { recursive: true })
-    writeFileSync(`${basePath}.bin`, Buffer.from(entry.data))
-    writeFileSync(`${basePath}.json`, JSON.stringify({ contentType: entry.contentType, expiresAt: entry.expiresAt }), 'utf8')
-  } catch {
-    void 0
-  }
-}
+let tilePruneAt = 0
+let tilePrunePromise: Promise<void> | undefined
 
-function collectFiles(path: string): string[] {
-  if (!existsSync(path)) return []
-  return readdirSync(path, { withFileTypes: true }).flatMap((entry) => {
-    const entryPath = join(path, entry.name)
-    return entry.isDirectory() ? collectFiles(entryPath) : [entryPath]
+async function enforceTileCacheLimit(): Promise<void> {
+  if (tilePrunePromise) return tilePrunePromise
+  const now = Date.now()
+  if (now - tilePruneAt < TILE_CACHE_PRUNE_INTERVAL_MS) return
+  tilePruneAt = now
+  tilePrunePromise = (async () => {
+    await pruneTileFiles(tileCachePath, TILE_CACHE_MAX_BYTES)
+  })().finally(() => {
+    tilePrunePromise = undefined
   })
+  return tilePrunePromise
 }
 
-function cacheStats(): TileCacheStats {
-  return collectFiles(tileCachePath).reduce<TileCacheStats>((result, path) => {
-    if (!path.endsWith('.bin')) return result
+const enqueueTileMutation = serialQueue()
+let quitting = false
+
+function writeTile(entry: TileCacheEntry): Promise<void> {
+  if (quitting) return Promise.resolve()
+  return enqueueTileMutation(async () => {
+    const key: TileKey = { providerId: entry.providerId, styleId: entry.styleId, level: entry.level, x: entry.x, y: entry.y }
+    const basePath = tileBasePath(key)
     try {
-      const size = statSync(path).size
-      result.files += 1
-      result.bytes += size
+      await mkdir(dirname(basePath), { recursive: true })
+      await writeAtomic(`${basePath}.bin`, Buffer.from(entry.data))
+      await writeJson(`${basePath}.json`, { contentType: entry.contentType, expiresAt: entry.expiresAt })
+      void enqueueTileMutation(enforceTileCacheLimit).catch(() => undefined)
     } catch {
       void 0
     }
+  })
+}
+
+async function cacheStats(): Promise<TileCacheStats> {
+  const files = await listTileFiles(tileCachePath)
+  return files.reduce<TileCacheStats>((result, file) => {
+    if (file.path.endsWith('.bin')) result.files += 1
+    result.bytes += file.size
     return result
   }, { files: 0, bytes: 0 })
 }
@@ -407,7 +426,7 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   if (!Number.isInteger(coordinates[0]) || coordinates[0] < 0 || !Number.isInteger(coordinates[1]) || !Number.isInteger(coordinates[2])) return new Response('Bad tile path', { status: 400 })
   const [level, x, y] = coordinates
   const key = { providerId, styleId, level, x, y }
-  const cached = cachedTileResponse(key, false)
+  const cached = await cachedTileResponse(key, false)
   if (cached) return cached
   const remoteUrl = tileRemoteUrl(providerId, styleId, level, x, y)
   if (!remoteUrl) return new Response('Unknown provider', { status: 404 })
@@ -421,15 +440,18 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   try {
     const response = await fetchTileWithRetry(remoteUrl)
     if (!response.ok) {
-      if (response.status !== 429 && response.status < 500) return new Response(`Tile request failed: ${response.status}`, { status: response.status })
-      throw new Error(`Tile upstream ${response.status}`)
+      if (response.status === 429 || response.status >= 500) {
+        const stale = await cachedTileResponse(key, true)
+        if (stale) return stale
+      }
+      return new Response(`Tile request failed: ${response.status}`, { status: response.status })
     }
     const data = await response.arrayBuffer()
     const contentType = response.headers.get('content-type') ?? 'image/png'
-    if (settings.tileCacheEnabled) writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
+    if (settings.tileCacheEnabled) void writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
     return new Response(data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss' } })
   } catch {
-    const stale = cachedTileResponse(key, true)
+    const stale = await cachedTileResponse(key, true)
     if (stale) return stale
     return new Response('Tile unavailable', { status: 502 })
   }
@@ -499,10 +521,9 @@ function normalizeAnnotations(value: unknown): AnnotationDocument {
   return { shapes, entries }
 }
 
-function readAnnotations(): AnnotationDocument {
-  if (!existsSync(annotationsPath)) return { shapes: [], entries: [] }
+async function readAnnotations(): Promise<AnnotationDocument> {
   try {
-    const parsed: unknown = JSON.parse(readFileSync(annotationsPath, 'utf8'))
+    const parsed: unknown = await readJson(annotationsPath)
     if (!Array.isArray(parsed)) return normalizeAnnotations(parsed)
     const shapes = parsed.flatMap((item) => {
       try {
@@ -518,10 +539,11 @@ function readAnnotations(): AnnotationDocument {
   }
 }
 
-function saveAnnotations(): void {
-  const tempPath = `${annotationsPath}.tmp`
-  writeFileSync(tempPath, JSON.stringify(annotations), 'utf8')
-  renameSync(tempPath, annotationsPath)
+const enqueueAnnotations = serialQueue()
+
+function saveAnnotations(): Promise<void> {
+  const snapshot = annotations
+  return enqueueAnnotations(() => writeJson(annotationsPath, snapshot))
 }
 
 const MOTION_PANEL_IDS = new Set(['solar-path', 'obliquity', 'rotation-speed'])
@@ -591,20 +613,20 @@ function normalizeSceneDocument(value: unknown): SceneDocument {
   return { scenes }
 }
 
-function readScenes(): SceneDocument {
-  if (!existsSync(scenesPath)) return { scenes: [] }
+async function readScenes(): Promise<SceneDocument> {
   try {
-    return normalizeSceneDocument(JSON.parse(readFileSync(scenesPath, 'utf8')))
+    return normalizeSceneDocument(await readJson(scenesPath))
   } catch (error) {
     logger.warn('scenes', '读取教学场景失败，已按空目录处理', error)
     return { scenes: [] }
   }
 }
 
-function saveScenes(): void {
-  const tempPath = `${scenesPath}.tmp`
-  writeFileSync(tempPath, JSON.stringify(scenes), 'utf8')
-  renameSync(tempPath, scenesPath)
+const enqueueScenes = serialQueue()
+
+function saveScenes(): Promise<void> {
+  const snapshot = scenes
+  return enqueueScenes(() => writeJson(scenesPath, snapshot))
 }
 
 const RECORDING_EXTENSIONS: Record<string, string> = {
@@ -685,67 +707,66 @@ function registerIpcHandlers(): void {
     return [...families].sort((first, second) => first.localeCompare(second))
   })
   ipcMain.handle('settings:get', () => settingsSnapshot())
-  ipcMain.handle('settings:update', (_event, patch: GuEarthSettingsPatch): GuEarthSettings => {
+  ipcMain.handle('settings:update', async (_event, patch: GuEarthSettingsPatch): Promise<GuEarthSettings> => {
     if (!isRecord(patch)) throw new Error('无效的设置')
-    const nextSettings: PersistedSettings = {
-      ...settings,
-      providerCredentials: settings.providerCredentials
-    }
-    if (patch.selectedImageryProviderId !== undefined) nextSettings.selectedImageryProviderId = safeId(patch.selectedImageryProviderId)
-    if (patch.selectedTerrainProviderId !== undefined) nextSettings.selectedTerrainProviderId = safeId(patch.selectedTerrainProviderId)
-    if (patch.terrainExaggeration !== undefined) {
-      if (typeof patch.terrainExaggeration !== 'number' || !Number.isFinite(patch.terrainExaggeration)) throw new Error('无效的地形夸张设置')
-      nextSettings.terrainExaggeration = Math.min(5, Math.max(1, patch.terrainExaggeration))
-    }
-    if (patch.terrainLighting !== undefined) {
-      if (typeof patch.terrainLighting !== 'boolean') throw new Error('无效的光照设置')
-      nextSettings.terrainLighting = patch.terrainLighting
-    }
-    if (patch.tileCacheEnabled !== undefined) {
-      if (typeof patch.tileCacheEnabled !== 'boolean') throw new Error('无效的缓存设置')
-      nextSettings.tileCacheEnabled = patch.tileCacheEnabled
-    }
-    if (patch.tileMirrorEnabled !== undefined) {
-      if (typeof patch.tileMirrorEnabled !== 'boolean') throw new Error('无效的镜像瓦片设置')
-      nextSettings.tileMirrorEnabled = patch.tileMirrorEnabled
-    }
-    if (patch.networkProxy !== undefined) {
-      if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')
-      const normalized = normalizeNetworkProxy(patch.networkProxy)
-      if (normalized === '' && patch.networkProxy.trim() !== '') throw new Error('无效的代理地址')
-      nextSettings.networkProxy = normalized
-    }
-    if (patch.providerStyles !== undefined) {
-      if (!isRecord(patch.providerStyles)) throw new Error('无效的影像样式')
-      const providerStyles = { ...settings.providerStyles }
-      for (const [providerId, styleId] of Object.entries(patch.providerStyles)) {
-        providerStyles[safeId(providerId)] = safeId(styleId)
+    await saveSettings((settings) => {
+      const nextSettings: PersistedSettings = {
+        ...settings,
+        providerCredentials: settings.providerCredentials
       }
-      nextSettings.providerStyles = providerStyles
-    }
-    if (patch.setupGuideDismissed !== undefined) {
-      if (typeof patch.setupGuideDismissed !== 'boolean') throw new Error('无效的向导设置')
-      nextSettings.setupGuideDismissed = patch.setupGuideDismissed
-    }
-    settings = nextSettings
-    saveSettings()
+      if (patch.selectedImageryProviderId !== undefined) nextSettings.selectedImageryProviderId = safeId(patch.selectedImageryProviderId)
+      if (patch.selectedTerrainProviderId !== undefined) nextSettings.selectedTerrainProviderId = safeId(patch.selectedTerrainProviderId)
+      if (patch.terrainExaggeration !== undefined) {
+        if (typeof patch.terrainExaggeration !== 'number' || !Number.isFinite(patch.terrainExaggeration)) throw new Error('无效的地形夸张设置')
+        nextSettings.terrainExaggeration = Math.min(5, Math.max(1, patch.terrainExaggeration))
+      }
+      if (patch.terrainLighting !== undefined) {
+        if (typeof patch.terrainLighting !== 'boolean') throw new Error('无效的光照设置')
+        nextSettings.terrainLighting = patch.terrainLighting
+      }
+      if (patch.tileCacheEnabled !== undefined) {
+        if (typeof patch.tileCacheEnabled !== 'boolean') throw new Error('无效的缓存设置')
+        nextSettings.tileCacheEnabled = patch.tileCacheEnabled
+      }
+      if (patch.tileMirrorEnabled !== undefined) {
+        if (typeof patch.tileMirrorEnabled !== 'boolean') throw new Error('无效的镜像瓦片设置')
+        nextSettings.tileMirrorEnabled = patch.tileMirrorEnabled
+      }
+      if (patch.networkProxy !== undefined) {
+        if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')
+        const normalized = normalizeNetworkProxy(patch.networkProxy)
+        if (normalized === '' && patch.networkProxy.trim() !== '') throw new Error('无效的代理地址')
+        nextSettings.networkProxy = normalized
+      }
+      if (patch.providerStyles !== undefined) {
+        if (!isRecord(patch.providerStyles)) throw new Error('无效的影像样式')
+        const providerStyles = { ...settings.providerStyles }
+        for (const [providerId, styleId] of Object.entries(patch.providerStyles)) {
+          providerStyles[safeId(providerId)] = safeId(styleId)
+        }
+        nextSettings.providerStyles = providerStyles
+      }
+      if (patch.setupGuideDismissed !== undefined) {
+        if (typeof patch.setupGuideDismissed !== 'boolean') throw new Error('无效的向导设置')
+        nextSettings.setupGuideDismissed = patch.setupGuideDismissed
+      }
+      return nextSettings
+    })
     if (patch.networkProxy !== undefined) void applyNetworkProxy()
     return settingsSnapshot()
   })
-  ipcMain.handle('settings:set-provider-api-key', (_event, providerId: string, apiKey: string): ProviderCredentialStatus => {
+  ipcMain.handle('settings:set-provider-api-key', async (_event, providerId: string, apiKey: string): Promise<ProviderCredentialStatus> => {
     const id = safeId(providerId)
     writeProviderKey(id, apiKey)
     const status = { configured: true, updatedAt: Date.now() }
-    settings.providerCredentials[id] = status
-    saveSettings()
+    await saveSettings((current) => ({ ...current, providerCredentials: { ...current.providerCredentials, [id]: status } }))
     return status
   })
-  ipcMain.handle('settings:clear-provider-api-key', (_event, providerId: string): ProviderCredentialStatus => {
+  ipcMain.handle('settings:clear-provider-api-key', async (_event, providerId: string): Promise<ProviderCredentialStatus> => {
     const id = safeId(providerId)
     clearProviderKey(id)
     const status = { configured: false, updatedAt: null }
-    settings.providerCredentials[id] = status
-    saveSettings()
+    await saveSettings((current) => ({ ...current, providerCredentials: { ...current.providerCredentials, [id]: status } }))
     return status
   })
   ipcMain.handle('settings:has-provider-api-key', (_event, providerId: string): ProviderCredentialStatus => credentialStatus(safeId(providerId)))
@@ -798,24 +819,25 @@ function registerIpcHandlers(): void {
   ipcMain.handle('tiles:get', (_event, key: TileKey) => readTile(key))
   ipcMain.handle('tiles:put', (_event, entry: TileCacheEntry) => writeTile(entry))
   ipcMain.handle('tiles:clear', (_event, providerId?: string) => {
-    if (providerId === undefined) {
-      rmSync(tileCachePath, { recursive: true, force: true })
-      mkdirSync(tileCachePath, { recursive: true })
-      return
-    }
-    rmSync(join(tileCachePath, safeId(providerId)), { recursive: true, force: true })
+    const target = providerId === undefined ? tileCachePath : storageChildPath(tileCachePath, safeId(providerId))
+    return enqueueTileMutation(async () => {
+      if (tilePrunePromise) await tilePrunePromise
+      await rm(target, { recursive: true, force: true })
+      await mkdir(tileCachePath, { recursive: true })
+      tilePruneAt = 0
+    })
   })
   ipcMain.handle('tiles:stats', () => cacheStats())
   ipcMain.handle('annotations:load', (): AnnotationDocument => annotations)
-  ipcMain.handle('annotations:save', (_event, document: unknown): void => {
+  ipcMain.handle('annotations:save', async (_event, document: unknown): Promise<void> => {
     annotations = normalizeAnnotations(document)
-    saveAnnotations()
+    await saveAnnotations()
   })
   ipcMain.handle('scenes:load', (): SceneDocument => scenes)
-  ipcMain.handle('scenes:save', (_event, document: unknown): void => {
+  ipcMain.handle('scenes:save', async (_event, document: unknown): Promise<void> => {
     try {
       scenes = normalizeSceneDocument(document)
-      saveScenes()
+      await saveScenes()
     } catch (error) {
       console.error('[scenes] save failed:', error)
       throw error instanceof Error ? error : new Error(String(error))
@@ -838,8 +860,7 @@ function registerIpcHandlers(): void {
     } catch {
       throw new Error('所选文件夹不可写，请选择其他文件夹')
     }
-    settings.recordingDirectory = directory
-    saveSettings()
+    await saveSettings((current) => ({ ...current, recordingDirectory: directory }))
     return directory
   })
   ipcMain.handle('recordings:start', async (event, mimeType: unknown): Promise<string> => {
@@ -974,14 +995,17 @@ app.whenReady().then(async () => {
   scenesPath = join(userDataPath, 'scenes.json')
   initKeyVault(join(userDataPath, 'credentials'))
   initDatasets(userDataPath)
-  mkdirSync(tileCachePath, { recursive: true })
-  settings = readSettings()
+  await mkdir(tileCachePath, { recursive: true })
+  settings = await readSettings()
   await applyNetworkProxy()
-  annotations = readAnnotations()
-  scenes = readScenes()
-  aiSettings.init(join(userDataPath, 'ai-settings.json'))
-  aiChatHistory.init(join(userDataPath, 'ai-chat-history.json'))
-  aiMemories.init(join(userDataPath, 'ai-memories.json'))
+  const loaded = await Promise.all([
+    readAnnotations(),
+    readScenes(),
+    aiSettings.init(join(userDataPath, 'ai-settings.json')),
+    aiChatHistory.init(join(userDataPath, 'ai-chat-history.json')),
+    aiMemories.init(join(userDataPath, 'ai-memories.json'))
+  ])
+  ;[annotations, scenes] = loaded
   registerIpcHandlers()
   registerAiIpcHandlers(aiSettings, aiChatHistory, aiMemories)
   initUpdater(join(userDataPath, 'updates'))
@@ -996,6 +1020,13 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+app.on('before-quit', (event) => {
+  if (quitting) return
+  event.preventDefault()
+  quitting = true
+  void flushJsonWrites().finally(() => app.quit())
 })
 
 app.on('window-all-closed', () => {

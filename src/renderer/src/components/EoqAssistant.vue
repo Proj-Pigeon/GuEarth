@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, h, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import MarkdownIt from 'markdown-it'
 import { Bubble, Sender, Suggestion } from 'ant-design-x-vue'
 import { Modal } from 'ant-design-vue'
 import type { VNode } from 'vue'
 import { CloseCircleOutlined, CloseOutlined, CompassOutlined, CompressOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SettingOutlined, UpOutlined } from '@ant-design/icons-vue'
 import { useAiStore, toolLabel, type ChatMessage, type ReasoningPart, type ToolStep } from '@renderer/stores/ai'
-import type { AiModelConfig, AiProviderConfig, StoredAiConversation } from '../../../preload'
+import type { AiModelConfig, AiProviderConfig, StoredAiConversationSummary } from '../../../preload'
 import ContextMeter from './ContextMeter.vue'
+import StreamingMarkdown from './StreamingMarkdown.vue'
 import WebSearchStep from './WebSearchStep.vue'
 
 const store = useAiStore()
@@ -16,9 +16,11 @@ const { messages, conversations, currentConversationId, isStreaming, isPanelOpen
 
 const draft = ref('')
 const listRef = ref<HTMLDivElement>()
+let scrollFrame: number | undefined
+let scrollQueued = false
 const historyOpen = ref(false)
 const deleteConfirmOpen = ref(false)
-const deleteTarget = ref<StoredAiConversation | null>(null)
+const deleteTarget = ref<StoredAiConversationSummary | null>(null)
 const deleteNoAsk = ref(false)
 const modelMenuOpen = ref(false)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
@@ -241,7 +243,7 @@ function handleHistoryMenuClick(info: { key: string | number }): void {
   store.openConversation(String(info.key))
 }
 
-function handleDeleteConversation(event: Event, conversation: StoredAiConversation): void {
+function handleDeleteConversation(event: Event, conversation: StoredAiConversationSummary): void {
   event.stopPropagation()
   historyOpen.value = false
   if (store.settings.skipDeleteConversationConfirm) {
@@ -281,12 +283,15 @@ let rotateTimer: number | undefined
 const currentSuggestion = computed(() => suggestions[suggestionIndex.value])
 
 function startRotate(): void {
-  if (rotateTimer !== undefined) window.clearInterval(rotateTimer)
+  stopRotate()
+  if (!isPanelOpen.value || messages.value.length || document.hidden) return
   rotateTimer = window.setInterval(() => {
     if (rotatePaused.value) return
     suggestionIndex.value = (suggestionIndex.value + 1) % suggestions.length
   }, ROTATE_INTERVAL_MS)
 }
+
+watch([isPanelOpen, () => messages.value.length], startRotate, { immediate: true })
 
 function stopRotate(): void {
   if (rotateTimer === undefined) return
@@ -304,27 +309,20 @@ function submitCurrentSuggestion(): void {
 }
 
 onMounted(() => {
-  startRotate()
   readDrawerWidth()
   window.addEventListener('resize', handleViewportResize)
+  document.addEventListener('visibilitychange', startRotate)
 })
 onUnmounted(() => {
   stopRotate()
   stopDrawerResize()
+  if (scrollFrame !== undefined) {
+    cancelAnimationFrame(scrollFrame)
+    scrollFrame = undefined
+  }
   window.removeEventListener('resize', handleViewportResize)
+  document.removeEventListener('visibilitychange', startRotate)
 })
-
-const md = new MarkdownIt({ breaks: true, linkify: true })
-md.validateLink = (url) => /^https?:\/\//i.test(url)
-md.renderer.rules.link_open = (tokens, index, options, _env, self) => {
-  tokens[index].attrSet('target', '_blank')
-  tokens[index].attrSet('rel', 'noopener noreferrer')
-  return self.renderToken(tokens, index, options)
-}
-
-function renderMarkdown(text: string): string {
-  return md.render(text)
-}
 
 function reasoningDurationText(part: ReasoningPart): string {
   const seconds = part.ms / 1000
@@ -449,14 +447,37 @@ function handleRegenerate(message: ChatMessage): void {
   })
 }
 
+function scheduleAssistantScroll(): void {
+  if (scrollQueued) return
+  scrollQueued = true
+  void nextTick(() => {
+    scrollQueued = false
+    if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame)
+    scrollFrame = requestAnimationFrame(() => {
+      scrollFrame = undefined
+      listRef.value?.scrollTo({ top: listRef.value.scrollHeight })
+      if (!listRef.value) return
+      const element = listRef.value.querySelector<HTMLElement>('.assistant-block:last-child .reasoning-text')
+      if (element) element.scrollTop = element.scrollHeight
+    })
+  })
+}
+
 watch(
-  () => messages.value.map((message) => `${message.status}:${message.content.length}:${message.parts.map((part) => part.kind === 'reasoning' ? `r${part.text.length}` : part.kind === 'text' ? `t${part.text.length}` : `o${part.step.status}:${part.step.result.length}`).join('.')}`).join(','),
-  async () => {
-    await nextTick()
-    listRef.value?.scrollTo({ top: listRef.value.scrollHeight })
-    if (!listRef.value) return
-    for (const element of listRef.value.querySelectorAll<HTMLElement>('.reasoning-text')) element.scrollTop = element.scrollHeight
-  }
+  () => {
+    const message = messages.value[messages.value.length - 1]
+    if (!message) return ''
+    const part = message.parts[message.parts.length - 1]
+    const partKey = !part
+      ? ''
+      : part.kind === 'reasoning'
+        ? `r${part.text.length}`
+        : part.kind === 'text'
+          ? `t${part.text.length}`
+          : `o${part.step.status}:${part.step.result.length}`
+    return `${message.id}:${message.status}:${message.content.length}:${partKey}`
+  },
+  scheduleAssistantScroll
 )
 
 watch(
@@ -587,7 +608,7 @@ watch(currentConversationId, () => {
                 <div class="reasoning-text">{{ part.text }}</div>
               </a-collapse-panel>
             </a-collapse>
-            <div v-else-if="part.kind === 'text'" class="answer-text" v-html="renderMarkdown(part.text)"></div>
+            <StreamingMarkdown v-else-if="part.kind === 'text'" :text="part.text" :streaming="message.status === 'streaming'" @rendered="scheduleAssistantScroll" />
             <WebSearchStep
               v-else-if="part.step.name === 'web_search'"
               :step="part.step"

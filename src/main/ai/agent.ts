@@ -871,7 +871,7 @@ async function executeTool(sender: WebContents, sessionId: string, name: string,
         outcome = { ok: false, content: JSON.stringify({ error: '记忆功能未开启，请在 AI 设置 → 记忆 中开启' }) }
       } else {
         try {
-          const saved = memory.store.add(typeof args.content === 'string' ? args.content : '', 'agent')
+          const saved = await memory.store.add(typeof args.content === 'string' ? args.content : '', 'agent')
           outcome = { ok: true, content: JSON.stringify({ memorySaved: true, id: saved.id, content: saved.content, message: '已写入记忆' }) }
         } catch (error) {
           outcome = { ok: false, content: JSON.stringify({ error: error instanceof Error ? error.message : '记忆写入失败' }) }
@@ -884,7 +884,7 @@ async function executeTool(sender: WebContents, sessionId: string, name: string,
       } else if (!id) {
         outcome = { ok: false, content: JSON.stringify({ error: '缺少记忆 id' }) }
       } else {
-        const deleted = memory.store.delete(id)
+        const deleted = await memory.store.delete(id)
         outcome = deleted
           ? { ok: true, content: JSON.stringify({ memoryDeleted: true, id, message: '已删除记忆' }) }
           : { ok: false, content: JSON.stringify({ error: `未找到 id 为 ${id} 的记忆` }) }
@@ -1128,20 +1128,21 @@ export function registerAiIpcHandlers(settingsStore: AiSettingsStore, chatHistor
   ipcMain.handle('ai:get-settings', () => settingsStore.snapshot())
   ipcMain.handle('ai:update-settings', (_event, value: unknown) => settingsStore.update(value))
   ipcMain.handle('ai:history-list', () => chatHistoryStore.list())
+  ipcMain.handle('ai:history-get', (_event, id: unknown) => typeof id === 'string' ? chatHistoryStore.get(id) : null)
   ipcMain.handle('ai:history-save', (_event, value: unknown) => chatHistoryStore.save(value))
   ipcMain.handle('ai:history-delete', (_event, id: unknown) => {
     if (typeof id !== 'string' || !id) return chatHistoryStore.list()
     return chatHistoryStore.delete(id)
   })
   ipcMain.handle('ai:memory-list', () => memoryStore.list())
-  ipcMain.handle('ai:memory-add', (_event, content: unknown) => {
+  ipcMain.handle('ai:memory-add', async (_event, content: unknown) => {
     if (typeof content !== 'string') throw new Error('无效的记忆内容')
-    memoryStore.add(content, 'user')
+    await memoryStore.add(content, 'user')
     return memoryStore.list()
   })
-  ipcMain.handle('ai:memory-delete', (_event, id: unknown) => {
+  ipcMain.handle('ai:memory-delete', async (_event, id: unknown) => {
     if (typeof id !== 'string' || !id.trim()) throw new Error('无效的记忆标识')
-    if (!memoryStore.delete(id.trim())) throw new Error('未找到该记忆，可能已被删除')
+    if (!await memoryStore.delete(id.trim())) throw new Error('未找到该记忆，可能已被删除')
     return memoryStore.list()
   })
   const memoryRuntime = (): MemoryRuntime => ({ enabled: settingsStore.snapshot().memoryEnabled !== false, store: memoryStore })

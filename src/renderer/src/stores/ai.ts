@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { AiChatEvent, AiChatTurn, AiContextCompressionResult, AiContextEntry, AiContextStats, AiSearchReference, AiSettings, AiToolDefinition, StoredAiCompression, StoredAiConversation, StoredAiMessage, StoredAiPart } from '../../../preload'
+import type { AiChatEvent, AiChatTurn, AiContextCompressionResult, AiContextEntry, AiContextStats, AiSearchReference, AiSettings, AiToolDefinition, StoredAiCompression, StoredAiConversation, StoredAiConversationSummary, StoredAiMessage, StoredAiPart } from '../../../preload'
 import { defaultAiSettings } from '../../../shared/aiSettings'
 
 export interface ToolStep {
@@ -122,7 +122,7 @@ function reportsFailure(result: unknown): boolean {
 export const useAiStore = defineStore('ai', () => {
   const settings = ref<AiSettings>(defaultAiSettings())
   const messages = ref<ChatMessage[]>([])
-  const conversations = ref<StoredAiConversation[]>([])
+  const conversations = ref<StoredAiConversationSummary[]>([])
   const currentConversationId = ref('')
   const isStreaming = ref(false)
   const isPanelOpen = ref(false)
@@ -268,6 +268,7 @@ export const useAiStore = defineStore('ai', () => {
     clearIdleWatchdog()
     idleTimer = setTimeout(() => {
       idleTimer = undefined
+      flushDeltas()
       const assistant = currentAssistant()
       if (assistant && assistant.status === 'streaming') {
         assistant.status = 'error'
@@ -277,7 +278,36 @@ export const useAiStore = defineStore('ai', () => {
     }, STREAM_IDLE_TIMEOUT_MS)
   }
 
+  let deltaTimer: ReturnType<typeof setTimeout> | undefined
+  let deltaEvent: Extract<AiChatEvent, { type: 'text-delta' | 'reasoning-delta' }> | undefined
+  let deltaChunks: string[] = []
+
+  function flushDeltas(): void {
+    if (deltaTimer !== undefined) clearTimeout(deltaTimer)
+    deltaTimer = undefined
+    const event = deltaEvent
+    deltaEvent = undefined
+    if (!event) return
+    const text = deltaChunks.join('')
+    deltaChunks = []
+    applyEvent({ ...event, text })
+  }
+
   function handleEvent(event: AiChatEvent): void {
+    if (event.type === 'text-delta' || event.type === 'reasoning-delta') {
+      if (event.sessionId !== activeSessionId) return
+      if (isStreaming.value) armIdleWatchdog()
+      if (deltaEvent && (deltaEvent.type !== event.type || deltaEvent.sessionId !== event.sessionId)) flushDeltas()
+      deltaEvent = event
+      deltaChunks.push(event.text)
+      if (deltaTimer === undefined) deltaTimer = setTimeout(flushDeltas, 32)
+      return
+    }
+    flushDeltas()
+    applyEvent(event)
+  }
+
+  function applyEvent(event: AiChatEvent): void {
     if (event.type === 'context-stats') {
       if (event.sessionId === activeSessionId) contextStats.value = event.stats
       return
@@ -501,6 +531,7 @@ export const useAiStore = defineStore('ai', () => {
   async function send(text: string): Promise<void> {
     const question = text.trim()
     if (!question || isStreaming.value) return
+    conversationLoadSequence += 1
     modelRetryNotice.value = ''
     await hydrate()
     messageSeq += 1
@@ -528,6 +559,7 @@ export const useAiStore = defineStore('ai', () => {
     try {
       await window.guEarth.ai.chat(sessionId, turns, toolDefinitions())
     } catch (error) {
+      flushDeltas()
       const assistant = currentAssistant()
       if (assistant && assistant.status === 'streaming') {
         assistant.status = 'error'
@@ -600,8 +632,11 @@ export const useAiStore = defineStore('ai', () => {
     await window.guEarth.ai.stop(activeSessionId)
   }
 
+  let conversationLoadSequence = 0
+
   function newConversation(): void {
     if (isStreaming.value) return
+    conversationLoadSequence += 1
     currentConversationId.value = ''
     messages.value = []
     resetContextCompression()
@@ -609,17 +644,23 @@ export const useAiStore = defineStore('ai', () => {
     setContextNotice('', 'idle')
   }
 
-  function openConversation(id: string): void {
-    if (isStreaming.value) return
-    const conversation = conversations.value.find((item) => item.id === id)
-    if (!conversation || conversation.id === currentConversationId.value) return
-    currentConversationId.value = id
-    messages.value = JSON.parse(JSON.stringify(conversation.messages)) as ChatMessage[]
-    restoreConversationCompression(conversation)
-    void refreshContextStats()
+  async function openConversation(id: string): Promise<void> {
+    if (isStreaming.value || id === currentConversationId.value || !window.guEarth?.ai) return
+    const sequence = ++conversationLoadSequence
+    try {
+      const conversation = await window.guEarth.ai.chatHistory.get(id)
+      if (!conversation || sequence !== conversationLoadSequence || isStreaming.value) return
+      currentConversationId.value = id
+      messages.value = conversation.messages as ChatMessage[]
+      restoreConversationCompression(conversation)
+      void refreshContextStats()
+    } catch (error) {
+      console.warn('[ai] 会话读取失败', error)
+    }
   }
 
   async function deleteConversation(id: string): Promise<void> {
+    conversationLoadSequence += 1
     compressionByConversation.delete(id)
     if (currentConversationId.value === id) {
       currentConversationId.value = ''

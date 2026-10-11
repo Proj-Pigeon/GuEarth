@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { Button } from 'ant-design-vue'
 import { StepForwardOutlined } from '@ant-design/icons-vue'
-import { useScenesStore } from '@renderer/stores/scenes'
+import { useScenesStore, type RecordingPrewarmQuality } from '@renderer/stores/scenes'
 import type { PlayerState } from '@renderer/composables/useScenePlayer'
 
 const props = defineProps<{ player: PlayerState }>()
@@ -11,6 +11,18 @@ const emit = defineEmits<{ next: []; stop: [] }>()
 const scenesStore = useScenesStore()
 
 const recordingActive = computed(() => scenesStore.recording.state === 'recording' || scenesStore.recording.state === 'preparing')
+const isRecordingPreparing = computed(() => scenesStore.recording.state === 'preparing')
+const prewarmNotice = computed(() => scenesStore.recording.prewarmMessage || '正在预加载录制画面…')
+const prewarmProgress = computed(() => {
+  const total = scenesStore.recording.prewarmTotal || props.player.prewarmTotal
+  const step = scenesStore.recording.prewarmStep || props.player.prewarmIndex
+  return total > 0 ? `${Math.min(step, total)} / ${total}` : ''
+})
+const prewarmQualityOptions = [
+  { label: '标准', value: 'standard' },
+  { label: '高清', value: 'high' },
+  { label: '极清', value: 'ultra' }
+]
 const recordNotice = computed(() => {
   const state = scenesStore.recording.state
   if (state === 'preparing') return '正在准备录制…'
@@ -19,6 +31,14 @@ const recordNotice = computed(() => {
   if (state === 'error') return `录制失败：${scenesStore.recording.error}`
   return ''
 })
+
+function setPrewarmQuality(value: string | number): void {
+  scenesStore.setRecording({ prewarmQuality: value as RecordingPrewarmQuality })
+}
+
+function skipPrewarm(): void {
+  scenesStore.skipRecordingPrewarm()
+}
 
 function handleKeydown(event: KeyboardEvent): void {
   if (!props.player.active) return
@@ -41,8 +61,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   <div v-if="player.active" class="scene-overlay">
     <div v-if="player.prewarming" class="prewarm-mask">
       <a-spin />
-      <div class="prewarm-text">正在准备课程资源…</div>
-      <div class="prewarm-progress">{{ player.prewarmIndex }} / {{ player.prewarmTotal }}</div>
+      <div class="prewarm-text">{{ isRecordingPreparing ? prewarmNotice : '正在准备课程资源…' }}</div>
+      <div class="prewarm-progress">{{ isRecordingPreparing ? prewarmProgress : `${player.prewarmIndex} / ${player.prewarmTotal}` }}</div>
+      <div v-if="isRecordingPreparing" class="prewarm-quality">
+        <div class="prewarm-quality-label">底图精细度</div>
+        <a-segmented :value="scenesStore.recording.prewarmQuality" :options="prewarmQualityOptions" size="small" @change="setPrewarmQuality" />
+      </div>
+      <div v-if="isRecordingPreparing && scenesStore.recording.prewarmTimedOut" class="prewarm-warning">网络较慢，部分地图细节可能在录制中继续补齐。</div>
+      <Button v-if="isRecordingPreparing" size="small" @click.stop="skipPrewarm">跳过预加载</Button>
     </div>
     <template v-else>
       <div class="stage-hit" aria-label="下一幕" @click="emit('next')"></div>
@@ -102,6 +128,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   font-size: 12px;
   line-height: 20px;
   font-variant-numeric: tabular-nums;
+}
+
+.prewarm-quality {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.prewarm-quality-label {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.prewarm-warning {
+  max-width: min(360px, 78vw);
+  color: #d46b08;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
 }
 
 .stage-hit {

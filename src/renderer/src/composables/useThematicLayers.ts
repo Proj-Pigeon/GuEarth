@@ -1,4 +1,5 @@
 import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { useVisibleAnimation } from './useVisibleAnimation'
 import * as Cesium from 'cesium'
 import type { EarthquakeEvent, EarthquakeFeed, ProvinceGeoDocument } from '../../../preload'
 import { thematicLayerCatalog, useClimateStore, type ThematicLayerId } from '@renderer/stores/climate'
@@ -160,46 +161,48 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
   const globeStore = useGlobeStore()
   const sources = new Map<ThematicLayerId, Cesium.CustomDataSource>()
   const coriolisProgress = ref(0)
-  let coriolisRaf = 0
-  let coriolisLast = 0
-
-  function coriolisTick(now: number): void {
-    coriolisRaf = requestAnimationFrame(coriolisTick)
-    const dt = coriolisLast > 0 ? Math.min(0.05, (now - coriolisLast) / 1000) : 0
-    coriolisLast = now
+  useVisibleAnimation(() => store.overlays['coriolis-demo'] && Boolean(viewer.value), (dt) => {
     if (dt > 0) coriolisProgress.value = (coriolisProgress.value + dt / 10) % 1
+    const current = viewer.value
+    if (current && !current.isDestroyed()) current.scene.requestRender()
+  })
+
+  let rainBeltEntity: Cesium.Entity | undefined
+  let subsolarEntity: Cesium.Entity | undefined
+  const seasonalCurrents: Array<{ entity: Cesium.Entity; season: 'summer' | 'winter' }> = []
+
+  function refreshRainBelt(month: number): void {
+    const entity = rainBeltEntity
+    if (!entity?.polygon || !entity.label) return
+    entity.polygon.hierarchy = new Cesium.ConstantProperty(new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(beltRing(month))))
+    entity.polygon.material = new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString(RAIN_BELT_COLOR).withAlpha(beltOpacity(month) * 0.7))
+    entity.polygon.show = new Cesium.ConstantProperty(beltOpacity(month) > 0.02)
+    const [lon, lat] = beltLabelPosition(month)
+    entity.position = new Cesium.ConstantPositionProperty(Cesium.Cartesian3.fromDegrees(lon, lat))
+    entity.label.text = new Cesium.ConstantProperty(beltLabel(month))
+    entity.label.show = new Cesium.ConstantProperty(beltOpacity(month) > 0.05 && beltLabel(month) !== '')
   }
 
-  function startCoriolis(): void {
-    if (!coriolisRaf) {
-      coriolisLast = 0
-      coriolisRaf = requestAnimationFrame(coriolisTick)
-    }
+  function refreshSubsolarPoint(): void {
+    if (!subsolarEntity?.label) return
+    const point = subsolarPointDeg(solarStore.utcMs)
+    subsolarEntity.position = new Cesium.ConstantPositionProperty(Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude))
+    subsolarEntity.label.text = new Cesium.ConstantProperty(`直射点 ${Math.abs(point.latitude).toFixed(1)}°${point.latitude >= 0 ? 'N' : 'S'}`)
   }
 
-  function stopCoriolis(): void {
-    if (coriolisRaf) {
-      cancelAnimationFrame(coriolisRaf)
-      coriolisRaf = 0
-    }
+  function refreshSeasonalCurrents(): void {
+    for (const { entity, season } of seasonalCurrents) entity.show = (season === 'summer' ? store.summerStrength : store.winterStrength) > 0.5
   }
 
   function buildRainBelt(dataSource: Cesium.CustomDataSource): void {
-    dataSource.entities.add({
+    rainBeltEntity = dataSource.entities.add({
       polygon: {
-        hierarchy: new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(beltRing(store.month))), false),
-        material: new Cesium.ColorMaterialProperty(
-          new Cesium.CallbackProperty(() => Cesium.Color.fromCssColorString(RAIN_BELT_COLOR).withAlpha(beltOpacity(store.month) * 0.7), false)
-        ),
-        show: new Cesium.CallbackProperty(() => beltOpacity(store.month) > 0.02, false)
+        hierarchy: new Cesium.PolygonHierarchy([])
       },
-      position: new Cesium.CallbackPositionProperty(() => {
-        const [lon, lat] = beltLabelPosition(store.month)
-        return Cesium.Cartesian3.fromDegrees(lon, lat)
-      }, false, Cesium.ReferenceFrame.FIXED),
+      position: Cesium.Cartesian3.ZERO,
       label: {
-        text: new Cesium.CallbackProperty(() => beltLabel(store.month), false),
-        show: new Cesium.CallbackProperty(() => beltOpacity(store.month) > 0.05 && beltLabel(store.month) !== '', false),
+        text: '',
+        show: false,
         font: labelFont(15, 600),
         fillColor: Cesium.Color.WHITE,
         outlineColor: Cesium.Color.fromCssColorString(RAIN_BELT_COLOR),
@@ -209,6 +212,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       }
     })
+    refreshRainBelt(store.month)
   }
 
   function buildMonsoonArrows(dataSource: Cesium.CustomDataSource, season: 'summer' | 'winter'): void {
@@ -253,35 +257,30 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
   function buildOceanCurrents(dataSource: Cesium.CustomDataSource): void {
     for (const current of oceanCurrents) {
       const color = Cesium.Color.fromCssColorString(current.kind === 'warm' ? WARM_COLOR : COLD_COLOR)
-      const seasonal = current.season !== undefined
-      const show = seasonal
-        ? new Cesium.CallbackProperty(
-          () => (current.season === 'summer' ? store.summerStrength : store.winterStrength) > 0.5,
-          false
-        )
-        : undefined
-      dataSource.entities.add({
+      const add = (options: Cesium.Entity.ConstructorOptions): void => {
+        const entity = dataSource.entities.add(options)
+        if (current.season) seasonalCurrents.push({ entity, season: current.season })
+      }
+      add({
         polyline: {
           positions: toCartesians(current.path),
           clampToGround: true,
           width: current.major ? 4.5 : 3,
-          material: color.withAlpha(0.8),
-          show
+          material: color.withAlpha(0.8)
         }
       })
       for (const fraction of [0.35, 0.8]) {
         const back = pathPointAt(current.path, fraction)
         const front = pathPointAt(current.path, fraction + 0.03)
-        dataSource.entities.add({
+        add({
           polygon: {
             hierarchy: new Cesium.PolygonHierarchy(arrowHeadPositions(back.position, front.position, 1.5)),
-            material: color.withAlpha(0.9),
-            show
+            material: color.withAlpha(0.9)
           }
         })
       }
       const mid = pathPointAt(current.path, 0.55)
-      dataSource.entities.add({
+      add({
         position: Cesium.Cartesian3.fromDegrees(mid.position[0], mid.position[1]),
         label: {
           text: current.name,
@@ -292,11 +291,11 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           pixelOffset: new Cesium.Cartesian2(0, -10),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          show
+          disableDepthTestDistance: Number.POSITIVE_INFINITY
         }
       })
     }
+    refreshSeasonalCurrents()
   }
 
   function buildClimateZones(dataSource: Cesium.CustomDataSource): void {
@@ -335,7 +334,6 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
   }
 
   function buildCoriolis(dataSource: Cesium.CustomDataSource): void {
-    startCoriolis()
     const inertialColor = Cesium.Color.fromCssColorString(CORIOLIS_INERTIAL_COLOR)
     for (const demo of coriolisDemos) {
       const deflectedColor = Cesium.Color.fromCssColorString(demo.id === 'north' ? CORIOLIS_NORTH_COLOR : CORIOLIS_SOUTH_COLOR)
@@ -584,25 +582,32 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     }
     if (sources.get('plate-tectonics') !== dataSource) return
     failureStore.clearFailure('dataset')
-    for (const event of feed.events) {
-      const style = quakeStyle(event.magnitude)
-      dataSource.entities.add({
-        properties: new Cesium.PropertyBag({
-          name: `M${event.magnitude} 地震`,
-          layerId: 'plate-tectonics',
-          summary: earthquakeSummary(event)
-        }),
-        position: Cesium.Cartesian3.fromDegrees(event.longitude, event.latitude),
-        point: {
-          pixelSize: style.pixelSize,
-          color: Cesium.Color.fromCssColorString(style.color),
-          outlineColor: Cesium.Color.WHITE,
-          outlineWidth: 1.5,
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY
-        }
-      })
-    }
+    buildEntities(dataSource, () => {
+      for (const entity of [...dataSource.entities.values]) {
+        if (entity.id.startsWith('earthquake-')) dataSource.entities.remove(entity)
+      }
+      for (const [index, event] of feed.events.entries()) {
+        const style = quakeStyle(event.magnitude)
+        dataSource.entities.add({
+          id: `earthquake-${index}`,
+          properties: new Cesium.PropertyBag({
+            name: `M${event.magnitude} 地震`,
+            layerId: 'plate-tectonics',
+            summary: earthquakeSummary(event)
+          }),
+          position: Cesium.Cartesian3.fromDegrees(event.longitude, event.latitude),
+          point: {
+            pixelSize: style.pixelSize,
+            color: Cesium.Color.fromCssColorString(style.color),
+            outlineColor: Cesium.Color.WHITE,
+            outlineWidth: 1.5,
+            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY
+          }
+        })
+      }
+    })
+    viewer.value?.scene.requestRender()
   }
 
   function buildPlateTectonics(dataSource: Cesium.CustomDataSource): void {
@@ -738,16 +743,13 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
       })
     }
     const subsolarColor = Cesium.Color.fromCssColorString(SUBSOLAR_COLOR)
-    dataSource.entities.add({
+    subsolarEntity = dataSource.entities.add({
       properties: new Cesium.PropertyBag({
         name: '太阳直射点',
         layerId: 'temperature-zones',
         summary: '太阳光线垂直照射的地面位置。直射点以直射纬度在最北 23.5°N 与最南 23.5°S 之间做回归运动：春分指向赤道，夏至最北，秋分返回赤道，冬至最南，周期为一个回归年。调节日期、时刻或播放「回归运动」即可观察其移动。'
       }),
-      position: new Cesium.CallbackPositionProperty(() => {
-        const point = subsolarPointDeg(solarStore.utcMs)
-        return Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude)
-      }, false, Cesium.ReferenceFrame.FIXED),
+      position: Cesium.Cartesian3.ZERO,
       point: {
         pixelSize: 10,
         color: subsolarColor,
@@ -757,10 +759,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       },
       label: {
-        text: new Cesium.CallbackProperty(() => {
-          const point = subsolarPointDeg(solarStore.utcMs)
-          return `直射点 ${Math.abs(point.latitude).toFixed(1)}°${point.latitude >= 0 ? 'N' : 'S'}`
-        }, false),
+        text: '',
         font: labelFont(13, 600),
         fillColor: subsolarColor,
         outlineColor: Cesium.Color.WHITE,
@@ -771,6 +770,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       }
     })
+    refreshSubsolarPoint()
   }
 
   function buildTyphoon(dataSource: Cesium.CustomDataSource): void {
@@ -1394,28 +1394,31 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     }
     if (sources.get('province-population') !== dataSource) return
     failureStore.clearFailure('province-dataset')
-    for (const feature of document.features) {
-      const population = provincePopulation.find((item) => item.name === feature.name)
-      if (!population) continue
-      const fillColor = Cesium.Color.fromCssColorString(densityColor(densityOf(population)))
-      const borderColor = Cesium.Color.fromCssColorString(PROVINCE_BORDER_COLOR)
-      const properties = new Cesium.PropertyBag({
-        name: feature.name,
-        layerId: 'province-population',
-        summary: provinceSummary(feature.name) ?? ''
-      })
-      for (const rings of feature.polygons) {
-        const hierarchy = provinceRingsToHierarchy(rings)
-        if (!hierarchy) continue
-        dataSource.entities.add({
-          properties,
-          polygon: { hierarchy, material: new Cesium.ColorMaterialProperty(fillColor.withAlpha(0.65)) }
+    buildEntities(dataSource, () => {
+      for (const feature of document.features) {
+        const population = provincePopulation.find((item) => item.name === feature.name)
+        if (!population) continue
+        const fillColor = Cesium.Color.fromCssColorString(densityColor(densityOf(population)))
+        const borderColor = Cesium.Color.fromCssColorString(PROVINCE_BORDER_COLOR)
+        const properties = new Cesium.PropertyBag({
+          name: feature.name,
+          layerId: 'province-population',
+          summary: provinceSummary(feature.name) ?? ''
         })
-        dataSource.entities.add({
-          polyline: { positions: hierarchy.positions, clampToGround: true, width: 1.2, material: borderColor }
-        })
+        for (const rings of feature.polygons) {
+          const hierarchy = provinceRingsToHierarchy(rings)
+          if (!hierarchy) continue
+          dataSource.entities.add({
+            properties,
+            polygon: { hierarchy, material: new Cesium.ColorMaterialProperty(fillColor.withAlpha(0.65)) }
+          })
+          dataSource.entities.add({
+            polyline: { positions: hierarchy.positions, clampToGround: true, width: 1.2, material: borderColor }
+          })
+        }
       }
-    }
+    })
+    viewer.value?.scene.requestRender()
   }
 
   function buildProvincePopulation(dataSource: Cesium.CustomDataSource): void {
@@ -1475,6 +1478,30 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     'sea-level-rise': { longitude: 119.6, latitude: 31.6, height: 9500000 }
   }
 
+  function buildEntities(dataSource: Cesium.CustomDataSource, build: () => void): void {
+    dataSource.entities.suspendEvents()
+    try {
+      build()
+    } finally {
+      dataSource.entities.resumeEvents()
+    }
+  }
+
+  function releaseLayer(id: ThematicLayerId): void {
+    if (id === 'pressure-belts') clearPressureBeltLinks()
+    if (id === 'rain-belt') rainBeltEntity = undefined
+    if (id === 'temperature-zones') subsolarEntity = undefined
+    if (id === 'ocean-currents') seasonalCurrents.length = 0
+  }
+
+  function clearSources(current?: Cesium.Viewer): void {
+    for (const [id, source] of sources) {
+      if (current && !current.isDestroyed()) current.dataSources.remove(source, true)
+      releaseLayer(id)
+    }
+    sources.clear()
+  }
+
   function syncOverlays(): void {
     const current = viewer.value
     if (!current || current.isDestroyed()) return
@@ -1483,43 +1510,44 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
       const existing = sources.get(layer.id)
       if (enabled && !existing) {
         const dataSource = new Cesium.CustomDataSource(layer.id)
-        try {
-          builders[layer.id](dataSource)
-        } catch (error) {
-          console.error(`[thematic] failed to build layer: ${layer.id}`, error)
-        }
-        void current.dataSources.add(dataSource)
         sources.set(layer.id, dataSource)
+        try {
+          buildEntities(dataSource, () => builders[layer.id](dataSource))
+        } catch (error) {
+          sources.delete(layer.id)
+          releaseLayer(layer.id)
+          console.error(`[thematic] failed to build layer: ${layer.id}`, error)
+          continue
+        }
+        void current.dataSources.add(dataSource).then(() => {
+          if (viewer.value !== current || sources.get(layer.id) !== dataSource) {
+            if (!current.isDestroyed()) current.dataSources.remove(dataSource, true)
+            return
+          }
+          current.scene.requestRender()
+        })
         const view = enableViews[layer.id]
         if (view) current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height), duration: 1.2 })
       } else if (!enabled && existing) {
-        current.dataSources.remove(existing, true)
         sources.delete(layer.id)
-        if (layer.id === 'coriolis-demo') stopCoriolis()
-        if (layer.id === 'pressure-belts') clearPressureBeltLinks()
+        current.dataSources.remove(existing, true)
+        releaseLayer(layer.id)
+        current.scene.requestRender()
       }
     }
   }
 
   watch(() => store.overlays, syncOverlays, { deep: true })
-  watch(
-    () => store.ensoPhase,
-    () => {
-      const current = viewer.value
-      const existing = sources.get('enso')
-      if (!current || current.isDestroyed() || !existing) return
-      current.dataSources.remove(existing, true)
-      sources.delete('enso')
-      const dataSource = new Cesium.CustomDataSource('enso')
-      try {
-        buildEnso(dataSource)
-      } catch (error) {
-        console.error('[thematic] failed to rebuild ENSO layer', error)
-      }
-      void current.dataSources.add(dataSource)
-      sources.set('enso', dataSource)
-    }
-  )
+  watch(() => store.ensoPhase, () => {
+    const current = viewer.value
+    const source = sources.get('enso')
+    if (!current || current.isDestroyed() || !source) return
+    buildEntities(source, () => {
+      source.entities.removeAll()
+      buildEnso(source)
+    })
+    current.scene.requestRender()
+  })
   failureStore.registerRetry('dataset', async () => {
     const dataSource = sources.get('plate-tectonics')
     if (!dataSource) {
@@ -1535,18 +1563,22 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     }
     rebuildSeaLevelRise()
   })
-  watch(() => Math.round(store.month * 4) / 4, (month) => refreshPressureBeltGeometry(month))
+  watch(() => Math.round(store.month * 4) / 4, refreshPressureBeltGeometry)
+  function requestRender(): void {
+    const current = viewer.value
+    if (current && !current.isDestroyed()) current.scene.requestRender()
+  }
+  watch(() => Math.round(store.month * 20) / 20, (month) => { refreshRainBelt(month); requestRender() })
+  watch([() => store.summerStrength > 0.5, () => store.winterStrength > 0.5], () => { refreshSeasonalCurrents(); requestRender() })
+  watch(() => solarStore.utcMs, () => { refreshSubsolarPoint(); requestRender() })
   watch(() => store.seaLevelRise, rebuildSeaLevelRise)
   watch(() => globeStore.activeTerrainId, () => {
     if (sources.get('sea-level-rise')) rebuildSeaLevelRise()
   })
-  watch(viewer, (previous) => {
-    if (previous && !previous.isDestroyed()) {
-      sources.clear()
-      clearPressureBeltLinks()
-    }
+  watch(viewer, (_current, previous) => {
+    clearSources(previous)
     syncOverlays()
-  })
+  }, { immediate: true })
 
-  onBeforeUnmount(stopCoriolis)
+  onBeforeUnmount(() => clearSources(viewer.value))
 }

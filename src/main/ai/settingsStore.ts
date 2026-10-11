@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { readJson, serialQueue, writeJson } from '../jsonStore'
 import type { AiModelConfig, AiProviderConfig, AiProtocol, AiSearchProviderConfig, AiSettings, AiThinkingLevel } from '../../preload'
 import { defaultAiSettings, defaultSearchProviders } from '../../shared/aiSettings'
 
@@ -85,15 +85,16 @@ export class AiSettingsStore {
   private path = ''
   private settings: AiSettings = defaultAiSettings()
 
-  init(path: string): void {
+  private enqueue = serialQueue()
+
+  async init(path: string): Promise<void> {
     this.path = path
-    this.settings = this.read()
+    this.settings = await this.read()
   }
 
-  private read(): AiSettings {
-    if (!this.path || !existsSync(this.path)) return defaultAiSettings()
+  private async read(): Promise<AiSettings> {
     try {
-      return normalizeAiSettings(JSON.parse(readFileSync(this.path, 'utf8')))
+      return normalizeAiSettings(await readJson(this.path))
     } catch {
       return defaultAiSettings()
     }
@@ -103,9 +104,12 @@ export class AiSettingsStore {
     return this.settings
   }
 
-  update(value: unknown): AiSettings {
-    this.settings = normalizeAiSettings(value)
-    writeFileSync(this.path, JSON.stringify(this.settings, null, 2), 'utf8')
-    return this.settings
+  update(value: unknown): Promise<AiSettings> {
+    const next = normalizeAiSettings(value)
+    return this.enqueue(async () => {
+      await writeJson(this.path, next)
+      this.settings = next
+      return this.settings
+    })
   }
 }

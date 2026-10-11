@@ -67,7 +67,7 @@ const previousProjection = new Cesium.Matrix4()
 
 let context: CanvasRenderingContext2D | undefined
 let activeViewer: Cesium.Viewer | undefined
-let removeRenderListener: (() => void) | undefined
+let animationFrame = 0
 let resizeObserver: ResizeObserver | undefined
 let cssWidth = 0
 let cssHeight = 0
@@ -302,28 +302,49 @@ function frame(): void {
   }
 }
 
+function stopAnimation(): void {
+  cancelAnimationFrame(animationFrame)
+  animationFrame = 0
+  lastTime = 0
+}
+
+function animate(now: number): void {
+  animationFrame = 0
+  if (document.hidden || !activeViewer || activeViewer.isDestroyed()) return
+  if (!lastTime || now - lastTime >= 1000 / 60) frame()
+  animationFrame = requestAnimationFrame(animate)
+}
+
+function syncAnimation(): void {
+  stopAnimation()
+  if (!document.hidden && activeViewer && !activeViewer.isDestroyed()) {
+    viewDirty = true
+    animationFrame = requestAnimationFrame(animate)
+  }
+}
+
 watch(() => props.viewer, (viewer) => {
-  removeRenderListener?.()
+  stopAnimation()
   activeViewer = viewer ? toRaw(viewer) : undefined
   particles.length = 0
   lastTime = 0
   viewDirty = true
-  removeRenderListener = activeViewer && !activeViewer.isDestroyed()
-    ? activeViewer.scene.postRender.addEventListener(frame)
-    : undefined
+  syncAnimation()
 }, { immediate: true, flush: 'post' })
 
 onMounted(() => {
   resizeObserver = new ResizeObserver(resizeCanvas)
   if (canvasRef.value) resizeObserver.observe(canvasRef.value)
   window.addEventListener('resize', resizeCanvas)
+  document.addEventListener('visibilitychange', syncAnimation)
   resizeCanvas()
 })
 
 onBeforeUnmount(() => {
-  removeRenderListener?.()
+  stopAnimation()
   resizeObserver?.disconnect()
   window.removeEventListener('resize', resizeCanvas)
+  document.removeEventListener('visibilitychange', syncAnimation)
   particles.length = 0
 })
 </script>

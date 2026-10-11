@@ -15,7 +15,8 @@
   "overrides": {
     "app-builder-lib": {
       "@electron/get": "5.1.0"
-    }
+    },
+    "katex": "^0.18.2"
   },
   "devDependencies": {
     "@ant-design/x": "2.9.0",

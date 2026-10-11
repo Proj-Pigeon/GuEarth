@@ -72,6 +72,12 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   let renderErrorReported = false
   let loadTimeoutReported = false
   let loadTimeoutTimer: number | undefined
+  let initialSurfaceCheckTimer: number | undefined
+  let initialSurfaceReady = false
+  let initialTerrainReady = false
+  let initialImageryReady = false
+  let initialSurfaceReadyCallback: (() => void) | undefined
+  let initialSurfaceRenderListener: (() => void) | undefined
   let tileProgressListener: ((pending: number) => void) | undefined
   let selectedPlaceMarker: Cesium.Entity | undefined
   let polarCaps: Cesium.Primitive | undefined
@@ -139,15 +145,15 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   const horizonOccluder = new createEllipsoidalOccluder.EllipsoidalOccluder(Cesium.Ellipsoid.WGS84, Cesium.Cartesian3.ZERO)
   const horizonScratchPosition = new Cesium.Cartesian3()
 
-  function wrapGraphicsShowForHorizon(graphics: { show?: Cesium.Property }, position: Cesium.PositionProperty | undefined): void {
-    if (!position || horizonWrappedGraphics.has(graphics)) return
+  function wrapGraphicsShowForHorizon(graphics: { show?: Cesium.Property }, entity: Cesium.Entity): void {
+    if (!entity.position || horizonWrappedGraphics.has(graphics)) return
     horizonWrappedGraphics.add(graphics)
     const original = graphics.show
     graphics.show = new Cesium.CallbackProperty((time?: Cesium.JulianDate) => {
       if (original && !original.getValue(time)) return false
       const currentViewer = viewer.value
       if (!currentViewer || currentViewer.isDestroyed() || currentViewer.scene.mode !== Cesium.SceneMode.SCENE3D) return true
-      const point = position.getValue(time, horizonScratchPosition)
+      const point = entity.position?.getValue(time, horizonScratchPosition)
       if (!point) return true
       return horizonOccluder.isPointVisible(point)
     }, false)
@@ -160,8 +166,8 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   }
 
   function wrapEntityGraphics(entity: Cesium.Entity): void {
-    if (entity.label) wrapGraphicsShowForHorizon(entity.label, entity.position)
-    if (entity.point) wrapGraphicsShowForHorizon(entity.point, entity.position)
+    if (entity.label) wrapGraphicsShowForHorizon(entity.label, entity)
+    if (entity.point) wrapGraphicsShowForHorizon(entity.point, entity)
   }
 
   function trackEntityCollection(entities: Cesium.EntityCollection): () => void {
@@ -206,6 +212,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     if (!currentViewer || currentViewer.isDestroyed()) return
     flightRequestSequence += 1
     currentViewer.terrainProvider = terrain
+    currentViewer.scene.requestRender()
     if (polarCaps) currentViewer.scene.primitives.remove(polarCaps)
     polarCaps = createPolarCaps(terrain)
     if (polarCaps) {
@@ -272,6 +279,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     imageryLayers.forEach((layer, layerId) => { layer.show = layerId === id })
     activeBasemapId = id
     failureStore.clearFailure('basemap')
+    evaluateGlobeReady()
   }
 
   function retireImageryLayer(layer: Cesium.ImageryLayer): void {
@@ -378,11 +386,109 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     store.setGlobeLoadTimedOut(false)
   }
 
+  const TERRAIN_READY_STATE = 6
+
+  function hasVisibleGlobeSurface(currentViewer: Cesium.Viewer): boolean {
+    const canvas = currentViewer.scene.canvas
+    if (canvas.clientWidth < 2 || canvas.clientHeight < 2) return false
+    const center = new Cesium.Cartesian2(canvas.clientWidth / 2, canvas.clientHeight / 2)
+    const ray = currentViewer.camera.getPickRay(center)
+    if (!ray) return false
+    try {
+      return currentViewer.scene.globe.pick(ray, currentViewer.scene) !== undefined
+    } catch {
+      return false
+    }
+  }
+
+  function hasRenderedInitialSurface(currentViewer: Cesium.Viewer): { terrain: boolean; imagery: boolean } {
+    if (!hasVisibleGlobeSurface(currentViewer)) return { terrain: false, imagery: false }
+    const activeLayer = imageryLayers.get(store.selectedLayerId)
+    const fallback = (): { terrain: boolean; imagery: boolean } => ({
+      terrain: currentViewer.scene.globe.tilesLoaded,
+      imagery: currentViewer.scene.globe.tilesLoaded && Boolean(activeLayer && !activeLayer.isDestroyed() && activeLayer.show && activeLayer.ready)
+    })
+    try {
+      const surface = (currentViewer.scene.globe as unknown as { _surface?: { _tilesToRender?: Array<{ data?: { renderedMesh?: unknown; terrainState?: number; imagery?: Array<{ useWebMercatorT?: boolean; readyImagery?: { imageryLayer?: Cesium.ImageryLayer; texture?: unknown; textureWebMercator?: unknown } }> } }> } })._surface
+      const tiles = surface?._tilesToRender
+      if (!Array.isArray(tiles)) return fallback()
+      let terrain = false
+      let imagery = false
+      for (const tile of tiles) {
+        const data = tile?.data
+        if (!data?.renderedMesh || data.terrainState !== TERRAIN_READY_STATE) continue
+        terrain = true
+        if (activeLayer?.show && Array.isArray(data.imagery) && data.imagery.some((item) => item?.readyImagery?.imageryLayer === activeLayer && Boolean(item.useWebMercatorT ? item.readyImagery.textureWebMercator : item.readyImagery.texture))) imagery = true
+        if (terrain && imagery) break
+      }
+      return { terrain, imagery }
+    } catch {
+      return fallback()
+    }
+  }
+
+  function detachInitialSurfaceTracking(currentViewer?: Cesium.Viewer): void {
+    if (initialSurfaceCheckTimer !== undefined) {
+      window.clearTimeout(initialSurfaceCheckTimer)
+      initialSurfaceCheckTimer = undefined
+    }
+    if (initialSurfaceRenderListener && currentViewer && !currentViewer.isDestroyed()) {
+      currentViewer.scene.postRender.removeEventListener(initialSurfaceRenderListener)
+    }
+    initialSurfaceRenderListener = undefined
+  }
+
+  function attachInitialSurfaceTracking(currentViewer: Cesium.Viewer): void {
+    initialSurfaceReady = false
+    initialTerrainReady = false
+    initialImageryReady = false
+    const listener = (): void => {
+      if (currentViewer.isDestroyed()) {
+        detachInitialSurfaceTracking()
+        return
+      }
+      const rendered = hasRenderedInitialSurface(currentViewer)
+      if (!initialSurfaceReady && rendered.terrain) {
+        initialSurfaceReady = true
+        const callback = initialSurfaceReadyCallback
+        initialSurfaceReadyCallback = undefined
+        callback?.()
+        return
+      }
+      if (currentViewer.terrainProvider instanceof Cesium.EllipsoidTerrainProvider) {
+        if (!initialTerrainReady) return
+        if (rendered.imagery) initialImageryReady = true
+        if (initialImageryReady) {
+          detachInitialSurfaceTracking(currentViewer)
+          evaluateGlobeReady()
+          return
+        }
+      } else {
+        if (rendered.terrain) initialTerrainReady = true
+        if (rendered.imagery) initialImageryReady = true
+        if (initialTerrainReady && initialImageryReady) {
+          detachInitialSurfaceTracking(currentViewer)
+          evaluateGlobeReady()
+          return
+        }
+      }
+      if (initialSurfaceCheckTimer === undefined) {
+        initialSurfaceCheckTimer = window.setTimeout(() => {
+          initialSurfaceCheckTimer = undefined
+          if (!currentViewer.isDestroyed()) currentViewer.scene.requestRender()
+        }, 250)
+      }
+    }
+    initialSurfaceRenderListener = listener
+    currentViewer.scene.postRender.addEventListener(listener)
+    currentViewer.scene.requestRender()
+  }
+
   function evaluateGlobeReady(): void {
     const currentViewer = viewer.value
     if (!currentViewer || currentViewer.isDestroyed()) return
     if (store.isGlobeReady) return
-    if (!currentViewer.scene.globe.show) return
+    if (!initialTerrainReady || !initialImageryReady || !currentViewer.scene.globe.show) return
     if (imageryLayers.size === 0) return
     clearLoadTimeout()
     store.setGlobeReady(true)
@@ -495,6 +601,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     if (!currentViewer || currentViewer.isDestroyed()) return
     currentViewer.scene.verticalExaggeration = store.terrainExaggeration
     currentViewer.scene.globe.enableLighting = store.terrainLighting || solarStore.active
+    currentViewer.scene.requestRender()
     currentViewer.scene.globe.depthTestAgainstTerrain = true
   }
 
@@ -505,6 +612,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       ? Cesium.JulianDate.fromDate(new Date(solarStore.utcMs))
       : Cesium.JulianDate.now()
     currentViewer.scene.globe.enableLighting = store.terrainLighting || solarStore.active
+    currentViewer.scene.requestRender()
   })
 
   function toggleLevelView(): void {
@@ -608,35 +716,49 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
         generation += 1
         store.setGlobeLoadStage('正在初始化地球…')
         const terrainPromise = resolveInitialTerrain(store.terrainProviderId)
-        viewer.value = new Cesium.Viewer(container.value, { baseLayer: false, baseLayerPicker: false, terrainProvider: new Cesium.EllipsoidTerrainProvider(), geocoder: false, animation: false, timeline: false, sceneModePicker: false, navigationHelpButton: false, fullscreenButton: false, homeButton: false, infoBox: false, selectionIndicator: false, useBrowserRecommendedResolution: false, contextOptions: { webgl: { preserveDrawingBuffer: true } } })
-        viewer.value.scene.globe.show = false
-        viewer.value.scene.globe.tileCacheSize = 1000
-        store.setGlobeLoadStage('正在准备地形数据…')
-        viewer.value.camera.setView({ destination: Cesium.Cartesian3.fromDegrees(105, 35, 15000000) })
+        viewer.value = new Cesium.Viewer(container.value, { baseLayer: false, baseLayerPicker: false, terrainProvider: new Cesium.EllipsoidTerrainProvider(), geocoder: false, animation: false, timeline: false, sceneModePicker: false, navigationHelpButton: false, fullscreenButton: false, homeButton: false, infoBox: false, selectionIndicator: false, requestRenderMode: true, maximumRenderTimeChange: Infinity, useBrowserRecommendedResolution: true, contextOptions: { webgl: { preserveDrawingBuffer: true } } })
+        const currentViewer = viewer.value
+        currentViewer.scene.globe.show = true
+        currentViewer.scene.globe.tileCacheSize = 256
+        store.setGlobeLoadStage('正在显示地球表面…')
+        currentViewer.camera.setView({ destination: Cesium.Cartesian3.fromDegrees(105, 35, 15000000) })
         const initialMode = store.sceneMode === '2D' ? Cesium.SceneMode.SCENE2D : Cesium.SceneMode.SCENE3D
-        viewer.value.scene.mode = initialMode
+        currentViewer.scene.mode = initialMode
         applyTerrainRendering()
-        viewer.value.scene.preUpdate.addEventListener(updatePolarCapsVisibility)
-        viewer.value.scene.preUpdate.addEventListener(updateDepthTestDistance)
-        viewer.value.scene.preUpdate.addEventListener(updateCollectionDepthTestDistances)
-        viewer.value.scene.preUpdate.addEventListener(updateHorizonCamera)
-        attachHorizonTracking(viewer.value)
-        viewer.value.scene.renderError.addEventListener(handleSceneRenderError)
-        viewer.value.camera.moveEnd.addEventListener(updateCameraState)
+        currentViewer.scene.preUpdate.addEventListener(updatePolarCapsVisibility)
+        currentViewer.scene.preUpdate.addEventListener(updateDepthTestDistance)
+        currentViewer.scene.preUpdate.addEventListener(updateCollectionDepthTestDistances)
+        currentViewer.scene.preUpdate.addEventListener(updateHorizonCamera)
+        attachHorizonTracking(currentViewer)
+        currentViewer.scene.renderError.addEventListener(handleSceneRenderError)
+        currentViewer.camera.moveEnd.addEventListener(updateCameraState)
         updateCameraState()
+        let terrainSetup: { provider: Cesium.TerrainProvider; id: string } | undefined
+        let terrainApplied = false
+        const applyInitialTerrain = (): void => {
+          if (!terrainSetup || terrainApplied) return
+          const activeViewer = viewer.value
+          if (!activeViewer || activeViewer.isDestroyed()) return
+          terrainApplied = true
+          applyTerrain(terrainSetup.provider)
+          store.setActiveTerrainId(terrainSetup.id)
+          if (terrainSetup.id === 'ellipsoid') {
+            initialTerrainReady = true
+            evaluateGlobeReady()
+          }
+          currentViewer.scene.requestRender()
+          store.setGlobeLoadStage(terrainSetup.id === 'ellipsoid' ? '正在加载地图瓦片…' : '正在加载首屏地形…')
+        }
+        initialSurfaceReadyCallback = undefined
+        attachInitialSurfaceTracking(currentViewer)
         attachTileProgress()
         startLoadTimeout()
         failureStore.registerRetry('basemap', retryBasemap)
         failureStore.registerRetry('terrain', retryTerrain)
-        void (async () => {
-          const terrainSetup = await terrainPromise
-          const current = viewer.value
-          if (!current || current.isDestroyed()) return
-          applyTerrain(terrainSetup.provider)
-          store.setActiveTerrainId(terrainSetup.id)
-          current.scene.globe.show = true
-          store.setGlobeLoadStage('正在加载地图瓦片…')
-        })()
+        void terrainPromise.then((resolvedTerrain) => {
+          terrainSetup = resolvedTerrain
+          applyInitialTerrain()
+        })
         const initialLayerId = store.selectedLayerId
         void (async () => {
           const result = await addLayer(initialLayerId, generation)
@@ -666,6 +788,10 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   onBeforeUnmount(() => {
     generation += 1
     clearLoadTimeout()
+    detachInitialSurfaceTracking(viewer.value)
+    initialSurfaceReady = false
+    initialTerrainReady = false
+    initialSurfaceReadyCallback = undefined
     detachTileProgress()
     const currentViewer = viewer.value
     if (!currentViewer || currentViewer.isDestroyed()) return
