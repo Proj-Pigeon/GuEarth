@@ -73,6 +73,10 @@ const defaultSettings: PersistedSettings = {
 }
 
 const TILE_TTL_MS = 86_400_000
+
+function viirsTileDate(): string {
+  return new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
 const TILE_CACHE_MAX_BYTES = 512 * 1024 * 1024
 const TILE_CACHE_PRUNE_INTERVAL_MS = 10 * 60 * 1000
 
@@ -287,8 +291,7 @@ function tileRemoteUrl(providerId: string, styleId: string, level: number, x: nu
   if (providerId === 'osm') return `https://tile.openstreetmap.org/${level}/${x}/${y}.png`
   if (providerId === 'viirs-night') {
     if (level > 8) return undefined
-    const date = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-    return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_DayNightBand_AtSensor_M15/default/${date}/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`
+    return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_DayNightBand_AtSensor_M15/default/${viirsTileDate()}/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`
   }
   if (providerId === 'esri-imagery') return `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${level}/${y}/${x}`
   if (providerId === 'opentopomap') return `https://${['a', 'b', 'c'][((x % 3) + 3) % 3]}.tile.opentopomap.org/${level}/${x}/${y}.png`
@@ -387,7 +390,7 @@ async function loadAmapSourceTile(kind: 'vector' | 'satellite', level: number, x
     if (!response.ok) return null
     const buffer = await response.arrayBuffer()
     const contentType = response.headers.get('content-type') ?? 'image/png'
-    if (settings.tileCacheEnabled) writeTile({ ...key, data: buffer, contentType, expiresAt: Date.now() + TILE_TTL_MS })
+    if (settings.tileCacheEnabled) void writeTile({ ...key, data: buffer, contentType, expiresAt: Date.now() + TILE_TTL_MS })
     return { buffer, contentType }
   } catch {
     return null
@@ -411,7 +414,7 @@ async function mirrorTileResponse(providerId: string, key: TileKey): Promise<Res
       if (!response.ok) return null
       const data = await response.arrayBuffer()
       const contentType = response.headers.get('content-type') ?? 'image/png'
-      if (settings.tileCacheEnabled) writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
+      if (settings.tileCacheEnabled) void writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
       return new Response(data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'amap' } })
     } catch {
       return null
@@ -419,7 +422,7 @@ async function mirrorTileResponse(providerId: string, key: TileKey): Promise<Res
   }
   const warped = await warpTileToWgs84(level, x, y, (sourceLevel, sourceX, sourceY) => fetchAmapSourceTile(kind, sourceLevel, sourceX, sourceY))
   if (!warped) return null
-  if (settings.tileCacheEnabled) writeTile({ ...key, data: warped.data, contentType: warped.contentType, expiresAt: Date.now() + TILE_TTL_MS })
+  if (settings.tileCacheEnabled) void writeTile({ ...key, data: warped.data, contentType: warped.contentType, expiresAt: Date.now() + TILE_TTL_MS })
   return new Response(warped.data, { headers: { 'content-type': warped.contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'amap-warped' } })
 }
 
@@ -428,10 +431,10 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   const providerId = safeId(parsed.hostname)
   const parts = parsed.pathname.split('/').filter(Boolean)
   if (parts.length !== 4) return new Response('Bad tile path', { status: 400 })
-  const styleId = safeId(parts[0])
   const coordinates = parts.slice(1).map(Number)
   if (!Number.isInteger(coordinates[0]) || coordinates[0] < 0 || !Number.isInteger(coordinates[1]) || !Number.isInteger(coordinates[2])) return new Response('Bad tile path', { status: 400 })
   const [level, x, y] = coordinates
+  const styleId = providerId === 'viirs-night' ? `${safeId(parts[0])}-${viirsTileDate().replaceAll('-', '')}` : safeId(parts[0])
   const key = { providerId, styleId, level, x, y }
   const cached = await cachedTileResponse(key, false)
   if (cached) return cached
