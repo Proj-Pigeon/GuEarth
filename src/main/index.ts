@@ -285,11 +285,11 @@ function computeBaiduSn(path: string, queryString: string, sk: string): string {
   return createHash('md5').update(plaintext).digest('hex')
 }
 
-function tileRemoteUrl(providerId: string, styleId: string, level: number, x: number, y: number): string | undefined {
+function tileRemoteUrl(providerId: string, styleId: string, level: number, x: number, y: number, granuleDate?: string): string | undefined {
   if (providerId === 'osm') return `https://tile.openstreetmap.org/${level}/${x}/${y}.png`
   if (providerId === 'viirs-night') {
     if (level > 8) return undefined
-    return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_DayNightBand_AtSensor_M15/default/${viirsGranuleDate()}/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`
+    return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_DayNightBand_AtSensor_M15/default/${granuleDate ?? viirsGranuleDate()}/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`
   }
   if (providerId === 'esri-imagery') return `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${level}/${y}/${x}`
   if (providerId === 'opentopomap') return `https://${['a', 'b', 'c'][((x % 3) + 3) % 3]}.tile.opentopomap.org/${level}/${x}/${y}.png`
@@ -432,11 +432,12 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   const coordinates = parts.slice(1).map(Number)
   if (!Number.isInteger(coordinates[0]) || coordinates[0] < 0 || !Number.isInteger(coordinates[1]) || !Number.isInteger(coordinates[2])) return new Response('Bad tile path', { status: 400 })
   const [level, x, y] = coordinates
-  const styleId = providerId === 'viirs-night' ? viirsCacheStyleId(safeId(parts[0])) : safeId(parts[0])
+  const granuleDate = viirsGranuleDate()
+  const styleId = providerId === 'viirs-night' ? viirsCacheStyleId(safeId(parts[0]), granuleDate) : safeId(parts[0])
   const key = { providerId, styleId, level, x, y }
   const cached = await cachedTileResponse(key, false)
   if (cached) return cached
-  const remoteUrl = tileRemoteUrl(providerId, styleId, level, x, y)
+  const remoteUrl = tileRemoteUrl(providerId, styleId, level, x, y, granuleDate)
   if (!remoteUrl) return new Response('Unknown provider', { status: 404 })
   if (settings.tileMirrorEnabled && mirrorEligibleProviders[providerId]) {
     const mirror = await mirrorTileResponse(providerId, key)

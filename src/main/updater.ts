@@ -140,25 +140,32 @@ async function downloadUpdate(): Promise<void> {
   emit({ type: 'progress', received: 0, total: 0 })
   const hash = createHash('sha256')
   let stream: WriteStream | null = null
+  let streamClosed = true
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   try {
     mkdirSync(downloadsDir, { recursive: true })
     rmSync(finalPath, { force: true })
     rmSync(tempPath, { force: true })
     const activeStream = createWriteStream(tempPath)
     stream = activeStream
+    streamClosed = false
+    activeStream.once('close', () => {
+      streamClosed = true
+    })
     const streamFailure = new Promise<never>((_, reject) => {
       activeStream.once('error', (error) => reject(error))
     })
+    void streamFailure.catch(() => undefined)
     const response = await net.fetch(downloadUrl, { redirect: 'follow' })
     if (!response.ok || !response.body) throw new Error(`下载失败（HTTP ${response.status}）`)
     const contentType = response.headers.get('content-type') ?? ''
     if (contentType.includes('text/html')) throw new Error('更新下载地址无效')
     const lengthHeader = Number(response.headers.get('content-length') ?? 0)
     totalBytes = Number.isFinite(lengthHeader) && lengthHeader > 0 ? lengthHeader : 0
-    const reader = response.body.getReader()
+    reader = response.body.getReader()
     let lastEmitAt = 0
     for (;;) {
-      const { done, value } = await reader.read()
+      const { done, value } = await Promise.race([reader.read(), streamFailure])
       if (done) break
       if (!value?.byteLength) continue
       receivedBytes += value.byteLength
@@ -182,7 +189,13 @@ async function downloadUpdate(): Promise<void> {
     emit({ type: 'downloaded', version })
     cleanupStaleInstallers(finalPath)
   } catch (error) {
-    stream?.destroy()
+    if (stream && !streamClosed) {
+      await new Promise<void>((resolve) => {
+        stream!.once('close', () => resolve())
+        stream!.destroy()
+      })
+    }
+    void reader?.cancel().catch(() => undefined)
     try {
       rmSync(tempPath, { force: true })
     } catch {

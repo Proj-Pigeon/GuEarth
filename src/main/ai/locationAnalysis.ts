@@ -93,6 +93,7 @@ export async function analyzeLocation(request: AnalyzeLocationRequest): Promise<
     categories: poi.categories,
     highOrderCategories,
     lowOrderCategories,
+    notes,
     knowledgeMatches: knowledge.matches.map((match) => ({
       id: match.id,
       name: match.name,

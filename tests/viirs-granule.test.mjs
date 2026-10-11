@@ -14,7 +14,7 @@ test('viirsGranuleDate crosses month and year boundaries on the UTC calendar', (
 })
 
 test('viirsCacheStyleId scopes cache keys by the granule date so stale granules are never served', () => {
-  assert.equal(viirsCacheStyleId('night', Date.UTC(2026, 9, 11)), 'night-20261009')
-  assert.notEqual(viirsCacheStyleId('night', Date.UTC(2026, 9, 11)), viirsCacheStyleId('night', Date.UTC(2026, 9, 8)))
+  assert.equal(viirsCacheStyleId('night', '2026-10-09'), 'night-20261009')
+  assert.notEqual(viirsCacheStyleId('night', '2026-10-09'), viirsCacheStyleId('night', '2026-10-06'))
   assert.match(viirsCacheStyleId('night'), /^night-\d{8}$/)
 })

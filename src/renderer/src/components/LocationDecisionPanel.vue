@@ -36,16 +36,24 @@ function requestCritique(): void {
   void aiStore.send(buildDecisionPrompt(activeCase.value, selectedFactorIds.value))
 }
 
-async function flyToPlace(): Promise<void> {
+function flyToPlace(): void {
   if (flying.value) return
   const current = props.viewer && !props.viewer.isDestroyed() ? toRaw(props.viewer) : undefined
   if (!current) return
   flying.value = true
+  const settle = (): void => {
+    flying.value = false
+  }
   try {
     const [lon, lat] = activeCase.value.placeLonLat
-    current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, 220000), duration: 1.5 })
-  } finally {
-    flying.value = false
+    current.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(lon, lat, 220000),
+      duration: 1.5,
+      complete: settle,
+      cancel: settle
+    })
+  } catch {
+    settle()
   }
 }
 </script>
