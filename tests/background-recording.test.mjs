@@ -14,6 +14,12 @@ test('automatic scene advancement keeps an explicit deadline timer', () => {
   assert.match(scenePlayerSource, /if \(timeoutMs !== null\) advanceTimer = setTimeout\(\(\) => advanceResolver\?\.\(\), timeoutMs\)/)
 })
 
+test('recording enables continuous Cesium rendering and restores the previous mode', () => {
+  assert.match(scenePlayerSource, /scene\.requestRenderMode = false/)
+  assert.match(scenePlayerSource, /scene\.requestRenderMode = originalRequestRenderMode/)
+  assert.match(scenePlayerSource, /scene\.maximumRenderTimeChange = originalMaximumRenderTimeChange/)
+})
+
 test('manual capture keeps scheduling frames while the recorder is active', () => {
   assert.match(recorderSource, /pacingTimer = window\.setTimeout\(frameTick, Math\.max\(0, nextFrameAt - performance\.now\(\)\)\)/)
 })

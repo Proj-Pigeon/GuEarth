@@ -159,6 +159,26 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   let recordingQualityRevision = 0
   let advanceResolver: (() => void) | null = null
   let advanceTimer: ReturnType<typeof setTimeout> | undefined
+  let restoreRecordingRender: (() => void) | null = null
+
+  function enableRecordingRender(): void {
+    const current = viewer.value
+    if (!current || current.isDestroyed() || restoreRecordingRender) return
+    const scene = current.scene
+    const originalRequestRenderMode = scene.requestRenderMode
+    const originalMaximumRenderTimeChange = scene.maximumRenderTimeChange
+    scene.requestRenderMode = false
+    restoreRecordingRender = () => {
+      restoreRecordingRender = null
+      if (current.isDestroyed()) return
+      scene.requestRenderMode = originalRequestRenderMode
+      scene.maximumRenderTimeChange = originalMaximumRenderTimeChange
+    }
+  }
+
+  function disableRecordingRender(): void {
+    restoreRecordingRender?.()
+  }
 
   function clearAdvance(): void {
     if (advanceTimer !== undefined) {
@@ -444,6 +464,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
           playerState.recording = false
         } else {
           try {
+            enableRecordingRender()
             if (!await recorder.start(canvas, recorderOverlay)) {
               scenesStore.setRecording({ state: 'error', error: '当前环境不支持视频录制' })
               playerState.recording = false
@@ -501,6 +522,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       if (options.recording?.tempShapeIds.length) {
         for (const shapeId of options.recording.tempShapeIds) drawingStore.removeShape(shapeId)
       }
+      disableRecordingRender()
       playerState.active = false
       playerState.recording = false
     }
