@@ -635,7 +635,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     })
     if (!mirrorOverseasNoticeShown) {
       mirrorOverseasNoticeShown = true
-      failureStore.reportDegrade('高德镜像源海外区域只有约 12 级以内的卫星影像，已将视角抬升到可用层级')
+      failureStore.reportDegrade('海外区域卫星影像层级有限，已抬升视角')
     }
   }
 
@@ -779,7 +779,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
         mirrorListenerDisposer = window.guEarth.tiles.onMirrorChanged((enabled) => {
           mirrorOverseasNoticeShown = false
           reloadMirrorBasemapLayers()
-          failureStore.reportDegrade(`高德镜像瓦片源已${enabled ? '开启' : '关闭'}，相关底图缓存已清空并重新加载`)
+          failureStore.reportDegrade(`高德镜像源已${enabled ? '开启' : '关闭'}`)
         })
         updateCameraState()
         let terrainSetup: { provider: Cesium.TerrainProvider; id: string } | undefined

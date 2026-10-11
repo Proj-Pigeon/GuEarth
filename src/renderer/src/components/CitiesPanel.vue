@@ -47,7 +47,7 @@ async function runVerification(): Promise<void> {
   running.value = true
   highResult.value = null
   lowResult.value = null
-  statusText.value = '正在统计 POI（每城最多约 400 条抽样，请稍候）…'
+  statusText.value = '正在统计 POI，请稍候…'
   try {
     const [high, low] = await Promise.all([
       window.guEarth.places.poiStatistics({ centerName: selectedHigh.value.name, city: selectedHigh.value.city, radiusMeters: VERIFICATION_RADIUS_KM * 1000, maxSamples: 400 }),

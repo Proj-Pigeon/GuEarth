@@ -1,5 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/update/:platform/:version", "destination": "/api/update?platform=:platform&version=:version" }
-  ]
-}

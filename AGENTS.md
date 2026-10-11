@@ -113,6 +113,8 @@ npm test           # node:test unit tests (tests/*.test.mjs), run by CI
   releases API (`asset.digest` of the asset the manifest `url` points at — computed by GitHub at
   upload time). When neither source yields a valid lowercase-hex digest the update is ignored
   (fail closed). The client re-verifies cached and about-to-launch installers and ignores
-  non-upgrade versions. `updater-server/` is an optional zero-dependency Vercel replacement that
-  attaches `sha256` server-side to save the client an API round-trip; it needs Vercel access and
-  is not required for updates to work.
+  non-upgrade versions. Ops note: the hazel deployment still points at the pre-transfer slug
+  `HikaruQwQ/GuEarth` and only works through GitHub's transfer redirect — a replacement update
+  source must take over the `guearth-updater.isla.fan` domain. Do not add a self-deployed
+  update-server implementation to this repository; client-side digest resolution makes one
+  unnecessary.

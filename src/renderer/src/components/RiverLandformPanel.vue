@@ -135,7 +135,7 @@ watch(
     <LineChart :series="series" :x-min="0" :x-max="Math.max(60, Math.ceil(profile[profile.length - 1]?.[0] ?? 60))" x-name="沿河距离(千米)" y-name="海拔(米)" :y-min="Math.min(0, Math.floor((profile.length ? Math.min(...profile.map((p) => p[1])) : 0) / 500) * 500)" :y-max="Math.ceil((profile.length ? Math.max(...profile.map((p) => p[1])) : 1000) / 500) * 500" :height="150" />
     <a-alert v-if="degraded" type="warning" show-icon message="地形源不可用或部分格网未取到，本剖面为粗略估算值" />
     <div v-for="fact in activeReach.facts" :key="fact" class="fact">· {{ fact }}</div>
-    <div class="panel-note">全程链条：上游 V 形谷（下切侵蚀）→ 中游河曲与凸凹岸（侧蚀搬运）→ 下游三角洲（堆积），“侵蚀—搬运—堆积”沿程演变。相机已飞往所选河段，剖面图由地形数据采样生成，地形源不可用时退化为粗略估算。</div>
+    <div class="panel-note">上游 V 形谷下切、中游河曲侧蚀、下游三角洲堆积，外力作用沿程演变。</div>
   </div>
 </template>
 

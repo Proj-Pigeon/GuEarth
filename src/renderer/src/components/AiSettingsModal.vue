@@ -340,12 +340,12 @@ async function handleSave(): Promise<void> {
       <section class="section">
         <div class="teaching-toggle">
           <div class="teaching-toggle-text">
-            <div class="teaching-toggle-title">苏格拉底追问模式</div>
-            <p class="teaching-toggle-desc">开启后 EOQ 不直接给出完整答案，而是把问题拆成小问逐步反问、引导思考，适合课堂问答与复习巩固；关闭时恢复直接讲解。</p>
+            <div class="teaching-toggle-title">苏格拉底模式</div>
+            <p class="teaching-toggle-desc">开启后 EOQ 以提问引导思考，不直接给出答案。</p>
           </div>
           <a-switch
             v-model:checked="draftSocraticEnabled"
-            aria-label="苏格拉底追问模式开关"
+            aria-label="苏格拉底模式开关"
           />
         </div>
       </section>

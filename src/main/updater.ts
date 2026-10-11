@@ -71,7 +71,7 @@ async function resolveDigestFromGitHub(rawName: unknown, version: string, downlo
       if (response.status !== 200) continue
       const digest = extractAssetDigest(await response.json(), downloadUrl)
       if (digest) {
-        logger.info('updater', '清单未携带 sha256，已从 GitHub 发布资产摘要解析校验值', { tag })
+        logger.info('updater', '更新源清单未携带 sha256，已从 GitHub 发布资产摘要解析校验值', { tag })
         return digest
       }
     } catch {
@@ -94,7 +94,7 @@ async function checkForUpdate(): Promise<void> {
     if (!/^https?:\/\/\S+$/i.test(url)) return
     const sha256 = parseSha256(payload.sha256) ?? (await resolveDigestFromGitHub(payload.name, remoteVersion, url))
     if (!sha256) {
-      logger.warn('updater', '更新清单与 GitHub 发布资产均未提供有效 sha256，已忽略该更新', { version: remoteVersion })
+      logger.warn('updater', '更新源清单与 GitHub 发布资产均未提供有效 sha256，已忽略该更新', { version: remoteVersion })
       return
     }
     version = remoteVersion
