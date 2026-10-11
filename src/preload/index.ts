@@ -1,5 +1,6 @@
 import '@sentry/electron/preload'
 import { contextBridge, ipcRenderer } from 'electron'
+import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
 
 export interface ProviderCredentialStatus {
   configured: boolean
@@ -285,35 +286,7 @@ export interface ProvinceGeoDocument {
 
 export type PlaceSearchProvider = 'amap' | 'baidu'
 
-export interface PoiCategoryCount {
-  code: string
-  label: string
-  count: number
-}
-
-export interface PoiStatisticsResult {
-  center: { name: string; longitude: number; latitude: number }
-  radiusMeters?: number
-  city?: string
-  types: string
-  sampled: number
-  total: number
-  truncated: boolean
-  categories: PoiCategoryCount[]
-  note?: string
-  error?: string
-}
-
-export interface PoiStatisticsRequest {
-  centerName?: string
-  longitude?: number
-  latitude?: number
-  city?: string
-  radiusMeters?: number
-  types?: string
-  keywords?: string
-  maxSamples?: number
-}
+export type { PoiCategoryCount, PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
 
 export interface SceneCamera {
   longitude: number

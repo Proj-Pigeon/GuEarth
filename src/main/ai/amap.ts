@@ -1,9 +1,19 @@
 import { createHash } from 'crypto'
 import { net } from 'electron'
+import type { PoiCategoryCount, PoiStatisticsRequest, PoiStatisticsResult } from '../../common/poiStatistics'
 import { gcj02ToWgs84, wgs84ToGcj02 } from '../geo'
 import { readProviderKey } from '../keyVault'
-import { POI_CATEGORY_LABELS, poiBigCategory } from './poiCategories'
+import {
+  POI_STATS_PAGE_SIZE,
+  aggregatePois,
+  createPoiAggregation,
+  poiCategoryRows,
+  poiPageCount,
+  poiTruncated
+} from './poiAggregation'
 import { createSearchThrottle, delay, isPlacesRequestSuperseded } from './searchThrottle'
+
+export type { PoiCategoryCount, PoiStatisticsRequest, PoiStatisticsResult } from '../../common/poiStatistics'
 
 export interface AmapPlace {
   name: string
@@ -23,9 +33,7 @@ export interface AmapSearchResult {
   error?: string
   guidance?: string
   superseded?: boolean
-}
-
-interface AmapPoi {
+}interface AmapPoi {
   name?: unknown
   pname?: unknown
   cityname?: unknown
@@ -119,39 +127,7 @@ const SEARCH_RETRY_DELAY_MS = 2_000
 const SEARCH_REQUEST_TIMEOUT_MS = 10_000
 const amapThrottle = createSearchThrottle(SEARCH_MIN_INTERVAL_MS)
 
-export interface PoiCategoryCount {
-  code: string
-  label: string
-  count: number
-}
-
-export interface PoiStatisticsResult {
-  center: { name: string; longitude: number; latitude: number }
-  radiusMeters?: number
-  city?: string
-  types: string
-  sampled: number
-  total: number
-  truncated: boolean
-  categories: PoiCategoryCount[]
-  note?: string
-  error?: string
-}
-
-export interface PoiStatisticsRequest {
-  centerName?: string
-  longitude?: number
-  latitude?: number
-  city?: string
-  radiusMeters?: number
-  types?: string
-  keywords?: string
-  maxSamples?: number
-}
-
 const POI_STATS_MAX_SAMPLES = 900
-const POI_STATS_PAGE_SIZE = 25
-const POI_STATS_MAX_PAGES = 36
 
 export async function poiStatistics(request: PoiStatisticsRequest): Promise<PoiStatisticsResult> {
   const key = readProviderKey('amap')
@@ -245,43 +221,31 @@ export async function poiStatistics(request: PoiStatisticsRequest): Promise<PoiS
       error: first.error
     }
   }
-  const counts = new Map<string, number>()
-  let sampled = 0
-  const collect = (pois: AmapPoi[]): void => {
-    for (const poi of pois) {
-      const code = poiBigCategory(poi)
-      if (!code) continue
-      counts.set(code, (counts.get(code) ?? 0) + 1)
-      sampled += 1
-    }
-  }
-  collect(first.pois)
+  const aggregation = createPoiAggregation()
+  aggregatePois(aggregation, first.pois)
   const reportedTotal = first.total > 0 ? first.total : first.pois.length
-  const maxPages = Math.ceil(Math.min(reportedTotal, maxSamples) / POI_STATS_PAGE_SIZE)
-  const pageCount = Math.min(POI_STATS_MAX_PAGES, maxPages)
+  const pageCount = poiPageCount(reportedTotal, maxSamples)
   let pagesFetched = 1
   if (pageCount > 1) {
-    for (let page = 2; page <= pageCount && sampled < maxSamples; page += 1) {
+    for (let page = 2; page <= pageCount && aggregation.fetched < maxSamples; page += 1) {
       const pageParams: Record<string, string> = { ...aroundParams, page: String(page) }
       const pageUrl = requestUrl('https://restapi.amap.com/v3/place/around', pageParams, securityKey)
       const pageResult = await amapThrottle.run(() => requestPois(pageUrl))
       if (!pageResult || pageResult.error || pageResult.pois.length === 0) break
       pagesFetched = page
-      collect(pageResult.pois)
+      aggregatePois(aggregation, pageResult.pois)
       if (pageResult.pois.length < POI_STATS_PAGE_SIZE) break
     }
   }
-  const truncated = reportedTotal > pagesFetched * POI_STATS_PAGE_SIZE
-  const categories = [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([code, count]) => ({ code, label: POI_CATEGORY_LABELS[code] ?? code, count }))
-  const radiusNote = `以${resolvedName}为中心 ${radius} 米范围内的 POI 抽样统计（共 ${reportedTotal} 条，抽样 ${sampled} 条；受高德分页与配额限制，最多抽样 ${maxSamples} 条）`
+  const truncated = poiTruncated(reportedTotal, pagesFetched)
+  const categories = poiCategoryRows(aggregation.counts)
+  const radiusNote = `以${resolvedName}为中心 ${radius} 米范围内的 POI 抽样统计（共 ${reportedTotal} 条，抽样 ${aggregation.fetched} 条；受高德分页与配额限制，最多抽样 ${maxSamples} 条）`
   return {
     center: { name: resolvedName, longitude, latitude },
     radiusMeters: radius,
     city: request.city?.trim() || undefined,
     types: types || '全部大类',
-    sampled,
+    sampled: aggregation.sampled,
     total: reportedTotal,
     truncated,
     categories,
