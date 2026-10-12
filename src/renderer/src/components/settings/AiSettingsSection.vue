@@ -30,6 +30,7 @@ const apiKeyDraft = ref('')
 const draftSearchProviders = ref<AiSearchProviderConfig[]>([])
 const activeSearchProviderId = ref('')
 const socraticBusy = ref(false)
+const settingsReading = ref(true)
 const settingsReadFailed = ref(false)
 
 const baseUrlPlaceholder = computed(() => (selectedProvider.value?.protocol ?? 'openai') === 'anthropic'
@@ -37,6 +38,8 @@ const baseUrlPlaceholder = computed(() => (selectedProvider.value?.protocol ?? '
   : 'https://api.deepseek.com 或 https://api.openai.com')
 
 const selectedProvider = computed(() => draftProviders.value.find((provider) => provider.id === selectedProviderId.value))
+
+const settingsLocked = computed(() => settingsReading.value || settingsReadFailed.value)
 
 const thinkingLevelOptions: { value: AiThinkingLevel; label: string }[] = [
   { value: 'low', label: '低' },
@@ -73,19 +76,25 @@ async function refreshCredentialStatuses(): Promise<void> {
 }
 
 onMounted(async () => {
-  apiKeyDraft.value = ''
-  await store.hydrate()
-  settingsReadFailed.value = !store.hydrated
-  if (settingsReadFailed.value) return
-  draftProviders.value = store.settings.providers.map(toProviderDraft)
-  draftSearchProviders.value = store.settings.searchProviders.map((provider) => ({ ...provider }))
-  activeSearchProviderId.value = store.settings.activeSearchProviderId
-  activeChoice.value = store.settings.activeProviderId && store.settings.activeModelId
-    ? `${store.settings.activeProviderId}:${store.settings.activeModelId}`
-    : ''
-  selectedProviderId.value = store.settings.activeProviderId || draftProviders.value[0]?.id || ''
-  apiKeyDraft.value = ''
-  void refreshCredentialStatuses()
+  try {
+    apiKeyDraft.value = ''
+    await store.hydrate()
+    settingsReadFailed.value = !store.hydrated
+    if (settingsReadFailed.value) return
+    draftProviders.value = store.settings.providers.map(toProviderDraft)
+    draftSearchProviders.value = store.settings.searchProviders.map((provider) => ({ ...provider }))
+    activeSearchProviderId.value = store.settings.activeSearchProviderId
+    activeChoice.value = store.settings.activeProviderId && store.settings.activeModelId
+      ? `${store.settings.activeProviderId}:${store.settings.activeModelId}`
+      : ''
+    selectedProviderId.value = store.settings.activeProviderId || draftProviders.value[0]?.id || ''
+    apiKeyDraft.value = ''
+    void refreshCredentialStatuses()
+  } catch {
+    settingsReadFailed.value = true
+  } finally {
+    settingsReading.value = false
+  }
 })
 
 watch(selectedProviderId, () => {
@@ -160,7 +169,7 @@ async function clearApiKey(): Promise<void> {
 }
 
 async function toggleSocratic(value: boolean): Promise<void> {
-  if (socraticBusy.value || settingsReadFailed.value) return
+  if (socraticBusy.value || settingsLocked.value) return
   socraticBusy.value = true
   try {
     await store.setSocraticEnabled(value)
@@ -183,6 +192,7 @@ function validate(): string {
 }
 
 async function handleSave(): Promise<void> {
+  if (settingsReading.value) return
   if (settingsReadFailed.value) {
     message.error('AI 设置读取失败，无法保存')
     return
@@ -368,7 +378,7 @@ async function handleSave(): Promise<void> {
         <a-switch
           :checked="store.settings.socraticEnabled"
           :loading="socraticBusy"
-          :disabled="settingsReadFailed"
+          :disabled="settingsLocked"
           aria-label="苏格拉底模式开关"
           @change="(value: string | number | boolean) => toggleSocratic(value === true)"
         />
@@ -377,7 +387,7 @@ async function handleSave(): Promise<void> {
 
     <div class="ai-footer">
       <a-button @click="settingsWindow.close()">取消</a-button>
-      <a-button type="primary" :disabled="settingsReadFailed" @click="handleSave">保存设置</a-button>
+      <a-button type="primary" :disabled="settingsLocked" @click="handleSave">保存设置</a-button>
     </div>
   </section>
 </template>
