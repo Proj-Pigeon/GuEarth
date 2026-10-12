@@ -121,6 +121,17 @@ test('auto mode recovers to the origin when the mirror itself fails', () => {
   assert.equal(router.noteMirrorFailure('opentopomap'), false)
 })
 
+test('auto mode restarts the origin failure streak after the mirror itself fails', () => {
+  const router = new TileMirrorRouter()
+  router.setMode('auto')
+  for (let attempt = 0; attempt < ORIGIN_FAILURES_BEFORE_MIRROR; attempt += 1) router.noteOriginFailure('osm')
+  assert.equal(router.sourceFor('osm'), 'mirror')
+  assert.equal(router.noteMirrorFailure('osm'), true)
+  assert.equal(router.sourceFor('osm'), 'origin')
+  for (let attempt = 1; attempt < ORIGIN_FAILURES_BEFORE_MIRROR; attempt += 1) assert.equal(router.noteOriginFailure('osm'), false)
+  assert.equal(router.sourceFor('osm'), 'origin')
+})
+
 test('on mode mirrors every source until a mirror failure falls back to the origin for the session', () => {
   const router = new TileMirrorRouter()
   router.setMode('on')

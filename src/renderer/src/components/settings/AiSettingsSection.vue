@@ -30,6 +30,7 @@ const apiKeyDraft = ref('')
 const draftSearchProviders = ref<AiSearchProviderConfig[]>([])
 const activeSearchProviderId = ref('')
 const socraticBusy = ref(false)
+const settingsReadFailed = ref(false)
 
 const baseUrlPlaceholder = computed(() => (selectedProvider.value?.protocol ?? 'openai') === 'anthropic'
   ? 'https://api.anthropic.com'
@@ -74,6 +75,8 @@ async function refreshCredentialStatuses(): Promise<void> {
 onMounted(async () => {
   apiKeyDraft.value = ''
   await store.hydrate()
+  settingsReadFailed.value = !store.hydrated
+  if (settingsReadFailed.value) return
   draftProviders.value = store.settings.providers.map(toProviderDraft)
   draftSearchProviders.value = store.settings.searchProviders.map((provider) => ({ ...provider }))
   activeSearchProviderId.value = store.settings.activeSearchProviderId
@@ -157,7 +160,7 @@ async function clearApiKey(): Promise<void> {
 }
 
 async function toggleSocratic(value: boolean): Promise<void> {
-  if (socraticBusy.value) return
+  if (socraticBusy.value || settingsReadFailed.value) return
   socraticBusy.value = true
   try {
     await store.setSocraticEnabled(value)
@@ -180,6 +183,10 @@ function validate(): string {
 }
 
 async function handleSave(): Promise<void> {
+  if (settingsReadFailed.value) {
+    message.error('AI 设置读取失败，无法保存')
+    return
+  }
   const problem = validate()
   if (problem) {
     message.warning(problem)
@@ -228,6 +235,15 @@ async function handleSave(): Promise<void> {
 <template>
   <section class="settings-section" aria-label="AI 设置">
     <h3 class="section-title">AI</h3>
+
+    <a-alert
+      v-if="settingsReadFailed"
+      class="read-failure-alert"
+      type="error"
+      show-icon
+      message="AI 设置读取失败"
+      description="为避免默认配置覆盖已保存的供应商设置，本页的保存操作已禁用，请重启应用后重试。"
+    />
 
     <section class="settings-block">
       <div class="block-heading">默认模型</div>
@@ -352,6 +368,7 @@ async function handleSave(): Promise<void> {
         <a-switch
           :checked="store.settings.socraticEnabled"
           :loading="socraticBusy"
+          :disabled="settingsReadFailed"
           aria-label="苏格拉底模式开关"
           @change="(value: string | number | boolean) => toggleSocratic(value === true)"
         />
@@ -360,7 +377,7 @@ async function handleSave(): Promise<void> {
 
     <div class="ai-footer">
       <a-button @click="settingsWindow.close()">取消</a-button>
-      <a-button type="primary" @click="handleSave">保存设置</a-button>
+      <a-button type="primary" :disabled="settingsReadFailed" @click="handleSave">保存设置</a-button>
     </div>
   </section>
 </template>
@@ -373,6 +390,7 @@ async function handleSave(): Promise<void> {
 .settings-block:last-of-type{border-bottom:none}
 .block-heading{color:rgba(0,0,0,0.65);font-size:12px;line-height:20px;margin-bottom:8px}
 .full-select{width:100%}
+.read-failure-alert{margin-top:12px}
 .default-hint{margin-top:4px;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
 .provider-columns{display:flex;gap:16px;min-height:320px}
 .provider-rail{width:168px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}

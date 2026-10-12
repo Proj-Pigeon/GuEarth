@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { message } from 'ant-design-vue'
-import type { UpdateState, UpdaterEvent } from '../../../preload'
+import type { UpdateCheckOutcome, UpdateState, UpdaterEvent } from '../../../preload'
 
 export type UpdateStatus = UpdateState['status']
 
@@ -92,18 +92,23 @@ export const useUpdaterStore = defineStore('updater', () => {
     }
   }
 
+  function reportCheckOutcome(outcome: UpdateCheckOutcome): void {
+    if (outcome === 'available') message.success(`发现新版本 v${version.value}`)
+    else if (outcome === 'latest') message.info('当前已是最新版本')
+    else if (outcome === 'disabled') message.warning('当前环境不支持检查更新')
+    else message.error('检查更新失败，请稍后重试')
+  }
+
   async function checkNow(): Promise<void> {
     if (checking.value) return
     checking.value = true
     try {
-      await window.guEarth.updater.check()
+      reportCheckOutcome(await window.guEarth.updater.check())
     } catch {
-      void 0
+      message.error('检查更新失败，请稍后重试')
     } finally {
       checking.value = false
     }
-    if (status.value === 'available') message.success(`发现新版本 v${version.value}`)
-    else if (status.value === 'idle') message.info('当前已是最新版本')
   }
 
   return { status, currentVersion, version, notes, received, total, percent, promptVisible, checking, hydrate, remindLater, startDownload, installNow, checkNow }

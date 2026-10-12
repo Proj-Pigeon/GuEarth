@@ -55,6 +55,10 @@ function normalizeHeading(radians: number): number {
   return degrees < 0 ? degrees + 360 : degrees
 }
 
+function mirrorRouteSignature(mirroredProviders: readonly string[]): string {
+  return [...mirroredProviders].sort().join(',')
+}
+
 export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   const viewer = shallowRef<Cesium.Viewer>()
   const imageryLayers = new Map<string, Cesium.ImageryLayer>()
@@ -85,7 +89,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   let polarCaps: Cesium.Primitive | undefined
   let mirrorListenerDisposer: (() => void) | undefined
   let mirrorOverseasNoticeShown = false
-  let mirrorRouteActive: boolean | undefined
+  let lastMirrorRouteSignature: string | undefined
 
   function updatePolarCapsVisibility(): void {
     if (polarCaps && viewer.value) polarCaps.show = viewer.value.scene.mode === Cesium.SceneMode.SCENE3D
@@ -622,12 +626,12 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
 
   function applyMirrorStatus(status: TileMirrorStatus): void {
     store.setMirroredProviders(status.mirroredProviders)
-    const activeMirrored = status.mirroredProviders.includes(activeBasemapId)
-    if (mirrorRouteActive !== undefined && mirrorRouteActive !== activeMirrored) {
+    const signature = mirrorRouteSignature(status.mirroredProviders)
+    if (lastMirrorRouteSignature !== undefined && lastMirrorRouteSignature !== signature) {
       mirrorOverseasNoticeShown = false
       reloadMirrorBasemapLayers()
     }
-    mirrorRouteActive = activeMirrored
+    lastMirrorRouteSignature = signature
     if (status.notice) failureStore.reportDegrade(status.notice)
   }
 

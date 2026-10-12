@@ -111,6 +111,7 @@ export class TileMirrorRouter {
     }
     if (this.mode !== 'auto') return false
     if (this.reachability.get(providerId) !== 'blocked') return false
+    this.originFailures.set(providerId, 0)
     this.reachability.set(providerId, 'reachable')
     return true
   }

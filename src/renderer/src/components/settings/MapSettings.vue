@@ -56,22 +56,28 @@ async function saveCredential(): Promise<void> {
   const value = credentialDraft.value.trim()
   const sk = credentialSkDraft.value.trim()
   if (!id || !value || (requiresSecurityKey.value && !sk)) return
+  const touchesSecurityKey = sk !== '' || id === 'amap'
   try {
     const status = await window.guEarth.settings.setProviderApiKey(id, value)
     globeStore.setCredentialStatus(id, status)
-    if (sk) {
-      const securityStatus = await window.guEarth.settings.setProviderApiKey(`${id}-sk`, sk)
-      globeStore.setCredentialStatus(`${id}-sk`, securityStatus)
-    } else if (id === 'amap') {
-      const securityStatus = await window.guEarth.settings.clearProviderApiKey(`${id}-sk`)
-      globeStore.setCredentialStatus(`${id}-sk`, securityStatus)
-    }
-    credentialDraft.value = ''
-    credentialSkDraft.value = ''
-    message.success('密钥已保存')
   } catch {
     message.error('密钥保存失败：系统安全存储不可用')
+    return
   }
+  if (touchesSecurityKey) {
+    try {
+      const securityStatus = sk
+        ? await window.guEarth.settings.setProviderApiKey(`${id}-sk`, sk)
+        : await window.guEarth.settings.clearProviderApiKey(`${id}-sk`)
+      globeStore.setCredentialStatus(`${id}-sk`, securityStatus)
+    } catch {
+      message.error('密钥已保存，但签名密钥写入失败，请重试')
+      return
+    }
+  }
+  credentialDraft.value = ''
+  credentialSkDraft.value = ''
+  message.success('密钥已保存')
 }
 
 async function clearCredential(): Promise<void> {

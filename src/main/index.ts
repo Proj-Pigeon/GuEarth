@@ -377,7 +377,8 @@ function broadcastMirrorStatus(notice = ''): void {
 }
 
 async function clearProviderTileCache(providerId: string): Promise<void> {
-  await enqueueTileMutation(() => rm(join(tileCachePath, safeId(providerId)), { recursive: true, force: true }))
+  const target = storageChildPath(tileCachePath, safeId(providerId))
+  await enqueueTileMutation(() => rm(target, { recursive: true, force: true }))
 }
 
 async function clearMirrorProviderTileCaches(): Promise<void> {

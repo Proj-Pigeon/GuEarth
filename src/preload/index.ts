@@ -344,6 +344,8 @@ export interface UpdateState {
   total: number
 }
 
+export type UpdateCheckOutcome = 'available' | 'latest' | 'failed' | 'disabled'
+
 export type UpdaterEvent =
   | { type: 'available'; version: string; notes: string }
   | { type: 'progress'; received: number; total: number }
@@ -410,7 +412,7 @@ const api = {
     getState: (): Promise<UpdateState> => ipcRenderer.invoke('updater:get-state'),
     download: (): Promise<void> => ipcRenderer.invoke('updater:download'),
     install: (): Promise<void> => ipcRenderer.invoke('updater:install'),
-    check: (): Promise<void> => ipcRenderer.invoke('updater:check'),
+    check: (): Promise<UpdateCheckOutcome> => ipcRenderer.invoke('updater:check'),
     onEvent: (listener: (event: UpdaterEvent) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: UpdaterEvent): void => listener(payload)
       ipcRenderer.on('updater:event', wrapped)

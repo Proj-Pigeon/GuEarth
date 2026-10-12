@@ -32,8 +32,8 @@ async function chooseDirectory(): Promise<void> {
   }
 }
 
-function restartGuide(): void {
-  window.guEarth.settings.update({ setupGuideDismissed: false }).catch(() => undefined)
+async function restartGuide(): Promise<void> {
+  await window.guEarth.settings.update({ setupGuideDismissed: false }).catch(() => undefined)
   settingsWindow.close()
   emit('restartGuide')
 }
