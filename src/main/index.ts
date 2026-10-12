@@ -983,12 +983,13 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       }
       ffmpeg = spawn(ffmpegInstaller.path, [
         '-hide_banner', '-loglevel', 'error', '-y',
-        '-f', 'image2pipe', '-framerate', String(targetFps), '-i', 'pipe:0',
+        '-f', 'image2pipe', '-vcodec', 'png', '-framerate', String(targetFps), '-i', 'pipe:0',
         '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
       ], { windowsHide: true, stdio: ['pipe', 'ignore', 'pipe'] })
       ffmpegStdin = ffmpeg.stdin!
       if (!ffmpegStdin) throw new Error('FFmpeg 输入管道创建失败')
       const stderr: Buffer[] = []
+      const waitForFfmpegClose = new Promise<number | null>((resolveClose) => ffmpeg.once('close', (code) => resolveClose(code)))
       ffmpeg.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
       ffmpeg.once('error', (error) => { void fail(error) })
       ffmpegStdin.on('error', (error) => { void fail(error) })
@@ -1020,26 +1021,25 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       if (settled) return
       window.webContents.stopPainting()
       if (!ffmpegStdin.destroyed && !ffmpegStdin.closed && ffmpegStdin.writable) ffmpegStdin.end()
-      ffmpeg.once('close', async (code) => {
-        if (settled) return
-        if (code !== 0) {
-          const detail = Buffer.concat(stderr).toString('utf8').trim()
-          await fail(new Error(`离屏视频编码失败（FFmpeg 退出码 ${code ?? '未知'}）${detail ? `：${detail.slice(-1000)}` : ''}`))
-          return
-        }
-        try {
-          const bytes = await readFileSize(temporaryPath)
-          if (bytes === 0) throw new Error('未能生成离屏视频数据')
-          await renameFile(temporaryPath, outputPath)
-          await rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
-          stopOffscreenRecordingWindow()
-          shell.showItemInFolder(outputPath)
-          settled = true
-          resolve({ path: outputPath, bytes })
-        } catch (error) {
-          await fail(error)
-        }
-      })
+      const code = await waitForFfmpegClose
+      if (settled) return
+      if (code !== 0) {
+        const detail = Buffer.concat(stderr).toString('utf8').trim()
+        await fail(new Error(`离屏视频编码失败（FFmpeg 退出码 ${code ?? '未知'}）${detail ? `：${detail.slice(-1000)}` : ''}`))
+        return
+      }
+      try {
+        const bytes = await readFileSize(temporaryPath)
+        if (bytes === 0) throw new Error('未能生成离屏视频数据')
+        await renameFile(temporaryPath, outputPath)
+        await rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
+        stopOffscreenRecordingWindow()
+        shell.showItemInFolder(outputPath)
+        settled = true
+        resolve({ path: outputPath, bytes })
+      } catch (error) {
+        await fail(error)
+      }
     })().catch((error) => reject(error instanceof Error ? error : new Error(String(error))))
   })
 }

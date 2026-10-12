@@ -26,6 +26,10 @@ test('AI micro-lesson recording uses the offscreen encoder', () => {
   assert.match(scenePlayerSource, /正在启动离屏录制渲染/)
 })
 
+test('AI micro-lesson offscreen recording does not require MediaRecorder', () => {
+  assert.doesNotMatch(scenePlayerSource, /typeof MediaRecorder === 'undefined'\) return \{ error: '当前环境不支持视频录制' \}/)
+})
+
 test('manual capture keeps scheduling frames while the recorder is active', () => {
   assert.match(recorderSource, /pacingTimer = window\.setTimeout\(frameTick, Math\.max\(0, nextFrameAt - performance\.now\(\)\)\)/)
 })

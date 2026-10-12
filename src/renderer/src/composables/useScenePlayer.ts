@@ -545,7 +545,6 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       stop()
       return { error: '正在结束上一次演示或录制，请稍候片刻后重试' }
     }
-    if (typeof MediaRecorder === 'undefined') return { error: '当前环境不支持视频录制' }
     const scenes: TeachingScene[] = steps.map((step) => ({
       id: crypto.randomUUID(),
       name: step.name,
@@ -589,7 +588,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     scenesStore.setRecording({ state: 'preparing', title, currentStep: 0, totalSteps: scenes.length, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '正在启动离屏录制渲染…', prewarmTimedOut: false, skipPrewarm: false, videoPath: '', error: '', cancelled: false })
     void saveOffscreenRecording(script).finally(() => {
       for (const shapeId of tempShapeIds) drawingStore.removeShape(shapeId)
-      scenesStore.setPresenting(false)
+      if (scenesStore.recording.state !== 'error') scenesStore.setPresenting(false)
       playerState.active = false
       playerState.recording = false
       playerState.currentIndex = -1
