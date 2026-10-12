@@ -11,6 +11,8 @@
 GuEarth 是一个仍在早期开发中的桌面数字地球，面向地理教学。它把真实影像和地形装进一个本地运行的 3D 地球，配合教学工具、主题模块和 AI 助手，让晨昏线、气压带、河流地貌这些"讲不动的"内容动起来。
 
 ## 你可以用 GuEarth 做什么
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FProj-Pigeon%2FGuEarth.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FProj-Pigeon%2FGuEarth?ref=badge_shield)
+
 
 ### 把地球当作讲台
 
@@ -40,3 +42,7 @@ GuEarth 是一个仍在早期开发中的桌面数字地球，面向地理教学
 - GuEarth 不提供账号、同步或云服务器；标注、设置和 AI 配置都保存在当前电脑上；
 - **地图影像、地形与地名数据来自你配置的地图服务提供商，聊天内容会发送到你配置的模型服务提供商**，这些数据由相应供应商处理；
 - 应用发生错误或崩溃时，错误日志（含堆栈信息）会通过 Sentry 上传，用于定位和修复问题；除此之外，GuEarth 不会上传你的任何使用数据。
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FProj-Pigeon%2FGuEarth.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FProj-Pigeon%2FGuEarth?ref=badge_large)
