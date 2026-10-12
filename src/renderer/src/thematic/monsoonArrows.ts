@@ -1,23 +1,21 @@
 export interface MonsoonArrow {
-  from: [number, number]
-  to: [number, number]
+  path: Array<[number, number]>
   label: string
 }
 
 export const summerMonsoonArrows: MonsoonArrow[] = [
-  { from: [44, -10], to: [52, 3], label: '越赤道气流' },
-  { from: [56, 7], to: [68, 18], label: '西南季风' },
-  { from: [85, 5], to: [88, 19], label: '西南季风' },
-  { from: [97, 8], to: [101, 22], label: '西南季风' },
-  { from: [131, 15], to: [121, 25], label: '东南季风' },
-  { from: [128, 22], to: [122, 31], label: '东南季风' },
-  { from: [108, 2], to: [112, 12], label: '西南季风' }
+  { path: [[44, -12], [50, -4], [56, 4], [61, 10]], label: '越赤道气流' },
+  { path: [[50, 6], [60, 10], [70, 15], [80, 20], [88, 24]], label: '西南季风' },
+  { path: [[86, 4], [92, 10], [98, 16], [104, 21]], label: '西南季风' },
+  { path: [[106, -4], [109, 3], [113, 10], [118, 16]], label: '西南季风' },
+  { path: [[134, 12], [129, 18], [124, 24], [120, 29]], label: '东南季风' },
+  { path: [[130, 22], [126, 28], [122, 34]], label: '东南季风' }
 ]
 
 export const winterMonsoonArrows: MonsoonArrow[] = [
-  { from: [96, 58], to: [103, 45], label: '西北季风' },
-  { from: [105, 52], to: [113, 38], label: '西北季风' },
-  { from: [110, 42], to: [118, 28], label: '西北季风' },
-  { from: [117, 23], to: [111, 10], label: '东北季风' },
-  { from: [98, 25], to: [88, 12], label: '东北季风' }
+  { path: [[90, 58], [97, 51], [104, 45], [110, 40]], label: '西北季风' },
+  { path: [[103, 54], [110, 47], [117, 40], [122, 33]], label: '西北季风' },
+  { path: [[108, 44], [114, 38], [120, 31], [124, 24]], label: '西北季风' },
+  { path: [[120, 22], [115, 16], [110, 11], [106, 7]], label: '东北季风' },
+  { path: [[97, 26], [91, 20], [85, 15], [80, 11]], label: '东北季风' }
 ]
