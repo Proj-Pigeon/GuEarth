@@ -241,6 +241,10 @@ export function initUpdater(userDataUpdatesPath: string): void {
     void downloadUpdate()
   })
   ipcMain.handle('updater:install', () => installUpdate())
+  ipcMain.handle('updater:check', () => {
+    if (!updateCheckEnabled()) return
+    return checkForUpdate()
+  })
   if (!updateCheckEnabled()) return
   void checkForUpdate()
 }

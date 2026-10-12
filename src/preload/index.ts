@@ -402,6 +402,7 @@ const api = {
     getState: (): Promise<UpdateState> => ipcRenderer.invoke('updater:get-state'),
     download: (): Promise<void> => ipcRenderer.invoke('updater:download'),
     install: (): Promise<void> => ipcRenderer.invoke('updater:install'),
+    check: (): Promise<void> => ipcRenderer.invoke('updater:check'),
     onEvent: (listener: (event: UpdaterEvent) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: UpdaterEvent): void => listener(payload)
       ipcRenderer.on('updater:event', wrapped)

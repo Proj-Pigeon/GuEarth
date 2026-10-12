@@ -126,7 +126,6 @@ export const useAiStore = defineStore('ai', () => {
   const currentConversationId = ref('')
   const isStreaming = ref(false)
   const isPanelOpen = ref(false)
-  const isSettingsOpen = ref(false)
   const hydrated = ref(false)
   const contextStats = ref<AiContextStats>(emptyContextStats())
   const contextCompressionStatus = ref<ContextCompressionStatus>('idle')
@@ -684,10 +683,6 @@ export const useAiStore = defineStore('ai', () => {
     }
   }
 
-  function setSettingsOpen(value: boolean): void {
-    isSettingsOpen.value = value
-  }
-
   async function setActiveModel(providerId: string, modelId: string): Promise<void> {
     const next = JSON.parse(JSON.stringify(settings.value)) as AiSettings
     const provider = next.providers.find((item) => item.id === providerId)
@@ -698,8 +693,8 @@ export const useAiStore = defineStore('ai', () => {
   }
 
   return {
-    settings, messages, conversations, currentConversationId, isStreaming, isPanelOpen, isSettingsOpen, hydrated, contextStats, contextCompressionStatus, contextCompressionNotice, modelRetryNotice,
-    hydrate, registerTool, saveSettings, setSkipDeleteConversationConfirm, setMemoryEnabled, setSocraticEnabled, setActiveModel, send, stop, resendFrom, regenerate, retryLast, compressContext, newConversation, openConversation, deleteConversation, persistConversation, setPanelOpen, setSettingsOpen,
+    settings, messages, conversations, currentConversationId, isStreaming, isPanelOpen, hydrated, contextStats, contextCompressionStatus, contextCompressionNotice, modelRetryNotice,
+    hydrate, registerTool, saveSettings, setSkipDeleteConversationConfirm, setMemoryEnabled, setSocraticEnabled, setActiveModel, send, stop, resendFrom, regenerate, retryLast, compressContext, newConversation, openConversation, deleteConversation, persistConversation, setPanelOpen,
     activeModelVisionEnabled
   }
 })

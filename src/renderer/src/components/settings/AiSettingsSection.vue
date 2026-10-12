@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons-vue'
-import type { AiModelConfig, AiProviderConfig, AiSearchProviderConfig, AiSettings, AiThinkingLevel, ProviderCredentialStatus } from '../../../preload'
+import type { AiModelConfig, AiProviderConfig, AiSearchProviderConfig, AiSettings, AiThinkingLevel, ProviderCredentialStatus } from '../../../../preload'
 import { useAiStore } from '@renderer/stores/ai'
-import SearchProviderSettings from './SearchProviderSettings.vue'
-import MemorySettings from './MemorySettings.vue'
+import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
+import SearchProviderSettings from '../SearchProviderSettings.vue'
+import MemorySettings from '../MemorySettings.vue'
 
 interface ProviderDraft extends AiProviderConfig {
   key: string
@@ -16,21 +17,19 @@ interface ModelDraft extends AiModelConfig {
   key: string
 }
 
+const props = defineProps<{ active: boolean }>()
+
 const store = useAiStore()
-const visible = computed({
-  get: () => store.isSettingsOpen,
-  set: (value: boolean) => store.setSettingsOpen(value)
-})
+const settingsWindow = useSettingsWindowStore()
 
 const draftProviders = ref<ProviderDraft[]>([])
 const activeChoice = ref('')
 const credentialStatuses = ref<Record<string, ProviderCredentialStatus>>({})
 const selectedProviderId = ref('')
 const apiKeyDraft = ref('')
-const activeTab = ref('llm')
 const draftSearchProviders = ref<AiSearchProviderConfig[]>([])
 const activeSearchProviderId = ref('')
-const draftSocraticEnabled = ref(false)
+const socraticBusy = ref(false)
 
 const baseUrlPlaceholder = computed(() => (selectedProvider.value?.protocol ?? 'openai') === 'anthropic'
   ? 'https://api.anthropic.com'
@@ -72,16 +71,12 @@ async function refreshCredentialStatuses(): Promise<void> {
   credentialStatuses.value = Object.fromEntries(entries)
 }
 
-watch(visible, async (open) => {
+onMounted(async () => {
   apiKeyDraft.value = ''
-  if (!open) return
   await store.hydrate()
-  if (!visible.value) return
-  activeTab.value = 'llm'
   draftProviders.value = store.settings.providers.map(toProviderDraft)
   draftSearchProviders.value = store.settings.searchProviders.map((provider) => ({ ...provider }))
   activeSearchProviderId.value = store.settings.activeSearchProviderId
-  draftSocraticEnabled.value = store.settings.socraticEnabled
   activeChoice.value = store.settings.activeProviderId && store.settings.activeModelId
     ? `${store.settings.activeProviderId}:${store.settings.activeModelId}`
     : ''
@@ -157,7 +152,19 @@ async function clearApiKey(): Promise<void> {
     credentialStatuses.value = { ...credentialStatuses.value, [provider.id]: status }
     message.success('API Key 已清除')
   } catch {
-    message.error('密钥清除失败')
+    message.error('API Key 清除失败')
+  }
+}
+
+async function toggleSocratic(value: boolean): Promise<void> {
+  if (socraticBusy.value) return
+  socraticBusy.value = true
+  try {
+    await store.setSocraticEnabled(value)
+  } catch {
+    message.error('设置保存失败，请重试')
+  } finally {
+    socraticBusy.value = false
   }
 }
 
@@ -175,7 +182,6 @@ function validate(): string {
 async function handleSave(): Promise<void> {
   const problem = validate()
   if (problem) {
-    activeTab.value = 'llm'
     message.warning(problem)
     return
   }
@@ -207,12 +213,12 @@ async function handleSave(): Promise<void> {
     activeSearchProviderId: activeSearchProviderId.value,
     skipDeleteConversationConfirm: store.settings.skipDeleteConversationConfirm,
     memoryEnabled: store.settings.memoryEnabled,
-    socraticEnabled: draftSocraticEnabled.value
+    socraticEnabled: store.settings.socraticEnabled
   }
   try {
     await store.saveSettings(next)
     message.success('AI 设置已保存')
-    visible.value = false
+    settingsWindow.close()
   } catch {
     message.error('设置保存失败')
   }
@@ -220,17 +226,11 @@ async function handleSave(): Promise<void> {
 </script>
 
 <template>
-  <a-modal
-    v-model:open="visible"
-    title="AI 设置"
-    :width="760"
-    :footer="null"
-    :body-style="{ paddingTop: '12px', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }"
-  >
-    <a-tabs v-model:active-key="activeTab">
-    <a-tab-pane key="llm" tab="LLM 供应商">
-    <section class="section">
-      <div class="section-heading">默认模型</div>
+  <section class="settings-section" aria-label="AI 设置">
+    <h3 class="section-title">AI</h3>
+
+    <section class="settings-block">
+      <div class="block-heading">默认模型</div>
       <a-select
         v-model:value="activeChoice"
         class="full-select"
@@ -246,158 +246,161 @@ async function handleSave(): Promise<void> {
       <div class="default-hint">发送提问时将使用该模型。</div>
     </section>
 
-    <section class="section provider-layout" data-guide-target="ai-provider-settings">
-      <div class="provider-rail">
-        <div
-          v-for="provider in draftProviders"
-          :key="provider.id"
-          :class="['provider-item', { selected: provider.id === selectedProviderId }]"
-          @click="selectedProviderId = provider.id"
-        >
-          <span class="provider-item-name">{{ provider.name }}</span>
-          <a-tag v-if="credentialStatuses[provider.id]?.configured" color="green" class="provider-item-tag">密钥</a-tag>
+    <section class="settings-block provider-layout" data-guide-target="ai-provider-settings">
+      <div class="block-heading">LLM 供应商</div>
+      <div class="provider-columns">
+        <div class="provider-rail">
+          <div
+            v-for="provider in draftProviders"
+            :key="provider.id"
+            :class="['provider-item', { selected: provider.id === selectedProviderId }]"
+            @click="selectedProviderId = provider.id"
+          >
+            <span class="provider-item-name">{{ provider.name }}</span>
+            <a-tag v-if="credentialStatuses[provider.id]?.configured" color="green" class="provider-item-tag">密钥</a-tag>
+          </div>
+          <a-button type="dashed" block @click="addProvider"><PlusOutlined />添加供应商</a-button>
         </div>
-        <a-button type="dashed" block @click="addProvider"><PlusOutlined />添加供应商</a-button>
+
+        <div v-if="selectedProvider" class="provider-editor">
+          <div class="field-row">
+            <label class="field-label">名称</label>
+            <a-input v-model:value="selectedProvider.name" placeholder="例如 DeepSeek / 通义千问 / Claude" />
+          </div>
+          <div class="field-row">
+            <label class="field-label">协议</label>
+            <a-radio-group v-model:value="selectedProvider.protocol">
+              <a-radio-button value="openai">OpenAI 兼容</a-radio-button>
+              <a-radio-button value="anthropic">Anthropic</a-radio-button>
+            </a-radio-group>
+          </div>
+          <div class="field-row">
+            <label class="field-label">接口地址</label>
+            <a-input v-model:value="selectedProvider.baseUrl" :placeholder="baseUrlPlaceholder" />
+          </div>
+          <div class="field-row">
+            <label class="field-label">API Key</label>
+            <div class="key-row">
+              <a-input-password v-model:value="apiKeyDraft" placeholder="sk-…（仅保存在本机安全存储）" />
+              <a-button type="primary" :disabled="!apiKeyDraft.trim()" @click="saveApiKey"><SaveOutlined />保存</a-button>
+              <a-button :disabled="!credentialStatuses[selectedProvider.id]?.configured" @click="clearApiKey"><DeleteOutlined />清除</a-button>
+            </div>
+          </div>
+
+          <div class="models-heading">
+            <span>模型列表（{{ selectedProvider.models.length }}）</span>
+            <a-button size="small" type="dashed" @click="addModel"><PlusOutlined />添加模型</a-button>
+          </div>
+          <div v-if="selectedProvider.models.length === 0" class="models-empty">尚未添加模型，点击“添加模型”开始。</div>
+          <div v-for="model in selectedProvider.models" :key="model.key" class="model-card">
+            <div class="model-row">
+              <a-input v-model:value="model.id" placeholder="模型 ID，如 deepseek-chat / qwen3-max / claude-sonnet-4-5" class="model-id-input" />
+              <a-input v-model:value="model.label" placeholder="显示名（可选）" class="model-label-input" />
+              <a-button type="text" danger aria-label="删除模型" @click="removeModel(model.key)"><DeleteOutlined /></a-button>
+            </div>
+            <div class="model-row model-row-secondary">
+              <span class="model-field">
+                <label>上下文窗口</label>
+                <a-input-number v-model:value="model.contextWindow" :min="4096" :max="2000000" :step="32000" :formatter="(value: number) => `${value}`" />
+              </span>
+              <span class="model-field">
+                <label>流式传输</label>
+                <a-switch v-model:checked="model.streaming" size="small" />
+              </span>
+              <span class="model-field">
+                <a-tooltip title="开启后允许向该模型发送地球截图等图片内容；模型不支持图像输入时请保持关闭，截图将以文字描述视角代替">
+                  <label class="vision-label">视觉</label>
+                </a-tooltip>
+                <a-switch v-model:checked="model.vision" size="small" />
+              </span>
+              <span class="model-field">
+                <label>思考</label>
+                <a-switch v-model:checked="model.thinking" size="small" />
+              </span>
+              <span class="model-field">
+                <label>思考等级</label>
+                <a-select v-model:value="model.thinkingLevel" :disabled="!model.thinking" size="small" class="level-select" :options="thinkingLevelOptions" />
+              </span>
+            </div>
+          </div>
+
+          <div class="provider-danger">
+            <a-button danger type="text" @click="removeProvider(selectedProvider.id)">删除该供应商</a-button>
+          </div>
+        </div>
+        <div v-else class="provider-editor provider-editor-empty">先在左侧添加一个供应商。</div>
       </div>
-
-      <div v-if="selectedProvider" class="provider-editor">
-        <div class="field-row">
-          <label class="field-label">名称</label>
-          <a-input v-model:value="selectedProvider.name" placeholder="例如 DeepSeek / 通义千问 / Claude" />
-        </div>
-        <div class="field-row">
-          <label class="field-label">协议</label>
-          <a-radio-group v-model:value="selectedProvider.protocol">
-            <a-radio-button value="openai">OpenAI 兼容</a-radio-button>
-            <a-radio-button value="anthropic">Anthropic</a-radio-button>
-          </a-radio-group>
-        </div>
-        <div class="field-row">
-          <label class="field-label">接口地址</label>
-          <a-input v-model:value="selectedProvider.baseUrl" :placeholder="baseUrlPlaceholder" />
-        </div>
-        <div class="field-row">
-          <label class="field-label">API Key</label>
-          <div class="key-row">
-            <a-input-password v-model:value="apiKeyDraft" placeholder="sk-…（仅保存在本机安全存储）" />
-            <a-button type="primary" :disabled="!apiKeyDraft.trim()" @click="saveApiKey"><SaveOutlined />保存</a-button>
-            <a-button :disabled="!credentialStatuses[selectedProvider.id]?.configured" @click="clearApiKey"><DeleteOutlined />清除</a-button>
-          </div>
-        </div>
-
-        <div class="models-heading">
-          <span>模型列表（{{ selectedProvider.models.length }}）</span>
-          <a-button size="small" type="dashed" @click="addModel"><PlusOutlined />添加模型</a-button>
-        </div>
-        <div v-if="selectedProvider.models.length === 0" class="models-empty">尚未添加模型，点击“添加模型”开始。</div>
-        <div v-for="model in selectedProvider.models" :key="model.key" class="model-card">
-          <div class="model-row">
-            <a-input v-model:value="model.id" placeholder="模型 ID，如 deepseek-chat / qwen3-max / claude-sonnet-4-5" class="model-id-input" />
-            <a-input v-model:value="model.label" placeholder="显示名（可选）" class="model-label-input" />
-            <a-button type="text" danger aria-label="删除模型" @click="removeModel(model.key)"><DeleteOutlined /></a-button>
-          </div>
-          <div class="model-row model-row-secondary">
-            <span class="model-field">
-              <label>上下文窗口</label>
-              <a-input-number v-model:value="model.contextWindow" :min="4096" :max="2000000" :step="32000" :formatter="(value: number) => `${value}`" />
-            </span>
-            <span class="model-field">
-              <label>流式传输</label>
-              <a-switch v-model:checked="model.streaming" size="small" />
-            </span>
-            <span class="model-field">
-              <a-tooltip title="开启后允许向该模型发送地球截图等图片内容；模型不支持图像输入时请保持关闭，截图将以文字描述视角代替">
-                <label class="vision-label">视觉</label>
-              </a-tooltip>
-              <a-switch v-model:checked="model.vision" size="small" />
-            </span>
-            <span class="model-field">
-              <label>思考</label>
-              <a-switch v-model:checked="model.thinking" size="small" />
-            </span>
-            <span class="model-field">
-              <label>思考等级</label>
-              <a-select v-model:value="model.thinkingLevel" :disabled="!model.thinking" size="small" class="level-select" :options="thinkingLevelOptions" />
-            </span>
-          </div>
-        </div>
-
-        <div class="provider-danger">
-          <a-button danger type="text" @click="removeProvider(selectedProvider.id)">删除该供应商</a-button>
-        </div>
-      </div>
-      <div v-else class="provider-editor provider-editor-empty">先在左侧添加一个供应商。</div>
     </section>
 
-    </a-tab-pane>
-    <a-tab-pane key="search" tab="搜索供应商">
-      <SearchProviderSettings v-if="visible" v-model:active-provider-id="activeSearchProviderId" :providers="draftSearchProviders" />
-    </a-tab-pane>
-    <a-tab-pane key="memory" tab="记忆">
-      <MemorySettings v-if="visible" :active="activeTab === 'memory'" />
-    </a-tab-pane>
-    <a-tab-pane key="teaching" tab="教学">
-      <section class="section">
-        <div class="teaching-toggle">
-          <div class="teaching-toggle-text">
-            <div class="teaching-toggle-title">苏格拉底模式</div>
-            <p class="teaching-toggle-desc">开启后 EOQ 以提问引导思考，不直接给出答案。</p>
-          </div>
-          <a-switch
-            v-model:checked="draftSocraticEnabled"
-            aria-label="苏格拉底模式开关"
-          />
+    <section class="settings-block">
+      <div class="block-heading">搜索供应商</div>
+      <SearchProviderSettings v-model:active-provider-id="activeSearchProviderId" :providers="draftSearchProviders" />
+    </section>
+
+    <section class="settings-block">
+      <div class="block-heading">记忆</div>
+      <MemorySettings :active="props.active" />
+    </section>
+
+    <section class="settings-block">
+      <div class="block-heading">教学</div>
+      <div class="teaching-toggle">
+        <div class="teaching-toggle-text">
+          <div class="teaching-toggle-title">苏格拉底模式</div>
+          <p class="teaching-toggle-desc">开启后 EOQ 以提问引导思考，不直接给出答案。</p>
         </div>
-      </section>
-    </a-tab-pane>
-    </a-tabs>
-    <div class="modal-footer">
-      <a-button @click="visible = false">取消</a-button>
+        <a-switch
+          :checked="store.settings.socraticEnabled"
+          :loading="socraticBusy"
+          aria-label="苏格拉底模式开关"
+          @change="(value: string | number | boolean) => toggleSocratic(value === true)"
+        />
+      </div>
+    </section>
+
+    <div class="ai-footer">
+      <a-button @click="settingsWindow.close()">取消</a-button>
       <a-button type="primary" @click="handleSave">保存设置</a-button>
     </div>
-  </a-modal>
+  </section>
 </template>
 
 <style scoped>
-.section{margin-bottom:16px}
-.section-heading{color:rgba(0,0,0,.65);font-size:12px;line-height:20px;margin-bottom:8px}
+.settings-section{height:100%;overflow-y:auto;padding:24px;box-sizing:border-box}
+.section-title{margin:0;color:rgba(0,0,0,0.88);font-size:20px;font-weight:600;line-height:28px}
+.section-desc{margin:4px 0 0;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
+.settings-block{padding:16px 0;margin-top:16px;border-bottom:1px solid rgba(5,5,5,0.06)}
+.settings-block:last-of-type{border-bottom:none}
+.block-heading{color:rgba(0,0,0,0.65);font-size:12px;line-height:20px;margin-bottom:8px}
 .full-select{width:100%}
-.default-hint{margin-top:4px;color:rgba(0,0,0,.45);font-size:12px;line-height:20px}
-.provider-layout{display:flex;gap:16px;min-height:320px}
+.default-hint{margin-top:4px;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
+.provider-columns{display:flex;gap:16px;min-height:320px}
 .provider-rail{width:168px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
-.provider-item{display:flex;align-items:center;gap:4px;min-height:36px;padding:4px 8px;border-radius:6px;cursor:pointer;color:rgba(0,0,0,.88);font-size:14px}
+.provider-item{display:flex;align-items:center;gap:4px;min-height:36px;padding:4px 8px;border-radius:6px;cursor:pointer;color:rgba(0,0,0,0.88);font-size:14px}
 .provider-item.selected{background:rgba(22,119,255,.06)}
 .provider-item-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .provider-item-tag{margin-inline-end:0;transform:scale(.83)}
 .provider-editor{flex:1;min-width:0}
-.provider-editor-empty{color:rgba(0,0,0,.45);font-size:14px;display:flex;align-items:center}
+.provider-editor-empty{color:rgba(0,0,0,0.45);font-size:14px;display:flex;align-items:center}
 .field-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.field-label{width:64px;flex-shrink:0;color:rgba(0,0,0,.65);font-size:13px}
+.field-label{width:64px;flex-shrink:0;color:rgba(0,0,0,0.65);font-size:13px}
 .key-row{display:flex;flex:1;gap:8px}
-.models-heading{display:flex;align-items:center;justify-content:space-between;color:rgba(0,0,0,.65);font-size:12px;margin:4px 0 8px}
-.models-empty{color:rgba(0,0,0,.45);font-size:13px;padding:8px 0}
-.model-card{border:1px solid rgba(5,5,5,.06);border-radius:8px;padding:12px;margin-bottom:8px}
+.models-heading{display:flex;align-items:center;justify-content:space-between;color:rgba(0,0,0,0.65);font-size:12px;margin:4px 0 8px}
+.models-empty{color:rgba(0,0,0,0.45);font-size:13px;padding:8px 0}
+.model-card{border:1px solid rgba(5,5,5,0.06);border-radius:8px;padding:12px;margin-bottom:8px}
 .model-row{display:flex;align-items:center;gap:8px}
 .model-row-secondary{margin-top:8px;gap:12px 16px;flex-wrap:wrap}
 .model-id-input{flex:1.4}
 .model-label-input{flex:1}
 .model-field{display:flex;align-items:center;gap:8px}
-.model-field>label{color:rgba(0,0,0,.65);font-size:12px;white-space:nowrap}
+.model-field>label{color:rgba(0,0,0,0.65);font-size:12px;white-space:nowrap}
 .vision-label{cursor:help;text-decoration:underline dotted rgba(0,0,0,.35);text-underline-offset:3px}
 .model-field :deep(.ant-input-number){width:104px}
 .level-select{width:76px}
 .provider-danger{margin-top:8px;display:flex;justify-content:flex-end}
-.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding-top:8px;border-top:1px solid rgba(5,5,5,.06)}
 .teaching-toggle{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .teaching-toggle-text{flex:1}
-.teaching-toggle-title{color:rgba(0,0,0,.88);font-size:14px;line-height:22px}
-.teaching-toggle-desc{margin-top:4px;color:rgba(0,0,0,.45);font-size:12px;line-height:20px}
-@media(max-width:640px){
-  .provider-layout{flex-direction:column}
-  .provider-rail{width:100%}
-  .field-row{align-items:flex-start;flex-direction:column;gap:8px}
-  .key-row{width:100%;flex-wrap:wrap}
-  .key-row :deep(.ant-input-password){flex-basis:100%}
-  .model-row{flex-wrap:wrap}
-}
+.teaching-toggle-title{color:rgba(0,0,0,0.88);font-size:14px;line-height:22px}
+.teaching-toggle-desc{margin-top:4px;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
+.ai-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid rgba(5,5,5,0.06)}
 </style>

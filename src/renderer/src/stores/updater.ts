@@ -21,6 +21,7 @@ export const useUpdaterStore = defineStore('updater', () => {
   const received = ref(0)
   const total = ref(0)
   const promptVisible = ref(false)
+  const checking = ref(false)
   const percent = computed(() => (total.value > 0 ? Math.min(100, Math.floor((received.value / total.value) * 100)) : 0))
 
   function applyEvent(event: UpdaterEvent): void {
@@ -91,5 +92,19 @@ export const useUpdaterStore = defineStore('updater', () => {
     }
   }
 
-  return { status, currentVersion, version, notes, received, total, percent, promptVisible, hydrate, remindLater, startDownload, installNow }
+  async function checkNow(): Promise<void> {
+    if (checking.value) return
+    checking.value = true
+    try {
+      await window.guEarth.updater.check()
+    } catch {
+      void 0
+    } finally {
+      checking.value = false
+    }
+    if (status.value === 'available') message.success(`发现新版本 v${version.value}`)
+    else if (status.value === 'idle') message.info('当前已是最新版本')
+  }
+
+  return { status, currentVersion, version, notes, received, total, percent, promptVisible, checking, hydrate, remindLater, startDownload, installNow, checkNow }
 })

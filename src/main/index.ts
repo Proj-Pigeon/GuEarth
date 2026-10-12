@@ -966,6 +966,7 @@ function createWindow(): void {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
+    minWidth: 992,
     show: false,
     autoHideMenuBar: true,
     title: displayAppName(),
