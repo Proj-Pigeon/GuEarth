@@ -28,7 +28,7 @@ jobs:
   windows:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: check
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    runs-on: blacksmith-8vcpu-windows-2025
     permissions:
       contents: write
     steps:
