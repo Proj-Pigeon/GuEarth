@@ -11,6 +11,7 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { useDrawingStore, type DrawnShape, type DrawTool } from '@renderer/stores/drawing'
 import { useAiStore } from '@renderer/stores/ai'
 import { useUpdaterStore } from '@renderer/stores/updater'
+import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import { useScenesStore } from '@renderer/stores/scenes'
 import { thematicLayerCatalog, useClimateStore } from '@renderer/stores/climate'
 import { useSolarStore } from '@renderer/stores/solar'
@@ -72,7 +73,7 @@ import TeachingLab from '@renderer/components/TeachingLab.vue'
 import SceneBookmarksPanel, { type SceneEditPayload } from '@renderer/components/SceneBookmarksPanel.vue'
 import ScenePlayerOverlay from '@renderer/components/ScenePlayerOverlay.vue'
 import EoqAssistant from '@renderer/components/EoqAssistant.vue'
-import AiSettingsModal from '@renderer/components/AiSettingsModal.vue'
+import SettingsModal from '@renderer/components/SettingsModal.vue'
 import UpdateDialog from '@renderer/components/UpdateDialog.vue'
 import FailureBanner from '@renderer/components/FailureBanner.vue'
 import CrashDialog from '@renderer/components/CrashDialog.vue'
@@ -93,13 +94,10 @@ const {
   levelViewActive,
   terrainProviderId,
   terrainExaggeration,
-  terrainLighting,
-  tileCacheEnabled,
-  tileMirrorEnabled,
-  networkProxy,
-  providerCredentials
+  terrainLighting
 } =
   storeToRefs(store)
+const settingsWindow = useSettingsWindowStore()
 
 const globeContainer = ref<HTMLDivElement>()
 const { viewer, switchBasemap, setLayerOpacity, flyTo, flyToPlace, toggleLevelView, setTerrain, setTerrainExaggeration, setTerrainLighting } = useCesiumViewer(globeContainer)
@@ -923,15 +921,19 @@ function handleOpenAssistant(): void {
   aiStore.setPanelOpen(true)
 }
 
-function handleOpenSetupGuide(): void {
+function handleSetupGuideStepChange(step: number): void {
+  settingsWindow.close()
+  aiStore.setPanelOpen(false)
+  if (step === 6) settingsWindow.open('map')
+  if (step === 8) settingsWindow.open('ai')
+}
+
+function handleRestartGuide(): void {
   firstUseGuide.value?.start()
 }
 
-function handleSetupGuideStepChange(step: number): void {
-  aiStore.setSettingsOpen(false)
-  aiStore.setPanelOpen(false)
-  store.setLayerPanelOpen(step === 6)
-  if (step === 8) aiStore.setSettingsOpen(true)
+function handleOpenSettings(): void {
+  settingsWindow.open()
 }
 
 function handleClosePanel(): void {
@@ -956,45 +958,6 @@ function handleTerrainExaggeration(value: number): void {
 
 function handleTerrainLighting(value: boolean): void {
   setTerrainLighting(value)
-}
-
-function handleCacheChange(value: boolean): void {
-  store.setTileCacheEnabled(value)
-}
-
-function handleMirrorChange(value: boolean): void {
-  store.setTileMirrorEnabled(value)
-}
-
-function handleNetworkProxy(value: string): void {
-  store.setNetworkProxy(value)
-}
-
-async function handleCredentialSave(id: string, apiKey: string, securityKey?: string): Promise<void> {
-  try {
-    const status = await window.guEarth.settings.setProviderApiKey(id, apiKey)
-    store.setCredentialStatus(id, status)
-    if (securityKey) {
-      const securityStatus = await window.guEarth.settings.setProviderApiKey(`${id}-sk`, securityKey)
-      store.setCredentialStatus(`${id}-sk`, securityStatus)
-    } else if (id === 'amap') {
-      const securityStatus = await window.guEarth.settings.clearProviderApiKey(`${id}-sk`)
-      store.setCredentialStatus(`${id}-sk`, securityStatus)
-    }
-  } catch {
-    failureStore.reportFailure({ scope: 'settings', message: '密钥保存失败', detail: '系统安全存储不可用', retryable: false })
-  }
-}
-
-async function handleCredentialClear(id: string): Promise<void> {
-  try {
-    const status = await window.guEarth.settings.clearProviderApiKey(id)
-    store.setCredentialStatus(id, status)
-    const securityStatus = await window.guEarth.settings.clearProviderApiKey(`${id}-sk`)
-    store.setCredentialStatus(`${id}-sk`, securityStatus)
-  } catch {
-    failureStore.reportFailure({ scope: 'settings', message: '密钥清除失败', retryable: false })
-  }
 }
 
 function handleHome(): void {
@@ -1114,7 +1077,7 @@ function deleteSelectedShape(): void {
         <a-spin :spinning="!globeLoadTimedOut && !globeError" size="small" />
         <span class="globe-loading-text">{{ globeLoadingText }}</span>
         <span v-if="globeLoadStage" class="globe-loading-stage">{{ globeLoadStage }}</span>
-        <span v-if="globeLoadingRetryable" class="globe-loading-stage">境内网络可在「图层管理」开启高德镜像瓦片源</span>
+        <span v-if="globeLoadingRetryable" class="globe-loading-stage">影像源持续无法加载时，可在「设置 → 地图」将高德镜像瓦片源切换为「开启」</span>
         <a-button v-if="globeLoadingRetryable" type="text" size="small" @click="handleRetry"><ReloadOutlined />重试</a-button>
       </div>
       <FailureBanner />
@@ -1138,7 +1101,6 @@ function deleteSelectedShape(): void {
         @open-layers="handleOpenLayers"
         @open-annotations="handleOpenAnnotations"
         @open-assistant="handleOpenAssistant"
-        @open-setup-guide="handleOpenSetupGuide"
         @open-scenes="handleOpenScenes"
         @home="handleHome"
         @tool="handleTool"
@@ -1146,6 +1108,7 @@ function deleteSelectedShape(): void {
         @toggle-level-view="handleLevelViewToggle"
         @toggle-lab="handleToggleLab"
         @update-click="handleUpdateClick"
+        @open-settings="handleOpenSettings"
       />
       <DrawingEditToolbar
         v-if="selectedShape && !activeTool"
@@ -1185,7 +1148,7 @@ function deleteSelectedShape(): void {
       <div v-if="drawHint" class="draw-hint">{{ drawHint }}</div>
       <CameraStatus :camera="camera" />
       <EoqAssistant />
-      <AiSettingsModal />
+      <SettingsModal @restart-guide="handleRestartGuide" />
       <FirstUseGuide ref="firstUseGuide" :ready="isGlobeReady" @step-change="handleSetupGuideStepChange" />
       <UpdateDialog />
       <AnnotationPanel
@@ -1209,10 +1172,6 @@ function deleteSelectedShape(): void {
         :active-terrain-id="activeTerrainId"
         :terrain-exaggeration="terrainExaggeration"
         :terrain-lighting="terrainLighting"
-        :tile-cache-enabled="tileCacheEnabled"
-        :tile-mirror-enabled="tileMirrorEnabled"
-        :network-proxy="networkProxy"
-        :provider-credentials="providerCredentials"
         @close="handleClosePanel"
         @select="handleSelectLayer"
         @opacity="handleOpacityChange"
@@ -1220,11 +1179,6 @@ function deleteSelectedShape(): void {
         @terrain="handleTerrainChange"
         @terrain-exaggeration="handleTerrainExaggeration"
         @terrain-lighting="handleTerrainLighting"
-        @cache="handleCacheChange"
-        @mirror="handleMirrorChange"
-        @network-proxy="handleNetworkProxy"
-        @credential-save="handleCredentialSave"
-        @credential-clear="handleCredentialClear"
       />
       </template>
       <SceneBookmarksPanel

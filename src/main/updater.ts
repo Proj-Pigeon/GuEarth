@@ -4,7 +4,7 @@ import { createHash } from 'crypto'
 import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, type WriteStream } from 'fs'
 import { join } from 'path'
 import { logger } from '../common/logger'
-import type { UpdateState, UpdaterEvent } from '../preload'
+import type { UpdateCheckOutcome, UpdateState, UpdaterEvent } from '../preload'
 import { compareVersions, extractAssetDigest, hashFile, isRecord, parseSha256, releaseTagCandidates } from './updateIntegrity'
 
 const DEFAULT_UPDATE_BASE_URL = 'https://guearth-updater.isla.fan'
@@ -81,21 +81,23 @@ async function resolveDigestFromGitHub(rawName: unknown, version: string, downlo
   return null
 }
 
-async function checkForUpdate(): Promise<void> {
-  if (status === 'downloading' || status === 'ready') return
+async function checkForUpdate(): Promise<UpdateCheckOutcome> {
+  if (status === 'downloading' || status === 'ready') return 'available'
   try {
     const response = await net.fetch(`${updateBaseUrl()}/update/win32/${app.getVersion()}`, { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) })
-    if (response.status !== 200) return
+    if (response.status === 204) return 'latest'
+    if (!response.ok) return 'failed'
     const payload: unknown = await response.json()
-    if (!isRecord(payload)) return
+    if (!isRecord(payload)) return 'failed'
     const remoteVersion = typeof payload.name === 'string' ? payload.name.replace(/^v/, '').trim() : ''
     const url = typeof payload.url === 'string' ? payload.url.trim() : ''
-    if (!VERSION_PATTERN.test(remoteVersion) || compareVersions(remoteVersion, app.getVersion()) <= 0) return
-    if (!/^https?:\/\/\S+$/i.test(url)) return
+    if (!VERSION_PATTERN.test(remoteVersion)) return 'failed'
+    if (compareVersions(remoteVersion, app.getVersion()) <= 0) return 'latest'
+    if (!/^https?:\/\/\S+$/i.test(url)) return 'failed'
     const sha256 = parseSha256(payload.sha256) ?? (await resolveDigestFromGitHub(payload.name, remoteVersion, url))
     if (!sha256) {
       logger.warn('updater', '更新源清单与 GitHub 发布资产均未提供有效 sha256，已忽略该更新', { version: remoteVersion })
-      return
+      return 'failed'
     }
     version = remoteVersion
     notes = typeof payload.notes === 'string' ? payload.notes.slice(0, 2000) : ''
@@ -103,8 +105,10 @@ async function checkForUpdate(): Promise<void> {
     expectedSha256 = sha256
     status = 'available'
     emit({ type: 'available', version, notes })
-  } catch {
-    void 0
+    return 'available'
+  } catch (error) {
+    logger.warn('updater', '检查更新失败', error instanceof Error ? error.message : String(error))
+    return 'failed'
   }
 }
 
@@ -241,6 +245,10 @@ export function initUpdater(userDataUpdatesPath: string): void {
     void downloadUpdate()
   })
   ipcMain.handle('updater:install', () => installUpdate())
+  ipcMain.handle('updater:check', (): Promise<UpdateCheckOutcome> => {
+    if (!updateCheckEnabled()) return Promise.resolve('disabled')
+    return checkForUpdate()
+  })
   if (!updateCheckEnabled()) return
   void checkForUpdate()
 }

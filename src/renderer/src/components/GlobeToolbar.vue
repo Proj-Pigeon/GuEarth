@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { AimOutlined, AppstoreOutlined, ArrowRightOutlined, CheckCircleOutlined, ClearOutlined, DownloadOutlined, EnvironmentOutlined, ExperimentOutlined, EyeOutlined, FontSizeOutlined, GatewayOutlined, HomeOutlined, NodeIndexOutlined, PlaySquareOutlined, QuestionCircleOutlined, RobotOutlined, TagsOutlined } from '@ant-design/icons-vue'
+import { AimOutlined, AppstoreOutlined, ArrowRightOutlined, CheckCircleOutlined, ClearOutlined, DownloadOutlined, EnvironmentOutlined, ExperimentOutlined, EyeOutlined, FontSizeOutlined, GatewayOutlined, HomeOutlined, NodeIndexOutlined, PlaySquareOutlined, RobotOutlined, SettingOutlined, TagsOutlined } from '@ant-design/icons-vue'
 import { Button, Tooltip } from 'ant-design-vue'
 import type { Component } from 'vue'
 import type { DrawTool } from '@renderer/stores/drawing'
@@ -22,7 +22,7 @@ defineEmits<{
   openLayers: []
   openAnnotations: []
   openAssistant: []
-  openSetupGuide: []
+  openSettings: []
   openScenes: []
   home: []
   tool: [tool: DrawTool]
@@ -133,9 +133,9 @@ const updateTooltip = computed(() => {
           <RobotOutlined />
         </a-button>
       </a-tooltip>
-      <a-tooltip title="使用引导" placement="top">
-        <a-button type="default" shape="circle" class="toolbar-circle" aria-label="使用引导" @click="$emit('openSetupGuide')">
-          <QuestionCircleOutlined />
+      <a-tooltip title="设置" placement="top">
+        <a-button type="default" shape="circle" class="toolbar-circle" aria-label="设置" data-guide-target="settings" @click="$emit('openSettings')">
+          <SettingOutlined />
         </a-button>
       </a-tooltip>
     </div>

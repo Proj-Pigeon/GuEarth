@@ -6,13 +6,15 @@ import { Modal } from 'ant-design-vue'
 import type { VNode } from 'vue'
 import { CloseCircleOutlined, CloseOutlined, CompassOutlined, CompressOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SettingOutlined, UpOutlined } from '@ant-design/icons-vue'
 import { useAiStore, toolLabel, type ChatMessage, type ReasoningPart, type ToolStep } from '@renderer/stores/ai'
+import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import type { AiModelConfig, AiProviderConfig, StoredAiConversationSummary } from '../../../preload'
 import ContextMeter from './ContextMeter.vue'
 import StreamingMarkdown from './StreamingMarkdown.vue'
 import WebSearchStep from './WebSearchStep.vue'
 
 const store = useAiStore()
-const { messages, conversations, currentConversationId, isStreaming, isPanelOpen, isSettingsOpen, settings, contextStats, contextCompressionStatus, contextCompressionNotice, modelRetryNotice } = storeToRefs(store)
+const settingsWindow = useSettingsWindowStore()
+const { messages, conversations, currentConversationId, isStreaming, isPanelOpen, settings, contextStats, contextCompressionStatus, contextCompressionNotice, modelRetryNotice } = storeToRefs(store)
 
 const draft = ref('')
 const listRef = ref<HTMLDivElement>()
@@ -52,7 +54,7 @@ const agentCommands: AgentCommand[] = [
   { name: '/new', label: '新建会话', icon: PlusOutlined, run: () => store.newConversation() },
   { name: '/resume', label: '历史会话', icon: HistoryOutlined, run: () => { historyOpen.value = true } },
   { name: '/compact', label: '压缩上下文', icon: CompressOutlined, run: () => store.compressContext() },
-  { name: '/settings', label: 'AI 设置', icon: SettingOutlined, run: () => store.setSettingsOpen(true) }
+  { name: '/settings', label: '设置', icon: SettingOutlined, run: () => settingsWindow.open('ai') }
 ]
 const commandQuery = computed(() => {
   const value = draft.value.trimStart()
@@ -533,8 +535,8 @@ watch(currentConversationId, () => {
               </a-menu>
             </template>
           </a-dropdown>
-          <a-tooltip title="AI 设置">
-            <a-button type="text" aria-label="AI 设置" @click="store.setSettingsOpen(true)"><SettingOutlined /></a-button>
+          <a-tooltip title="设置">
+            <a-button type="text" aria-label="设置" @click="settingsWindow.open('ai')"><SettingOutlined /></a-button>
           </a-tooltip>
           <a-button type="text" aria-label="关闭助手" @click="store.setPanelOpen(false)"><CloseOutlined /></a-button>
         </div>
@@ -680,7 +682,7 @@ watch(currentConversationId, () => {
                 <span class="model-menu-item"><span class="model-menu-name">{{ model.label || model.id }}</span><span v-if="model.label && model.label !== model.id" class="model-menu-id">{{ model.id }}</span></span>
               </a-menu-item>
             </a-menu-item-group>
-            <a-menu-item v-if="modelProviders.length === 0" key="model-empty" disabled>请先在 AI 设置中添加模型</a-menu-item>
+            <a-menu-item v-if="modelProviders.length === 0" key="model-empty" disabled>请先在设置中添加模型</a-menu-item>
           </a-menu>
         </template>
       </a-dropdown>

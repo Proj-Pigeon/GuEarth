@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { message } from 'ant-design-vue'
-import type { UpdateState, UpdaterEvent } from '../../../preload'
+import type { UpdateCheckOutcome, UpdateState, UpdaterEvent } from '../../../preload'
 
 export type UpdateStatus = UpdateState['status']
 
@@ -21,6 +21,7 @@ export const useUpdaterStore = defineStore('updater', () => {
   const received = ref(0)
   const total = ref(0)
   const promptVisible = ref(false)
+  const checking = ref(false)
   const percent = computed(() => (total.value > 0 ? Math.min(100, Math.floor((received.value / total.value) * 100)) : 0))
 
   function applyEvent(event: UpdaterEvent): void {
@@ -91,5 +92,24 @@ export const useUpdaterStore = defineStore('updater', () => {
     }
   }
 
-  return { status, currentVersion, version, notes, received, total, percent, promptVisible, hydrate, remindLater, startDownload, installNow }
+  function reportCheckOutcome(outcome: UpdateCheckOutcome): void {
+    if (outcome === 'available') message.success(`发现新版本 v${version.value}`)
+    else if (outcome === 'latest') message.info('当前已是最新版本')
+    else if (outcome === 'disabled') message.warning('当前环境不支持检查更新')
+    else message.error('检查更新失败，请稍后重试')
+  }
+
+  async function checkNow(): Promise<void> {
+    if (checking.value) return
+    checking.value = true
+    try {
+      reportCheckOutcome(await window.guEarth.updater.check())
+    } catch {
+      message.error('检查更新失败，请稍后重试')
+    } finally {
+      checking.value = false
+    }
+  }
+
+  return { status, currentVersion, version, notes, received, total, percent, promptVisible, checking, hydrate, remindLater, startDownload, installNow, checkNow }
 })

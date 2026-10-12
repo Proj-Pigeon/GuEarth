@@ -50,7 +50,7 @@ const steps = computed(() => [
   },
   {
     title: '地图与地形图层🗺️',
-    description: '切换底图、调整 3D 地形与光照。高德或百度的地图搜索密钥也在此处配置。',
+    description: '切换底图、调整 3D 地形与光照。',
     target: () => getTarget('layers'),
     placement: 'top'
   },
@@ -80,8 +80,8 @@ const steps = computed(() => [
   },
   {
     title: '配置地图搜索密钥🔑',
-    description: '选择高德并填写 Web 服务 API Key，或选择百度并填写 AK，然后保存。配置完成后即可搜索地点。',
-    target: () => getTarget('provider-credentials'),
+    description: '在“设置 → 地图”中选择高德并填写 Web 服务 API Key，或选择百度并填写 AK，然后保存。配置完成后即可搜索地点。',
+    target: () => getTarget('map-credentials'),
     placement: 'left'
   },
   {
@@ -93,7 +93,7 @@ const steps = computed(() => [
   {
     title: '配置 AI 模型🧠',
     description: h('div', { style: { display: 'grid', gap: '12px' } }, [
-      h('div', '如需使用 AI，请点击“添加供应商”，填写接口地址和 API Key，再添加模型、设为默认并保存。API Key 保存在本机安全存储中。'),
+      h('div', '如需使用 AI，请在“设置 → AI”中点击“添加供应商”，填写接口地址和 API Key，再添加模型、设为默认并保存。API Key 保存在本机安全存储中。'),
       h(Checkbox, {
         checked: dontPromptAgain.value,
         'onUpdate:checked': (checked: boolean) => {
@@ -102,7 +102,7 @@ const steps = computed(() => [
       }, { default: () => '下次不再提示' })
     ]),
     target: () => getTarget('ai-provider-settings'),
-    placement: 'right'
+    placement: 'bottom'
   }
 ])
 
