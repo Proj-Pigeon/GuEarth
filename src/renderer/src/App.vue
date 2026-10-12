@@ -1077,7 +1077,7 @@ function deleteSelectedShape(): void {
         <a-spin :spinning="!globeLoadTimedOut && !globeError" size="small" />
         <span class="globe-loading-text">{{ globeLoadingText }}</span>
         <span v-if="globeLoadStage" class="globe-loading-stage">{{ globeLoadStage }}</span>
-        <span v-if="globeLoadingRetryable" class="globe-loading-stage">境内网络可在「设置 → 地图」开启高德镜像瓦片源</span>
+        <span v-if="globeLoadingRetryable" class="globe-loading-stage">影像源持续无法加载时，可在「设置 → 地图」将高德镜像瓦片源切换为「开启」</span>
         <a-button v-if="globeLoadingRetryable" type="text" size="small" @click="handleRetry"><ReloadOutlined />重试</a-button>
       </div>
       <FailureBanner />

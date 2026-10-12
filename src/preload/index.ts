@@ -1,6 +1,7 @@
 import '@sentry/electron/preload'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
+import type { TileMirrorMode } from '../common/tileMirror'
 
 export interface ProviderCredentialStatus {
   configured: boolean
@@ -13,7 +14,7 @@ export interface GuEarthSettings {
   terrainExaggeration: number
   terrainLighting: boolean
   tileCacheEnabled: boolean
-  tileMirrorEnabled: boolean
+  tileMirrorMode: TileMirrorMode
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -27,11 +28,17 @@ export interface GuEarthSettingsPatch {
   terrainExaggeration?: number
   terrainLighting?: boolean
   tileCacheEnabled?: boolean
-  tileMirrorEnabled?: boolean
+  tileMirrorMode?: TileMirrorMode
   networkProxy?: string
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'
   setupGuideDismissed?: boolean
+}
+
+export interface TileMirrorStatus {
+  mode: TileMirrorMode
+  mirroredProviders: string[]
+  notice: string
 }
 
 export interface NetworkProxyTestResult {
@@ -362,10 +369,11 @@ const api = {
     put: (entry: TileCacheEntry): Promise<void> => ipcRenderer.invoke('tiles:put', entry),
     clear: (providerId?: string): Promise<void> => ipcRenderer.invoke('tiles:clear', providerId),
     stats: (): Promise<TileCacheStats> => ipcRenderer.invoke('tiles:stats'),
-    onMirrorChanged: (listener: (enabled: boolean) => void): (() => void) => {
-      const wrapped = (_event: Electron.IpcRendererEvent, payload: boolean): void => listener(payload)
-      ipcRenderer.on('tiles:mirror-changed', wrapped)
-      return () => ipcRenderer.removeListener('tiles:mirror-changed', wrapped)
+    getMirrorStatus: (): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:mirror-status'),
+    onMirrorStatus: (listener: (status: TileMirrorStatus) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: TileMirrorStatus): void => listener(payload)
+      ipcRenderer.on('tiles:mirror-status', wrapped)
+      return () => ipcRenderer.removeListener('tiles:mirror-status', wrapped)
     }
   },
   annotations: {

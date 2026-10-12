@@ -5,9 +5,30 @@ import { message } from 'ant-design-vue'
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons-vue'
 import { credentialOnlyProviders, providerCatalog, useGlobeStore } from '@renderer/stores/globe'
 import { networkProxyMode, normalizeNetworkProxy, type NetworkProxyMode } from '../../../../common/networkProxy'
+import { normalizeTileMirrorMode, tileMirrorModes, type TileMirrorMode } from '../../../../common/tileMirror'
 
 const globeStore = useGlobeStore()
-const { networkProxy, tileCacheEnabled, tileMirrorEnabled, providerCredentials } = storeToRefs(globeStore)
+const { networkProxy, tileCacheEnabled, tileMirrorMode, mirroredProviders, providerCredentials } = storeToRefs(globeStore)
+
+const tileMirrorModeLabels: Record<TileMirrorMode, string> = {
+  auto: '自动',
+  on: '开启',
+  off: '关闭'
+}
+
+const tileMirrorModeDescriptions: Record<TileMirrorMode, string> = {
+  auto: '启动时自动测试境外影像源是否可用：不可用时改用高德镜像瓦片，可用时保持直连。',
+  on: '请求失败前始终使用高德镜像瓦片；一旦请求失败会提示并自动回退到原影像源。',
+  off: '始终请求原影像源，不使用高德镜像瓦片。'
+}
+
+const tileMirrorModeOptions = tileMirrorModes.map((mode) => ({ value: mode, label: tileMirrorModeLabels[mode] }))
+const tileMirrorModeDescription = computed(() => tileMirrorModeDescriptions[tileMirrorMode.value])
+const tileMirrorRouteActive = computed(() => mirroredProviders.value.length > 0)
+
+function handleTileMirrorModeChange(value: unknown): void {
+  globeStore.setTileMirrorMode(normalizeTileMirrorMode(value))
+}
 
 const keyProviders = computed(() => [...providerCatalog, ...credentialOnlyProviders].filter((provider) => provider.requiresKey))
 const credentialProviderId = ref('')
@@ -170,10 +191,21 @@ async function testProxy(): Promise<void> {
     <section class="settings-block">
       <div class="setting-row">
         <div class="setting-copy">
-          <div class="setting-title">高德镜像瓦片源</div>
-          <p class="setting-desc">若您位于中国大陆，推荐开启此选项。</p>
+          <div class="setting-title-row">
+            <span class="setting-title">高德镜像瓦片源</span>
+            <a-tag v-if="tileMirrorMode !== 'off'" :color="tileMirrorRouteActive ? 'blue' : undefined">
+              {{ tileMirrorRouteActive ? '正在使用镜像源' : '正在使用原影像源' }}
+            </a-tag>
+          </div>
+          <p class="setting-desc">{{ tileMirrorModeDescription }}</p>
         </div>
-        <a-switch :checked="tileMirrorEnabled" @change="(value: string | number | boolean) => globeStore.setTileMirrorEnabled(value === true)" />
+        <a-select
+          class="mirror-mode-select"
+          :value="tileMirrorMode"
+          :options="tileMirrorModeOptions"
+          aria-label="高德镜像瓦片源"
+          @change="handleTileMirrorModeChange"
+        />
       </div>
     </section>
   </section>
@@ -192,8 +224,10 @@ async function testProxy(): Promise<void> {
 .key-actions{display:flex;gap:8px;margin-top:8px}
 .setting-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .setting-copy{flex:1;min-width:0}
+.setting-title-row{display:flex;align-items:center;gap:8px}
 .setting-title{color:rgba(0,0,0,0.88);font-size:14px;line-height:22px}
 .setting-desc{margin:4px 0 0;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
+.mirror-mode-select{width:104px;flex:none}
 .proxy-mode-group{display:flex;width:100%;max-width:420px}
 .proxy-mode-group :deep(.ant-radio-button-wrapper){flex:1;text-align:center}
 .proxy-input{margin-top:8px;max-width:420px}
