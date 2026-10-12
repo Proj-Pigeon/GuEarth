@@ -6,7 +6,7 @@ import { thematicLayerCatalog, useClimateStore, type ThematicLayerId } from '@re
 import { useSolarStore } from '@renderer/stores/solar'
 import { useFailureStore } from '@renderer/stores/failure'
 import { beltLabel, beltLabelPosition, beltOpacity, beltRing } from '@renderer/thematic/rainBelt'
-import { summerMonsoonArrows, winterMonsoonArrows, type MonsoonArrow } from '@renderer/thematic/monsoonArrows'
+import { summerMonsoonArrows, winterMonsoonArrows } from '@renderer/thematic/monsoonArrows'
 import { oceanCurrents, pathPointAt } from '@renderer/thematic/oceanCurrents'
 import { climateZones } from '@renderer/thematic/climateZones'
 import { coriolisDemos, sampleTrack } from '@renderer/thematic/coriolis'
