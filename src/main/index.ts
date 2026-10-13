@@ -1013,7 +1013,10 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       window.webContents.stopPainting()
       await frameWrite
       if (settled) return
-      if (frameIndex === 0) throw new Error('离屏渲染未产生有效视频帧')
+      if (frameIndex === 0) {
+        await fail(new Error('离屏渲染未产生有效视频帧'))
+        return
+      }
       const stderr: Buffer[] = []
       ffmpeg = spawn(ffmpegInstaller.path, [
         '-hide_banner', '-loglevel', 'error', '-y',
