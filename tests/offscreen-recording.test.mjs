@@ -29,11 +29,12 @@ test('offscreen recording renderer can execute scene scripts', () => {
 
 test('offscreen recording can encode paint frames through ffmpeg', () => {
   assert.match(mainSource, /function encodeOffscreenRecording\(script: OffscreenRecordingScript\): Promise<RecordingSaveResult>/)
-  assert.match(mainSource, /const waitForFfmpegClose = new Promise<number \| null>/)
-  assert.match(mainSource, /'-vcodec', 'png'/)
-  assert.match(mainSource, /const code = await waitForFfmpegClose/)
+  assert.match(mainSource, /const framePattern = join\(tempDir, 'frame-%08d\.png'\)/)
+  assert.match(mainSource, /await frameWrite/)
+  assert.match(mainSource, /'-framerate', String\(targetFps\), '-i', framePattern/)
   assert.match(mainSource, /image\.toPNG\(\)/)
-  assert.match(mainSource, /ffmpegStdin\.on\('error'/)
+  assert.match(mainSource, /image\.isEmpty\(\)/)
+  assert.doesNotMatch(mainSource, /image2pipe/)
 })
 
 test('offscreen recording exposes a local encode self-test', () => {

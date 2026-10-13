@@ -18,7 +18,7 @@ import { tmpdir } from 'os'
 import { flushJsonWrites, readJson, serialQueue, writeAtomic, writeJson } from './jsonStore'
 import { listTileFiles, pruneTileFiles } from './tileCacheFiles'
 import { storageChildPath } from './storagePath'
-import { access, constants, mkdtemp, mkdir, open, readFile, rename as renameFile, stat, rm, unlink } from 'fs/promises'
+import { access, constants, mkdtemp, mkdir, open, readFile, rename as renameFile, stat, rm, unlink, writeFile } from 'fs/promises'
 import type { FileHandle } from 'fs/promises'
 import { createHash, randomUUID } from 'crypto'
 import icon from '../../resources/icon.png?asset'
@@ -971,40 +971,31 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       offscreenPaintFrames = 0
       let settled = false
       let ffmpeg!: ReturnType<typeof spawn>
-      let ffmpegStdin!: NonNullable<ReturnType<typeof spawn>['stdin']>
+      let frameIndex = 0
+      let frameWrite: Promise<void> = Promise.resolve()
+      let frameWriting = false
+      const framePattern = join(tempDir, 'frame-%08d.png')
       const fail = async (error: unknown): Promise<void> => {
         if (settled) return
         settled = true
         stopOffscreenRecordingWindow()
         if (ffmpeg && !ffmpeg.killed) ffmpeg.kill()
-        if (ffmpegStdin && !ffmpegStdin.destroyed) ffmpegStdin.destroy()
         await rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
         reject(error instanceof Error ? error : new Error(String(error)))
       }
-      ffmpeg = spawn(ffmpegInstaller.path, [
-        '-hide_banner', '-loglevel', 'error', '-y',
-        '-f', 'image2pipe', '-vcodec', 'png', '-framerate', String(targetFps), '-i', 'pipe:0',
-        '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
-      ], { windowsHide: true, stdio: ['pipe', 'ignore', 'pipe'] })
-      ffmpegStdin = ffmpeg.stdin!
-      if (!ffmpegStdin) throw new Error('FFmpeg 输入管道创建失败')
-      const stderr: Buffer[] = []
-      const waitForFfmpegClose = new Promise<number | null>((resolveClose) => ffmpeg.once('close', (code) => resolveClose(code)))
-      ffmpeg.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
-      ffmpeg.once('error', (error) => { void fail(error) })
-      ffmpegStdin.on('error', (error) => { void fail(error) })
       window.webContents.on('paint', (_event, _dirty, image) => {
         offscreenPaintFrames += 1
-        if (settled || ffmpegStdin.destroyed || ffmpegStdin.closed || !ffmpegStdin.writable) return
-        try {
-          const png = image.toPNG()
-          if (!ffmpegStdin.write(png)) window.webContents.stopPainting()
-        } catch (error) {
-          void fail(error)
-        }
-      })
-      ffmpegStdin.on('drain', () => {
-        if (!settled && !window.isDestroyed()) window.webContents.startPainting()
+        if (settled || frameWriting || image.isEmpty()) return
+        const png = image.toPNG()
+        if (png.length === 0) return
+        frameWriting = true
+        const framePath = join(tempDir, `frame-${String(frameIndex).padStart(8, '0')}.png`)
+        frameIndex += 1
+        frameWrite = frameWrite.then(() => writeFile(framePath, png)).catch((error) => { void fail(error) }).finally(() => {
+          frameWriting = false
+          if (!settled && !window.isDestroyed()) window.webContents.startPainting()
+        })
+        window.webContents.stopPainting()
       })
       const ready = new Promise<void>((resolveReady, rejectReady) => {
         window.webContents.once('did-finish-load', () => resolveReady())
@@ -1020,9 +1011,20 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       await new Promise((resolveTimer) => setTimeout(resolveTimer, offscreenScriptDurationMs(script)))
       if (settled) return
       window.webContents.stopPainting()
-      if (!ffmpegStdin.destroyed && !ffmpegStdin.closed && ffmpegStdin.writable) ffmpegStdin.end()
-      const code = await waitForFfmpegClose
+      await frameWrite
       if (settled) return
+      if (frameIndex === 0) throw new Error('离屏渲染未产生有效视频帧')
+      const stderr: Buffer[] = []
+      ffmpeg = spawn(ffmpegInstaller.path, [
+        '-hide_banner', '-loglevel', 'error', '-y',
+        '-framerate', String(targetFps), '-i', framePattern,
+        '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
+      ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+      ffmpeg.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
+      const code = await new Promise<number | null>((resolveClose, rejectClose) => {
+        ffmpeg.once('error', rejectClose)
+        ffmpeg.once('close', resolveClose)
+      }).catch((error) => { throw error instanceof Error ? error : new Error(String(error)) })
       if (code !== 0) {
         const detail = Buffer.concat(stderr).toString('utf8').trim()
         await fail(new Error(`离屏视频编码失败（FFmpeg 退出码 ${code ?? '未知'}）${detail ? `：${detail.slice(-1000)}` : ''}`))
