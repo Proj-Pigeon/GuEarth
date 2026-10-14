@@ -31,7 +31,7 @@ test('offscreen recording can encode paint frames through ffmpeg', () => {
   assert.match(mainSource, /function encodeOffscreenRecording\(script: OffscreenRecordingScript\): Promise<RecordingSaveResult>/)
   assert.match(mainSource, /const framePattern = join\(tempDir, 'frame-%08d\.png'\)/)
   assert.match(mainSource, /await frameWrite/)
-  assert.match(mainSource, /'-framerate', String\(targetFps\), '-i', framePattern/)
+  assert.match(mainSource, /'-vf', 'pad=ceil\(iw\/2\)\*2:ceil\(ih\/2\)\*2'/)
   assert.match(mainSource, /image\.toPNG\(\)/)
   assert.match(mainSource, /image\.isEmpty\(\)/)
   assert.doesNotMatch(mainSource, /image2pipe/)

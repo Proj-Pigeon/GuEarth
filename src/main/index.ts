@@ -1021,6 +1021,7 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       ffmpeg = spawn(ffmpegInstaller.path, [
         '-hide_banner', '-loglevel', 'error', '-y',
         '-framerate', String(targetFps), '-i', framePattern,
+        '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2',
         '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
       ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
       ffmpeg.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
