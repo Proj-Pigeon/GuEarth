@@ -194,31 +194,64 @@ function arrowHeadPositions(from: [number, number], to: [number, number], size: 
 
 const MONSOON_RIBBON_SAMPLES = 40
 const MONSOON_RIBBON_WIDTH = 1.5
+const MONSOON_RIBBON_SEGMENTS = 8
+const MONSOON_RIBBON_TAIL_ALPHA = 0.18
+const MONSOON_HEAD_ALPHA = 0.92
 
 function monsoonWidthProfile(t: number): number {
   const ramp = Math.min(1, t / 0.45)
   return 0.34 + 0.66 * ramp * ramp * (3 - 2 * ramp)
 }
 
-function monsoonRibbonPositions(smooth: Array<[number, number]>, maxWidthDeg: number): { body: Cesium.Cartesian3[]; head: Cesium.Cartesian3[] } {
-  const total = migrationPathLength(smooth)
-  const headBaseFrac = Math.max(0.3, 1 - (maxWidthDeg * 1.6) / total)
-  const left: number[] = []
-  const right: number[] = []
-  for (let i = 0; i <= MONSOON_RIBBON_SAMPLES; i += 1) {
-    const point = pathPointAt(smooth, (i / MONSOON_RIBBON_SAMPLES) * headBaseFrac)
+function monsoonAlphaProfile(t: number): number {
+  const eased = t * t * (3 - 2 * t)
+  return MONSOON_RIBBON_TAIL_ALPHA + (MONSOON_HEAD_ALPHA - MONSOON_RIBBON_TAIL_ALPHA) * eased
+}
+
+interface MonsoonRibbonSegment {
+  positions: Cesium.Cartesian3[]
+  alpha: number
+}
+
+function monsoonRibbonSegments(smooth: Array<[number, number]>, maxWidthDeg: number): { segments: MonsoonRibbonSegment[]; head: Cesium.Cartesian3[] } {
+  const headBase = ribbonHeadBaseFrac(smooth, maxWidthDeg)
+  const sampled = Array.from({ length: MONSOON_RIBBON_SAMPLES + 1 }, (_, i) => {
+    const t = i / MONSOON_RIBBON_SAMPLES
+    const point = pathPointAt(smooth, t * headBase)
     const [lon, lat] = point.position
     const cosLat = Math.max(0.25, Math.cos((lat * Math.PI) / 180))
-    const half = maxWidthDeg * monsoonWidthProfile(i / MONSOON_RIBBON_SAMPLES)
+    const half = maxWidthDeg * monsoonWidthProfile(t)
     const perpX = -point.direction[1]
     const perpY = point.direction[0]
-    left.push(lon + (perpX * half) / cosLat, lat + perpY * half)
-    right.unshift(lon - (perpX * half) / cosLat, lat - perpY * half)
+    return {
+      left: lon + (perpX * half) / cosLat,
+      leftLat: lat + perpY * half,
+      rightLat: lat - perpY * half,
+      right: lon - (perpX * half) / cosLat,
+      t
+    }
+  })
+  const boundaries: number[] = []
+  const stride = MONSOON_RIBBON_SAMPLES / MONSOON_RIBBON_SEGMENTS
+  for (let s = 0; s <= MONSOON_RIBBON_SEGMENTS; s += 1) {
+    boundaries.push(Math.min(MONSOON_RIBBON_SAMPLES, Math.round(s * stride)))
   }
-  const body = Cesium.Cartesian3.fromDegreesArray([...left, ...right])
-  const base = pathPointAt(smooth, headBaseFrac).position
+  const segments: MonsoonRibbonSegment[] = []
+  for (let s = 0; s < MONSOON_RIBBON_SEGMENTS; s += 1) {
+    const from = boundaries[s]
+    const to = boundaries[s + 1]
+    const leftRing = sampled.slice(from, to + 1).map((p) => [p.left, p.leftLat])
+    const rightRing = sampled.slice(from, to + 1).reverse().map((p) => [p.right, p.rightLat])
+    const alpha = monsoonAlphaProfile(((from + to) / 2 / MONSOON_RIBBON_SAMPLES) ** 0.85)
+    segments.push({ positions: Cesium.Cartesian3.fromDegreesArray(leftRing.concat(rightRing).flat()), alpha })
+  }
+  const base = pathPointAt(smooth, headBase).position
   const tip = pathPointAt(smooth, 1).position
-  return { body, head: arrowHeadPositions(base, tip, maxWidthDeg) }
+  return { segments, head: arrowHeadPositions(base, tip, maxWidthDeg) }
+}
+
+function ribbonHeadBaseFrac(smooth: Array<[number, number]>, maxWidthDeg: number): number {
+  return Math.max(0.3, 1 - (maxWidthDeg * 1.6) / migrationPathLength(smooth))
 }
 
 function monsoonLabelAt(smooth: Array<[number, number]>, offset = 3.2): [number, number] {
@@ -340,17 +373,19 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     const labeled = new Set<string>()
     for (const arrow of arrows) {
       const smooth = smoothMigrationPath(arrow.path)
-      const { body, head } = monsoonRibbonPositions(smooth, MONSOON_RIBBON_WIDTH)
-      dataSource.entities.add({
-        polygon: {
-          hierarchy: new Cesium.PolygonHierarchy(body),
-          material: color.withAlpha(0.5)
-        }
-      })
+      const { segments, head } = monsoonRibbonSegments(smooth, MONSOON_RIBBON_WIDTH)
+      for (const segment of segments) {
+        dataSource.entities.add({
+          polygon: {
+            hierarchy: new Cesium.PolygonHierarchy(segment.positions),
+            material: color.withAlpha(segment.alpha)
+          }
+        })
+      }
       dataSource.entities.add({
         polygon: {
           hierarchy: new Cesium.PolygonHierarchy(head),
-          material: color.withAlpha(0.92)
+          material: color.withAlpha(MONSOON_HEAD_ALPHA)
         }
       })
       if (!labeled.has(arrow.label)) {
