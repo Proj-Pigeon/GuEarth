@@ -323,9 +323,24 @@ export interface RecordingSaveResult {
   bytes: number
 }
 
+export interface OffscreenRecordingAnnotation {
+  sceneId: string
+  kind: 'point' | 'polyline' | 'polygon'
+  name: string
+  positions: GeoPosition[]
+}
+
+export interface OffscreenRecordingTerrain {
+  providerId: string
+  exaggeration: number
+  lighting: boolean
+}
+
 export interface OffscreenRecordingScript {
   title: string
   scenes: TeachingScene[]
+  annotations: OffscreenRecordingAnnotation[]
+  terrain: OffscreenRecordingTerrain
   width: number
   height: number
   fps: number
@@ -334,6 +349,11 @@ export interface OffscreenRecordingScript {
 export interface OffscreenRecordingProbeResult {
   fps: number
   frames: number
+}
+
+export interface OffscreenRecordingProgress {
+  sceneIndex: number
+  totalScenes: number
 }
 
 export interface UpdateState {
@@ -387,6 +407,13 @@ const api = {
     abort: (recordingId: string): Promise<void> => ipcRenderer.invoke('recordings:abort', recordingId),
     offscreenProbe: (script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-probe', script),
     offscreenEncode: (script: OffscreenRecordingScript): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:offscreen-encode', script),
+    offscreenCancel: (): Promise<void> => ipcRenderer.invoke('recordings:offscreen-cancel'),
+    offscreenProgress: (progress: OffscreenRecordingProgress): void => ipcRenderer.send('recordings:offscreen-progress', progress),
+    onOffscreenProgress: (listener: (progress: OffscreenRecordingProgress) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: OffscreenRecordingProgress): void => listener(payload)
+      ipcRenderer.on('recordings:offscreen-progress', wrapped)
+      return () => ipcRenderer.removeListener('recordings:offscreen-progress', wrapped)
+    },
     offscreenSelfTest: (): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:offscreen-self-test'),
     offscreenStats: (): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-stats')
   },

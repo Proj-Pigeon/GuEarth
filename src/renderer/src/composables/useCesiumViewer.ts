@@ -24,11 +24,7 @@ const layerRegistry: Record<string, LayerProvider> = {
   baidu: { meta: providerMeta('baidu'), createImageryProvider: async (styleId) => createBasemapImageryProvider('baidu', styleId) }
 }
 
-const terrainRegistry: Record<string, () => Promise<Cesium.TerrainProvider>> = {
-  ellipsoid: async () => new Cesium.EllipsoidTerrainProvider(),
-  'arcgis-terrain': () => Cesium.ArcGISTiledElevationTerrainProvider.fromUrl('https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'),
-  'cesium-world-terrain': () => Cesium.CesiumTerrainProvider.fromUrl(Cesium.IonResource.fromAssetId(1), { requestVertexNormals: true })
-}
+import { terrainRegistry } from '@renderer/terrain/terrainRegistry'
 
 const terrainName = (id: string): string => terrainCatalog.find((terrain) => terrain.id === id)?.name ?? id
 const providerName = (id: string): string => layerRegistry[id]?.meta.name ?? id

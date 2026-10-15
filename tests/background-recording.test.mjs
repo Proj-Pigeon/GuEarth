@@ -21,9 +21,10 @@ test('recording enables continuous Cesium rendering and restores the previous mo
 })
 
 test('AI micro-lesson recording uses the offscreen encoder', () => {
-  assert.match(scenePlayerSource, /const script: OffscreenRecordingScript = \{ title, scenes, width: 1920, height: 1080, fps: 30 \}/)
+  assert.match(scenePlayerSource, /const script: OffscreenRecordingScript = \{/)
   assert.match(scenePlayerSource, /window\.guEarth\.recordings\.offscreenEncode\(script\)/)
   assert.match(scenePlayerSource, /正在启动离屏录制渲染/)
+  assert.match(scenePlayerSource, /onOffscreenProgress/)
 })
 
 test('AI micro-lesson offscreen recording does not require MediaRecorder', () => {

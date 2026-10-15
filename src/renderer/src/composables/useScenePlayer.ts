@@ -4,7 +4,7 @@ import type { OffscreenRecordingScript, RecordingSaveResult, SceneCamera, SceneS
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useClimateStore, thematicLayerCatalog } from '@renderer/stores/climate'
 import { useSolarStore, type MotionPanel } from '@renderer/stores/solar'
-import { useDrawingStore, DEFAULT_DRAW_STYLE, type GeoPosition } from '@renderer/stores/drawing'
+import { useDrawingStore, type GeoPosition } from '@renderer/stores/drawing'
 import { useScenesStore, type RecordingPrewarmQuality } from '@renderer/stores/scenes'
 import { createVideoRecorder, type RecorderOverlay } from './useVideoRecorder'
 
@@ -436,7 +436,9 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       const result = await window.guEarth.recordings.offscreenEncode(script)
       scenesStore.applyRecordingResult(result)
     } catch (error) {
-      scenesStore.setRecording({ state: 'error', error: error instanceof Error ? error.message : '离屏视频保存失败' })
+      const message = error instanceof Error ? error.message : '离屏视频保存失败'
+      if (message.includes('录制已取消')) scenesStore.setRecording({ state: 'idle', cancelled: true, error: '' })
+      else scenesStore.setRecording({ state: 'error', error: message })
     }
   }
 
@@ -561,23 +563,28 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       },
       createdAt: Date.now()
     }))
-    const tempShapeIds: string[] = []
-    for (const step of steps) {
-      for (const marker of step.markers) {
-        const id = crypto.randomUUID()
-        drawingStore.addTransientShape({ ...DEFAULT_DRAW_STYLE, id, kind: 'point', positions: [{ longitude: marker.longitude, latitude: marker.latitude, height: 0 }], annotation: marker.name, createdAt: Date.now() })
-        tempShapeIds.push(id)
-      }
-      for (const shape of step.shapes) {
-        const id = crypto.randomUUID()
-        drawingStore.addTransientShape({ ...DEFAULT_DRAW_STYLE, id, kind: shape.kind, positions: shape.positions, annotation: shape.name, createdAt: Date.now() })
-        tempShapeIds.push(id)
-      }
+    const estimatedSeconds = Math.round(scenes.reduce((total, scene, index) => total + (index > 0 ? scene.flyDurationMs / 1000 : 0) + scene.dwellMs / 1000, 0)) + 3
+    const annotations = steps.flatMap((step, index) => {
+      const sceneId = scenes[index].id
+      return [
+        ...step.markers.map((marker) => ({ sceneId, kind: 'point' as const, name: marker.name, positions: [{ longitude: marker.longitude, latitude: marker.latitude, height: 0 }] })),
+        ...step.shapes.map((shape) => ({ sceneId, kind: shape.kind, name: shape.name, positions: shape.positions }))
+      ]
+    })
+    const script: OffscreenRecordingScript = {
+      title,
+      scenes,
+      annotations,
+      terrain: { providerId: globeStore.terrainProviderId, exaggeration: globeStore.terrainExaggeration, lighting: globeStore.terrainLighting },
+      width: 1920,
+      height: 1080,
+      fps: 30
     }
-    const estimatedSeconds = Math.round(scenes.reduce((total, scene) => total + scene.flyDurationMs / 1000 + scene.dwellMs / 1000, 0)) + 3
-    const script: OffscreenRecordingScript = { title, scenes, width: 1920, height: 1080, fps: 30 }
     playerState.active = true
     playerState.mode = 'auto'
+    playerState.prewarming = true
+    playerState.prewarmIndex = 0
+    playerState.prewarmTotal = 0
     playerState.title = title
     playerState.total = scenes.length
     playerState.currentIndex = 0
@@ -586,11 +593,25 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     playerState.recording = true
     scenesStore.setPresenting(true)
     scenesStore.setRecording({ state: 'preparing', title, currentStep: 0, totalSteps: scenes.length, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '正在启动离屏录制渲染…', prewarmTimedOut: false, skipPrewarm: false, videoPath: '', error: '', cancelled: false })
+    const cancel = (): void => {
+      void window.guEarth.recordings.offscreenCancel()
+    }
+    activeRun = cancel
+    const unsubscribeProgress = window.guEarth.recordings.onOffscreenProgress((progress) => {
+      if (activeRun !== cancel) return
+      playerState.prewarming = false
+      playerState.currentIndex = progress.sceneIndex
+      playerState.sceneName = scenes[progress.sceneIndex]?.name ?? ''
+      playerState.narration = scenes[progress.sceneIndex]?.narration ?? ''
+      scenesStore.setRecording({ state: 'recording', currentStep: progress.sceneIndex + 1, totalSteps: progress.totalScenes })
+    })
     void saveOffscreenRecording(script).finally(() => {
-      for (const shapeId of tempShapeIds) drawingStore.removeShape(shapeId)
-      if (scenesStore.recording.state !== 'error') scenesStore.setPresenting(false)
+      unsubscribeProgress()
+      scenesStore.setPresenting(false)
+      if (activeRun === cancel) activeRun = null
       playerState.active = false
       playerState.recording = false
+      playerState.prewarming = false
       playerState.currentIndex = -1
       playerState.sceneName = ''
       playerState.narration = ''

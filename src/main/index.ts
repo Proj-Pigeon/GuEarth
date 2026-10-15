@@ -24,6 +24,7 @@ import { createHash, randomUUID } from 'crypto'
 import icon from '../../resources/icon.png?asset'
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg'
 import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, OffscreenRecordingProbeResult, OffscreenRecordingScript, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey } from '../preload'
+import { offscreenFrameRate, offscreenScriptDurationMs } from './offscreenTiming'
 import { assertEncryptionAvailable, assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
 import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
 import { AiSettingsStore } from './ai/settingsStore'
@@ -78,6 +79,8 @@ let tileCachePath = ''
 let annotationsPath = ''
 let scenesPath = ''
 let offscreenRecordingWindow: BrowserWindow | null = null
+let offscreenProgressTarget: Electron.WebContents | null = null
+let cancelOffscreenRecording: (() => void) | null = null
 let offscreenPaintStartedAt = 0
 let offscreenPaintFrames = 0
 let settings: PersistedSettings = { ...defaultSettings, providerCredentials: {} }
@@ -557,10 +560,14 @@ function recordingExtension(mimeType: unknown): string {
   return extension
 }
 
+function ffmpegPath(): string {
+  return ffmpegInstaller.path.replace(/app\.asar([\\/])/, 'app.asar.unpacked$1')
+}
+
 function finalizeMp4Recording(inputPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const stderr: Buffer[] = []
-    const process = spawn(ffmpegInstaller.path, ['-hide_banner', '-loglevel', 'error', '-y', '-i', inputPath, '-map', '0:v:0', '-c:v', 'copy', '-movflags', '+faststart', '-f', 'mp4', outputPath], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+    const process = spawn(ffmpegPath(), ['-hide_banner', '-loglevel', 'error', '-y', '-i', inputPath, '-map', '0:v:0', '-c:v', 'copy', '-movflags', '+faststart', '-f', 'mp4', outputPath], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
     process.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
     process.once('error', reject)
     process.once('close', (code) => {
@@ -768,8 +775,24 @@ function registerIpcHandlers(): void {
     if (script === undefined) return startOffscreenRecordingWindow()
     return startOffscreenRecordingWindow(normalizeOffscreenRecordingScript(script))
   })
-  ipcMain.handle('recordings:offscreen-encode', async (_event, script: unknown): Promise<RecordingSaveResult> => encodeOffscreenRecording(normalizeOffscreenRecordingScript(script)))
+  ipcMain.handle('recordings:offscreen-encode', async (event, script: unknown): Promise<RecordingSaveResult> => {
+    offscreenProgressTarget = event.sender
+    try {
+      return await encodeOffscreenRecording(normalizeOffscreenRecordingScript(script))
+    } finally {
+      offscreenProgressTarget = null
+    }
+  })
+  ipcMain.on('recordings:offscreen-progress', (event, payload: unknown): void => {
+    const target = offscreenProgressTarget
+    if (!target || target.isDestroyed() || event.sender !== offscreenRecordingWindow?.webContents) return
+    if (!isRecord(payload)) return
+    const sceneIndex = normalizeNumber(payload.sceneIndex, 0, 1000, 0)
+    const totalScenes = normalizeNumber(payload.totalScenes, 0, 1000, 0)
+    target.send('recordings:offscreen-progress', { sceneIndex: Math.round(sceneIndex), totalScenes: Math.round(totalScenes) })
+  })
   ipcMain.handle('recordings:offscreen-self-test', async (): Promise<RecordingSaveResult> => runOffscreenSelfTest())
+  ipcMain.handle('recordings:offscreen-cancel', (): void => { cancelOffscreenRecording?.() })
   ipcMain.handle('recordings:offscreen-stats', (): OffscreenRecordingProbeResult => offscreenRecordingStats())
   ipcMain.handle('recordings:start', async (event, mimeType: unknown): Promise<string> => {
     const extension = recordingExtension(mimeType)
@@ -865,7 +888,7 @@ function stopOffscreenRecordingWindow(): void {
   const window = offscreenRecordingWindow
   offscreenRecordingWindow = null
   if (!window || window.isDestroyed()) return
-  window.webContents.stopPainting()
+  if (!window.webContents.isDestroyed()) window.webContents.stopPainting()
   window.destroy()
 }
 
@@ -879,6 +902,7 @@ async function startOffscreenRecordingWindow(script?: OffscreenRecordingScript):
     width: targetWidth,
     height: targetHeight,
     webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
       offscreen: true,
       backgroundThrottling: false,
       sandbox: false,
@@ -897,18 +921,18 @@ async function startOffscreenRecordingWindow(script?: OffscreenRecordingScript):
     window.webContents.once('did-finish-load', () => resolve())
     window.webContents.once('did-fail-load', (_event, code, description) => reject(new Error(`${code}: ${description}`)))
   })
-  if (process.env['ELECTRON_RENDERER_URL']) {
-    await window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/offscreen.html`)
-  } else {
-    await window.loadFile(join(__dirname, '../renderer/offscreen.html'))
-  }
-  await ready
+  const loading = process.env['ELECTRON_RENDERER_URL']
+    ? window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/offscreen.html`)
+    : window.loadFile(join(__dirname, '../renderer/offscreen.html'))
+  await Promise.all([loading, ready])
   if (script) {
     const serialized = JSON.stringify(script).replace(/</g, '\\u003c')
     await window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.play(${serialized})`)
   }
+  offscreenPaintStartedAt = Date.now()
+  offscreenPaintFrames = 0
   window.webContents.startPainting()
-  const durationMs = script ? offscreenScriptDurationMs(script) : 1000
+  const durationMs = script ? offscreenSceneDurationMs(script) : 1000
   await new Promise((resolve) => setTimeout(resolve, durationMs))
   const elapsed = Math.max(1, Date.now() - offscreenPaintStartedAt)
   const result = { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
@@ -921,20 +945,38 @@ function offscreenRecordingStats(): { fps: number; frames: number } {
   return { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
 }
 
+const OFFSCREEN_TERRAIN_PROVIDER_IDS = new Set(['ellipsoid', 'arcgis-terrain', 'cesium-world-terrain'])
+
+function normalizeOffscreenTerrain(value: unknown): OffscreenRecordingScript['terrain'] {
+  if (!isRecord(value)) return { providerId: 'ellipsoid', exaggeration: 1, lighting: false }
+  return {
+    providerId: typeof value.providerId === 'string' && OFFSCREEN_TERRAIN_PROVIDER_IDS.has(value.providerId) ? value.providerId : 'ellipsoid',
+    exaggeration: normalizeNumber(value.exaggeration, 1, 5, 1),
+    lighting: value.lighting === true
+  }
+}
+
 function normalizeOffscreenRecordingScript(value: unknown): OffscreenRecordingScript {
   if (!isRecord(value) || !Array.isArray(value.scenes)) throw new Error('无效的离屏录制脚本')
   const sceneDocument = normalizeSceneDocument({ scenes: value.scenes })
   return {
     title: typeof value.title === 'string' ? value.title.slice(0, 120) : '',
     scenes: sceneDocument.scenes,
+    annotations: Array.isArray(value.annotations) ? value.annotations.flatMap((entry) => {
+      if (!isRecord(entry) || typeof entry.sceneId !== 'string' || typeof entry.name !== 'string' || !Array.isArray(entry.positions)) return []
+      if (entry.kind !== 'point' && entry.kind !== 'polyline' && entry.kind !== 'polygon') return []
+      const positions = entry.positions.flatMap((position) => isRecord(position) ? [{ longitude: normalizeNumber(position.longitude, -180, 180, 0), latitude: normalizeNumber(position.latitude, -90, 90, 0), height: normalizeNumber(position.height, -10000, 100000000, 0) }] : [])
+      return positions.length ? [{ sceneId: entry.sceneId, kind: entry.kind, name: entry.name.slice(0, 120), positions }] : []
+    }) : [],
+    terrain: normalizeOffscreenTerrain(value.terrain),
     width: Math.min(1920, Math.max(320, Math.round(normalizeNumber(value.width, 320, 1920, 1280)))),
     height: Math.min(1080, Math.max(240, Math.round(normalizeNumber(value.height, 240, 1080, 720)))),
     fps: Math.min(60, Math.max(1, Math.round(normalizeNumber(value.fps, 1, 60, 30))))
   }
 }
 
-function offscreenScriptDurationMs(script: OffscreenRecordingScript): number {
-  return Math.max(1000, script.scenes.reduce((total, scene) => total + Math.max(0, scene.flyDurationMs) + Math.max(0, scene.dwellMs), 0))
+function offscreenSceneDurationMs(script: OffscreenRecordingScript): number {
+  return offscreenScriptDurationMs(script.scenes)
 }
 
 async function readFileSize(path: string): Promise<number> {
@@ -943,22 +985,41 @@ async function readFileSize(path: string): Promise<number> {
 
 function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<RecordingSaveResult> {
   return new Promise((resolve, reject) => {
+    let settled = false
+    let tempDir: string | null = null
+    let ffmpeg: ReturnType<typeof spawn> | null = null
+    let recorderWindow: BrowserWindow | null = null
+    const fail = (error: unknown): void => {
+      if (settled) return
+      settled = true
+      if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
+      stopOffscreenRecordingWindow()
+      if (ffmpeg && !ffmpeg.killed) ffmpeg.kill()
+      if (tempDir) void rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
+      reject(error instanceof Error ? error : new Error(String(error)))
+    }
+    const cancel = (): void => fail(new Error('录制已取消'))
+    cancelOffscreenRecording = cancel
     void (async () => {
       stopOffscreenRecordingWindow()
       const directory = await usableRecordingDirectory()
+      if (settled) return
       if (!directory) throw new Error('请先选择可用的视频保存文件夹')
-      const tempDir = await mkdtemp(join(tmpdir(), 'guearth-offscreen-'))
-      const temporaryPath = join(tempDir, 'recording.mp4.part')
+      tempDir = await mkdtemp(join(directory, '.guearth-offscreen-'))
+      if (settled) return
+      const frameDirectory = tempDir
+      const temporaryPath = join(frameDirectory, 'recording.mp4.part')
       const now = new Date()
       const pad = (value: number): string => String(value).padStart(2, '0')
       const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
       const outputPath = join(directory, `GuEarth-${stamp}-${randomUUID().slice(0, 8)}.mp4`)
       const targetFps = script.fps
-      const window = new BrowserWindow({
+      recorderWindow = new BrowserWindow({
         show: false,
         width: script.width,
         height: script.height,
         webPreferences: {
+          preload: join(__dirname, '../preload/index.js'),
           offscreen: true,
           backgroundThrottling: false,
           sandbox: false,
@@ -966,32 +1027,23 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
           nodeIntegration: false
         }
       })
+      const window = recorderWindow
       offscreenRecordingWindow = window
       offscreenPaintStartedAt = Date.now()
       offscreenPaintFrames = 0
-      let settled = false
-      let ffmpeg!: ReturnType<typeof spawn>
       let frameIndex = 0
       let frameWrite: Promise<void> = Promise.resolve()
       let frameWriting = false
-      const framePattern = join(tempDir, 'frame-%08d.png')
-      const fail = async (error: unknown): Promise<void> => {
-        if (settled) return
-        settled = true
-        stopOffscreenRecordingWindow()
-        if (ffmpeg && !ffmpeg.killed) ffmpeg.kill()
-        await rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
-        reject(error instanceof Error ? error : new Error(String(error)))
-      }
+      const framePattern = join(frameDirectory, 'frame-%08d.jpg')
       window.webContents.on('paint', (_event, _dirty, image) => {
         offscreenPaintFrames += 1
         if (settled || frameWriting || image.isEmpty()) return
-        const png = image.toPNG()
-        if (png.length === 0) return
+        const frame = image.resize({ width: script.width, height: script.height }).toJPEG(95)
+        if (frame.length === 0) return
         frameWriting = true
-        const framePath = join(tempDir, `frame-${String(frameIndex).padStart(8, '0')}.png`)
+        const framePath = join(frameDirectory, `frame-${String(frameIndex).padStart(8, '0')}.jpg`)
         frameIndex += 1
-        frameWrite = frameWrite.then(() => writeFile(framePath, png)).catch((error) => { void fail(error) }).finally(() => {
+        frameWrite = frameWrite.then(() => writeFile(framePath, frame)).catch((error) => { fail(error) }).finally(() => {
           frameWriting = false
           if (!settled && !window.isDestroyed()) window.webContents.startPainting()
         })
@@ -1001,52 +1053,62 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
         window.webContents.once('did-finish-load', () => resolveReady())
         window.webContents.once('did-fail-load', (_event, code, description) => rejectReady(new Error(`${code}: ${description}`)))
       })
-      if (process.env['ELECTRON_RENDERER_URL']) await window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/offscreen.html`)
-      else await window.loadFile(join(__dirname, '../renderer/offscreen.html'))
-      await ready
+      const loading = process.env['ELECTRON_RENDERER_URL']
+        ? window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/offscreen.html`)
+        : window.loadFile(join(__dirname, '../renderer/offscreen.html'))
+      await Promise.all([loading, ready])
+      if (settled) return
       window.webContents.setFrameRate(targetFps)
       const serialized = JSON.stringify(script).replace(/</g, '\\u003c')
-      void window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.play(${serialized})`).catch((error) => { void fail(error) })
+      offscreenPaintStartedAt = Date.now()
+      const recordingStartedAt = Date.now()
       window.webContents.startPainting()
-      await new Promise((resolveTimer) => setTimeout(resolveTimer, offscreenScriptDurationMs(script)))
+      await window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.play(${serialized})`)
+      const recordingElapsedMs = Math.max(1, Date.now() - recordingStartedAt)
       if (settled) return
       window.webContents.stopPainting()
       await frameWrite
       if (settled) return
       if (frameIndex === 0) {
-        await fail(new Error('离屏渲染未产生有效视频帧'))
+        fail(new Error('离屏渲染未产生有效视频帧'))
         return
       }
+      const encodedFps = offscreenFrameRate(frameIndex, recordingElapsedMs)
       const stderr: Buffer[] = []
-      ffmpeg = spawn(ffmpegInstaller.path, [
+      const encoder = spawn(ffmpegPath(), [
         '-hide_banner', '-loglevel', 'error', '-y',
-        '-framerate', String(targetFps), '-i', framePattern,
+        '-framerate', encodedFps.toFixed(6), '-i', framePattern,
         '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2',
         '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
       ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
-      ffmpeg.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
+      ffmpeg = encoder
+      encoder.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
       const code = await new Promise<number | null>((resolveClose, rejectClose) => {
-        ffmpeg.once('error', rejectClose)
-        ffmpeg.once('close', resolveClose)
+        encoder.once('error', rejectClose)
+        encoder.once('close', resolveClose)
       }).catch((error) => { throw error instanceof Error ? error : new Error(String(error)) })
+      if (settled) return
       if (code !== 0) {
         const detail = Buffer.concat(stderr).toString('utf8').trim()
-        await fail(new Error(`离屏视频编码失败（FFmpeg 退出码 ${code ?? '未知'}）${detail ? `：${detail.slice(-1000)}` : ''}`))
+        fail(new Error(`离屏视频编码失败（FFmpeg 退出码 ${code ?? '未知'}）${detail ? `：${detail.slice(-1000)}` : ''}`))
         return
       }
-      try {
-        const bytes = await readFileSize(temporaryPath)
-        if (bytes === 0) throw new Error('未能生成离屏视频数据')
-        await renameFile(temporaryPath, outputPath)
-        await rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
-        stopOffscreenRecordingWindow()
-        shell.showItemInFolder(outputPath)
-        settled = true
-        resolve({ path: outputPath, bytes })
-      } catch (error) {
-        await fail(error)
+      const bytes = await readFileSize(temporaryPath)
+      if (settled) return
+      if (bytes === 0) {
+        fail(new Error('未能生成离屏视频数据'))
+        return
       }
-    })().catch((error) => reject(error instanceof Error ? error : new Error(String(error))))
+      await renameFile(temporaryPath, outputPath)
+      if (settled) return
+      await rm(frameDirectory, { recursive: true, force: true }).catch(() => undefined)
+      stopOffscreenRecordingWindow()
+      if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
+      if (settled) return
+      settled = true
+      shell.showItemInFolder(outputPath)
+      resolve({ path: outputPath, bytes })
+    })().catch((error) => fail(error))
   })
 }
 
@@ -1057,6 +1119,8 @@ function createOffscreenSelfTestScript(): OffscreenRecordingScript {
     width: 640,
     height: 360,
     fps: 15,
+    annotations: [],
+    terrain: { providerId: 'ellipsoid', exaggeration: 1, lighting: false },
     scenes: [
       {
         id: 'offscreen-self-test',
