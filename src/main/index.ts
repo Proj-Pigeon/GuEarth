@@ -75,7 +75,7 @@ const TILE_CACHE_MAX_BYTES = 512 * 1024 * 1024
 const TILE_CACHE_PRUNE_INTERVAL_MS = 10 * 60 * 1000
 const OFFSCREEN_TEMP_PREFIX = '.guearth-offscreen-'
 const OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS = 90_000
-const OFFSCREEN_PREPARE_TIMEOUT_MS = 60_000
+const OFFSCREEN_PREPARE_TIMEOUT_MS = 180_000
 const OFFSCREEN_MIN_FLUENT_FPS = 24
 const requireFfmpeg = createRequire(__filename)
 let ffmpegBinaryPath: string | null = null
@@ -803,13 +803,23 @@ function registerIpcHandlers(): void {
     if (!isRecord(payload)) return
     const sceneIndex = normalizeNumber(payload.sceneIndex, 0, 1000, 0)
     const totalScenes = normalizeNumber(payload.totalScenes, 0, 1000, 0)
-    target.send('recordings:offscreen-progress', { sceneIndex: Math.round(sceneIndex), totalScenes: Math.round(totalScenes) })
+    target.send('recordings:offscreen-progress', { phase: payload.phase === 'preparing' ? 'preparing' : 'recording', sceneIndex: Math.round(sceneIndex), totalScenes: Math.round(totalScenes), timedOut: payload.timedOut === true })
   })
   ipcMain.on('recordings:offscreen-notice', (event, message: unknown): void => {
     const target = offscreenRecordRequester
     if (!target || target.isDestroyed() || event.sender !== offscreenRecordingWindow?.webContents) return
     if (typeof message !== 'string' || !message.trim()) return
     target.send('recordings:offscreen-notice', message.trim().slice(0, 200))
+  })
+  ipcMain.on('recordings:offscreen-next', (event): void => {
+    forwardOffscreenCommand(event, 'window.guEarthOffscreenRecorder.next()')
+  })
+  ipcMain.on('recordings:offscreen-skip-prewarm', (event): void => {
+    forwardOffscreenCommand(event, 'window.guEarthOffscreenRecorder.skipPrewarm()')
+  })
+  ipcMain.on('recordings:offscreen-prewarm-quality', (event, quality: unknown): void => {
+    const value = quality === 'standard' || quality === 'ultra' ? quality : 'high'
+    forwardOffscreenCommand(event, `window.guEarthOffscreenRecorder.setPrewarmQuality('${value}')`)
   })
   ipcMain.handle('recordings:offscreen-self-test', async (): Promise<RecordingSaveResult> => runOffscreenSelfTest())
   ipcMain.handle('recordings:offscreen-cancel', (): void => { cancelOffscreenRecording?.() })
@@ -993,6 +1003,7 @@ function normalizeOffscreenRecordingScript(value: unknown): OffscreenRecordingSc
       return positions.length ? [{ sceneId: entry.sceneId, kind: entry.kind, name: entry.name.slice(0, 120), positions }] : []
     }) : [],
     terrain: normalizeOffscreenTerrain(value.terrain),
+    prewarmQuality: value.prewarmQuality === 'standard' || value.prewarmQuality === 'ultra' ? value.prewarmQuality : 'high',
     width: Math.min(1920, Math.max(320, Math.round(normalizeNumber(value.width, 320, 1920, 1280)))),
     height: Math.min(1080, Math.max(240, Math.round(normalizeNumber(value.height, 240, 1080, 720)))),
     fps: Math.min(60, Math.max(1, Math.round(normalizeNumber(value.fps, 1, 60, 30))))
@@ -1015,6 +1026,13 @@ function withOffscreenTimeout<T>(task: Promise<T>, timeoutMs: number, message: s
       timer.unref?.()
     })
   ])
+}
+
+function forwardOffscreenCommand(event: Electron.IpcMainEvent, expression: string): void {
+  if (event.sender !== offscreenRecordRequester) return
+  const window = offscreenRecordingWindow
+  if (!window || window.isDestroyed() || window.webContents.isDestroyed()) return
+  void window.webContents.executeJavaScript(expression).catch(() => undefined)
 }
 
 async function removeStaleOffscreenDirectories(directory: string): Promise<void> {
@@ -1213,6 +1231,7 @@ function createOffscreenSelfTestScript(): OffscreenRecordingScript {
     fps: 15,
     annotations: [],
     terrain: { providerId: 'ellipsoid', exaggeration: 1, lighting: false },
+    prewarmQuality: 'standard',
     scenes: [
       {
         id: 'offscreen-self-test',

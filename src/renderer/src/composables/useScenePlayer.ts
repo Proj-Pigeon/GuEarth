@@ -53,7 +53,7 @@ const PREWARM_TILE_TIMEOUT_MS = 10_000
 const PLAY_TILE_TIMEOUT_MS = 10_000
 const RECORD_TILE_TIMEOUT_MS = 18_000
 const RECORD_MIN_FLUENT_FPS = 24
-const RECORD_PREWARM_QUALITY_CONFIG: Record<RecordingPrewarmQuality, { screenSpaceError: number; viewTimeoutMs: number; totalTimeoutMs: number }> = {
+export const RECORD_PREWARM_QUALITY_CONFIG: Record<RecordingPrewarmQuality, { screenSpaceError: number; viewTimeoutMs: number; totalTimeoutMs: number }> = {
   standard: { screenSpaceError: 4, viewTimeoutMs: 4_000, totalTimeoutMs: 24_000 },
   high: { screenSpaceError: 1, viewTimeoutMs: 6_000, totalTimeoutMs: 30_000 },
   ultra: { screenSpaceError: 0.5, viewTimeoutMs: 10_000, totalTimeoutMs: 45_000 }
@@ -117,12 +117,12 @@ export function interpolateCamera(start: SceneCamera, end: SceneCamera, amount: 
   })
 }
 
-interface RecordingPrewarmView {
+export interface RecordingPrewarmView {
   camera: SceneCamera
   sceneIndex: number
 }
 
-function recordingPrewarmViews(scenes: TeachingScene[]): RecordingPrewarmView[] {
+export function recordingPrewarmViews(scenes: TeachingScene[]): RecordingPrewarmView[] {
   const views: RecordingPrewarmView[] = []
   for (let index = 0; index < scenes.length; index += 1) {
     const camera = sanitizeCamera(scenes[index].snapshot.camera)
@@ -159,10 +159,18 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   })
 
   let aborted = false
+  let offscreenRecordingActive = false
   let recordingQualityRevision = 0
   let advanceResolver: (() => void) | null = null
   let advanceTimer: ReturnType<typeof setTimeout> | undefined
   let restoreRecordingRender: (() => void) | null = null
+
+  watch(() => scenesStore.recording.skipPrewarm, (value) => {
+    if (value && offscreenRecordingActive) window.guEarth.recordings.offscreenSkipPrewarm()
+  })
+  watch(() => scenesStore.recording.prewarmQuality, (quality) => {
+    if (offscreenRecordingActive) window.guEarth.recordings.offscreenPrewarmQuality(quality)
+  })
 
   function enableRecordingRender(): void {
     const current = viewer.value
@@ -191,6 +199,10 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   }
 
   function next(): void {
+    if (offscreenRecordingActive) {
+      window.guEarth.recordings.offscreenNext()
+      return
+    }
     advanceResolver?.()
   }
 
@@ -449,7 +461,6 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   }
 
   async function saveOffscreenRecording(script: OffscreenRecordingScript): Promise<void> {
-    scenesStore.setRecording({ state: 'recording' })
     try {
       const result = await window.guEarth.recordings.offscreenEncode(script)
       if (result.cancelled) {
@@ -576,6 +587,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     }
     failureStore.clearFailure('recording')
     failureStore.clearFailure('recording-quality')
+    offscreenRecordingActive = true
     failureStore.registerRetry('recording', async () => {
       const retried = await recordVideo(title, steps)
       if ('error' in retried) reportRecordingFailure(retried.error)
@@ -609,6 +621,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       scenes,
       annotations,
       terrain: { providerId: globeStore.terrainProviderId, exaggeration: globeStore.terrainExaggeration, lighting: globeStore.terrainLighting },
+      prewarmQuality: scenesStore.recording.prewarmQuality,
       width: 1920,
       height: 1080,
       fps: 30
@@ -632,6 +645,17 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     activeRun = cancel
     const unsubscribeProgress = window.guEarth.recordings.onOffscreenProgress((progress) => {
       if (activeRun !== cancel) return
+      if (progress.phase === 'preparing') {
+        playerState.prewarming = true
+        scenesStore.setRecording({
+          state: 'preparing',
+          prewarmStep: progress.sceneIndex,
+          prewarmTotal: progress.totalScenes,
+          prewarmTimedOut: progress.timedOut === true,
+          prewarmMessage: progress.timedOut === true ? '网络较慢，部分高清地图细节可能在录制中继续加载…' : `正在预加载高清录制画面 ${progress.sceneIndex}/${progress.totalScenes}`
+        })
+        return
+      }
       playerState.prewarming = false
       playerState.currentIndex = progress.sceneIndex
       playerState.sceneName = scenes[progress.sceneIndex]?.name ?? ''
@@ -652,6 +676,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       unsubscribeNotice()
       scenesStore.setPresenting(false)
       if (activeRun === cancel) activeRun = null
+      offscreenRecordingActive = false
       playerState.active = false
       playerState.recording = false
       playerState.prewarming = false

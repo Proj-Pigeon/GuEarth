@@ -1,9 +1,10 @@
 import * as Cesium from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
-import type { OffscreenRecordingScript, SceneCamera, TeachingScene } from '../../preload'
+import type { OffscreenPrewarmQuality, OffscreenRecordingProgress, OffscreenRecordingScript, SceneCamera, TeachingScene } from '../../preload'
 import { createBasemapImageryProvider } from './composables/basemapImagery'
 import { createApp, h, shallowRef } from 'vue'
 import { createPinia } from 'pinia'
+import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, type RecordingPrewarmView } from './composables/useScenePlayer'
 import { useClimateStore, thematicLayerCatalog } from './stores/climate'
 import { useSolarStore } from './stores/solar'
 import { useThematicLayers } from './composables/useThematicLayers'
@@ -62,8 +63,60 @@ const overlayCanvas = document.getElementById('recording-overlay') as HTMLCanvas
 const overlayContext = overlayCanvas?.getContext('2d') ?? null
 const OFFSCREEN_PREPARE_TILE_TIMEOUT_MS = 15000
 const OFFSCREEN_STABLE_SURFACE_MS = 400
+let prewarmSkipped = false
+let prewarmTimedOut = false
+let prewarmQuality: OffscreenPrewarmQuality = 'high'
+let prewarmRevision = 0
+let advancePending = false
+let advanceResolve: (() => void) | null = null
 let currentTitle = ''
 let currentNarration = ''
+
+function requestSkipPrewarm(): void {
+  prewarmSkipped = true
+  advanceResolve?.()
+}
+
+function setPrewarmQuality(quality: OffscreenPrewarmQuality): void {
+  if (prewarmQuality === quality) return
+  prewarmQuality = quality
+  prewarmRevision += 1
+}
+
+function next(): void {
+  advancePending = true
+  const resolve = advanceResolve
+  advanceResolve = null
+  resolve?.()
+}
+
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve()
+  return new Promise((resolve) => {
+    const finish = (): void => {
+      window.clearTimeout(timer)
+      if (advanceResolve === finish) advanceResolve = null
+      resolve()
+    }
+    const timer = window.setTimeout(finish, ms)
+    advanceResolve = finish
+  })
+}
+
+async function holdWhileWaiting(ms: number): Promise<void> {
+  const deadline = Date.now() + ms
+  while (!prewarmSkipped && Date.now() < deadline) {
+    await sleep(Math.max(1, Math.min(120, deadline - Date.now())))
+  }
+}
+
+async function holdScene(ms: number): Promise<void> {
+  const deadline = Date.now() + Math.max(0, ms)
+  while (!advancePending && Date.now() < deadline) {
+    await sleep(Math.max(1, Math.min(200, deadline - Date.now())))
+  }
+  advancePending = false
+}
 
 function resizeOverlay(): void {
   if (!overlayCanvas) return
@@ -165,15 +218,6 @@ function reportNotice(message: string): void {
   window.guEarth?.recordings?.offscreenNotice?.(message)
 }
 
-async function delay(ms: number): Promise<void> {
-  const deadline = Date.now() + Math.max(0, ms)
-  for (;;) {
-    const remaining = deadline - Date.now()
-    if (remaining <= 0) return
-    await new Promise((resolve) => window.setTimeout(resolve, Math.min(200, remaining)))
-  }
-}
-
 async function applySnapshot(snapshot: TeachingScene['snapshot']): Promise<void> {
   const basemapId = snapshot.basemapId || 'osm'
   if (!imageryLayers.has(basemapId)) {
@@ -247,39 +291,77 @@ async function applyTerrain(terrain: OffscreenRecordingScript['terrain']): Promi
   viewer.scene.requestRender()
 }
 
-async function waitTilesLoaded(timeoutMs: number): Promise<void> {
+function reportProgress(phase: OffscreenRecordingProgress['phase'], sceneIndex: number, totalScenes: number, timedOut = false): void {
+  window.guEarth?.recordings?.offscreenProgress?.({ phase, sceneIndex, totalScenes, timedOut })
+}
+
+async function waitTilesLoaded(timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
   let stableSince = 0
   while (Date.now() < deadline) {
+    if (prewarmSkipped) return false
     viewer.scene.requestRender()
-    await delay(120)
+    await holdWhileWaiting(120)
     if (viewer.scene.globe.tilesLoaded) {
       if (!stableSince) stableSince = Date.now()
-      if (Date.now() - stableSince >= OFFSCREEN_STABLE_SURFACE_MS) return
+      if (Date.now() - stableSince >= OFFSCREEN_STABLE_SURFACE_MS) return true
     } else {
       stableSince = 0
     }
   }
+  return false
+}
+
+async function prewarmScene(script: OffscreenRecordingScript, sceneIndex: number): Promise<void> {
+  const scene = script.scenes[sceneIndex]
+  await applySnapshot(scene.snapshot)
+  applySceneState(scene.snapshot)
+  addAnnotations(script, scene.id)
+  currentTitle = script.title
+  currentNarration = scene.narration
+  drawOverlay()
+  setCamera(scene.snapshot.camera)
+  viewer.scene.requestRender()
+}
+
+async function prewarm(script: OffscreenRecordingScript, views: RecordingPrewarmView[]): Promise<void> {
+  const startedAt = Date.now()
+  let timedOut = false
+  for (let index = 0; index < views.length; index += 1) {
+    if (prewarmSkipped) break
+    await prewarmScene(script, views[index].sceneIndex)
+    setCamera(views[index].camera)
+    reportProgress('preparing', index + 1, views.length, timedOut)
+    const config = RECORD_PREWARM_QUALITY_CONFIG[prewarmQuality]
+    viewer.scene.globe.maximumScreenSpaceError = config.screenSpaceError
+    const viewStartedAt = Date.now()
+    let loaded = true
+    let revision = prewarmRevision
+    do {
+      revision = prewarmRevision
+      const remainingBudget = config.totalTimeoutMs - (Date.now() - startedAt)
+      loaded = await waitTilesLoaded(Math.max(0, Math.min(config.viewTimeoutMs, remainingBudget)))
+      if (prewarmSkipped) break
+    } while (revision !== prewarmRevision && Date.now() - viewStartedAt < config.viewTimeoutMs)
+    if (!loaded && !prewarmSkipped) timedOut = true
+  }
+  prewarmTimedOut = timedOut
 }
 
 async function prepare(script: OffscreenRecordingScript): Promise<void> {
   document.title = script.title || 'GuEarth Offscreen Recorder'
   viewer.resize()
-  const first = script.scenes[0]
-  if (first) {
-    currentTitle = script.title
-    currentNarration = first.narration
-    applySceneState(first.snapshot)
-    setCamera(first.snapshot.camera)
-    drawOverlay()
-  }
+  const views = recordingPrewarmViews(script.scenes)
+  prewarmQuality = script.prewarmQuality
+  prewarmTimedOut = false
+  prewarmSkipped = false
+  prewarmRevision = 0
   await applyTerrain(script.terrain)
-  if (first) {
-    await applySnapshot(first.snapshot)
-    applySceneState(first.snapshot)
-    addAnnotations(script, first.id)
-    setCamera(first.snapshot.camera)
-    drawOverlay()
+  await prewarm(script, views)
+  advancePending = false
+  if (script.scenes[0]) {
+    await prewarmScene(script, 0)
+    reportProgress('preparing', views.length, views.length, prewarmTimedOut)
   }
   viewer.scene.requestRender()
   await waitTilesLoaded(OFFSCREEN_PREPARE_TILE_TIMEOUT_MS)
@@ -290,7 +372,7 @@ async function play(script: OffscreenRecordingScript): Promise<void> {
   viewer.resize()
   for (let index = 0; index < script.scenes.length; index += 1) {
     const scene = script.scenes[index]
-    window.guEarth?.recordings?.offscreenProgress?.({ sceneIndex: index, totalScenes: script.scenes.length })
+    reportProgress('recording', index, script.scenes.length)
     currentTitle = script.title
     currentNarration = scene.narration
     await applySnapshot(scene.snapshot)
@@ -304,7 +386,7 @@ async function play(script: OffscreenRecordingScript): Promise<void> {
       await flyCamera(scene.snapshot.camera, scene.flyDurationMs)
     }
     drawOverlay()
-    await delay(Math.max(0, scene.dwellMs))
+    await holdScene(Math.max(0, scene.dwellMs))
   }
   currentNarration = ''
   drawOverlay()
@@ -314,4 +396,4 @@ viewer.scene.backgroundColor = Cesium.Color.BLACK
 viewer.camera.setView({ destination: Cesium.Cartesian3.fromDegrees(105, 35, 15_000_000) })
 window.addEventListener('beforeunload', () => viewer.destroy())
 
-Object.assign(window, { guEarthOffscreenRecorder: { play, prepare } })
+Object.assign(window, { guEarthOffscreenRecorder: { play, prepare, next, skipPrewarm: requestSkipPrewarm, setPrewarmQuality } })

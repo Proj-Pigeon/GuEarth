@@ -338,11 +338,14 @@ export interface OffscreenRecordingTerrain {
   lighting: boolean
 }
 
+export type OffscreenPrewarmQuality = 'standard' | 'high' | 'ultra'
+
 export interface OffscreenRecordingScript {
   title: string
   scenes: TeachingScene[]
   annotations: OffscreenRecordingAnnotation[]
   terrain: OffscreenRecordingTerrain
+  prewarmQuality: OffscreenPrewarmQuality
   width: number
   height: number
   fps: number
@@ -354,8 +357,10 @@ export interface OffscreenRecordingProbeResult {
 }
 
 export interface OffscreenRecordingProgress {
+  phase: 'preparing' | 'recording'
   sceneIndex: number
   totalScenes: number
+  timedOut?: boolean
 }
 
 export interface UpdateState {
@@ -422,6 +427,9 @@ const api = {
       ipcRenderer.on('recordings:offscreen-notice', wrapped)
       return () => ipcRenderer.removeListener('recordings:offscreen-notice', wrapped)
     },
+    offscreenNext: (): void => ipcRenderer.send('recordings:offscreen-next'),
+    offscreenSkipPrewarm: (): void => ipcRenderer.send('recordings:offscreen-skip-prewarm'),
+    offscreenPrewarmQuality: (quality: OffscreenPrewarmQuality): void => ipcRenderer.send('recordings:offscreen-prewarm-quality', quality),
     offscreenSelfTest: (): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:offscreen-self-test'),
     offscreenStats: (): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-stats')
   },

@@ -26,7 +26,7 @@ test('offscreen recording requests a fixed paint rate and counts frames', () => 
 test('offscreen recording renderer can execute scene scripts', () => {
   assert.match(offscreenSource, /async function play\(script: OffscreenRecordingScript\)/)
   assert.match(offscreenSource, /viewer\.camera\.flyTo/)
-  assert.match(offscreenSource, /guEarthOffscreenRecorder: \{ play, prepare \}/)
+  assert.match(offscreenSource, /guEarthOffscreenRecorder: \{ play, prepare, next, skipPrewarm: requestSkipPrewarm, setPrewarmQuality \}/)
   assert.match(mainSource, /executeJavaScript\(`window\.guEarthOffscreenRecorder\.play/)
 })
 
@@ -107,8 +107,33 @@ test('offscreen recording preserves authored scene content and cancellation', ()
   assert.match(offscreenSource, /solarStore\.setDate/)
   assert.match(preloadSource, /offscreenCancel: \(\): Promise<void>/)
   assert.match(mainSource, /const measuredFps = offscreenFrameRate\(frameIndex, recordingElapsedMs\)/)
-  assert.match(offscreenSource, /async function delay\(ms: number\): Promise<void>/)
+  assert.match(offscreenSource, /async function holdScene\(ms: number\): Promise<void>/)
   assert.match(mainSource, /function ffmpegPath\(\): string/)
+})
+
+test('offscreen recording keeps the player controls interactive', () => {
+  assert.match(scenePlayerSource, /offscreenRecordingActive = true/)
+  assert.match(scenePlayerSource, /if \(offscreenRecordingActive\) \{\r?\n\s+window\.guEarth\.recordings\.offscreenNext\(\)/)
+  assert.match(scenePlayerSource, /watch\(\(\) => scenesStore\.recording\.skipPrewarm/)
+  assert.match(scenePlayerSource, /watch\(\(\) => scenesStore\.recording\.prewarmQuality/)
+  assert.match(preloadSource, /offscreenNext: \(\): void => ipcRenderer\.send\('recordings:offscreen-next'\)/)
+  assert.match(preloadSource, /offscreenSkipPrewarm: \(\): void/)
+  assert.match(preloadSource, /offscreenPrewarmQuality: \(quality: OffscreenPrewarmQuality\): void/)
+  assert.match(mainSource, /forwardOffscreenCommand\(event, 'window\.guEarthOffscreenRecorder\.next\(\)'\)/)
+  assert.match(mainSource, /function forwardOffscreenCommand\(event: Electron\.IpcMainEvent, expression: string\): void/)
+  assert.match(offscreenSource, /function next\(\): void \{\r?\n\s+advancePending = true/)
+})
+
+test('offscreen recording prewarms every scene view before capturing', () => {
+  assert.match(offscreenSource, /async function prewarm\(script: OffscreenRecordingScript, views: RecordingPrewarmView\[\]\): Promise<void>/)
+  assert.match(offscreenSource, /const views = recordingPrewarmViews\(script\.scenes\)/)
+  assert.match(offscreenSource, /reportProgress\('preparing', index \+ 1, views\.length, timedOut\)/)
+  assert.match(offscreenSource, /viewer\.scene\.globe\.maximumScreenSpaceError = config\.screenSpaceError/)
+  assert.match(offscreenSource, /function requestSkipPrewarm\(\): void/)
+  assert.match(offscreenSource, /function setPrewarmQuality\(quality: OffscreenPrewarmQuality\): void/)
+  assert.match(scenePlayerSource, /prewarmQuality: scenesStore\.recording\.prewarmQuality/)
+  assert.match(scenePlayerSource, /prewarmStep: progress\.sceneIndex/)
+  assert.doesNotMatch(scenePlayerSource, /async function saveOffscreenRecording\(script: OffscreenRecordingScript\): Promise<void> \{\r?\n\s+scenesStore\.setRecording\(\{ state: 'recording' \}\)/)
 })
 
 test('cancelling offscreen recording settles as a normal result', () => {
@@ -131,7 +156,8 @@ test('offscreen recording reports scene progress back to the renderer', () => {
   assert.match(mainSource, /target\.send\('recordings:offscreen-progress'/)
   assert.match(preloadSource, /offscreenProgress: \(progress: OffscreenRecordingProgress\): void/)
   assert.match(preloadSource, /onOffscreenProgress: \(listener: \(progress: OffscreenRecordingProgress\) => void\)/)
-  assert.match(offscreenSource, /offscreenProgress\?\.\(\{ sceneIndex: index, totalScenes: script\.scenes\.length \}\)/)
+  assert.match(offscreenSource, /reportProgress\('recording', index, script\.scenes\.length\)/)
+  assert.match(preloadSource, /phase: 'preparing' \| 'recording'/)
 })
 
 test('recording failures surface through the built-in failure banner', () => {

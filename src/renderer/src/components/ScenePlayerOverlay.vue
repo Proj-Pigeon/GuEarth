@@ -18,6 +18,7 @@ const prewarmProgress = computed(() => {
   const step = scenesStore.recording.prewarmStep || props.player.prewarmIndex
   return total > 0 ? `${Math.min(step, total)} / ${total}` : ''
 })
+const prewarmWarning = computed(() => scenesStore.recording.prewarmTimedOut ? scenesStore.recording.prewarmMessage || '网络较慢，部分地图细节可能在录制中继续补齐。' : '')
 const prewarmQualityOptions = [
   { label: '标准', value: 'standard' },
   { label: '高清', value: 'high' },
@@ -62,13 +63,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
     <div v-if="player.prewarming" class="prewarm-mask">
       <a-spin />
       <div class="prewarm-text">{{ isRecordingPreparing ? prewarmNotice : '正在准备课程资源…' }}</div>
-      <div class="prewarm-progress">{{ isRecordingPreparing ? prewarmProgress : `${player.prewarmIndex} / ${player.prewarmTotal}` }}</div>
-      <div v-if="isRecordingPreparing && scenesStore.recording.prewarmTotal > 0" class="prewarm-quality">
+      <div v-if="prewarmProgress" class="prewarm-progress">{{ prewarmProgress }}</div>
+      <div v-if="isRecordingPreparing" class="prewarm-quality">
         <div class="prewarm-quality-label">底图精细度</div>
         <a-segmented :value="scenesStore.recording.prewarmQuality" :options="prewarmQualityOptions" size="small" @change="setPrewarmQuality" />
       </div>
-      <div v-if="isRecordingPreparing && scenesStore.recording.prewarmTimedOut" class="prewarm-warning">网络较慢，部分地图细节可能在录制中继续补齐。</div>
-      <Button v-if="isRecordingPreparing && scenesStore.recording.prewarmTotal > 0" size="small" @click.stop="skipPrewarm">跳过预加载</Button>
+      <div v-if="prewarmWarning" class="prewarm-warning">{{ prewarmWarning }}</div>
+      <Button v-if="isRecordingPreparing" size="small" @click.stop="skipPrewarm">跳过预加载</Button>
     </div>
     <template v-else>
       <div class="stage-hit" aria-label="下一幕" @click="emit('next')"></div>
