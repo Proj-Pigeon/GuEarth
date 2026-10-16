@@ -74,8 +74,12 @@ test('offscreen recording encodes the captured frames through ffmpeg', () => {
   assert.doesNotMatch(mainSource, /image2pipe/)
 })
 
-test('offscreen recording gates capture to the authored timeline and reports the measured FPS', () => {
-  assert.match(mainSource, /if \(settled \|\| !capturing \|\| frameWriting \|\| image\.isEmpty\(\)\) return/)
+test('offscreen recording gates capture without stalling the paint stream and reports the measured FPS', () => {
+  assert.match(mainSource, /const OFFSCREEN_MAX_PENDING_FRAMES = 24/)
+  assert.match(mainSource, /if \(settled \|\| !capturing \|\| image\.isEmpty\(\) \|\| pendingFrames >= OFFSCREEN_MAX_PENDING_FRAMES\) return/)
+  assert.match(mainSource, /pendingFrames \+= 1/)
+  assert.match(mainSource, /\.finally\(\(\) => \{ pendingFrames -= 1 \}\)/)
+  assert.doesNotMatch(mainSource, /frameWriting/)
   assert.match(mainSource, /frameTimes\.push\(Date\.now\(\) - recordingStartedAt\)/)
   assert.match(mainSource, /const durations = offscreenFrameDurations\(frameTimes, recordingElapsedMs\)/)
   assert.match(mainSource, /offscreenConcatPlaylist\(frameNames, durations\)/)

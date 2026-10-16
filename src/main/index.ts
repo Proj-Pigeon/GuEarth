@@ -77,6 +77,7 @@ const OFFSCREEN_TEMP_PREFIX = '.guearth-offscreen-'
 const OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS = 90_000
 const OFFSCREEN_PREPARE_TIMEOUT_MS = 180_000
 const OFFSCREEN_MIN_FLUENT_FPS = 24
+const OFFSCREEN_MAX_PENDING_FRAMES = 24
 const requireFfmpeg = createRequire(__filename)
 let ffmpegBinaryPath: string | null = null
 
@@ -1144,10 +1145,10 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       const frameNames: string[] = []
       const frameTimes: number[] = []
       let frameWrite: Promise<void> = Promise.resolve()
-      let frameWriting = false
+      let pendingFrames = 0
       window.webContents.on('paint', (_event, _dirty, image) => {
         offscreenPaintFrames += 1
-        if (settled || !capturing || frameWriting || image.isEmpty()) return
+        if (settled || !capturing || image.isEmpty() || pendingFrames >= OFFSCREEN_MAX_PENDING_FRAMES) return
         const size = image.getSize()
         if (!captureLogged) {
           captureLogged = true
@@ -1156,16 +1157,12 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
         }
         const frame = image.toJPEG(95)
         if (frame.length === 0) return
-        frameWriting = true
         const name = `frame-${String(frameIndex).padStart(8, '0')}.jpg`
         frameNames.push(name)
         frameTimes.push(Date.now() - recordingStartedAt)
         frameIndex += 1
-        frameWrite = frameWrite.then(() => writeFile(join(frameDirectory, name), frame)).catch((error) => { fail(error) }).finally(() => {
-          frameWriting = false
-          if (!settled && !window.isDestroyed()) window.webContents.startPainting()
-        })
-        window.webContents.stopPainting()
+        pendingFrames += 1
+        frameWrite = frameWrite.then(() => writeFile(join(frameDirectory, name), frame)).catch((error) => { fail(error) }).finally(() => { pendingFrames -= 1 })
       })
       const ready = new Promise<void>((resolveReady, rejectReady) => {
         window.webContents.once('did-finish-load', () => resolveReady())
