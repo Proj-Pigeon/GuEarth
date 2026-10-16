@@ -85,7 +85,7 @@ let tileCachePath = ''
 let annotationsPath = ''
 let scenesPath = ''
 let offscreenRecordingWindow: BrowserWindow | null = null
-let offscreenProgressTarget: Electron.WebContents | null = null
+let offscreenRecordRequester: Electron.WebContents | null = null
 let cancelOffscreenRecording: (() => void) | null = null
 let offscreenPaintStartedAt = 0
 let offscreenPaintFrames = 0
@@ -790,20 +790,26 @@ function registerIpcHandlers(): void {
     return startOffscreenRecordingWindow(normalizeOffscreenRecordingScript(script))
   })
   ipcMain.handle('recordings:offscreen-encode', async (event, script: unknown): Promise<RecordingSaveResult> => {
-    offscreenProgressTarget = event.sender
+    offscreenRecordRequester = event.sender
     try {
       return await encodeOffscreenRecording(normalizeOffscreenRecordingScript(script))
     } finally {
-      offscreenProgressTarget = null
+      offscreenRecordRequester = null
     }
   })
   ipcMain.on('recordings:offscreen-progress', (event, payload: unknown): void => {
-    const target = offscreenProgressTarget
+    const target = offscreenRecordRequester
     if (!target || target.isDestroyed() || event.sender !== offscreenRecordingWindow?.webContents) return
     if (!isRecord(payload)) return
     const sceneIndex = normalizeNumber(payload.sceneIndex, 0, 1000, 0)
     const totalScenes = normalizeNumber(payload.totalScenes, 0, 1000, 0)
     target.send('recordings:offscreen-progress', { sceneIndex: Math.round(sceneIndex), totalScenes: Math.round(totalScenes) })
+  })
+  ipcMain.on('recordings:offscreen-notice', (event, message: unknown): void => {
+    const target = offscreenRecordRequester
+    if (!target || target.isDestroyed() || event.sender !== offscreenRecordingWindow?.webContents) return
+    if (typeof message !== 'string' || !message.trim()) return
+    target.send('recordings:offscreen-notice', message.trim().slice(0, 200))
   })
   ipcMain.handle('recordings:offscreen-self-test', async (): Promise<RecordingSaveResult> => runOffscreenSelfTest())
   ipcMain.handle('recordings:offscreen-cancel', (): void => { cancelOffscreenRecording?.() })

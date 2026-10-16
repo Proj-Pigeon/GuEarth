@@ -1,12 +1,12 @@
 import { reactive, watch, type Ref } from 'vue'
 import * as Cesium from 'cesium'
-import { message } from 'ant-design-vue'
 import type { OffscreenRecordingScript, RecordingSaveResult, SceneCamera, SceneSimTime, SceneSnapshot, TeachingScene } from '../../../preload'
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useClimateStore, thematicLayerCatalog } from '@renderer/stores/climate'
 import { useSolarStore, type MotionPanel } from '@renderer/stores/solar'
 import { useDrawingStore, type GeoPosition } from '@renderer/stores/drawing'
 import { useScenesStore, type RecordingPrewarmQuality } from '@renderer/stores/scenes'
+import { useFailureStore } from '@renderer/stores/failure'
 import { createVideoRecorder, type RecorderOverlay } from './useVideoRecorder'
 
 export interface RecordingMarker {
@@ -141,6 +141,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   const solarStore = useSolarStore()
   const drawingStore = useDrawingStore()
   const scenesStore = useScenesStore()
+  const failureStore = useFailureStore()
   const recorder = createVideoRecorder()
 
   const playerState = reactive<PlayerState>({
@@ -432,6 +433,21 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     }
   }
 
+  function recordingErrorMessage(error: unknown): string {
+    const raw = error instanceof Error ? error.message : '离屏视频保存失败'
+    return raw.replace(/^Error invoking remote method '[^']*':\s*/, '').replace(/^Error:\s*/, '')
+  }
+
+  function reportRecordingFailure(detail: string): void {
+    scenesStore.setRecording({ state: 'error', error: detail })
+    failureStore.reportFailure({
+      scope: 'recording',
+      message: `视频录制失败：${detail}`,
+      detail: '点击重试会按同一份剧本重新录制',
+      retryable: true
+    })
+  }
+
   async function saveOffscreenRecording(script: OffscreenRecordingScript): Promise<void> {
     scenesStore.setRecording({ state: 'recording' })
     try {
@@ -441,11 +457,15 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
         return
       }
       scenesStore.applyRecordingResult(result)
-      if (result.fps && result.fps < RECORD_MIN_FLUENT_FPS) message.warning(`录制画面帧率偏低（约 ${result.fps.toFixed(1)} FPS），成片可能不够流畅`)
+      failureStore.clearFailure('recording')
+      if (result.fps && result.fps < RECORD_MIN_FLUENT_FPS) failureStore.reportDegrade(`录制画面帧率偏低（约 ${result.fps.toFixed(1)} FPS），成片可能不够流畅`)
     } catch (error) {
-      const detail = error instanceof Error ? error.message : '离屏视频保存失败'
-      if (detail.includes('录制已取消')) scenesStore.setRecording({ state: 'idle', cancelled: true, error: '' })
-      else scenesStore.setRecording({ state: 'error', error: detail })
+      const detail = recordingErrorMessage(error)
+      if (detail.includes('录制已取消')) {
+        scenesStore.setRecording({ state: 'idle', cancelled: true, error: '' })
+        return
+      }
+      reportRecordingFailure(detail)
     }
   }
 
@@ -554,6 +574,12 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       stop()
       return { error: '正在结束上一次演示或录制，请稍候片刻后重试' }
     }
+    failureStore.clearFailure('recording')
+    failureStore.clearFailure('recording-quality')
+    failureStore.registerRetry('recording', async () => {
+      const retried = await recordVideo(title, steps)
+      if ('error' in retried) reportRecordingFailure(retried.error)
+    })
     const scenes: TeachingScene[] = steps.map((step) => ({
       id: crypto.randomUUID(),
       name: step.name,
@@ -612,8 +638,18 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       playerState.narration = scenes[progress.sceneIndex]?.narration ?? ''
       scenesStore.setRecording({ state: 'recording', currentStep: progress.sceneIndex + 1, totalSteps: progress.totalScenes })
     })
+    const unsubscribeNotice = window.guEarth.recordings.onOffscreenNotice((notice) => {
+      if (activeRun !== cancel) return
+      failureStore.reportFailure({
+        scope: 'recording-quality',
+        message: notice,
+        detail: '本次录制会继续，成片对应要素可能缺失',
+        retryable: false
+      })
+    })
     void saveOffscreenRecording(script).finally(() => {
       unsubscribeProgress()
+      unsubscribeNotice()
       scenesStore.setPresenting(false)
       if (activeRun === cancel) activeRun = null
       playerState.active = false

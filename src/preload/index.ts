@@ -416,6 +416,12 @@ const api = {
       ipcRenderer.on('recordings:offscreen-progress', wrapped)
       return () => ipcRenderer.removeListener('recordings:offscreen-progress', wrapped)
     },
+    offscreenNotice: (message: string): void => ipcRenderer.send('recordings:offscreen-notice', message),
+    onOffscreenNotice: (listener: (message: string) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: string): void => listener(payload)
+      ipcRenderer.on('recordings:offscreen-notice', wrapped)
+      return () => ipcRenderer.removeListener('recordings:offscreen-notice', wrapped)
+    },
     offscreenSelfTest: (): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:offscreen-self-test'),
     offscreenStats: (): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-stats')
   },

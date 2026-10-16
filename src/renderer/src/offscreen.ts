@@ -161,6 +161,10 @@ function addAnnotations(script: OffscreenRecordingScript, sceneId: string): void
   visibleAnnotations = entities
 }
 
+function reportNotice(message: string): void {
+  window.guEarth?.recordings?.offscreenNotice?.(message)
+}
+
 async function delay(ms: number): Promise<void> {
   const deadline = Date.now() + Math.max(0, ms)
   for (;;) {
@@ -177,6 +181,7 @@ async function applySnapshot(snapshot: TeachingScene['snapshot']): Promise<void>
       const provider = createBasemapImageryProvider(basemapId, 'standard')
       imageryLayers.set(basemapId, viewer.imageryLayers.addImageryProvider(provider, 0))
     } catch {
+      reportNotice(`录制画面的底图「${basemapId}」加载失败，成片可能缺少地图底图`)
       return
     }
   }
@@ -235,6 +240,7 @@ async function applyTerrain(terrain: OffscreenRecordingScript['terrain']): Promi
   try {
     viewer.terrainProvider = await create()
   } catch {
+    reportNotice(`录制画面使用的地形「${terrain.providerId}」不可用，成片为平滑球面`)
     viewer.terrainProvider = await terrainRegistry.ellipsoid()
   }
   viewer.scene.verticalExaggeration = Math.min(5, Math.max(1, terrain.exaggeration))

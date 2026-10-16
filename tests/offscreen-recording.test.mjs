@@ -8,6 +8,8 @@ const viteSource = await readFile(new URL('../electron.vite.config.ts', import.m
 const offscreenHtml = await readFile(new URL('../src/renderer/offscreen.html', import.meta.url), 'utf8')
 const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
 const scenePlayerSource = await readFile(new URL('../src/renderer/src/composables/useScenePlayer.ts', import.meta.url), 'utf8')
+const failureSource = await readFile(new URL('../src/renderer/src/stores/failure.ts', import.meta.url), 'utf8')
+const bannerSource = await readFile(new URL('../src/renderer/src/components/FailureBanner.vue', import.meta.url), 'utf8')
 
 test('offscreen recording has an isolated Cesium entry', () => {
   assert.match(viteSource, /offscreen: resolve\('src\/renderer\/offscreen\.html'\)/)
@@ -130,6 +132,29 @@ test('offscreen recording reports scene progress back to the renderer', () => {
   assert.match(preloadSource, /offscreenProgress: \(progress: OffscreenRecordingProgress\): void/)
   assert.match(preloadSource, /onOffscreenProgress: \(listener: \(progress: OffscreenRecordingProgress\) => void\)/)
   assert.match(offscreenSource, /offscreenProgress\?\.\(\{ sceneIndex: index, totalScenes: script\.scenes\.length \}\)/)
+})
+
+test('recording failures surface through the built-in failure banner', () => {
+  assert.match(scenePlayerSource, /failureStore\.reportFailure\(\{\r?\n\s+scope: 'recording',/)
+  assert.match(scenePlayerSource, /message: `视频录制失败：\$\{detail\}`/)
+  assert.match(scenePlayerSource, /failureStore\.registerRetry\('recording', async \(\) => \{/)
+  assert.match(scenePlayerSource, /failureStore\.clearFailure\('recording'\)/)
+  assert.match(scenePlayerSource, /failureStore\.clearFailure\('recording-quality'\)/)
+  assert.match(scenePlayerSource, /failureStore\.reportDegrade\(`录制画面帧率偏低/)
+  assert.match(scenePlayerSource, /raw\.replace\(\/\^Error invoking remote method/)
+  assert.match(failureSource, /'settings' \| 'recording' \| 'recording-quality'/)
+  assert.match(bannerSource, /notice\.scope === 'recording-quality' \? 'warning' : 'error'/)
+  assert.doesNotMatch(scenePlayerSource, /from 'ant-design-vue'/)
+})
+
+test('offscreen degradations reach the recording renderer as notices', () => {
+  assert.match(preloadSource, /offscreenNotice: \(message: string\): void => ipcRenderer\.send\('recordings:offscreen-notice', message\)/)
+  assert.match(preloadSource, /onOffscreenNotice: \(listener: \(message: string\) => void\)/)
+  assert.match(mainSource, /ipcMain\.on\('recordings:offscreen-notice'/)
+  assert.match(mainSource, /target\.send\('recordings:offscreen-notice', message\.trim\(\)\.slice\(0, 200\)\)/)
+  assert.match(offscreenSource, /reportNotice\(`录制画面使用的地形/)
+  assert.match(offscreenSource, /reportNotice\(`录制画面的底图/)
+  assert.match(scenePlayerSource, /onOffscreenNotice\(\(notice\) => \{/)
 })
 
 test('offscreen recording controls stay behind typed preload IPC', () => {
