@@ -65,5 +65,16 @@ test('frame durations never collapse below the minimum step', () => {
 
 test('concat playlist lists every frame with its own duration', () => {
   const playlist = offscreenConcatPlaylist(['frame-00000000.jpg', 'frame-00000001.jpg'], [0.5, 0.25])
-  assert.equal(playlist, "ffconcat version 1.0\nfile 'frame-00000000.jpg'\nduration 0.500000\nfile 'frame-00000001.jpg'\nduration 0.250000\n")
+  assert.equal(playlist, "ffconcat version 1.0\nfile 'frame-00000000.jpg'\nduration 0.500000\nfile 'frame-00000001.jpg'\nduration 0.250000\nfile 'frame-00000001.jpg'\n")
+})
+
+test('concat playlist repeats the final frame so its duration is honoured', () => {
+  const playlist = offscreenConcatPlaylist(['only.jpg'], [1.5])
+  const entries = playlist.trim().split('\n').filter((line) => line.startsWith('file'))
+  assert.equal(entries.length, 2)
+  assert.equal(entries[1], "file 'only.jpg'")
+})
+
+test('concat playlist stays empty without frames', () => {
+  assert.equal(offscreenConcatPlaylist([], []), 'ffconcat version 1.0\n')
 })

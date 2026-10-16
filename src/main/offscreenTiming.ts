@@ -46,6 +46,7 @@ export function offscreenConcatPlaylist(frameNames: string[], durations: number[
     lines.push(`file '${name}'`)
     lines.push(`duration ${(durations[index] ?? 1 / 30).toFixed(6)}`)
   })
+  if (frameNames.length) lines.push(`file '${frameNames[frameNames.length - 1]}'`)
   return `${lines.join('\n')}\n`
 }
 

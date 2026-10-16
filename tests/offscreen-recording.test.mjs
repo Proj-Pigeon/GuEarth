@@ -12,6 +12,7 @@ const failureSource = await readFile(new URL('../src/renderer/src/stores/failure
 const bannerSource = await readFile(new URL('../src/renderer/src/components/FailureBanner.vue', import.meta.url), 'utf8')
 const drawingStoreSource = await readFile(new URL('../src/renderer/src/stores/drawing.ts', import.meta.url), 'utf8')
 const annotationReferenceSource = await readFile(new URL('../src/renderer/src/lib/annotationReferences.ts', import.meta.url), 'utf8')
+const sceneCameraSource = await readFile(new URL('../src/renderer/src/lib/sceneCamera.ts', import.meta.url), 'utf8')
 const playerOverlaySource = await readFile(new URL('../src/renderer/src/components/ScenePlayerOverlay.vue', import.meta.url), 'utf8')
 
 test('offscreen recording has an isolated Cesium entry', () => {
@@ -128,7 +129,7 @@ test('offscreen recording keeps the player controls interactive', () => {
 })
 
 test('offscreen recording prewarms every scene view before capturing', () => {
-  assert.match(offscreenSource, /async function prewarm\(script: OffscreenRecordingScript, views: RecordingPrewarmView\[\]\): Promise<void>/)
+  assert.match(offscreenSource, /async function prewarm\(script: OffscreenRecordingScript, views: PrewarmView\[\]\): Promise<void>/)
   assert.match(offscreenSource, /const views = recordingPrewarmViews\(script\.scenes\)/)
   assert.match(offscreenSource, /reportProgress\('preparing', index \+ 1, views\.length, timedOut\)/)
   assert.match(offscreenSource, /viewer\.scene\.globe\.maximumScreenSpaceError = config\.screenSpaceError/)
@@ -137,6 +138,31 @@ test('offscreen recording prewarms every scene view before capturing', () => {
   assert.match(scenePlayerSource, /prewarmQuality: scenesStore\.recording\.prewarmQuality/)
   assert.match(scenePlayerSource, /prewarmStep: progress\.sceneIndex/)
   assert.doesNotMatch(scenePlayerSource, /async function saveOffscreenRecording\(script: OffscreenRecordingScript\): Promise<void> \{\r?\n\s+scenesStore\.setRecording\(\{ state: 'recording' \}\)/)
+})
+
+test('offscreen recording shares the camera and prewarm logic with the player', () => {
+  assert.match(offscreenSource, /from '\.\/lib\/sceneCamera'/)
+  assert.doesNotMatch(offscreenSource, /from '\.\/composables\/useScenePlayer'/)
+  assert.match(scenePlayerSource, /from '@renderer\/lib\/sceneCamera'/)
+  assert.match(annotationReferenceSource, /export function referencedShapeIds/)
+  assert.match(sceneCameraSource, /export function sceneCameraDestination\(rawCamera: SceneCamera, centerTarget: boolean\): Cesium\.Cartesian3/)
+  assert.match(sceneCameraSource, /export const RECORD_PREWARM_QUALITY_CONFIG/)
+  assert.match(sceneCameraSource, /export function recordingPrewarmViews\(scenes: TeachingScene\[\]\): PrewarmView\[\]/)
+})
+
+test('the authored lesson target stays centred while recording', () => {
+  assert.match(scenePlayerSource, /centerTarget: true,/)
+  assert.match(preloadSource, /centerTarget: boolean/)
+  assert.match(mainSource, /centerTarget: value\.centerTarget === true,/)
+  assert.match(offscreenSource, /destination: sceneCameraDestination\(camera, centerTarget\)/)
+  assert.match(offscreenSource, /centerTarget = script\.centerTarget/)
+  assert.match(scenePlayerSource, /const mirrored = scenes\[progress\.sceneIndex\]/)
+  assert.match(scenePlayerSource, /if \(mirrored\) mirrorScene\(mirrored, script\.annotations, progress\.sceneIndex, script\.centerTarget\)/)
+})
+
+test('a queued next-scene press does not swallow the first recorded scene', () => {
+  assert.match(offscreenSource, /async function play\(script: OffscreenRecordingScript\): Promise<void> \{\r?\n\s+document\.title = script\.title \|\| 'GuEarth Offscreen Recorder'\r?\n\s+advancePending = false/)
+  assert.match(offscreenSource, /async function prepare\(script: OffscreenRecordingScript\): Promise<void> \{[\s\S]*?advancePending = false/)
 })
 
 test('cancelling offscreen recording settles as a normal result', () => {
@@ -187,8 +213,7 @@ test('offscreen degradations reach the recording renderer as notices', () => {
 })
 
 test('the visible window mirrors what the offscreen renderer records', () => {
-  assert.match(scenePlayerSource, /function mirrorScene\(scene: TeachingScene, annotations: OffscreenRecordingAnnotation\[\], index: number\): void/)
-  assert.match(scenePlayerSource, /mirrorScene\(scenes\[progress\.sceneIndex\], script\.annotations, progress\.sceneIndex\)/)
+  assert.match(scenePlayerSource, /function mirrorScene\(scene: TeachingScene, annotations: OffscreenRecordingAnnotation\[\], index: number, centerTarget: boolean\): void/)
   assert.match(scenePlayerSource, /drawingStore\.addTransientShape\(\{/)
   assert.match(scenePlayerSource, /current\.camera\.cancelFlight\(\)/)
   assert.match(scenePlayerSource, /clearMirrorShapes\(\)\r?\n\s+scenesStore\.setPresenting\(false\)/)
@@ -203,10 +228,15 @@ test('recording keeps the ordinary render policy in the visible window', () => {
 })
 
 test('annotation persistence only stores shapes that entries reference', () => {
-  assert.match(drawingStoreSource, /shapes: JSON\.parse\(JSON\.stringify\(shapes\.value\.filter\(\(shape\) => persistedIds\.has\(shape\.id\)\)\)\)/)
-  assert.match(drawingStoreSource, /import \{ referencedShapeIds \} from '@renderer\/lib\/annotationReferences'/)
   assert.match(drawingStoreSource, /const persistedIds = referencedShapeIds\(entries\.value\)/)
+  assert.match(drawingStoreSource, /const persisted = shapes\.value\.filter\(\(shape\) => persistedIds\.has\(shape\.id\)\)/)
+  assert.match(drawingStoreSource, /shapes: JSON\.parse\(JSON\.stringify\(persisted\)\) as DrawnShape\[\]/)
+  assert.match(drawingStoreSource, /import \{ referencedShapeIds \} from '@renderer\/lib\/annotationReferences'/)
+  assert.match(drawingStoreSource, /const transientShapeIds = new Set<string>\(\)/)
+  assert.match(drawingStoreSource, /const transient = transientShapeIds\.delete\(id\)/)
+  assert.match(drawingStoreSource, /if \(transient\) return/)
   assert.match(annotationReferenceSource, /export function referencedShapeIds\(items: AnnotationEntry\[\]\): Set<string>/)
+  assert.doesNotMatch(drawingStoreSource, /function referencedShapeIds\(/)
 })
 
 test('offscreen recording fails fast when the capture process dies', () => {

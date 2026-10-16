@@ -1014,6 +1014,7 @@ function normalizeOffscreenRecordingScript(value: unknown): OffscreenRecordingSc
     }) : [],
     terrain: normalizeOffscreenTerrain(value.terrain),
     prewarmQuality: value.prewarmQuality === 'standard' || value.prewarmQuality === 'ultra' ? value.prewarmQuality : 'high',
+    centerTarget: value.centerTarget === true,
     width: Math.min(1920, Math.max(320, Math.round(normalizeNumber(value.width, 320, 1920, 1280)))),
     height: Math.min(1080, Math.max(240, Math.round(normalizeNumber(value.height, 240, 1080, 720)))),
     fps: Math.min(60, Math.max(1, Math.round(normalizeNumber(value.fps, 1, 60, 30))))
@@ -1251,6 +1252,7 @@ function createOffscreenSelfTestScript(): OffscreenRecordingScript {
     annotations: [],
     terrain: { providerId: 'ellipsoid', exaggeration: 1, lighting: false },
     prewarmQuality: 'standard',
+    centerTarget: false,
     scenes: [
       {
         id: 'offscreen-self-test',

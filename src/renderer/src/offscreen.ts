@@ -4,7 +4,7 @@ import type { OffscreenPrewarmQuality, OffscreenRecordingProgress, OffscreenReco
 import { createBasemapImageryProvider } from './composables/basemapImagery'
 import { createApp, h, shallowRef } from 'vue'
 import { createPinia } from 'pinia'
-import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, type RecordingPrewarmView } from './composables/useScenePlayer'
+import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sceneCameraDestination, sceneCameraOrientation, type PrewarmView } from './lib/sceneCamera'
 import { useClimateStore, thematicLayerCatalog } from './stores/climate'
 import { useSolarStore } from './stores/solar'
 import { useThematicLayers } from './composables/useThematicLayers'
@@ -63,6 +63,7 @@ const overlayCanvas = document.getElementById('recording-overlay') as HTMLCanvas
 const overlayContext = overlayCanvas?.getContext('2d') ?? null
 const OFFSCREEN_PREPARE_TILE_TIMEOUT_MS = 15000
 const OFFSCREEN_STABLE_SURFACE_MS = 400
+let centerTarget = false
 let prewarmSkipped = false
 let prewarmTimedOut = false
 let prewarmQuality: OffscreenPrewarmQuality = 'high'
@@ -251,27 +252,15 @@ function applySceneState(snapshot: TeachingScene['snapshot']): void {
   viewer.scene.requestRender()
 }
 
-function cameraDestination(camera: SceneCamera): Cesium.Cartesian3 {
-  return Cesium.Cartesian3.fromDegrees(camera.longitude, camera.latitude, camera.height)
-}
-
-function cameraOrientation(camera: SceneCamera): { heading: number; pitch: number; roll: number } {
-  return {
-    heading: Cesium.Math.toRadians(camera.heading),
-    pitch: Cesium.Math.toRadians(camera.pitch),
-    roll: 0
-  }
-}
-
 function setCamera(camera: SceneCamera): void {
-  viewer.camera.setView({ destination: cameraDestination(camera), orientation: cameraOrientation(camera) })
+  viewer.camera.setView({ destination: sceneCameraDestination(camera, centerTarget), orientation: sceneCameraOrientation(camera) })
 }
 
 function flyCamera(camera: SceneCamera, durationMs: number): Promise<void> {
   return new Promise((resolve) => {
     viewer.camera.flyTo({
-      destination: cameraDestination(camera),
-      orientation: cameraOrientation(camera),
+      destination: sceneCameraDestination(camera, centerTarget),
+      orientation: sceneCameraOrientation(camera),
       duration: Math.max(0.1, durationMs / 1000),
       complete: () => resolve(),
       cancel: () => resolve()
@@ -324,7 +313,7 @@ async function prewarmScene(script: OffscreenRecordingScript, sceneIndex: number
   viewer.scene.requestRender()
 }
 
-async function prewarm(script: OffscreenRecordingScript, views: RecordingPrewarmView[]): Promise<void> {
+async function prewarm(script: OffscreenRecordingScript, views: PrewarmView[]): Promise<void> {
   const startedAt = Date.now()
   let timedOut = false
   for (let index = 0; index < views.length; index += 1) {
@@ -353,17 +342,18 @@ async function prepare(script: OffscreenRecordingScript): Promise<void> {
   viewer.resize()
   const views = recordingPrewarmViews(script.scenes)
   const originalScreenSpaceError = viewer.scene.globe.maximumScreenSpaceError
+  centerTarget = script.centerTarget
   prewarmQuality = script.prewarmQuality
   prewarmTimedOut = false
   prewarmSkipped = false
   prewarmRevision = 0
+  advancePending = false
   try {
     await applyTerrain(script.terrain)
     await prewarm(script, views)
   } finally {
     viewer.scene.globe.maximumScreenSpaceError = originalScreenSpaceError
   }
-  advancePending = false
   if (script.scenes[0]) {
     await prewarmScene(script, 0)
     reportProgress('preparing', views.length, views.length, prewarmTimedOut)
@@ -374,6 +364,7 @@ async function prepare(script: OffscreenRecordingScript): Promise<void> {
 
 async function play(script: OffscreenRecordingScript): Promise<void> {
   document.title = script.title || 'GuEarth Offscreen Recorder'
+  advancePending = false
   viewer.resize()
   for (let index = 0; index < script.scenes.length; index += 1) {
     const scene = script.scenes[index]

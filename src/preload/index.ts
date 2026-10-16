@@ -346,6 +346,7 @@ export interface OffscreenRecordingScript {
   annotations: OffscreenRecordingAnnotation[]
   terrain: OffscreenRecordingTerrain
   prewarmQuality: OffscreenPrewarmQuality
+  centerTarget: boolean
   width: number
   height: number
   fps: number

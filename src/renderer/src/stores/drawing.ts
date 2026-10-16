@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { AnnotationDocument, AnnotationEntry } from '../../../preload'
 import { referencedShapeIds } from '@renderer/lib/annotationReferences'
+import { logger } from '../../../common/logger'
 import { useFailureStore } from './failure'
 
 export type ShapeKind = 'point' | 'polyline' | 'polygon' | 'arrow' | 'text'
@@ -82,18 +83,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   const saveError = ref('')
   let pendingSave = Promise.resolve()
   let saveTimer: ReturnType<typeof setTimeout> | undefined
-
-  function referencedShapeIds(items: AnnotationEntry[]): Set<string> {
-    const ids = new Set<string>()
-    const walk = (list: AnnotationEntry[]): void => {
-      for (const entry of list) {
-        if (entry.type === 'shape') ids.add(entry.id)
-        else walk(entry.children)
-      }
-    }
-    walk(items)
-    return ids
-  }
+  const transientShapeIds = new Set<string>()
 
   function persist(): void {
     if (!apiAvailable()) return
@@ -101,8 +91,13 @@ export const useDrawingStore = defineStore('drawing', () => {
     saveTimer = setTimeout(() => {
       saveTimer = undefined
       const persistedIds = referencedShapeIds(entries.value)
+      const persisted = shapes.value.filter((shape) => persistedIds.has(shape.id))
+      const dropped = shapes.value.filter((shape) => !persistedIds.has(shape.id) && !transientShapeIds.has(shape.id))
+      if (dropped.length) {
+        logger.warn('annotations', `${dropped.length} 个标注图形没有目录引用，本次保存已跳过`, dropped.map((shape) => shape.id))
+      }
       const snapshot: AnnotationDocument = {
-        shapes: JSON.parse(JSON.stringify(shapes.value.filter((shape) => persistedIds.has(shape.id)))) as DrawnShape[],
+        shapes: JSON.parse(JSON.stringify(persisted)) as DrawnShape[],
         entries: JSON.parse(JSON.stringify(entries.value)) as AnnotationEntry[]
       }
       pendingSave = pendingSave.catch(() => undefined).then(async () => {
@@ -141,6 +136,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   function addTransientShape(shape: DrawnShape): void {
+    transientShapeIds.add(shape.id)
     shapes.value = [...shapes.value, shape]
   }
 
@@ -153,16 +149,19 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   function removeShape(id: string): void {
     if (!shapes.value.some((item) => item.id === id)) return
+    const transient = transientShapeIds.delete(id)
     shapes.value = shapes.value.filter((item) => item.id !== id)
     const siblings = findParent(entries.value, id)
     if (siblings) siblings.splice(siblings.findIndex((item) => item.id === id), 1)
     entries.value = [...entries.value]
     if (selectedShapeId.value === id) selectedShapeId.value = null
+    if (transient) return
     persist()
   }
 
   function clearAll(): void {
     shapes.value = []
+    transientShapeIds.clear()
     entries.value = []
     selectedShapeId.value = null
     persist()

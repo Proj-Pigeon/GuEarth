@@ -5,8 +5,9 @@ import { useGlobeStore } from '@renderer/stores/globe'
 import { useClimateStore, thematicLayerCatalog } from '@renderer/stores/climate'
 import { useSolarStore, type MotionPanel } from '@renderer/stores/solar'
 import { useDrawingStore, DEFAULT_DRAW_STYLE, type GeoPosition } from '@renderer/stores/drawing'
-import { useScenesStore, type RecordingPrewarmQuality } from '@renderer/stores/scenes'
+import { useScenesStore } from '@renderer/stores/scenes'
 import { useFailureStore } from '@renderer/stores/failure'
+import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sanitizeCamera, sceneCameraDestination, sceneCameraOrientation } from '@renderer/lib/sceneCamera'
 import { createVideoRecorder, type RecorderOverlay } from './useVideoRecorder'
 
 export interface RecordingMarker {
@@ -53,11 +54,6 @@ const PREWARM_TILE_TIMEOUT_MS = 10_000
 const PLAY_TILE_TIMEOUT_MS = 10_000
 const RECORD_TILE_TIMEOUT_MS = 18_000
 const RECORD_MIN_FLUENT_FPS = 24
-export const RECORD_PREWARM_QUALITY_CONFIG: Record<RecordingPrewarmQuality, { screenSpaceError: number; viewTimeoutMs: number; totalTimeoutMs: number }> = {
-  standard: { screenSpaceError: 4, viewTimeoutMs: 4_000, totalTimeoutMs: 24_000 },
-  high: { screenSpaceError: 1, viewTimeoutMs: 6_000, totalTimeoutMs: 30_000 },
-  ultra: { screenSpaceError: 0.5, viewTimeoutMs: 10_000, totalTimeoutMs: 45_000 }
-}
 const MORPH_TIMEOUT_MS = 5_000
 const BASEMAP_SETTLE_MS = 500
 const STATE_SETTLE_MS = 250
@@ -73,64 +69,8 @@ function normalizedHeadingDegrees(radians: number): number {
   return degrees < 0 ? degrees + 360 : degrees
 }
 
-function sanitizeCamera(camera: SceneCamera): SceneCamera {
-  const clampNumber = (value: number, min: number, max: number, fallback: number): number =>
-    Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback
-  return {
-    longitude: clampNumber(camera.longitude, -180, 180, 105),
-    latitude: clampNumber(camera.latitude, -90, 90, 35),
-    height: clampNumber(camera.height, 1000, 20000000, 8000000),
-    heading: Number.isFinite(camera.heading) ? ((camera.heading % 360) + 360) % 360 : 0,
-    pitch: clampNumber(camera.pitch, -89.9, 89.9, -90)
-  }
-}
-
-function cameraDestination(camera: SceneCamera, centerTarget: boolean): Cesium.Cartesian3 {
-  if (!centerTarget) return Cesium.Cartesian3.fromDegrees(camera.longitude, camera.latitude, camera.height)
-  const downward = Math.max(Cesium.Math.toRadians(5), -Cesium.Math.toRadians(camera.pitch))
-  const horizontal = camera.height / Math.tan(downward)
-  const heading = Cesium.Math.toRadians(camera.heading)
-  const offset = new Cesium.Cartesian3(-horizontal * Math.sin(heading), -horizontal * Math.cos(heading), camera.height)
-  const target = Cesium.Cartesian3.fromDegrees(camera.longitude, camera.latitude, 0)
-  const enu = Cesium.Transforms.eastNorthUpToFixedFrame(target)
-  return Cesium.Matrix4.multiplyByPoint(enu, offset, new Cesium.Cartesian3())
-}
-
-function cameraOrientation(camera: SceneCamera): { heading: number; pitch: number; roll: number } {
-  return {
-    heading: Cesium.Math.toRadians(camera.heading),
-    pitch: Cesium.Math.toRadians(camera.pitch),
-    roll: 0
-  }
-}
-
-export function interpolateCamera(start: SceneCamera, end: SceneCamera, amount: number): SceneCamera {
-  const normalizedAmount = Math.min(1, Math.max(0, amount))
-  const lerp = (a: number, b: number): number => a + (b - a) * normalizedAmount
-  const lerpAngle = (a: number, b: number): number => a + (((b - a + 540) % 360) - 180) * normalizedAmount
-  return sanitizeCamera({
-    longitude: ((lerpAngle(start.longitude, end.longitude) + 540) % 360) - 180,
-    latitude: lerp(start.latitude, end.latitude),
-    height: Math.exp(lerp(Math.log(Math.max(1000, start.height)), Math.log(Math.max(1000, end.height)))),
-    heading: lerpAngle(start.heading, end.heading),
-    pitch: lerp(start.pitch, end.pitch)
-  })
-}
-
-export interface RecordingPrewarmView {
-  camera: SceneCamera
-  sceneIndex: number
-}
-
-export function recordingPrewarmViews(scenes: TeachingScene[]): RecordingPrewarmView[] {
-  const views: RecordingPrewarmView[] = []
-  for (let index = 0; index < scenes.length; index += 1) {
-    const camera = sanitizeCamera(scenes[index].snapshot.camera)
-    if (index > 0) views.push({ camera: interpolateCamera(sanitizeCamera(scenes[index - 1].snapshot.camera), camera, 0.5), sceneIndex: index })
-    views.push({ camera, sceneIndex: index })
-  }
-  return views
-}
+export { interpolateCamera, RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews } from '@renderer/lib/sceneCamera'
+export type { PrewarmView as RecordingPrewarmView } from '@renderer/lib/sceneCamera'
 
 let runId = 0
 let activeRun: (() => void) | null = null
@@ -282,11 +222,10 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   function flyCamera(rawCamera: SceneCamera, durationSeconds: number, centerTarget = false): Promise<void> {
     const current = viewer.value
     if (!current || current.isDestroyed()) return Promise.resolve()
-    const camera = sanitizeCamera(rawCamera)
     return new Promise((resolve) => {
       current.camera.flyTo({
-        destination: cameraDestination(camera, centerTarget),
-        orientation: cameraOrientation(camera),
+        destination: sceneCameraDestination(rawCamera, centerTarget),
+        orientation: sceneCameraOrientation(rawCamera),
         duration: Math.max(0.1, durationSeconds),
         complete: () => resolve(),
         cancel: () => resolve()
@@ -297,10 +236,9 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   function setCameraView(rawCamera: SceneCamera, centerTarget = false): void {
     const current = viewer.value
     if (!current || current.isDestroyed() || current.scene.mode !== Cesium.SceneMode.SCENE3D) return
-    const camera = sanitizeCamera(rawCamera)
     current.camera.setView({
-      destination: cameraDestination(camera, centerTarget),
-      orientation: cameraOrientation(camera)
+      destination: sceneCameraDestination(rawCamera, centerTarget),
+      orientation: sceneCameraOrientation(rawCamera)
     })
   }
 
@@ -456,7 +394,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     mirrorShapeIds = []
   }
 
-  function mirrorScene(scene: TeachingScene, annotations: OffscreenRecordingAnnotation[], index: number): void {
+  function mirrorScene(scene: TeachingScene, annotations: OffscreenRecordingAnnotation[], index: number, centerTarget: boolean): void {
     const current = viewer.value
     if (!current || current.isDestroyed()) return
     applySnapshot(scene.snapshot)
@@ -474,10 +412,10 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       mirrorShapeIds.push(shapeId)
     }
     if (index === 0) {
-      setCameraView(scene.snapshot.camera)
+      setCameraView(scene.snapshot.camera, centerTarget)
     } else {
       current.camera.cancelFlight()
-      void flyCamera(scene.snapshot.camera, scene.flyDurationMs / 1000)
+      void flyCamera(scene.snapshot.camera, scene.flyDurationMs / 1000, centerTarget)
     }
     requestSceneRender()
   }
@@ -654,6 +592,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       annotations,
       terrain: { providerId: globeStore.terrainProviderId, exaggeration: globeStore.terrainExaggeration, lighting: globeStore.terrainLighting },
       prewarmQuality: scenesStore.recording.prewarmQuality,
+      centerTarget: true,
       width: 1920,
       height: 1080,
       fps: 30
@@ -692,7 +631,8 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       playerState.currentIndex = progress.sceneIndex
       playerState.sceneName = scenes[progress.sceneIndex]?.name ?? ''
       playerState.narration = scenes[progress.sceneIndex]?.narration ?? ''
-      mirrorScene(scenes[progress.sceneIndex], script.annotations, progress.sceneIndex)
+      const mirrored = scenes[progress.sceneIndex]
+      if (mirrored) mirrorScene(mirrored, script.annotations, progress.sceneIndex, script.centerTarget)
       scenesStore.setRecording({ state: 'recording', currentStep: progress.sceneIndex + 1, totalSteps: progress.totalScenes })
     })
     const unsubscribeNotice = window.guEarth.recordings.onOffscreenNotice((notice) => {
