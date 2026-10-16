@@ -330,6 +330,12 @@ export interface OffscreenRecordingAnnotation {
   kind: 'point' | 'polyline' | 'polygon'
   name: string
   positions: GeoPosition[]
+  color: string
+  textColor: string
+  fontFamily: string
+  fontSize: number
+  textFrame: boolean
+  lineWidth: number
 }
 
 export interface OffscreenRecordingTerrain {

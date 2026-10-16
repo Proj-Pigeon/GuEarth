@@ -582,8 +582,8 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     const annotations = steps.flatMap((step, index) => {
       const sceneId = scenes[index].id
       return [
-        ...step.markers.map((marker) => ({ sceneId, kind: 'point' as const, name: marker.name, positions: [{ longitude: marker.longitude, latitude: marker.latitude, height: 0 }] })),
-        ...step.shapes.map((shape) => ({ sceneId, kind: shape.kind, name: shape.name, positions: shape.positions }))
+        ...step.markers.map((marker) => ({ sceneId, kind: 'point' as const, name: marker.name, positions: [{ longitude: marker.longitude, latitude: marker.latitude, height: 0 }], ...DEFAULT_DRAW_STYLE })),
+        ...step.shapes.map((shape) => ({ sceneId, kind: shape.kind, name: shape.name, positions: shape.positions, ...DEFAULT_DRAW_STYLE }))
       ]
     })
     const script: OffscreenRecordingScript = {

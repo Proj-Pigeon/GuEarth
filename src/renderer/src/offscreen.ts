@@ -5,6 +5,7 @@ import { createBasemapImageryProvider } from './composables/basemapImagery'
 import { createApp, h, shallowRef } from 'vue'
 import { createPinia } from 'pinia'
 import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sceneCameraDestination, sceneCameraOrientation, type PrewarmView } from './lib/sceneCamera'
+import { centroidOf, pointGraphics, polygonGraphics, polylineOptions, ringOf, sanitizePositions, shapeColorOf, shapeLabelOptions, surfacePosition, terrainSurfacePositions, toCartesian, type ShapeVisual } from './lib/shapeGraphics'
 import { useClimateStore, thematicLayerCatalog } from './stores/climate'
 import { useSolarStore } from './stores/solar'
 import { useThematicLayers } from './composables/useThematicLayers'
@@ -59,10 +60,13 @@ const solarStore = useSolarStore(offscreenPinia)
 
 const imageryLayers = new Map<string, Cesium.ImageryLayer>()
 let visibleAnnotations: Cesium.Entity[] = []
+const drapedAnnotations = new Map<Cesium.Entity, Cesium.Cartographic[]>()
+let drapeRefreshTimer: number | undefined
 const overlayCanvas = document.getElementById('recording-overlay') as HTMLCanvasElement | null
 const overlayContext = overlayCanvas?.getContext('2d') ?? null
 const OFFSCREEN_PREPARE_TILE_TIMEOUT_MS = 15000
 const OFFSCREEN_STABLE_SURFACE_MS = 400
+const OFFSCREEN_DRAPE_REFRESH_MS = 500
 let centerTarget = false
 let prewarmSkipped = false
 let prewarmTimedOut = false
@@ -190,29 +194,69 @@ function drawOverlay(): void {
 }
 
 function clearAnnotations(): void {
+  if (drapeRefreshTimer !== undefined) {
+    window.clearTimeout(drapeRefreshTimer)
+    drapeRefreshTimer = undefined
+  }
   for (const entity of visibleAnnotations) viewer.entities.remove(entity)
   visibleAnnotations = []
+  drapedAnnotations.clear()
+}
+
+function scheduleDrapeRefresh(): void {
+  if (!drapedAnnotations.size || drapeRefreshTimer !== undefined) return
+  drapeRefreshTimer = window.setTimeout(() => {
+    drapeRefreshTimer = undefined
+    for (const [entity, path] of drapedAnnotations) {
+      const polyline = entity.polyline
+      if (polyline) polyline.positions = new Cesium.ConstantProperty(terrainSurfacePositions(viewer, path))
+    }
+  }, OFFSCREEN_DRAPE_REFRESH_MS)
 }
 
 function addAnnotations(script: OffscreenRecordingScript, sceneId: string): void {
   clearAnnotations()
   const entities: Cesium.Entity[] = []
   for (const annotation of script.annotations.filter((entry) => entry.sceneId === sceneId)) {
-    const positions = annotation.positions.map((position) => Cesium.Cartesian3.fromDegrees(position.longitude, position.latitude, position.height))
-    if (annotation.kind === 'point') {
-      entities.push(viewer.entities.add({
-        position: positions[0],
-        point: { pixelSize: 12, color: Cesium.Color.YELLOW, outlineColor: Cesium.Color.BLACK, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
-        label: { text: annotation.name, font: '600 16px Microsoft YaHei', fillColor: Cesium.Color.WHITE, outlineColor: Cesium.Color.BLACK, outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cesium.Cartesian2(0, -20), disableDepthTestDistance: Number.POSITIVE_INFINITY }
-      }))
-    } else if (positions.length > 1) {
-      const entity = annotation.kind === 'polygon'
-        ? viewer.entities.add({ polygon: { hierarchy: new Cesium.PolygonHierarchy(positions), material: Cesium.Color.CYAN.withAlpha(0.3), outline: true, outlineColor: Cesium.Color.CYAN }, label: { text: annotation.name, font: '600 16px Microsoft YaHei', fillColor: Cesium.Color.WHITE, outlineColor: Cesium.Color.BLACK, outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE, disableDepthTestDistance: Number.POSITIVE_INFINITY }, position: positions[0] })
-        : viewer.entities.add({ polyline: { positions, width: 5, material: Cesium.Color.YELLOW, clampToGround: true }, label: { text: annotation.name, font: '600 16px Microsoft YaHei', fillColor: Cesium.Color.WHITE, outlineColor: Cesium.Color.BLACK, outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE, disableDepthTestDistance: Number.POSITIVE_INFINITY }, position: positions[0] })
-      entities.push(entity)
+    const shape: ShapeVisual = {
+      kind: annotation.kind,
+      positions: annotation.positions,
+      annotation: annotation.name,
+      color: annotation.color,
+      textColor: annotation.textColor,
+      fontFamily: annotation.fontFamily,
+      fontSize: annotation.fontSize,
+      textFrame: annotation.textFrame,
+      lineWidth: annotation.lineWidth
     }
+    const cartesians = shape.positions.map(toCartesian)
+    if (!cartesians.length) continue
+    const color = shapeColorOf(shape)
+    const options: Cesium.Entity.ConstructorOptions = {}
+    let drapedPath: Cesium.Cartographic[] | undefined
+    if (shape.kind === 'point') {
+      options.position = surfacePosition(cartesians[0])
+      options.point = pointGraphics(color)
+    } else {
+      options.position = surfacePosition(centroidOf(cartesians))
+      if (shape.kind === 'polygon') {
+        const hierarchy = sanitizePositions(cartesians)
+        if (hierarchy.length >= 3) options.polygon = polygonGraphics(color, hierarchy)
+      }
+      const polyline = polylineOptions(viewer, shape.kind === 'polygon' ? ringOf(cartesians) : cartesians, shape.lineWidth, color)
+      if (polyline) {
+        options.polyline = polyline.graphics
+        drapedPath = polyline.drapedPath
+      }
+    }
+    const label = shapeLabelOptions(shape, cartesians)
+    if (label) options.label = label
+    const entity = viewer.entities.add(options)
+    entities.push(entity)
+    if (drapedPath) drapedAnnotations.set(entity, drapedPath)
   }
   visibleAnnotations = entities
+  scheduleDrapeRefresh()
 }
 
 function reportNotice(message: string): void {

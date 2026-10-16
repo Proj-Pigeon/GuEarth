@@ -1010,7 +1010,19 @@ function normalizeOffscreenRecordingScript(value: unknown): OffscreenRecordingSc
       if (!isRecord(entry) || typeof entry.sceneId !== 'string' || typeof entry.name !== 'string' || !Array.isArray(entry.positions)) return []
       if (entry.kind !== 'point' && entry.kind !== 'polyline' && entry.kind !== 'polygon') return []
       const positions = entry.positions.flatMap((position) => isRecord(position) ? [{ longitude: normalizeNumber(position.longitude, -180, 180, 0), latitude: normalizeNumber(position.latitude, -90, 90, 0), height: normalizeNumber(position.height, -10000, 100000000, 0) }] : [])
-      return positions.length ? [{ sceneId: entry.sceneId, kind: entry.kind, name: entry.name.slice(0, 120), positions }] : []
+      if (!positions.length) return []
+      return [{
+        sceneId: entry.sceneId,
+        kind: entry.kind,
+        name: entry.name.slice(0, 120),
+        positions,
+        color: typeof entry.color === 'string' ? entry.color.slice(0, 32) : '#1677ff',
+        textColor: typeof entry.textColor === 'string' ? entry.textColor.slice(0, 32) : '#1f1f1f',
+        fontFamily: typeof entry.fontFamily === 'string' ? entry.fontFamily.slice(0, 120) : 'Arial',
+        fontSize: normalizeNumber(entry.fontSize, 8, 72, 13),
+        textFrame: entry.textFrame === true,
+        lineWidth: normalizeNumber(entry.lineWidth, 1, 20, 3)
+      }]
     }) : [],
     terrain: normalizeOffscreenTerrain(value.terrain),
     prewarmQuality: value.prewarmQuality === 'standard' || value.prewarmQuality === 'ultra' ? value.prewarmQuality : 'high',

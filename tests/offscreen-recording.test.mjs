@@ -13,6 +13,7 @@ const bannerSource = await readFile(new URL('../src/renderer/src/components/Fail
 const drawingStoreSource = await readFile(new URL('../src/renderer/src/stores/drawing.ts', import.meta.url), 'utf8')
 const annotationReferenceSource = await readFile(new URL('../src/renderer/src/lib/annotationReferences.ts', import.meta.url), 'utf8')
 const sceneCameraSource = await readFile(new URL('../src/renderer/src/lib/sceneCamera.ts', import.meta.url), 'utf8')
+const useDrawingSource = await readFile(new URL('../src/renderer/src/composables/useDrawing.ts', import.meta.url), 'utf8')
 const playerOverlaySource = await readFile(new URL('../src/renderer/src/components/ScenePlayerOverlay.vue', import.meta.url), 'utf8')
 
 test('offscreen recording has an isolated Cesium entry', () => {
@@ -257,6 +258,27 @@ test('offscreen preparation is observable in the main process log', () => {
   assert.match(mainSource, /离屏渲染准备完成，耗时/)
   assert.match(mainSource, /预热视角 \$\{Math\.round\(sceneIndex\)\}\/\$\{Math\.round\(totalScenes\)\}/)
   assert.match(mainSource, /部分录制视角的高清瓦片未在预加载预算内完成/)
+})
+
+test('offscreen annotations reuse the in-app shape styling', () => {
+  assert.match(offscreenSource, /from '\.\/lib\/shapeGraphics'/)
+  assert.match(offscreenSource, /options\.point = pointGraphics\(color\)/)
+  assert.match(offscreenSource, /options\.polygon = polygonGraphics\(color, hierarchy\)/)
+  assert.match(offscreenSource, /const polyline = polylineOptions\(viewer, shape\.kind === 'polygon' \? ringOf\(cartesians\) : cartesians, shape\.lineWidth, color\)/)
+  assert.match(offscreenSource, /if \(label\) options\.label = label/)
+  assert.match(offscreenSource, /polyline\.positions = new Cesium\.ConstantProperty\(terrainSurfacePositions\(viewer, path\)\)/)
+  assert.doesNotMatch(offscreenSource, /Cesium\.Color\.YELLOW/)
+  assert.doesNotMatch(offscreenSource, /Cesium\.Color\.CYAN/)
+  assert.doesNotMatch(useDrawingSource, /function polylineOptions\(/)
+  assert.doesNotMatch(useDrawingSource, /function pointGraphics/)
+})
+
+test('the recording script carries the annotation styling', () => {
+  assert.match(preloadSource, /color: string\r?\n\s+textColor: string\r?\n\s+fontFamily: string\r?\n\s+fontSize: number\r?\n\s+textFrame: boolean\r?\n\s+lineWidth: number/)
+  assert.match(mainSource, /color: typeof entry\.color === 'string' \? entry\.color\.slice\(0, 32\) : '#1677ff'/)
+  assert.match(mainSource, /lineWidth: normalizeNumber\(entry\.lineWidth, 1, 20, 3\)/)
+  assert.match(scenePlayerSource, /positions: \[\{ longitude: marker\.longitude, latitude: marker\.latitude, height: 0 \}\], \.\.\.DEFAULT_DRAW_STYLE/)
+  assert.match(scenePlayerSource, /positions: shape\.positions, \.\.\.DEFAULT_DRAW_STYLE/)
 })
 
 test('offscreen recording controls stay behind typed preload IPC', () => {
