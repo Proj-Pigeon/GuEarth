@@ -108,6 +108,15 @@ test('offscreen recording preserves authored scene content and cancellation', ()
   assert.match(offscreenSource, /async function delay\(ms: number\): Promise<void>/)
   assert.match(mainSource, /function ffmpegPath\(\): string/)
 })
+
+test('cancelling offscreen recording settles as a normal result', () => {
+  assert.match(mainSource, /const cancel = \(\): void => \{\r?\n\s+if \(settled\) return\r?\n\s+settled = true\r?\n\s+release\(\)/)
+  assert.match(mainSource, /logger\.info\('recording', '离屏录制已取消，未生成视频文件'\)/)
+  assert.match(mainSource, /resolve\(\{ path: '', bytes: 0, cancelled: true \}\)/)
+  assert.doesNotMatch(mainSource, /fail\(new Error\('录制已取消'\)\)/)
+  assert.match(preloadSource, /cancelled\?: boolean/)
+  assert.match(scenePlayerSource, /if \(result\.cancelled\) \{\r?\n\s+scenesStore\.setRecording\(\{ state: 'idle', cancelled: true, error: '' \}\)/)
+})
 test('offscreen recording applies the authored terrain instead of a flat ellipsoid', () => {
   assert.match(offscreenSource, /viewer\.terrainProvider = await create\(\)/)
   assert.match(offscreenSource, /viewer\.scene\.verticalExaggeration = Math\.min\(5, Math\.max\(1, terrain\.exaggeration\)\)/)

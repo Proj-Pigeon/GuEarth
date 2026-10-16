@@ -1011,7 +1011,8 @@ function withOffscreenTimeout<T>(task: Promise<T>, timeoutMs: number, message: s
   ])
 }
 
-async function removeStaleOffscreenDirectories(directory: string): Promise<void> {  try {
+async function removeStaleOffscreenDirectories(directory: string): Promise<void> {
+  try {
     const entries = await readdir(directory, { withFileTypes: true })
     await Promise.all(entries
       .filter((entry) => entry.isDirectory() && entry.name.startsWith(OFFSCREEN_TEMP_PREFIX))
@@ -1027,16 +1028,25 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
     let tempDir: string | null = null
     let ffmpeg: ReturnType<typeof spawn> | null = null
     let recorderWindow: BrowserWindow | null = null
-    const fail = (error: unknown): void => {
-      if (settled) return
-      settled = true
+    const release = (): void => {
       if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
       stopOffscreenRecordingWindow()
       if (ffmpeg && !ffmpeg.killed) ffmpeg.kill()
       if (tempDir) void rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
+    }
+    const fail = (error: unknown): void => {
+      if (settled) return
+      settled = true
+      release()
       reject(error instanceof Error ? error : new Error(String(error)))
     }
-    const cancel = (): void => fail(new Error('录制已取消'))
+    const cancel = (): void => {
+      if (settled) return
+      settled = true
+      release()
+      logger.info('recording', '离屏录制已取消，未生成视频文件')
+      resolve({ path: '', bytes: 0, cancelled: true })
+    }
     cancelOffscreenRecording = cancel
     void (async () => {
       stopOffscreenRecordingWindow()
@@ -1177,10 +1187,11 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       await renameFile(temporaryPath, outputPath)
       if (settled) return
       await rm(frameDirectory, { recursive: true, force: true }).catch(() => undefined)
-      stopOffscreenRecordingWindow()
-      if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
       if (settled) return
       settled = true
+      if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
+      stopOffscreenRecordingWindow()
+      logger.info('recording', `离屏录制完成：${outputPath}`, `${(bytes / 1024 / 1024).toFixed(1)} MB`)
       shell.showItemInFolder(outputPath)
       resolve({ path: outputPath, bytes, fps: measuredFps })
     })().catch((error) => fail(error))

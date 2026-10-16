@@ -322,6 +322,7 @@ export interface RecordingSaveResult {
   path: string
   bytes: number
   fps?: number
+  cancelled?: boolean
 }
 
 export interface OffscreenRecordingAnnotation {

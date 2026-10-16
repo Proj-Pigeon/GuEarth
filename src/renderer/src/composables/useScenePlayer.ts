@@ -436,6 +436,10 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     scenesStore.setRecording({ state: 'recording' })
     try {
       const result = await window.guEarth.recordings.offscreenEncode(script)
+      if (result.cancelled) {
+        scenesStore.setRecording({ state: 'idle', cancelled: true, error: '' })
+        return
+      }
       scenesStore.applyRecordingResult(result)
       if (result.fps && result.fps < RECORD_MIN_FLUENT_FPS) message.warning(`录制画面帧率偏低（约 ${result.fps.toFixed(1)} FPS），成片可能不够流畅`)
     } catch (error) {
