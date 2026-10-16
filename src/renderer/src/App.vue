@@ -815,7 +815,7 @@ aiStore.registerTool({
       title,
       totalSteps: result.totalSteps,
       estimatedSeconds: result.estimatedSeconds,
-      message: `录制已在后台开始，共 ${result.totalSteps} 幕，约 ${result.estimatedSeconds} 秒；完成后自动保存到已选择的文件夹并打开所在位置。期间用户可按 Esc 中止（已录制部分仍会保存）。`
+      message: `录制已在后台开始，共 ${result.totalSteps} 幕，约 ${result.estimatedSeconds} 秒；完成后自动保存到已选择的文件夹并打开所在位置。期间用户可按 Esc 取消录制，取消后不会保留视频文件。`
     }
   }
 })
@@ -835,6 +835,7 @@ aiStore.registerTool({
       currentStep: recording.currentStep,
       totalSteps: recording.totalSteps,
       videoPath: recording.videoPath || undefined,
+      fps: recording.fps ? Math.round(recording.fps * 10) / 10 : undefined,
       error: recording.error || undefined,
       cancelled: recording.cancelled || undefined
     }

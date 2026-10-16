@@ -24,18 +24,70 @@ test('offscreen recording requests a fixed paint rate and counts frames', () => 
 test('offscreen recording renderer can execute scene scripts', () => {
   assert.match(offscreenSource, /async function play\(script: OffscreenRecordingScript\)/)
   assert.match(offscreenSource, /viewer\.camera\.flyTo/)
-  assert.match(offscreenSource, /guEarthOffscreenRecorder: \{ play \}/)
+  assert.match(offscreenSource, /guEarthOffscreenRecorder: \{ play, prepare \}/)
   assert.match(mainSource, /executeJavaScript\(`window\.guEarthOffscreenRecorder\.play/)
+})
+
+test('offscreen recording keeps the captured aspect ratio instead of stretching', () => {
+  assert.match(mainSource, /const capture = offscreenCaptureSize\(script\.width, script\.height, workArea\.width, workArea\.height\)/)
+  assert.match(mainSource, /width: capture\.width,/)
+  assert.doesNotMatch(mainSource, /image\.resize\(/)
+  assert.match(mainSource, /const frame = image\.toJPEG\(95\)/)
+  assert.match(mainSource, /scale=\$\{script\.width\}:\$\{script\.height\}:force_original_aspect_ratio=decrease:flags=lanczos,pad=\$\{script\.width\}:\$\{script\.height\}:\(ow-iw\)\/2:\(oh-ih\)\/2:color=black,fps=\$\{outputFps\}/)
+  assert.match(mainSource, /logger\.info\('recording', `离屏采集/)
 })
 
 test('offscreen recording can encode paint frames through ffmpeg', () => {
   assert.match(mainSource, /function encodeOffscreenRecording\(script: OffscreenRecordingScript\): Promise<RecordingSaveResult>/)
-  assert.match(mainSource, /const framePattern = join\(frameDirectory, 'frame-%08d\.jpg'\)/)
   assert.match(mainSource, /await frameWrite/)
-  assert.match(mainSource, /'-vf', 'pad=ceil\(iw\/2\)\*2:ceil\(ih\/2\)\*2'/)
-  assert.match(mainSource, /image\.resize\(\{ width: script\.width, height: script\.height \}\)\.toJPEG\(95\)/)
   assert.match(mainSource, /image\.isEmpty\(\)/)
+  assert.match(mainSource, /'-f', 'concat', '-safe', '0', '-i', 'frames\.txt'/)
+  assert.match(mainSource, /cwd: frameDirectory/)
   assert.doesNotMatch(mainSource, /image2pipe/)
+  assert.doesNotMatch(mainSource, /pad=ceil\(iw\/2\)\*2/)
+})
+
+test('offscreen recording gates capture to the authored timeline', () => {
+  assert.match(mainSource, /if \(settled \|\| !capturing \|\| frameWriting \|\| image\.isEmpty\(\)\) return/)
+  assert.match(mainSource, /frameTimes\.push\(Date\.now\(\) - recordingStartedAt\)/)
+  assert.match(mainSource, /const durations = offscreenFrameDurations\(frameTimes, recordingElapsedMs\)/)
+  assert.match(mainSource, /offscreenConcatPlaylist\(frameNames, durations\)/)
+  assert.match(mainSource, /offscreenFrameRate\(frameIndex, recordingElapsedMs\)/)
+  assert.match(mainSource, /OFFSCREEN_MIN_FLUENT_FPS/)
+})
+
+test('offscreen rendering cannot hang the recorder forever', () => {
+  assert.match(mainSource, /function withOffscreenTimeout<T>\(task: Promise<T>, timeoutMs: number, message: string\): Promise<T>/)
+  assert.match(mainSource, /await withOffscreenTimeout\(\s*window\.webContents\.executeJavaScript\(`window\.guEarthOffscreenRecorder\.prepare/)
+  assert.match(mainSource, /offscreenSceneDurationMs\(script\) \+ OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS/)
+  assert.match(mainSource, /离屏渲染超时，已中止录制/)
+  assert.match(mainSource, /离屏渲染初始化超时，已中止录制/)
+})
+
+test('offscreen rendering prepares the first scene before capturing', () => {
+  assert.match(offscreenSource, /async function prepare\(script: OffscreenRecordingScript\): Promise<void>/)
+  assert.match(offscreenSource, /await waitTilesLoaded\(OFFSCREEN_PREPARE_TILE_TIMEOUT_MS\)/)
+  assert.match(offscreenSource, /if \(viewer\.scene\.globe\.tilesLoaded\)/)
+})
+
+test('offscreen recording cleans stale temporary directories', () => {
+  assert.match(mainSource, /async function removeStaleOffscreenDirectories\(directory: string\): Promise<void>/)
+  assert.match(mainSource, /await removeStaleOffscreenDirectories\(directory\)/)
+  assert.match(mainSource, /mkdtemp\(join\(directory, OFFSCREEN_TEMP_PREFIX\)\)/)
+})
+
+test('offscreen recording loads the packaged encoder lazily', () => {
+  assert.match(mainSource, /const requireFfmpeg = createRequire\(__filename\)/)
+  assert.match(mainSource, /const installer = requireFfmpeg\('@ffmpeg-installer\/ffmpeg'\) as \{ path: string \}/)
+  assert.doesNotMatch(mainSource, /^import ffmpegInstaller from/m)
+})
+
+test('offscreen recording mounts the component overlays on a visible layer', () => {
+  assert.match(offscreenHtml, /<div id="recording-overlays"><\/div>/)
+  assert.match(offscreenHtml, /#recording-overlays \{ position: fixed; inset: 0; pointer-events: none; \}/)
+  assert.match(offscreenSource, /climate\.overlays\['wind-particles'\] \? h\(WindParticles, \{ viewer \}\) : null/)
+  assert.match(offscreenSource, /climate\.overlays\['enso'\] \? h\(WalkerCirculationOverlay, \{ viewer, phase: climate\.ensoPhase \}\) : null/)
+  assert.match(offscreenSource, /\.mount\(overlayLayer\)/)
 })
 
 test('offscreen recording exposes a local encode self-test', () => {
@@ -52,7 +104,7 @@ test('offscreen recording preserves authored scene content and cancellation', ()
   assert.match(offscreenSource, /climateStore\.setOverlay/)
   assert.match(offscreenSource, /solarStore\.setDate/)
   assert.match(preloadSource, /offscreenCancel: \(\): Promise<void>/)
-  assert.match(mainSource, /const encodedFps = offscreenFrameRate\(frameIndex, recordingElapsedMs\)/)
+  assert.match(mainSource, /const measuredFps = offscreenFrameRate\(frameIndex, recordingElapsedMs\)/)
   assert.match(offscreenSource, /async function delay\(ms: number\): Promise<void>/)
   assert.match(mainSource, /function ffmpegPath\(\): string/)
 })

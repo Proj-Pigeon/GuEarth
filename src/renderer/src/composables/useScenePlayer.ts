@@ -1,5 +1,6 @@
 import { reactive, watch, type Ref } from 'vue'
 import * as Cesium from 'cesium'
+import { message } from 'ant-design-vue'
 import type { OffscreenRecordingScript, RecordingSaveResult, SceneCamera, SceneSimTime, SceneSnapshot, TeachingScene } from '../../../preload'
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useClimateStore, thematicLayerCatalog } from '@renderer/stores/climate'
@@ -51,6 +52,7 @@ export interface PlayerState {
 const PREWARM_TILE_TIMEOUT_MS = 10_000
 const PLAY_TILE_TIMEOUT_MS = 10_000
 const RECORD_TILE_TIMEOUT_MS = 18_000
+const RECORD_MIN_FLUENT_FPS = 24
 const RECORD_PREWARM_QUALITY_CONFIG: Record<RecordingPrewarmQuality, { screenSpaceError: number; viewTimeoutMs: number; totalTimeoutMs: number }> = {
   standard: { screenSpaceError: 4, viewTimeoutMs: 4_000, totalTimeoutMs: 24_000 },
   high: { screenSpaceError: 1, viewTimeoutMs: 6_000, totalTimeoutMs: 30_000 },
@@ -435,10 +437,11 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     try {
       const result = await window.guEarth.recordings.offscreenEncode(script)
       scenesStore.applyRecordingResult(result)
+      if (result.fps && result.fps < RECORD_MIN_FLUENT_FPS) message.warning(`录制画面帧率偏低（约 ${result.fps.toFixed(1)} FPS），成片可能不够流畅`)
     } catch (error) {
-      const message = error instanceof Error ? error.message : '离屏视频保存失败'
-      if (message.includes('录制已取消')) scenesStore.setRecording({ state: 'idle', cancelled: true, error: '' })
-      else scenesStore.setRecording({ state: 'error', error: message })
+      const detail = error instanceof Error ? error.message : '离屏视频保存失败'
+      if (detail.includes('录制已取消')) scenesStore.setRecording({ state: 'idle', cancelled: true, error: '' })
+      else scenesStore.setRecording({ state: 'error', error: detail })
     }
   }
 

@@ -321,6 +321,7 @@ export interface SceneDocument {
 export interface RecordingSaveResult {
   path: string
   bytes: number
+  fps?: number
 }
 
 export interface OffscreenRecordingAnnotation {

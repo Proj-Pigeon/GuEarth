@@ -2,15 +2,23 @@ import * as Cesium from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 import type { OffscreenRecordingScript, SceneCamera, TeachingScene } from '../../preload'
 import { createBasemapImageryProvider } from './composables/basemapImagery'
-import { createApp, shallowRef } from 'vue'
+import { createApp, h, shallowRef } from 'vue'
 import { createPinia } from 'pinia'
 import { useClimateStore, thematicLayerCatalog } from './stores/climate'
 import { useSolarStore } from './stores/solar'
 import { useThematicLayers } from './composables/useThematicLayers'
 import { terrainRegistry } from './terrain/terrainRegistry'
+import WindParticles from './components/WindParticles.vue'
+import FrontalCyclone from './components/FrontalCyclone.vue'
+import TyphoonOverlay from './components/TyphoonOverlay.vue'
+import WalkerCirculationOverlay from './components/WalkerCirculationOverlay.vue'
+import HuLineOverlay from './components/HuLineOverlay.vue'
 
 const container = document.getElementById('cesium-container')
 if (!container) throw new Error('Offscreen Cesium 容器不存在')
+
+const overlayLayer = document.getElementById('recording-overlays')
+if (!overlayLayer) throw new Error('Offscreen 叠加层容器不存在')
 
 const viewer = new Cesium.Viewer(container, {
   baseLayer: false,
@@ -32,15 +40,19 @@ const viewer = new Cesium.Viewer(container, {
 
 const offscreenPinia = createPinia()
 const offscreenViewer = shallowRef(viewer)
-const thematicMount = document.createElement('div')
-thematicMount.style.display = 'none'
-document.body.appendChild(thematicMount)
 createApp({
   setup() {
     useThematicLayers(offscreenViewer)
-    return () => null
+    const climate = useClimateStore()
+    return () => [
+      climate.overlays['wind-particles'] ? h(WindParticles, { viewer }) : null,
+      climate.overlays['frontal-cyclone'] ? h(FrontalCyclone, { viewer }) : null,
+      climate.overlays['typhoon'] ? h(TyphoonOverlay, { viewer }) : null,
+      climate.overlays['enso'] ? h(WalkerCirculationOverlay, { viewer, phase: climate.ensoPhase }) : null,
+      climate.overlays['hu-line'] ? h(HuLineOverlay, { viewer }) : null
+    ]
   }
-}).use(offscreenPinia).mount(thematicMount)
+}).use(offscreenPinia).mount(overlayLayer)
 const climateStore = useClimateStore(offscreenPinia)
 const solarStore = useSolarStore(offscreenPinia)
 
@@ -48,6 +60,8 @@ const imageryLayers = new Map<string, Cesium.ImageryLayer>()
 let visibleAnnotations: Cesium.Entity[] = []
 const overlayCanvas = document.getElementById('recording-overlay') as HTMLCanvasElement | null
 const overlayContext = overlayCanvas?.getContext('2d') ?? null
+const OFFSCREEN_PREPARE_TILE_TIMEOUT_MS = 15000
+const OFFSCREEN_STABLE_SURFACE_MS = 400
 let currentTitle = ''
 let currentNarration = ''
 
@@ -227,10 +241,47 @@ async function applyTerrain(terrain: OffscreenRecordingScript['terrain']): Promi
   viewer.scene.requestRender()
 }
 
+async function waitTilesLoaded(timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  let stableSince = 0
+  while (Date.now() < deadline) {
+    viewer.scene.requestRender()
+    await delay(120)
+    if (viewer.scene.globe.tilesLoaded) {
+      if (!stableSince) stableSince = Date.now()
+      if (Date.now() - stableSince >= OFFSCREEN_STABLE_SURFACE_MS) return
+    } else {
+      stableSince = 0
+    }
+  }
+}
+
+async function prepare(script: OffscreenRecordingScript): Promise<void> {
+  document.title = script.title || 'GuEarth Offscreen Recorder'
+  viewer.resize()
+  const first = script.scenes[0]
+  if (first) {
+    currentTitle = script.title
+    currentNarration = first.narration
+    applySceneState(first.snapshot)
+    setCamera(first.snapshot.camera)
+    drawOverlay()
+  }
+  await applyTerrain(script.terrain)
+  if (first) {
+    await applySnapshot(first.snapshot)
+    applySceneState(first.snapshot)
+    addAnnotations(script, first.id)
+    setCamera(first.snapshot.camera)
+    drawOverlay()
+  }
+  viewer.scene.requestRender()
+  await waitTilesLoaded(OFFSCREEN_PREPARE_TILE_TIMEOUT_MS)
+}
+
 async function play(script: OffscreenRecordingScript): Promise<void> {
   document.title = script.title || 'GuEarth Offscreen Recorder'
   viewer.resize()
-  await applyTerrain(script.terrain)
   for (let index = 0; index < script.scenes.length; index += 1) {
     const scene = script.scenes[index]
     window.guEarth?.recordings?.offscreenProgress?.({ sceneIndex: index, totalScenes: script.scenes.length })
@@ -257,4 +308,4 @@ viewer.scene.backgroundColor = Cesium.Color.BLACK
 viewer.camera.setView({ destination: Cesium.Cartesian3.fromDegrees(105, 35, 15_000_000) })
 window.addEventListener('beforeunload', () => viewer.destroy())
 
-Object.assign(window, { guEarthOffscreenRecorder: { play } })
+Object.assign(window, { guEarthOffscreenRecorder: { play, prepare } })
