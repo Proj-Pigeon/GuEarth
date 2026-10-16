@@ -6,7 +6,7 @@ import { thematicLayerCatalog, useClimateStore, type ThematicLayerId } from '@re
 import { useSolarStore } from '@renderer/stores/solar'
 import { useFailureStore } from '@renderer/stores/failure'
 import { beltLabel, beltLabelPosition, beltOpacity, beltRing } from '@renderer/thematic/rainBelt'
-import { summerMonsoonArrows, winterMonsoonArrows, type MonsoonArrow } from '@renderer/thematic/monsoonArrows'
+import { summerMonsoonArrows, winterMonsoonArrows } from '@renderer/thematic/monsoonArrows'
 import { oceanCurrents, pathPointAt } from '@renderer/thematic/oceanCurrents'
 import { climateZones } from '@renderer/thematic/climateZones'
 import { coriolisDemos, sampleTrack } from '@renderer/thematic/coriolis'
@@ -192,17 +192,74 @@ function arrowHeadPositions(from: [number, number], to: [number, number], size: 
   ])
 }
 
-function arrowLabelAt(arrow: MonsoonArrow, offset = 3.4): [number, number] {
-  const latMidRad = (((arrow.from[1] + arrow.to[1]) / 2) * Math.PI) / 180
-  const cosLat = Math.max(0.25, Math.cos(latMidRad))
-  const dx = (arrow.to[0] - arrow.from[0]) * cosLat
-  const dy = arrow.to[1] - arrow.from[1]
-  const norm = Math.hypot(dx, dy) || 1
-  const perpX = dy / norm
-  const perpY = -dx / norm
+const MONSOON_RIBBON_SAMPLES = 40
+const MONSOON_RIBBON_WIDTH = 1.5
+const MONSOON_RIBBON_SEGMENTS = 8
+const MONSOON_RIBBON_TAIL_ALPHA = 0.18
+const MONSOON_HEAD_ALPHA = 0.92
+
+function monsoonWidthProfile(t: number): number {
+  const ramp = Math.min(1, t / 0.45)
+  return 0.34 + 0.66 * ramp * ramp * (3 - 2 * ramp)
+}
+
+function monsoonAlphaProfile(t: number): number {
+  const eased = t * t * (3 - 2 * t)
+  return MONSOON_RIBBON_TAIL_ALPHA + (MONSOON_HEAD_ALPHA - MONSOON_RIBBON_TAIL_ALPHA) * eased
+}
+
+interface MonsoonRibbonSegment {
+  positions: Cesium.Cartesian3[]
+  alpha: number
+}
+
+function monsoonRibbonSegments(smooth: Array<[number, number]>, maxWidthDeg: number): { segments: MonsoonRibbonSegment[]; head: Cesium.Cartesian3[] } {
+  const headBase = ribbonHeadBaseFrac(smooth, maxWidthDeg)
+  const sampled = Array.from({ length: MONSOON_RIBBON_SAMPLES + 1 }, (_, i) => {
+    const t = i / MONSOON_RIBBON_SAMPLES
+    const point = pathPointAt(smooth, t * headBase)
+    const [lon, lat] = point.position
+    const cosLat = Math.max(0.25, Math.cos((lat * Math.PI) / 180))
+    const half = maxWidthDeg * monsoonWidthProfile(t)
+    const perpX = -point.direction[1]
+    const perpY = point.direction[0]
+    return {
+      left: lon + (perpX * half) / cosLat,
+      leftLat: lat + perpY * half,
+      rightLat: lat - perpY * half,
+      right: lon - (perpX * half) / cosLat,
+      t
+    }
+  })
+  const boundaries: number[] = []
+  const stride = MONSOON_RIBBON_SAMPLES / MONSOON_RIBBON_SEGMENTS
+  for (let s = 0; s <= MONSOON_RIBBON_SEGMENTS; s += 1) {
+    boundaries.push(Math.min(MONSOON_RIBBON_SAMPLES, Math.round(s * stride)))
+  }
+  const segments: MonsoonRibbonSegment[] = []
+  for (let s = 0; s < MONSOON_RIBBON_SEGMENTS; s += 1) {
+    const from = boundaries[s]
+    const to = boundaries[s + 1]
+    const leftRing = sampled.slice(from, to + 1).map((p) => [p.left, p.leftLat])
+    const rightRing = sampled.slice(from, to + 1).reverse().map((p) => [p.right, p.rightLat])
+    const alpha = monsoonAlphaProfile(((from + to) / 2 / MONSOON_RIBBON_SAMPLES) ** 0.85)
+    segments.push({ positions: Cesium.Cartesian3.fromDegreesArray(leftRing.concat(rightRing).flat()), alpha })
+  }
+  const base = pathPointAt(smooth, headBase).position
+  const tip = pathPointAt(smooth, 1).position
+  return { segments, head: arrowHeadPositions(base, tip, maxWidthDeg) }
+}
+
+function ribbonHeadBaseFrac(smooth: Array<[number, number]>, maxWidthDeg: number): number {
+  return Math.max(0.3, 1 - (maxWidthDeg * 1.6) / migrationPathLength(smooth))
+}
+
+function monsoonLabelAt(smooth: Array<[number, number]>, offset = 3.2): [number, number] {
+  const point = pathPointAt(smooth, 0.5)
+  const cosLat = Math.max(0.25, Math.cos((point.position[1] * Math.PI) / 180))
   return [
-    (arrow.from[0] + arrow.to[0]) / 2 + (perpX * offset) / cosLat,
-    (arrow.from[1] + arrow.to[1]) / 2 + perpY * offset
+    point.position[0] - (point.direction[1] * offset) / cosLat,
+    point.position[1] + point.direction[0] * offset
   ]
 }
 
@@ -315,23 +372,25 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
     const arrows = season === 'summer' ? summerMonsoonArrows : winterMonsoonArrows
     const labeled = new Set<string>()
     for (const arrow of arrows) {
-      dataSource.entities.add({
-        polyline: {
-          positions: toCartesians([arrow.from, arrow.to]),
-          clampToGround: true,
-          width: 4,
-          material: color.withAlpha(0.82)
-        }
-      })
+      const smooth = smoothMigrationPath(arrow.path)
+      const { segments, head } = monsoonRibbonSegments(smooth, MONSOON_RIBBON_WIDTH)
+      for (const segment of segments) {
+        dataSource.entities.add({
+          polygon: {
+            hierarchy: new Cesium.PolygonHierarchy(segment.positions),
+            material: color.withAlpha(segment.alpha)
+          }
+        })
+      }
       dataSource.entities.add({
         polygon: {
-          hierarchy: new Cesium.PolygonHierarchy(arrowHeadPositions(arrow.from, arrow.to, 2.2)),
-          material: color.withAlpha(0.95)
+          hierarchy: new Cesium.PolygonHierarchy(head),
+          material: color.withAlpha(MONSOON_HEAD_ALPHA)
         }
       })
       if (!labeled.has(arrow.label)) {
         labeled.add(arrow.label)
-        const [lon, lat] = arrowLabelAt(arrow)
+        const [lon, lat] = monsoonLabelAt(smooth)
         dataSource.entities.add({
           position: Cesium.Cartesian3.fromDegrees(lon, lat),
           label: {
