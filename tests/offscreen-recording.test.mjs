@@ -10,6 +10,9 @@ const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts
 const scenePlayerSource = await readFile(new URL('../src/renderer/src/composables/useScenePlayer.ts', import.meta.url), 'utf8')
 const failureSource = await readFile(new URL('../src/renderer/src/stores/failure.ts', import.meta.url), 'utf8')
 const bannerSource = await readFile(new URL('../src/renderer/src/components/FailureBanner.vue', import.meta.url), 'utf8')
+const drawingStoreSource = await readFile(new URL('../src/renderer/src/stores/drawing.ts', import.meta.url), 'utf8')
+const annotationReferenceSource = await readFile(new URL('../src/renderer/src/lib/annotationReferences.ts', import.meta.url), 'utf8')
+const playerOverlaySource = await readFile(new URL('../src/renderer/src/components/ScenePlayerOverlay.vue', import.meta.url), 'utf8')
 
 test('offscreen recording has an isolated Cesium entry', () => {
   assert.match(viteSource, /offscreen: resolve\('src\/renderer\/offscreen\.html'\)/)
@@ -188,9 +191,30 @@ test('the visible window mirrors what the offscreen renderer records', () => {
   assert.match(scenePlayerSource, /mirrorScene\(scenes\[progress\.sceneIndex\], script\.annotations, progress\.sceneIndex\)/)
   assert.match(scenePlayerSource, /drawingStore\.addTransientShape\(\{/)
   assert.match(scenePlayerSource, /current\.camera\.cancelFlight\(\)/)
-  assert.match(scenePlayerSource, /const view = views\[progress\.sceneIndex - 1\]/)
-  assert.match(scenePlayerSource, /clearMirrorShapes\(\)\r?\n\s+disableRecordingRender\(\)/)
-  assert.match(scenePlayerSource, /enableRecordingRender\(\)\r?\n\s+scenesStore\.setRecording\(\{ state: 'preparing'/)
+  assert.match(scenePlayerSource, /clearMirrorShapes\(\)\r?\n\s+scenesStore\.setPresenting\(false\)/)
+  assert.doesNotMatch(scenePlayerSource, /enableRecordingRender\(\)\r?\n\s+scenesStore\.setRecording\(\{ state: 'preparing'/)
+})
+
+test('recording keeps the ordinary render policy in the visible window', () => {
+  assert.match(scenePlayerSource, /playerState\.recording = true\r?\n\s+scenesStore\.setPresenting\(true\)\r?\n\s+scenesStore\.setRecording\(\{ state: 'preparing'/)
+  const recordVideoBody = scenePlayerSource.slice(scenePlayerSource.indexOf('async function recordVideo'), scenePlayerSource.indexOf('async function previewScene'))
+  assert.doesNotMatch(recordVideoBody, /enableRecordingRender\(\)/)
+  assert.doesNotMatch(recordVideoBody, /disableRecordingRender\(\)/)
+})
+
+test('annotation persistence only stores shapes that entries reference', () => {
+  assert.match(drawingStoreSource, /shapes: JSON\.parse\(JSON\.stringify\(shapes\.value\.filter\(\(shape\) => persistedIds\.has\(shape\.id\)\)\)\)/)
+  assert.match(drawingStoreSource, /import \{ referencedShapeIds \} from '@renderer\/lib\/annotationReferences'/)
+  assert.match(drawingStoreSource, /const persistedIds = referencedShapeIds\(entries\.value\)/)
+  assert.match(annotationReferenceSource, /export function referencedShapeIds\(items: AnnotationEntry\[\]\): Set<string>/)
+})
+
+test('offscreen recording fails fast when the capture process dies', () => {
+  assert.match(mainSource, /window\.webContents\.on\('render-process-gone', \(_event, details\) => \{/)
+  assert.match(mainSource, /离屏录制渲染进程异常退出（\$\{details\.reason\}）/)
+  assert.match(mainSource, /window\.on\('unresponsive', \(\) => \{/)
+  assert.match(mainSource, /离屏录制渲染进程无响应，已中止录制/)
+  assert.match(playerOverlaySource, /danger @click\.stop="emit\('stop'\)">取消录制/)
 })
 
 test('prewarm detail bias is scoped to preparation', () => {

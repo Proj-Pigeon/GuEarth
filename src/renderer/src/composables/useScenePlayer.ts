@@ -670,7 +670,6 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     playerState.narration = ''
     playerState.recording = true
     scenesStore.setPresenting(true)
-    enableRecordingRender()
     scenesStore.setRecording({ state: 'preparing', title, currentStep: 0, totalSteps: scenes.length, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '正在启动离屏录制渲染…', prewarmTimedOut: false, skipPrewarm: false, videoPath: '', error: '', cancelled: false })
     const cancel = (): void => {
       void window.guEarth.recordings.offscreenCancel()
@@ -680,13 +679,6 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       if (activeRun !== cancel) return
       if (progress.phase === 'preparing') {
         playerState.prewarming = true
-        const views = recordingPrewarmViews(scenes)
-        const view = views[progress.sceneIndex - 1]
-        if (view) {
-          applySnapshot(scenes[view.sceneIndex].snapshot)
-          setCameraView(view.camera, false)
-          requestSceneRender()
-        }
         scenesStore.setRecording({
           state: 'preparing',
           prewarmStep: progress.sceneIndex,
@@ -716,7 +708,6 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       unsubscribeProgress()
       unsubscribeNotice()
       clearMirrorShapes()
-      disableRecordingRender()
       scenesStore.setPresenting(false)
       if (activeRun === cancel) activeRun = null
       offscreenRecordingActive = false

@@ -1116,6 +1116,12 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       })
       const window = recorderWindow
       offscreenRecordingWindow = window
+      window.webContents.on('render-process-gone', (_event, details) => {
+        fail(new Error(`离屏录制渲染进程异常退出（${details.reason}）`))
+      })
+      window.on('unresponsive', () => {
+        fail(new Error('离屏录制渲染进程无响应，已中止录制'))
+      })
       offscreenPaintStartedAt = Date.now()
       offscreenPaintFrames = 0
       let capturing = false

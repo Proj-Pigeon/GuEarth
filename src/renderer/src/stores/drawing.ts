@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { AnnotationDocument, AnnotationEntry } from '../../../preload'
+import { referencedShapeIds } from '@renderer/lib/annotationReferences'
 import { useFailureStore } from './failure'
 
 export type ShapeKind = 'point' | 'polyline' | 'polygon' | 'arrow' | 'text'
@@ -82,13 +83,26 @@ export const useDrawingStore = defineStore('drawing', () => {
   let pendingSave = Promise.resolve()
   let saveTimer: ReturnType<typeof setTimeout> | undefined
 
+  function referencedShapeIds(items: AnnotationEntry[]): Set<string> {
+    const ids = new Set<string>()
+    const walk = (list: AnnotationEntry[]): void => {
+      for (const entry of list) {
+        if (entry.type === 'shape') ids.add(entry.id)
+        else walk(entry.children)
+      }
+    }
+    walk(items)
+    return ids
+  }
+
   function persist(): void {
     if (!apiAvailable()) return
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
       saveTimer = undefined
+      const persistedIds = referencedShapeIds(entries.value)
       const snapshot: AnnotationDocument = {
-        shapes: JSON.parse(JSON.stringify(shapes.value)) as DrawnShape[],
+        shapes: JSON.parse(JSON.stringify(shapes.value.filter((shape) => persistedIds.has(shape.id)))) as DrawnShape[],
         entries: JSON.parse(JSON.stringify(entries.value)) as AnnotationEntry[]
       }
       pendingSave = pendingSave.catch(() => undefined).then(async () => {

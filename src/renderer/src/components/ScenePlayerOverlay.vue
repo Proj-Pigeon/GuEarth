@@ -69,7 +69,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         <a-segmented :value="scenesStore.recording.prewarmQuality" :options="prewarmQualityOptions" size="small" @change="setPrewarmQuality" />
       </div>
       <div v-if="prewarmWarning" class="prewarm-warning">{{ prewarmWarning }}</div>
-      <Button v-if="isRecordingPreparing" size="small" @click.stop="skipPrewarm">跳过预加载</Button>
+      <div v-if="isRecordingPreparing" class="prewarm-actions">
+        <Button size="small" @click.stop="skipPrewarm">跳过预加载</Button>
+        <Button size="small" danger @click.stop="emit('stop')">取消录制</Button>
+      </div>
     </div>
     <template v-else>
       <div class="stage-hit" aria-label="下一幕" @click="emit('next')"></div>
@@ -142,6 +145,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   color: rgba(0, 0, 0, 0.65);
   font-size: 12px;
   line-height: 20px;
+}
+
+.prewarm-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .prewarm-warning {
