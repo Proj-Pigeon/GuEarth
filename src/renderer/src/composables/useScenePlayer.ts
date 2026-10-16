@@ -1,10 +1,10 @@
 import { reactive, watch, type Ref } from 'vue'
 import * as Cesium from 'cesium'
-import type { OffscreenRecordingScript, RecordingSaveResult, SceneCamera, SceneSimTime, SceneSnapshot, TeachingScene } from '../../../preload'
+import type { OffscreenRecordingAnnotation, OffscreenRecordingScript, RecordingSaveResult, SceneCamera, SceneSimTime, SceneSnapshot, TeachingScene } from '../../../preload'
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useClimateStore, thematicLayerCatalog } from '@renderer/stores/climate'
 import { useSolarStore, type MotionPanel } from '@renderer/stores/solar'
-import { useDrawingStore, type GeoPosition } from '@renderer/stores/drawing'
+import { useDrawingStore, DEFAULT_DRAW_STYLE, type GeoPosition } from '@renderer/stores/drawing'
 import { useScenesStore, type RecordingPrewarmQuality } from '@renderer/stores/scenes'
 import { useFailureStore } from '@renderer/stores/failure'
 import { createVideoRecorder, type RecorderOverlay } from './useVideoRecorder'
@@ -164,6 +164,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   let advanceResolver: (() => void) | null = null
   let advanceTimer: ReturnType<typeof setTimeout> | undefined
   let restoreRecordingRender: (() => void) | null = null
+  let mirrorShapeIds: string[] = []
 
   watch(() => scenesStore.recording.skipPrewarm, (value) => {
     if (value && offscreenRecordingActive) window.guEarth.recordings.offscreenSkipPrewarm()
@@ -450,6 +451,37 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     return raw.replace(/^Error invoking remote method '[^']*':\s*/, '').replace(/^Error:\s*/, '')
   }
 
+  function clearMirrorShapes(): void {
+    for (const shapeId of mirrorShapeIds) drawingStore.removeShape(shapeId)
+    mirrorShapeIds = []
+  }
+
+  function mirrorScene(scene: TeachingScene, annotations: OffscreenRecordingAnnotation[], index: number): void {
+    const current = viewer.value
+    if (!current || current.isDestroyed()) return
+    applySnapshot(scene.snapshot)
+    clearMirrorShapes()
+    for (const annotation of annotations.filter((entry) => entry.sceneId === scene.id)) {
+      const shapeId = crypto.randomUUID()
+      drawingStore.addTransientShape({
+        ...DEFAULT_DRAW_STYLE,
+        id: shapeId,
+        kind: annotation.kind,
+        positions: annotation.positions,
+        annotation: annotation.name,
+        createdAt: Date.now()
+      })
+      mirrorShapeIds.push(shapeId)
+    }
+    if (index === 0) {
+      setCameraView(scene.snapshot.camera)
+    } else {
+      current.camera.cancelFlight()
+      void flyCamera(scene.snapshot.camera, scene.flyDurationMs / 1000)
+    }
+    requestSceneRender()
+  }
+
   function reportRecordingFailure(detail: string): void {
     scenesStore.setRecording({ state: 'error', error: detail })
     failureStore.reportFailure({
@@ -638,6 +670,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     playerState.narration = ''
     playerState.recording = true
     scenesStore.setPresenting(true)
+    enableRecordingRender()
     scenesStore.setRecording({ state: 'preparing', title, currentStep: 0, totalSteps: scenes.length, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '正在启动离屏录制渲染…', prewarmTimedOut: false, skipPrewarm: false, videoPath: '', error: '', cancelled: false })
     const cancel = (): void => {
       void window.guEarth.recordings.offscreenCancel()
@@ -647,6 +680,13 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       if (activeRun !== cancel) return
       if (progress.phase === 'preparing') {
         playerState.prewarming = true
+        const views = recordingPrewarmViews(scenes)
+        const view = views[progress.sceneIndex - 1]
+        if (view) {
+          applySnapshot(scenes[view.sceneIndex].snapshot)
+          setCameraView(view.camera, false)
+          requestSceneRender()
+        }
         scenesStore.setRecording({
           state: 'preparing',
           prewarmStep: progress.sceneIndex,
@@ -660,6 +700,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       playerState.currentIndex = progress.sceneIndex
       playerState.sceneName = scenes[progress.sceneIndex]?.name ?? ''
       playerState.narration = scenes[progress.sceneIndex]?.narration ?? ''
+      mirrorScene(scenes[progress.sceneIndex], script.annotations, progress.sceneIndex)
       scenesStore.setRecording({ state: 'recording', currentStep: progress.sceneIndex + 1, totalSteps: progress.totalScenes })
     })
     const unsubscribeNotice = window.guEarth.recordings.onOffscreenNotice((notice) => {
@@ -674,6 +715,8 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     void saveOffscreenRecording(script).finally(() => {
       unsubscribeProgress()
       unsubscribeNotice()
+      clearMirrorShapes()
+      disableRecordingRender()
       scenesStore.setPresenting(false)
       if (activeRun === cancel) activeRun = null
       offscreenRecordingActive = false

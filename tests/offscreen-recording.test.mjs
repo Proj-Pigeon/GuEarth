@@ -183,6 +183,28 @@ test('offscreen degradations reach the recording renderer as notices', () => {
   assert.match(scenePlayerSource, /onOffscreenNotice\(\(notice\) => \{/)
 })
 
+test('the visible window mirrors what the offscreen renderer records', () => {
+  assert.match(scenePlayerSource, /function mirrorScene\(scene: TeachingScene, annotations: OffscreenRecordingAnnotation\[\], index: number\): void/)
+  assert.match(scenePlayerSource, /mirrorScene\(scenes\[progress\.sceneIndex\], script\.annotations, progress\.sceneIndex\)/)
+  assert.match(scenePlayerSource, /drawingStore\.addTransientShape\(\{/)
+  assert.match(scenePlayerSource, /current\.camera\.cancelFlight\(\)/)
+  assert.match(scenePlayerSource, /const view = views\[progress\.sceneIndex - 1\]/)
+  assert.match(scenePlayerSource, /clearMirrorShapes\(\)\r?\n\s+disableRecordingRender\(\)/)
+  assert.match(scenePlayerSource, /enableRecordingRender\(\)\r?\n\s+scenesStore\.setRecording\(\{ state: 'preparing'/)
+})
+
+test('prewarm detail bias is scoped to preparation', () => {
+  assert.match(offscreenSource, /const originalScreenSpaceError = viewer\.scene\.globe\.maximumScreenSpaceError/)
+  assert.match(offscreenSource, /finally \{\r?\n\s+viewer\.scene\.globe\.maximumScreenSpaceError = originalScreenSpaceError/)
+  assert.match(offscreenSource, /loaded = await waitTilesLoaded\(Math\.max\(0, Math\.min\(config\.viewTimeoutMs, remainingBudget\)\)\)/)
+})
+
+test('offscreen preparation is observable in the main process log', () => {
+  assert.match(mainSource, /离屏渲染准备完成，耗时/)
+  assert.match(mainSource, /预热视角 \$\{Math\.round\(sceneIndex\)\}\/\$\{Math\.round\(totalScenes\)\}/)
+  assert.match(mainSource, /部分录制视角的高清瓦片未在预加载预算内完成/)
+})
+
 test('offscreen recording controls stay behind typed preload IPC', () => {
   assert.match(preloadSource, /offscreenProbe: \(script\?: OffscreenRecordingScript\): Promise<OffscreenRecordingProbeResult>/)
   assert.match(preloadSource, /ipcRenderer\.invoke\('recordings:offscreen-probe', script\)/)

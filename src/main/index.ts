@@ -86,6 +86,7 @@ let annotationsPath = ''
 let scenesPath = ''
 let offscreenRecordingWindow: BrowserWindow | null = null
 let offscreenRecordRequester: Electron.WebContents | null = null
+let offscreenPrewarmWarned = false
 let cancelOffscreenRecording: (() => void) | null = null
 let offscreenPaintStartedAt = 0
 let offscreenPaintFrames = 0
@@ -803,7 +804,16 @@ function registerIpcHandlers(): void {
     if (!isRecord(payload)) return
     const sceneIndex = normalizeNumber(payload.sceneIndex, 0, 1000, 0)
     const totalScenes = normalizeNumber(payload.totalScenes, 0, 1000, 0)
-    target.send('recordings:offscreen-progress', { phase: payload.phase === 'preparing' ? 'preparing' : 'recording', sceneIndex: Math.round(sceneIndex), totalScenes: Math.round(totalScenes), timedOut: payload.timedOut === true })
+    const preparing = payload.phase === 'preparing'
+    const timedOut = payload.timedOut === true
+    if (preparing) {
+      logger.info('recording', `预热视角 ${Math.round(sceneIndex)}/${Math.round(totalScenes)}${timedOut ? '（已有视角超出预加载预算）' : ''}`)
+      if (timedOut && !offscreenPrewarmWarned) {
+        offscreenPrewarmWarned = true
+        logger.warn('recording', '部分录制视角的高清瓦片未在预加载预算内完成')
+      }
+    }
+    target.send('recordings:offscreen-progress', { phase: preparing ? 'preparing' : 'recording', sceneIndex: Math.round(sceneIndex), totalScenes: Math.round(totalScenes), timedOut })
   })
   ipcMain.on('recordings:offscreen-notice', (event, message: unknown): void => {
     const target = offscreenRecordRequester
@@ -1071,6 +1081,7 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       logger.info('recording', '离屏录制已取消，未生成视频文件')
       resolve({ path: '', bytes: 0, cancelled: true })
     }
+    offscreenPrewarmWarned = false
     cancelOffscreenRecording = cancel
     void (async () => {
       stopOffscreenRecordingWindow()
@@ -1150,11 +1161,13 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       const serialized = JSON.stringify(script).replace(/</g, '\\u003c')
       offscreenPaintStartedAt = Date.now()
       window.webContents.startPainting()
+      const prepareStartedAt = Date.now()
       await withOffscreenTimeout(
         window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.prepare(${serialized})`),
         OFFSCREEN_PREPARE_TIMEOUT_MS,
         '离屏渲染初始化超时，已中止录制'
       )
+      logger.info('recording', `离屏渲染准备完成，耗时 ${((Date.now() - prepareStartedAt) / 1000).toFixed(1)} 秒`)
       if (settled) return
       const captureBudgetMs = offscreenSceneDurationMs(script) + OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS
       offscreenPaintStartedAt = Date.now()

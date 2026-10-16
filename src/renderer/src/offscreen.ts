@@ -332,17 +332,17 @@ async function prewarm(script: OffscreenRecordingScript, views: RecordingPrewarm
     await prewarmScene(script, views[index].sceneIndex)
     setCamera(views[index].camera)
     reportProgress('preparing', index + 1, views.length, timedOut)
-    const config = RECORD_PREWARM_QUALITY_CONFIG[prewarmQuality]
-    viewer.scene.globe.maximumScreenSpaceError = config.screenSpaceError
     const viewStartedAt = Date.now()
     let loaded = true
     let revision = prewarmRevision
     do {
       revision = prewarmRevision
+      const config = RECORD_PREWARM_QUALITY_CONFIG[prewarmQuality]
+      viewer.scene.globe.maximumScreenSpaceError = config.screenSpaceError
       const remainingBudget = config.totalTimeoutMs - (Date.now() - startedAt)
       loaded = await waitTilesLoaded(Math.max(0, Math.min(config.viewTimeoutMs, remainingBudget)))
       if (prewarmSkipped) break
-    } while (revision !== prewarmRevision && Date.now() - viewStartedAt < config.viewTimeoutMs)
+    } while (revision !== prewarmRevision && Date.now() - viewStartedAt < RECORD_PREWARM_QUALITY_CONFIG[prewarmQuality].viewTimeoutMs)
     if (!loaded && !prewarmSkipped) timedOut = true
   }
   prewarmTimedOut = timedOut
@@ -352,12 +352,17 @@ async function prepare(script: OffscreenRecordingScript): Promise<void> {
   document.title = script.title || 'GuEarth Offscreen Recorder'
   viewer.resize()
   const views = recordingPrewarmViews(script.scenes)
+  const originalScreenSpaceError = viewer.scene.globe.maximumScreenSpaceError
   prewarmQuality = script.prewarmQuality
   prewarmTimedOut = false
   prewarmSkipped = false
   prewarmRevision = 0
-  await applyTerrain(script.terrain)
-  await prewarm(script, views)
+  try {
+    await applyTerrain(script.terrain)
+    await prewarm(script, views)
+  } finally {
+    viewer.scene.globe.maximumScreenSpaceError = originalScreenSpaceError
+  }
   advancePending = false
   if (script.scenes[0]) {
     await prewarmScene(script, 0)
