@@ -8,6 +8,7 @@ import { useDrawingStore, DEFAULT_DRAW_STYLE, type GeoPosition } from '@renderer
 import { useScenesStore } from '@renderer/stores/scenes'
 import { useFailureStore } from '@renderer/stores/failure'
 import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sanitizeCamera, sceneCameraDestination, sceneCameraOrientation } from '@renderer/lib/sceneCamera'
+import { transientMirrorShape } from '@renderer/lib/shapeGraphics'
 import { createVideoRecorder, type RecorderOverlay } from './useVideoRecorder'
 
 export interface RecordingMarker {
@@ -401,14 +402,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     clearMirrorShapes()
     for (const annotation of annotations.filter((entry) => entry.sceneId === scene.id)) {
       const shapeId = crypto.randomUUID()
-      drawingStore.addTransientShape({
-        ...DEFAULT_DRAW_STYLE,
-        id: shapeId,
-        kind: annotation.kind,
-        positions: annotation.positions,
-        annotation: annotation.name,
-        createdAt: Date.now()
-      })
+      drawingStore.addTransientShape(transientMirrorShape({ ...annotation, annotation: annotation.name, id: shapeId, createdAt: Date.now() }))
       mirrorShapeIds.push(shapeId)
     }
     if (index === 0) {

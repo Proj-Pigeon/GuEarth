@@ -1,5 +1,6 @@
 import * as Cesium from 'cesium'
 import type { GeoPosition } from '../../../preload'
+import { DEFAULT_DRAW_STYLE } from '../stores/drawing'
 
 export interface ShapeVisual {
   kind: 'point' | 'polyline' | 'polygon' | 'arrow' | 'text'
@@ -11,6 +12,22 @@ export interface ShapeVisual {
   fontSize: number
   textFrame: boolean
   lineWidth: number
+}
+
+export function transientMirrorShape(annotation: ShapeVisual & { id: string; createdAt: number }): ShapeVisual & { id: string; createdAt: number } {
+  return {
+    id: annotation.id,
+    kind: annotation.kind,
+    positions: annotation.positions,
+    annotation: annotation.annotation,
+    createdAt: annotation.createdAt,
+    color: annotation.color || DEFAULT_DRAW_STYLE.color,
+    textColor: annotation.textColor || DEFAULT_DRAW_STYLE.textColor,
+    fontFamily: annotation.fontFamily || DEFAULT_DRAW_STYLE.fontFamily,
+    fontSize: annotation.fontSize || DEFAULT_DRAW_STYLE.fontSize,
+    textFrame: annotation.textFrame === true,
+    lineWidth: annotation.lineWidth || DEFAULT_DRAW_STYLE.lineWidth
+  }
 }
 
 export const SHAPE_COLOR = Cesium.Color.fromCssColorString('#1677ff')

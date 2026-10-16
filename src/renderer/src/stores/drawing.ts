@@ -152,7 +152,8 @@ export const useDrawingStore = defineStore('drawing', () => {
     const transient = transientShapeIds.delete(id)
     shapes.value = shapes.value.filter((item) => item.id !== id)
     const siblings = findParent(entries.value, id)
-    if (siblings) siblings.splice(siblings.findIndex((item) => item.id === id), 1)
+    const entryIndex = siblings ? siblings.findIndex((item) => item.id === id) : -1
+    if (siblings && entryIndex >= 0) siblings.splice(entryIndex, 1)
     entries.value = [...entries.value]
     if (selectedShapeId.value === id) selectedShapeId.value = null
     if (transient) return

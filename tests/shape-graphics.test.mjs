@@ -1,8 +1,23 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { registerHooks } from 'node:module'
+import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import * as Cesium from 'cesium'
 
-import { SHAPE_COLOR, measurementFor, pointGraphics, polygonGraphics, polylineOptions, shapeColorOf, shapeLabelOptions } from '../src/renderer/src/lib/shapeGraphics.ts'
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier.startsWith('@renderer/')) return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)
+    try {
+      return nextResolve(specifier, context)
+    } catch (error) {
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      throw error
+    }
+  }
+})
+
+const { SHAPE_COLOR, measurementFor, pointGraphics, polygonGraphics, polylineOptions, shapeColorOf, shapeLabelOptions } = await import('../src/renderer/src/lib/shapeGraphics.ts')
 
 const STYLE = { color: '#fa541c', textColor: '#ffffff', fontFamily: 'Arial', fontSize: 15, textFrame: false, lineWidth: 4 }
 const positions = [
@@ -38,7 +53,7 @@ test('polygon fill uses a quarter opacity of the shape colour', () => {
   const color = Cesium.Color.fromCssColorString('#fa541c')
   const graphics = polygonGraphics(color, positions.map((position) => Cesium.Cartesian3.fromDegrees(position.longitude, position.latitude)))
   const material = graphics.material
-  assert.ok(material instanceof Cesium.ColorMaterialProperty === false)
+  assert.ok(!(material instanceof Cesium.ColorMaterialProperty))
   assert.ok(Math.abs(material.alpha - 0.25) < 1e-9)
   assert.ok(Math.abs(material.red - color.red) < 1e-9)
 })
