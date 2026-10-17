@@ -13,8 +13,8 @@ Sentry.init({
   }
 })
 import { execFileSync, spawn } from 'child_process'
+import { rmSync } from 'fs'
 import { dirname, join } from 'path'
-import { tmpdir } from 'os'
 import { flushJsonWrites, readJson, serialQueue, writeAtomic, writeJson } from './jsonStore'
 import { listTileFiles, pruneTileFiles } from './tileCacheFiles'
 import { storageChildPath } from './storagePath'
@@ -89,6 +89,7 @@ let offscreenRecordingWindow: BrowserWindow | null = null
 let offscreenRecordRequester: Electron.WebContents | null = null
 let offscreenPrewarmWarned = false
 let cancelOffscreenRecording: (() => void) | null = null
+let teardownOffscreenRecording: (() => void) | null = null
 let offscreenPaintStartedAt = 0
 let offscreenPaintFrames = 0
 let settings: PersistedSettings = { ...defaultSettings, providerCredentials: {} }
@@ -832,7 +833,6 @@ function registerIpcHandlers(): void {
     const value = quality === 'standard' || quality === 'ultra' ? quality : 'high'
     forwardOffscreenCommand(event, `window.guEarthOffscreenRecorder.setPrewarmQuality('${value}')`)
   })
-  ipcMain.handle('recordings:offscreen-self-test', async (): Promise<RecordingSaveResult> => runOffscreenSelfTest())
   ipcMain.handle('recordings:offscreen-cancel', (): void => { cancelOffscreenRecording?.() })
   ipcMain.handle('recordings:offscreen-stats', (): OffscreenRecordingProbeResult => offscreenRecordingStats())
   ipcMain.handle('recordings:start', async (event, mimeType: unknown): Promise<string> => {
@@ -931,6 +931,25 @@ function stopOffscreenRecordingWindow(): void {
   if (!window || window.isDestroyed()) return
   if (!window.webContents.isDestroyed()) window.webContents.stopPainting()
   window.destroy()
+}
+
+function taskkillProcessTree(pid: number): boolean {
+  try {
+    execFileSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
+    return true
+  } catch {
+    return false
+  }
+}
+
+function terminateOffscreenEncoder(encoder: ReturnType<typeof spawn> | null): void {
+  if (!encoder) return
+  if (process.platform === 'win32' && encoder.pid && taskkillProcessTree(encoder.pid)) return
+  try {
+    encoder.kill()
+  } catch {
+    return
+  }
 }
 
 async function startOffscreenRecordingWindow(script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> {
@@ -1079,9 +1098,25 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
     const release = (): void => {
       if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
       stopOffscreenRecordingWindow()
-      if (ffmpeg && !ffmpeg.killed) ffmpeg.kill()
+      terminateOffscreenEncoder(ffmpeg)
+      ffmpeg = null
       if (tempDir) void rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
     }
+    const teardown = (): void => {
+      const pending = !settled
+      settled = true
+      if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
+      if (teardownOffscreenRecording === teardown) teardownOffscreenRecording = null
+      stopOffscreenRecordingWindow()
+      terminateOffscreenEncoder(ffmpeg)
+      ffmpeg = null
+      const directory = tempDir
+      tempDir = null
+      if (directory) rmSync(directory, { recursive: true, force: true })
+      logger.info('recording', pending ? '应用退出，已中止离屏录制并清理临时文件' : '应用退出，已清理离屏录制临时文件')
+      if (pending) resolve({ path: '', bytes: 0, cancelled: true })
+    }
+    teardownOffscreenRecording = teardown
     const fail = (error: unknown): void => {
       if (settled) return
       settled = true
@@ -1243,55 +1278,15 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       if (settled) return
       settled = true
       if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
+      if (teardownOffscreenRecording === teardown) teardownOffscreenRecording = null
+      ffmpeg = null
+      tempDir = null
       stopOffscreenRecordingWindow()
       logger.info('recording', `离屏录制完成：${outputPath}`, `${(bytes / 1024 / 1024).toFixed(1)} MB`)
       shell.showItemInFolder(outputPath)
       resolve({ path: outputPath, bytes, fps: measuredFps })
     })().catch((error) => fail(error))
   })
-}
-
-function createOffscreenSelfTestScript(): OffscreenRecordingScript {
-  const now = Date.now()
-  return {
-    title: 'Offscreen Recording Self Test',
-    width: 640,
-    height: 360,
-    fps: 15,
-    annotations: [],
-    terrain: { providerId: 'ellipsoid', exaggeration: 1, lighting: false },
-    prewarmQuality: 'standard',
-    centerTarget: false,
-    scenes: [
-      {
-        id: 'offscreen-self-test',
-        name: '离屏录制自测',
-        narration: '',
-        dwellMs: 1000,
-        flyDurationMs: 500,
-        createdAt: now,
-        snapshot: {
-          camera: { longitude: 105, latitude: 35, height: 15000000, heading: 0, pitch: -90 },
-          basemapId: 'osm',
-          overlays: [],
-          month: 7,
-          simTime: null,
-          motionPanel: null
-        }
-      }
-    ]
-  }
-}
-
-async function runOffscreenSelfTest(): Promise<RecordingSaveResult> {
-  const previousDirectory = settings.recordingDirectory
-  const directory = await mkdtemp(join(tmpdir(), 'guearth-offscreen-test-'))
-  settings.recordingDirectory = directory
-  try {
-    return await encodeOffscreenRecording(createOffscreenSelfTestScript())
-  } finally {
-    settings.recordingDirectory = previousDirectory
-  }
 }
 
 function displayAppName(): string {
@@ -1317,6 +1312,9 @@ function createWindow(): void {
 
   win.on('ready-to-show', () => win.show())
   win.on('page-title-updated', (event) => event.preventDefault())
+  win.on('close', () => {
+    cancelOffscreenRecording?.()
+  })
 
   win.webContents.setWindowOpenHandler((details) => {
     if (/^https?:\/\//i.test(details.url)) void shell.openExternal(details.url)
@@ -1382,6 +1380,14 @@ app.on('before-quit', (event) => {
   event.preventDefault()
   quitting = true
   void flushJsonWrites().finally(() => app.quit())
+})
+
+app.on('will-quit', () => {
+  try {
+    teardownOffscreenRecording?.()
+  } catch {
+    return
+  }
 })
 
 app.on('window-all-closed', () => {

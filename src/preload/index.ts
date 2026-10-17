@@ -437,7 +437,6 @@ const api = {
     offscreenNext: (): void => ipcRenderer.send('recordings:offscreen-next'),
     offscreenSkipPrewarm: (): void => ipcRenderer.send('recordings:offscreen-skip-prewarm'),
     offscreenPrewarmQuality: (quality: OffscreenPrewarmQuality): void => ipcRenderer.send('recordings:offscreen-prewarm-quality', quality),
-    offscreenSelfTest: (): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:offscreen-self-test'),
     offscreenStats: (): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-stats')
   },
   system: {

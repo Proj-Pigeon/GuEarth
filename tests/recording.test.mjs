@@ -234,3 +234,21 @@ test('the visible mirror reduces its resolution during recording and restores it
   assert.match(scenePlayerSource, /const previousMirrorResolutionScale = current\.resolutionScale\r?\n\s+current\.resolutionScale = RECORDING_MIRROR_RESOLUTION_SCALE/)
   assert.match(scenePlayerSource, /saveOffscreenRecording\(script\)\.finally\(\(\) => \{\r?\n\s+if \(!current\.isDestroyed\(\)\) current\.resolutionScale = previousMirrorResolutionScale/)
 })
+
+test('quitting tears down an active offscreen recording before the process exits', () => {
+  assert.match(mainSource, /let teardownOffscreenRecording: \(\(\) => void\) \| null = null/)
+  assert.match(mainSource, /app\.on\('will-quit', \(\) => \{\r?\n\s+try \{\r?\n\s+teardownOffscreenRecording\?\.\(\)/)
+  assert.match(mainSource, /execFileSync\('taskkill', \['\/pid', String\(pid\), '\/T', '\/F'\]/)
+  assert.match(mainSource, /rmSync\(directory, \{ recursive: true, force: true \}\)/)
+})
+
+test('closing the visible window cancels a running recording instead of orphaning it', () => {
+  assert.match(mainSource, /win\.on\('close', \(\) => \{\r?\n\s+cancelOffscreenRecording\?\.\(\)/)
+})
+
+test('the offscreen self-test channel no longer rewrites the recording directory', () => {
+  assert.doesNotMatch(mainSource, /offscreen-self-test/)
+  assert.doesNotMatch(mainSource, /runOffscreenSelfTest/)
+  assert.doesNotMatch(mainSource, /guearth-offscreen-test-/)
+  assert.doesNotMatch(preloadSource, /offscreenSelfTest/)
+})
