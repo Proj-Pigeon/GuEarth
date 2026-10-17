@@ -1,6 +1,7 @@
 import { reactive } from 'vue'
 import * as Sentry from '@sentry/electron/renderer'
 import { logger, stringifyLogValue } from '../../../common/logger'
+import { describeResourceFailure } from '../../../common/resourceFailure'
 
 const MODAL_REOPEN_COOLDOWN_MS = 3000
 const MODAL_OPEN_LIMIT = 5
@@ -19,7 +20,7 @@ let lastMessageAt = 0
 
 export function describeError(error: unknown): string {
   if (error instanceof Error) return error.message ? `${error.name}: ${error.message}` : `${error.name}（无错误信息）`
-  const text = stringifyLogValue(error)
+  const text = describeResourceFailure(error) ?? stringifyLogValue(error)
   return text || '未知错误'
 }
 
@@ -62,6 +63,11 @@ export function installGlobalErrorListeners(): void {
     showModal(event.message || describeError(event.error))
   })
   window.addEventListener('unhandledrejection', (event) => {
+    const resourceFailure = describeResourceFailure(event.reason)
+    if (resourceFailure) {
+      logger.warn('resource', resourceFailure, event.reason)
+      return
+    }
     showModal(describeError(event.reason))
   })
 }

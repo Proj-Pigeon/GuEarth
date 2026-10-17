@@ -5,6 +5,7 @@ import { normalizeNetworkProxy } from '../common/networkProxy'
 import { hasLegacyTileMirrorSetting, isTileMirrorMode, mirrorCacheStyleId, mirrorEligibleProviders, normalizeTileMirrorMode, originProbeReachable, TileMirrorRouter } from '../common/tileMirror'
 import type { MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
+import { serveTileResponse } from '../common/tileProtocol'
 
 attachConsoleLogTee('main')
 
@@ -533,7 +534,7 @@ async function mirrorTileResponse(kind: MirrorTileKind, key: TileKey): Promise<M
     if ('tile' in outcome) return outcome.tile
     if (outcome.failure === 'network' || sourceFailure === null) sourceFailure = outcome.failure
     return null
-  })
+  }).catch(() => null)
   if (!warped) return { failure: sourceFailure ?? 'coverage' }
   if (settings.tileCacheEnabled) void writeTile({ ...key, data: warped.data, contentType: warped.contentType, expiresAt: Date.now() + TILE_TTL_MS })
   return { response: new Response(warped.data, { headers: { 'content-type': warped.contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'amap-warped' } }) }
@@ -544,7 +545,11 @@ async function serveMirrorTile(providerId: string, kind: MirrorTileKind, key: Ti
     mirrorLoggedProviders.add(providerId)
     logger.info('tiles', `镜像瓦片源已启用，${providerId} 使用高德境内瓦片（GCJ-02 纠偏回 WGS84）`)
   }
-  const outcome = await mirrorTileResponse(kind, key)
+  const outcome = await mirrorTileResponse(kind, key).catch((error: unknown) => {
+    logger.warn('tiles', `镜像瓦片合成失败，${providerId} 本次改用原影像源`, error)
+    return null
+  })
+  if (!outcome) return null
   if ('response' in outcome) return outcome.response
   if (outcome.failure !== 'network') return null
   if (!tileMirrorRouter.noteMirrorFailure(providerId)) return null
@@ -1179,7 +1184,10 @@ app.whenReady().then(async () => {
   initUpdater(join(userDataPath, 'updates'))
   logger.info('app', '主进程服务就绪')
   protocol.handle('guearth-tile', async (request) => {
-    const response = await handleTileProtocol(request)
+    const response = await serveTileResponse(
+      () => handleTileProtocol(request),
+      (error) => logger.warn('tiles', '瓦片请求处理异常，已返回降级响应', error)
+    )
     response.headers.set('Access-Control-Allow-Origin', '*')
     return response
   })

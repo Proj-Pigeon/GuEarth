@@ -6,6 +6,7 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { captureError, captureWarning } from '@renderer/lib/crashReporter'
 import { logger, stringifyLogValue } from '../../../common/logger'
 import { isMirrorSatelliteProvider, mirrorEligibleProviders, withinMirrorSatelliteDetail } from '../../../common/tileMirror'
+import { withoutTileAvailability } from '../../../common/terrainAvailability'
 import type { PlaceSuggestion, TileMirrorStatus } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
@@ -28,7 +29,7 @@ const layerRegistry: Record<string, LayerProvider> = {
 
 const terrainRegistry: Record<string, () => Promise<Cesium.TerrainProvider>> = {
   ellipsoid: async () => new Cesium.EllipsoidTerrainProvider(),
-  'arcgis-terrain': () => Cesium.ArcGISTiledElevationTerrainProvider.fromUrl('https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'),
+  'arcgis-terrain': async () => withoutTileAvailability(await Cesium.ArcGISTiledElevationTerrainProvider.fromUrl('https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer')),
   'cesium-world-terrain': () => Cesium.CesiumTerrainProvider.fromUrl(Cesium.IonResource.fromAssetId(1), { requestVertexNormals: true })
 }
 
