@@ -74,6 +74,8 @@ const TILE_TTL_MS = 86_400_000
 const TILE_CACHE_MAX_BYTES = 512 * 1024 * 1024
 const TILE_CACHE_PRUNE_INTERVAL_MS = 10 * 60 * 1000
 const OFFSCREEN_TEMP_PREFIX = '.guearth-offscreen-'
+const OFFSCREEN_OWNER_FILE = '.owner'
+const OFFSCREEN_SWEEP_GRACE_MS = 900_000
 const OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS = 90_000
 const OFFSCREEN_PREPARE_TIMEOUT_MS = 180_000
 const OFFSCREEN_MIN_FLUENT_FPS = 24
@@ -85,6 +87,7 @@ let settingsPath = ''
 let tileCachePath = ''
 let annotationsPath = ''
 let scenesPath = ''
+let mainWindow: BrowserWindow | null = null
 let offscreenRecordingWindow: BrowserWindow | null = null
 let offscreenRecordRequester: Electron.WebContents | null = null
 let offscreenPrewarmWarned = false
@@ -1078,12 +1081,36 @@ function forwardOffscreenCommand(event: Electron.IpcMainEvent, expression: strin
   void window.webContents.executeJavaScript(expression).catch(() => undefined)
 }
 
+async function offscreenFrameDirectoryActive(path: string): Promise<boolean> {
+  try {
+    const owner = Number.parseInt((await readFile(join(path, OFFSCREEN_OWNER_FILE), 'utf8')).trim(), 10)
+    if (!Number.isInteger(owner) || owner <= 0) return false
+    if (owner === process.pid) return true
+    process.kill(owner, 0)
+    return true
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ESRCH') return false
+    if (code !== 'ENOENT') return true
+    try {
+      const info = await stat(path)
+      return Date.now() - info.mtimeMs < OFFSCREEN_SWEEP_GRACE_MS
+    } catch {
+      return true
+    }
+  }
+}
+
 async function removeStaleOffscreenDirectories(directory: string): Promise<void> {
   try {
     const entries = await readdir(directory, { withFileTypes: true })
     await Promise.all(entries
       .filter((entry) => entry.isDirectory() && entry.name.startsWith(OFFSCREEN_TEMP_PREFIX))
-      .map((entry) => rm(join(directory, entry.name), { recursive: true, force: true }).catch(() => undefined)))
+      .map(async (entry) => {
+        const path = join(directory, entry.name)
+        if (await offscreenFrameDirectoryActive(path)) return
+        await rm(path, { recursive: true, force: true }).catch(() => undefined)
+      }))
   } catch {
     return
   }
@@ -1139,9 +1166,15 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       if (!directory) throw new Error('请先选择可用的视频保存文件夹')
       await removeStaleOffscreenDirectories(directory)
       if (settled) return
-      tempDir = await mkdtemp(join(directory, OFFSCREEN_TEMP_PREFIX))
+      const createdTempDir = await mkdtemp(join(directory, OFFSCREEN_TEMP_PREFIX))
+      if (settled) {
+        void rm(createdTempDir, { recursive: true, force: true }).catch(() => undefined)
+        return
+      }
+      tempDir = createdTempDir
+      await writeFile(join(tempDir, OFFSCREEN_OWNER_FILE), String(process.pid), 'utf8')
       if (settled) return
-      const frameDirectory = tempDir
+      const frameDirectory = createdTempDir
       const temporaryPath = join(frameDirectory, 'recording.mp4.part')
       const now = new Date()
       const pad = (value: number): string => String(value).padStart(2, '0')
@@ -1310,6 +1343,11 @@ function createWindow(): void {
     }
   })
 
+  mainWindow = win
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = null
+  })
+
   win.on('ready-to-show', () => win.show())
   win.on('page-title-updated', (event) => event.preventDefault())
   win.on('close', () => {
@@ -1339,7 +1377,21 @@ function createWindow(): void {
   }
 }
 
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
+if (!hasSingleInstanceLock) {
+  console.warn('[app] 已有实例在运行，本次启动直接退出')
+  app.quit()
+}
+
+app.on('second-instance', () => {
+  const window = mainWindow
+  if (!window || window.isDestroyed()) return
+  if (window.isMinimized()) window.restore()
+  window.focus()
+})
+
 app.whenReady().then(async () => {
+  if (!hasSingleInstanceLock) return
   logger.info('app', '应用启动', `version=${app.getVersion()} packaged=${app.isPackaged}`)
   const userDataPath = app.getPath('userData')
   settingsPath = join(userDataPath, 'settings.json')

@@ -252,3 +252,26 @@ test('the offscreen self-test channel no longer rewrites the recording directory
   assert.doesNotMatch(mainSource, /guearth-offscreen-test-/)
   assert.doesNotMatch(preloadSource, /offscreenSelfTest/)
 })
+
+test('a second launch focuses the running window instead of racing the recording directory', () => {
+  assert.match(mainSource, /const hasSingleInstanceLock = app\.requestSingleInstanceLock\(\)/)
+  assert.match(mainSource, /if \(!hasSingleInstanceLock\) \{\r?\n\s+console\.warn\('\[app\] 已有实例在运行，本次启动直接退出'\)\r?\n\s+app\.quit\(\)/)
+  assert.match(mainSource, /app\.on\('second-instance', \(\) => \{\r?\n\s+const window = mainWindow/)
+  assert.match(mainSource, /if \(window\.isMinimized\(\)\) window\.restore\(\)\r?\n\s+window\.focus\(\)/)
+  assert.match(mainSource, /app\.whenReady\(\)\.then\(async \(\) => \{\r?\n\s+if \(!hasSingleInstanceLock\) return/)
+})
+
+test('the stale sweep never removes frame directories owned by a live process', () => {
+  assert.match(mainSource, /const OFFSCREEN_OWNER_FILE = '\.owner'/)
+  assert.match(mainSource, /async function offscreenFrameDirectoryActive\(path: string\): Promise<boolean>/)
+  assert.match(mainSource, /process\.kill\(owner, 0\)/)
+  assert.match(mainSource, /if \(await offscreenFrameDirectoryActive\(path\)\) return/)
+  assert.match(mainSource, /writeFile\(join\(tempDir, OFFSCREEN_OWNER_FILE\), String\(process\.pid\), 'utf8'\)/)
+  assert.doesNotMatch(mainSource, /map\(\(entry\) => rm\(join\(directory, entry\.name\)/)
+})
+
+test('a cancelled session removes a frame directory created after the cancel', () => {
+  assert.match(mainSource, /const createdTempDir = await mkdtemp\(join\(directory, OFFSCREEN_TEMP_PREFIX\)\)/)
+  assert.match(mainSource, /if \(settled\) \{\r?\n\s+void rm\(createdTempDir, \{ recursive: true, force: true \}\)\.catch\(\(\) => undefined\)\r?\n\s+return\r?\n\s+\}/)
+  assert.match(mainSource, /tempDir = createdTempDir/)
+})
