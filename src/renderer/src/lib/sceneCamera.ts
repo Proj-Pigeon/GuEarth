@@ -14,7 +14,6 @@ export const RECORD_PREWARM_QUALITY_CONFIG: Record<OffscreenPrewarmQuality, { sc
 
 const MIN_CAMERA_HEIGHT = 1000
 const MAX_CAMERA_HEIGHT = 20_000_000
-const MIN_CENTER_PITCH_DEGREES = 5
 
 export function sanitizeCamera(camera: SceneCamera): SceneCamera {
   const clampNumber = (value: number, min: number, max: number, fallback: number): number =>
@@ -51,23 +50,60 @@ export function recordingPrewarmViews(scenes: TeachingScene[]): PrewarmView[] {
   return views
 }
 
-export function sceneCameraDestination(rawCamera: SceneCamera, centerTarget: boolean): Cesium.Cartesian3 {
-  const camera = sanitizeCamera(rawCamera)
-  if (!centerTarget) return Cesium.Cartesian3.fromDegrees(camera.longitude, camera.latitude, camera.height)
-  const downward = Math.max(Cesium.Math.toRadians(MIN_CENTER_PITCH_DEGREES), -Cesium.Math.toRadians(camera.pitch))
-  const horizontal = camera.height / Math.tan(downward)
-  const heading = Cesium.Math.toRadians(camera.heading)
-  const offset = new Cesium.Cartesian3(-horizontal * Math.sin(heading), -horizontal * Math.cos(heading), camera.height)
-  const target = Cesium.Cartesian3.fromDegrees(camera.longitude, camera.latitude, 0)
-  const enu = Cesium.Transforms.eastNorthUpToFixedFrame(target)
-  return Cesium.Matrix4.multiplyByPoint(enu, offset, new Cesium.Cartesian3())
+export interface SceneCameraView {
+  destination: Cesium.Cartesian3
+  orientation: { heading: number; pitch: number; roll: number }
+  pitchClamped: boolean
 }
 
-export function sceneCameraOrientation(rawCamera: SceneCamera): { heading: number; pitch: number; roll: number } {
+export function sceneCameraView(rawCamera: SceneCamera, centerTarget: boolean): SceneCameraView {
   const camera = sanitizeCamera(rawCamera)
+  if (!centerTarget) {
+    return {
+      destination: Cesium.Cartesian3.fromDegrees(camera.longitude, camera.latitude, camera.height),
+      orientation: { heading: Cesium.Math.toRadians(camera.heading), pitch: Cesium.Math.toRadians(camera.pitch), roll: 0 },
+      pitchClamped: false
+    }
+  }
+  const target = Cesium.Cartesian3.fromDegrees(camera.longitude, camera.latitude, 0)
+  const radius = Cesium.Cartesian3.magnitude(target)
+  const orbit = radius + camera.height
+  const horizon = Math.acos(radius / orbit)
+  const requested = Cesium.Math.toRadians(-camera.pitch)
+  const downward = Math.max(requested, horizon)
+  const heading = Cesium.Math.toRadians(camera.heading)
+  const cosSquared = Math.cos(downward) * Math.cos(downward)
+  const reach = Math.max(0, radius * radius - cosSquared * orbit * orbit)
+  const enu = Cesium.Transforms.eastNorthUpToFixedFrame(target)
+  const east = Cesium.Matrix4.getColumn(enu, 0, new Cesium.Cartesian4())
+  const north = Cesium.Matrix4.getColumn(enu, 1, new Cesium.Cartesian4())
+  const up = Cesium.Cartesian3.normalize(target, new Cesium.Cartesian3())
+  const approach = Cesium.Cartesian3.normalize(new Cesium.Cartesian3(
+    -Math.sin(heading) * east.x - Math.cos(heading) * north.x,
+    -Math.sin(heading) * east.y - Math.cos(heading) * north.y,
+    -Math.sin(heading) * east.z - Math.cos(heading) * north.z
+  ), new Cesium.Cartesian3())
+  const rise = Cesium.Cartesian3.dot(approach, up)
+  const axis = Cesium.Cartesian3.normalize(new Cesium.Cartesian3(
+    approach.x - rise * up.x,
+    approach.y - rise * up.y,
+    approach.z - rise * up.z
+  ), new Cesium.Cartesian3())
+  const separation = Math.acos(Math.min(1, (cosSquared * orbit + Math.sqrt((1 - cosSquared) * reach)) / radius))
+  const destination = Cesium.Cartesian3.multiplyByScalar(new Cesium.Cartesian3(
+    Math.cos(separation) * up.x + Math.sin(separation) * axis.x,
+    Math.cos(separation) * up.y + Math.sin(separation) * axis.y,
+    Math.cos(separation) * up.z + Math.sin(separation) * axis.z
+  ), orbit, new Cesium.Cartesian3())
+  const frame = Cesium.Transforms.eastNorthUpToFixedFrame(destination)
+  const local = Cesium.Matrix4.multiplyByPoint(Cesium.Matrix4.inverseTransformation(frame, new Cesium.Matrix4()), target, new Cesium.Cartesian3())
   return {
-    heading: Cesium.Math.toRadians(camera.heading),
-    pitch: Cesium.Math.toRadians(camera.pitch),
-    roll: 0
+    destination,
+    orientation: {
+      heading: Math.atan2(local.x, local.y),
+      pitch: Math.atan2(local.z, Math.hypot(local.x, local.y)),
+      roll: 0
+    },
+    pitchClamped: downward > requested
   }
 }

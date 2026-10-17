@@ -4,7 +4,7 @@ import type { OffscreenPrewarmQuality, OffscreenRecordingProgress, OffscreenReco
 import { createBasemapImageryProvider } from './composables/basemapImagery'
 import { createApp, h, shallowRef } from 'vue'
 import { createPinia } from 'pinia'
-import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sceneCameraDestination, sceneCameraOrientation, type PrewarmView } from './lib/sceneCamera'
+import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sceneCameraView, type PrewarmView, type SceneCameraView } from './lib/sceneCamera'
 import { centroidOf, pointGraphics, polygonGraphics, polylineOptions, ringOf, sanitizePositions, shapeColorOf, shapeLabelOptions, surfacePosition, terrainSurfacePositions, toCartesian, type ShapeVisual } from './lib/shapeGraphics'
 import { useClimateStore, thematicLayerCatalog } from './stores/climate'
 import { useSolarStore } from './stores/solar'
@@ -297,15 +297,27 @@ function applySceneState(snapshot: TeachingScene['snapshot']): void {
   viewer.scene.requestRender()
 }
 
+let pitchClampReported = false
+
+function reportCameraClamp(view: SceneCameraView): void {
+  if (!view.pitchClamped || pitchClampReported) return
+  pitchClampReported = true
+  reportNotice('录制相机俯角超出该高度可用的取景范围，已自动调整俯角以保证教学目标居中')
+}
+
 function setCamera(camera: SceneCamera): void {
-  viewer.camera.setView({ destination: sceneCameraDestination(camera, centerTarget), orientation: sceneCameraOrientation(camera) })
+  const view = sceneCameraView(camera, centerTarget)
+  reportCameraClamp(view)
+  viewer.camera.setView({ destination: view.destination, orientation: view.orientation })
 }
 
 function flyCamera(camera: SceneCamera, durationMs: number): Promise<void> {
+  const view = sceneCameraView(camera, centerTarget)
+  reportCameraClamp(view)
   return new Promise((resolve) => {
     viewer.camera.flyTo({
-      destination: sceneCameraDestination(camera, centerTarget),
-      orientation: sceneCameraOrientation(camera),
+      destination: view.destination,
+      orientation: view.orientation,
       duration: Math.max(0.1, durationMs / 1000),
       complete: () => resolve(),
       cancel: () => resolve()

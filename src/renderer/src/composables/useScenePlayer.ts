@@ -7,7 +7,7 @@ import { useSolarStore, type MotionPanel } from '@renderer/stores/solar'
 import { useDrawingStore, DEFAULT_DRAW_STYLE, type GeoPosition } from '@renderer/stores/drawing'
 import { useScenesStore } from '@renderer/stores/scenes'
 import { useFailureStore } from '@renderer/stores/failure'
-import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sanitizeCamera, sceneCameraDestination, sceneCameraOrientation } from '@renderer/lib/sceneCamera'
+import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sanitizeCamera, sceneCameraView } from '@renderer/lib/sceneCamera'
 import { transientMirrorShape } from '@renderer/lib/shapeGraphics'
 import { createVideoRecorder, type RecorderOverlay } from './useVideoRecorder'
 
@@ -224,10 +224,11 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   function flyCamera(rawCamera: SceneCamera, durationSeconds: number, centerTarget = false): Promise<void> {
     const current = viewer.value
     if (!current || current.isDestroyed()) return Promise.resolve()
+    const view = sceneCameraView(rawCamera, centerTarget)
     return new Promise((resolve) => {
       current.camera.flyTo({
-        destination: sceneCameraDestination(rawCamera, centerTarget),
-        orientation: sceneCameraOrientation(rawCamera),
+        destination: view.destination,
+        orientation: view.orientation,
         duration: Math.max(0.1, durationSeconds),
         complete: () => resolve(),
         cancel: () => resolve()
@@ -238,9 +239,10 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   function setCameraView(rawCamera: SceneCamera, centerTarget = false): void {
     const current = viewer.value
     if (!current || current.isDestroyed() || current.scene.mode !== Cesium.SceneMode.SCENE3D) return
+    const view = sceneCameraView(rawCamera, centerTarget)
     current.camera.setView({
-      destination: sceneCameraDestination(rawCamera, centerTarget),
-      orientation: sceneCameraOrientation(rawCamera)
+      destination: view.destination,
+      orientation: view.orientation
     })
   }
 
