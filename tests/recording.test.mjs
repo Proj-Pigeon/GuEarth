@@ -223,3 +223,14 @@ test('offscreen annotations reuse the in-app shape styling', () => {
   assert.doesNotMatch(offscreenSource, /Cesium\.Color\.YELLOW/)
   assert.doesNotMatch(offscreenSource, /Cesium\.Color\.CYAN/)
 })
+
+test('offscreen capture renders without multisampling', () => {
+  assert.match(offscreenSource, /contextOptions: \{ webgl: \{ preserveDrawingBuffer: true, antialias: false \} \}/)
+  assert.match(offscreenSource, /viewer\.scene\.msaaSamples = 1/)
+})
+
+test('the visible mirror reduces its resolution during recording and restores it after', () => {
+  assert.match(scenePlayerSource, /const RECORDING_MIRROR_RESOLUTION_SCALE = 0\.6/)
+  assert.match(scenePlayerSource, /const previousMirrorResolutionScale = current\.resolutionScale\r?\n\s+current\.resolutionScale = RECORDING_MIRROR_RESOLUTION_SCALE/)
+  assert.match(scenePlayerSource, /saveOffscreenRecording\(script\)\.finally\(\(\) => \{\r?\n\s+if \(!current\.isDestroyed\(\)\) current\.resolutionScale = previousMirrorResolutionScale/)
+})

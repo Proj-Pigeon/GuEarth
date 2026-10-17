@@ -37,8 +37,9 @@ const viewer = new Cesium.Viewer(container, {
   selectionIndicator: false,
   requestRenderMode: false,
   useBrowserRecommendedResolution: true,
-  contextOptions: { webgl: { preserveDrawingBuffer: true } }
+  contextOptions: { webgl: { preserveDrawingBuffer: true, antialias: false } }
 })
+viewer.scene.msaaSamples = 1
 
 const offscreenPinia = createPinia()
 const offscreenViewer = shallowRef(viewer)

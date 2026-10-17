@@ -59,6 +59,7 @@ const MORPH_TIMEOUT_MS = 5_000
 const BASEMAP_SETTLE_MS = 500
 const STATE_SETTLE_MS = 250
 const PREWARM_HOLD_MS = 400
+const RECORDING_MIRROR_RESOLUTION_SCALE = 0.6
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -552,6 +553,8 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     failureStore.clearFailure('recording')
     failureStore.clearFailure('recording-quality')
     offscreenRecordingActive = true
+    const previousMirrorResolutionScale = current.resolutionScale
+    current.resolutionScale = RECORDING_MIRROR_RESOLUTION_SCALE
     failureStore.registerRetry('recording', async () => {
       const retried = await recordVideo(title, steps)
       if ('error' in retried) reportRecordingFailure(retried.error)
@@ -639,6 +642,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       })
     })
     void saveOffscreenRecording(script).finally(() => {
+      if (!current.isDestroyed()) current.resolutionScale = previousMirrorResolutionScale
       unsubscribeProgress()
       unsubscribeNotice()
       clearMirrorShapes()
