@@ -5,6 +5,7 @@ import { withoutTileAvailability } from '../src/common/terrainAvailability.ts'
 function availabilityProbe() {
   const state = { availabilityRequests: 0 }
   const terrain = {
+    _hasAvailability: true,
     tilingScheme: { id: 'probe' },
     getTileDataAvailable(x, y, level) {
       state.availabilityRequests += 1
@@ -12,6 +13,10 @@ function availabilityProbe() {
       void y
       void level
       return undefined
+    },
+    requestTileGeometry() {
+      if (this._hasAvailability) state.availabilityRequests += 1
+      return Promise.resolve('geometry')
     }
   }
   return { state, terrain }
@@ -23,6 +28,14 @@ test('Cesium treats undefined tile availability as unknown, so a terrain provide
   for (let level = 0; level < 8; level += 1) {
     for (let x = 0; x < 4; x += 1) assert.equal(wrapped.getTileDataAvailable(x, x, level), undefined)
   }
+  assert.equal(state.availabilityRequests, 0)
+})
+
+test('the availability flag is cleared too, so the geometry path stops requesting the tilemap as well', async () => {
+  const { state, terrain } = availabilityProbe()
+  const wrapped = withoutTileAvailability(terrain)
+  assert.equal(wrapped._hasAvailability, false)
+  for (let level = 0; level < 4; level += 1) assert.equal(await wrapped.requestTileGeometry(0, 0, level), 'geometry')
   assert.equal(state.availabilityRequests, 0)
 })
 

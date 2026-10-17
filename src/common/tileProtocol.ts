@@ -8,7 +8,11 @@ export async function serveTileResponse(load: () => Promise<Response> | Response
   try {
     return await load()
   } catch (error) {
-    onFailure?.(error)
+    try {
+      onFailure?.(error)
+    } catch {
+      void 0
+    }
     return tileFailureResponse()
   }
 }

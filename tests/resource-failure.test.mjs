@@ -63,6 +63,19 @@ test('a synchronously throwing tile pipeline also settles into a response', asyn
   assert.equal(response.status, TILE_FAILURE_STATUS)
 })
 
+test('a failure hook that throws cannot turn the settled response back into a rejection', async () => {
+  const response = await serveTileResponse(
+    async () => {
+      throw new Error('nativeImage decode failed')
+    },
+    () => {
+      throw new Error('logger unavailable')
+    }
+  )
+  assert.equal(response.status, TILE_FAILURE_STATUS)
+  assert.equal(await response.text(), 'Tile unavailable')
+})
+
 test('a healthy tile response passes through untouched and skips the failure hook', async () => {
   const original = new Response('tile-bytes', { status: 200, headers: { 'content-type': 'image/png' } })
   let reported = false
