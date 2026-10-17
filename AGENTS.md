@@ -30,6 +30,16 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 - Electron binaries must be installed manually with the npmmirror mirror:
   `ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" node node_modules/electron/install.js`
   (otherwise `npm run dev` fails with "Electron uninstall").
+- The bundled `ffmpeg.exe` is a sha256-pinned LGPLv3 build (KarinJS/FFmpeg-Builds v8.1.3,
+  `win32-x64-lgpl`); `npm run fetch:ffmpeg` provisions it into gitignored `resources/bin/`
+  (`npm run build:win` fetches it automatically). Recording encodes with its built-in
+  `libopenh264` (`-c:v libopenh264 -profile:v high -b:v 2M`). Do not reintroduce
+  `@ffmpeg-installer` — a GPLv3 x264 build that also shipped an npm token in its package.
+- First Windows packaging on a GitHub-restricted network needs mirrors: point
+  `electronDownload.mirror` at npmmirror in a local config (`extends: ./electron-builder.yml`
+  plus `electronDownload.mirror: https://npmmirror.com/mirrors/electron/`) and set
+  `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/`
+  for the NSIS/7zip downloads; `%LOCALAPPDATA%\electron-builder\Cache` makes it one-time.
 
 ## Architecture
 
@@ -57,7 +67,7 @@ Core platform:
 | 2 | Multi-provider layers, API-key settings (encrypted), terrain providers, tile cache | Done |
 | 3 | Teaching tools: draw point/line/polygon, measure distance/area, annotations, persistence | Done |
 | 4 | EOQ agent: provider-agnostic AI settings, streaming chat, tool-calling bridge | Done |
-| 5 | Packaging, auto-update stub, offline groundwork, performance | Pending |
+| 5 | Packaging, auto-update stub, offline groundwork, performance; shrink the installer (custom minimal FFmpeg build) | Pending |
 
 Teaching modules (人教版高中地理 mapping; thematic layers live in `src/renderer/src/thematic/`, registered in `useThematicLayers.ts`):
 
@@ -77,6 +87,7 @@ Teaching modules (人教版高中地理 mapping; thematic layers live in `src/re
 ```bash
 npm run dev        # electron-vite dev server + app
 npm run build      # production build
+npm run fetch:ffmpeg  # download the pinned LGPL FFmpeg build into resources/bin (Windows x64)
 npm run typecheck  # tsc (node) + vue-tsc (web)
 ```
 
@@ -99,3 +110,6 @@ npm run typecheck  # tsc (node) + vue-tsc (web)
   backslash-separated segments.
 - Verify UI changes by running `npm run dev` and exercising the feature; report explicitly if a
   change could not be visually verified.
+- **Distribution compliance**: never bundle GPL components. Keep FFmpeg on the pinned LGPL
+  build; license texts and source offers ship from `resources/licenses/` + `THIRD-PARTY-NOTICES.md`;
+  the NSIS license page summarizes them from `build/license.txt` (UTF-8 with BOM).

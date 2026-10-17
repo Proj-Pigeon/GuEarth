@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "build:win": "npm run build && electron-builder --win --publish never",
+    "build:win": "npm run fetch:ffmpeg && npm run build && electron-builder --win --publish never",
     "build:mac": "npm run build && electron-builder --mac --publish never",
+    "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json"
   },
@@ -42,8 +43,5 @@
     "vue": "^3.5.43",
     "vue-echarts": "^8.3.1",
     "vue-tsc": "^3.3.11"
-  },
-  "dependencies": {
-    "@ffmpeg-installer/ffmpeg": "^1.1.0"
   }
 }

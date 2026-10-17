@@ -40,13 +40,19 @@ export function offscreenFrameDurations(frameTimesMs: number[], totalMs: number)
   })
 }
 
+const concatFileFramerate = 1000
+
 export function offscreenConcatPlaylist(frameNames: string[], durations: number[]): string {
   const lines = ['ffconcat version 1.0']
   frameNames.forEach((name, index) => {
     lines.push(`file '${name}'`)
+    lines.push(`option framerate ${concatFileFramerate}`)
     lines.push(`duration ${(durations[index] ?? 1 / 30).toFixed(6)}`)
   })
-  if (frameNames.length) lines.push(`file '${frameNames[frameNames.length - 1]}'`)
+  if (frameNames.length) {
+    lines.push(`file '${frameNames[frameNames.length - 1]}'`)
+    lines.push(`option framerate ${concatFileFramerate}`)
+  }
   return `${lines.join('\n')}\n`
 }
 

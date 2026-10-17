@@ -65,7 +65,15 @@ test('frame durations never collapse below the minimum step', () => {
 
 test('concat playlist lists every frame with its own duration', () => {
   const playlist = offscreenConcatPlaylist(['frame-00000000.jpg', 'frame-00000001.jpg'], [0.5, 0.25])
-  assert.equal(playlist, "ffconcat version 1.0\nfile 'frame-00000000.jpg'\nduration 0.500000\nfile 'frame-00000001.jpg'\nduration 0.250000\nfile 'frame-00000001.jpg'\n")
+  assert.equal(playlist, "ffconcat version 1.0\nfile 'frame-00000000.jpg'\noption framerate 1000\nduration 0.500000\nfile 'frame-00000001.jpg'\noption framerate 1000\nduration 0.250000\nfile 'frame-00000001.jpg'\noption framerate 1000\n")
+})
+
+test('concat playlist pins a fine sub-file timebase so short capture gaps survive', () => {
+  const playlist = offscreenConcatPlaylist(['a.jpg', 'b.jpg'], [0.05, 0.1])
+  const lines = playlist.trim().split('\n')
+  const fileIndexes = lines.map((line, index) => (line.startsWith('file') ? index : -1)).filter((index) => index >= 0)
+  assert.equal(fileIndexes.length, 3)
+  for (const index of fileIndexes) assert.equal(lines[index + 1], 'option framerate 1000')
 })
 
 test('concat playlist repeats the final frame so its duration is honoured', () => {
@@ -73,6 +81,7 @@ test('concat playlist repeats the final frame so its duration is honoured', () =
   const entries = playlist.trim().split('\n').filter((line) => line.startsWith('file'))
   assert.equal(entries.length, 2)
   assert.equal(entries[1], "file 'only.jpg'")
+  assert.equal(playlist.match(/option framerate 1000/g).length, 2)
 })
 
 test('concat playlist stays empty without frames', () => {

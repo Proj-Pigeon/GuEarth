@@ -9,6 +9,7 @@ const offscreenHtml = await readFile(new URL('../src/renderer/offscreen.html', i
 const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
 const scenePlayerSource = await readFile(new URL('../src/renderer/src/composables/useScenePlayer.ts', import.meta.url), 'utf8')
 const recorderSource = await readFile(new URL('../src/renderer/src/composables/useVideoRecorder.ts', import.meta.url), 'utf8')
+const ffmpegSource = await readFile(new URL('../src/main/ffmpeg.ts', import.meta.url), 'utf8')
 
 test('offscreen recording has an isolated Cesium entry', () => {
   assert.match(viteSource, /offscreen: resolve\('src\/renderer\/offscreen\.html'\)/)
@@ -107,11 +108,19 @@ test('offscreen recording cleans stale temporary directories', () => {
   assert.match(mainSource, /mkdtemp\(join\(directory, OFFSCREEN_TEMP_PREFIX\)\)/)
 })
 
-test('offscreen recording loads the packaged encoder lazily', () => {
-  assert.match(mainSource, /const requireFfmpeg = createRequire\(__filename\)/)
-  assert.match(mainSource, /const installer = requireFfmpeg\('@ffmpeg-installer\/ffmpeg'\) as \{ path: string \}/)
-  assert.match(mainSource, /function ffmpegPath\(\): string/)
-  assert.doesNotMatch(mainSource, /^import ffmpegInstaller from/m)
+test('offscreen recording resolves the bundled LGPL encoder without the retired installer package', () => {
+  assert.match(mainSource, /import \{ offscreenVideoEncoderArgs, resolveFfmpegBinary \} from '\.\/ffmpeg'/)
+  assert.match(mainSource, /function ffmpegPath\(\): string \{\s+return resolveFfmpegBinary\(app\.getAppPath\(\), process\.resourcesPath, app\.isPackaged\)\s+\}/)
+  assert.doesNotMatch(mainSource, /@ffmpeg-installer/)
+  assert.doesNotMatch(mainSource, /createRequire/)
+})
+
+test('the bundled encoder encodes H.264 with libopenh264 and keeps libx264 out', () => {
+  assert.match(ffmpegSource, /export const offscreenVideoEncoderArgs = \['-c:v', 'libopenh264', '-profile:v', 'high', '-b:v', '2M'\]/)
+  assert.match(ffmpegSource, /export function resolveFfmpegBinary\(appPath: string, resourcesPath: string, packaged: boolean\): string/)
+  assert.doesNotMatch(ffmpegSource, /libx264/)
+  assert.match(mainSource, /const recordingSeconds = durations\.reduce\(\(total, seconds\) => total \+ seconds, 0\)/)
+  assert.match(mainSource, /'-t', recordingSeconds\.toFixed\(6\), '-an', \.\.\.offscreenVideoEncoderArgs, '-pix_fmt', 'yuv420p'/)
 })
 
 test('offscreen recording applies the authored terrain and scene state', () => {

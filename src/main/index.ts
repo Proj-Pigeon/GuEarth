@@ -20,10 +20,10 @@ import { listTileFiles, pruneTileFiles } from './tileCacheFiles'
 import { storageChildPath } from './storagePath'
 import { access, constants, mkdtemp, mkdir, open, readFile, readdir, rename as renameFile, stat, rm, unlink, writeFile } from 'fs/promises'
 import type { FileHandle } from 'fs/promises'
-import { createRequire } from 'module'
 import { createHash, randomUUID } from 'crypto'
 import icon from '../../resources/icon.png?asset'
 import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, OffscreenRecordingProbeResult, OffscreenRecordingScript, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey } from '../preload'
+import { offscreenVideoEncoderArgs, resolveFfmpegBinary } from './ffmpeg'
 import { offscreenCaptureSize, offscreenConcatPlaylist, offscreenFrameDurations, offscreenFrameRate, offscreenScriptDurationMs } from './offscreenTiming'
 import { assertEncryptionAvailable, assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
 import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
@@ -80,8 +80,6 @@ const OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS = 90_000
 const OFFSCREEN_PREPARE_TIMEOUT_MS = 180_000
 const OFFSCREEN_MIN_FLUENT_FPS = 24
 const OFFSCREEN_MAX_PENDING_FRAMES = 24
-const requireFfmpeg = createRequire(__filename)
-let ffmpegBinaryPath: string | null = null
 
 let settingsPath = ''
 let tileCachePath = ''
@@ -573,15 +571,7 @@ function recordingExtension(mimeType: unknown): string {
 }
 
 function ffmpegPath(): string {
-  if (ffmpegBinaryPath) return ffmpegBinaryPath
-  try {
-    const installer = requireFfmpeg('@ffmpeg-installer/ffmpeg') as { path: string }
-    ffmpegBinaryPath = installer.path.replace(/app\.asar([\\/])/, 'app.asar.unpacked$1')
-    return ffmpegBinaryPath
-  } catch (error) {
-    const reason = typeof error === 'string' ? error : error instanceof Error ? error.message : '未知原因'
-    throw new Error(`未能加载内置视频编码器（${reason}）`)
-  }
+  return resolveFfmpegBinary(app.getAppPath(), process.resourcesPath, app.isPackaged)
 }
 
 function finalizeMp4Recording(inputPath: string, outputPath: string): Promise<void> {
@@ -1277,6 +1267,7 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       logger.info('recording', `离屏录制 ${frameIndex} 帧 / ${(recordingElapsedMs / 1000).toFixed(1)} 秒，实测约 ${measuredFps.toFixed(1)} FPS`)
       if (measuredFps < OFFSCREEN_MIN_FLUENT_FPS) logger.warn('recording', `离屏采集帧率偏低（${measuredFps.toFixed(1)} FPS），画面可能不够流畅`)
       const durations = offscreenFrameDurations(frameTimes, recordingElapsedMs)
+      const recordingSeconds = durations.reduce((total, seconds) => total + seconds, 0)
       await writeFile(join(frameDirectory, 'frames.txt'), offscreenConcatPlaylist(frameNames, durations), 'utf8')
       if (settled) return
       const outputFps = Math.min(60, Math.max(1, Math.round(script.fps)))
@@ -1285,7 +1276,7 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
         '-hide_banner', '-loglevel', 'error', '-y',
         '-f', 'concat', '-safe', '0', '-i', 'frames.txt',
         '-vf', `scale=${script.width}:${script.height}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${script.width}:${script.height}:(ow-iw)/2:(oh-ih)/2:color=black,fps=${outputFps}`,
-        '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
+        '-t', recordingSeconds.toFixed(6), '-an', ...offscreenVideoEncoderArgs, '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
       ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'], cwd: frameDirectory })
       ffmpeg = encoder
       encoder.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))

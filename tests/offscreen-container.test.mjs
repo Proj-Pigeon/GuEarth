@@ -3,23 +3,13 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createRequire } from 'node:module'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 
+import { findFfmpegBinary } from '../src/main/ffmpeg.ts'
 import { offscreenConcatPlaylist, offscreenFrameDurations } from '../src/main/offscreenTiming.ts'
 
-const requireFfmpeg = createRequire(import.meta.url)
-
-function resolveFfmpeg() {
-  try {
-    const installer = requireFfmpeg('@ffmpeg-installer/ffmpeg')
-    return typeof installer?.path === 'string' ? installer.path : null
-  } catch {
-    return null
-  }
-}
-
-const ffmpegPath = resolveFfmpeg()
+const ffmpegPath = findFfmpegBinary(fileURLToPath(new URL('..', import.meta.url)), '', false)
 
 function run(args, cwd) {
   const result = spawnSync(ffmpegPath, args, { cwd, encoding: 'utf8', windowsHide: true })
@@ -37,7 +27,7 @@ function probeDurationSeconds(text) {
   return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3])
 }
 
-test('encoded container keeps the final frame duration', { skip: ffmpegPath ? false : '内置 ffmpeg 不可用' }, () => {
+test('encoded container keeps the final frame duration', { skip: ffmpegPath ? false : '内置 ffmpeg 不可用（运行 npm run fetch:ffmpeg 获取）' }, () => {
   const directory = mkdtempSync(join(tmpdir(), 'guearth-container-'))
   try {
     run(['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=30', '-frames:v', '20', 'frame-%08d.jpg'], directory)
@@ -55,10 +45,13 @@ test('encoded container keeps the final frame duration', { skip: ffmpegPath ? fa
       '-hide_banner', '-loglevel', 'error', '-y',
       '-f', 'concat', '-safe', '0', '-i', 'frames.txt',
       '-vf', 'scale=640:360:force_original_aspect_ratio=decrease:flags=lanczos,pad=640:360:(ow-iw)/2:(oh-ih)/2:color=black,fps=30',
-      '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', 'recording.mp4'
+      '-t', expected.toFixed(6),
+      '-an', '-c:v', 'libopenh264', '-profile:v', 'high', '-b:v', '2M', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', 'recording.mp4'
     ], directory)
 
-    const encoded = probeDurationSeconds(probe('recording.mp4', directory))
+    const info = probe('recording.mp4', directory)
+    const encoded = probeDurationSeconds(info)
+    assert.match(info, /Video: h264/)
     assert.ok(encoded >= expected - 0.05, `成片时长 ${encoded.toFixed(2)}s 短于逐帧时长合计 ${expected.toFixed(2)}s`)
     assert.ok(encoded <= expected + 0.2, `成片时长 ${encoded.toFixed(2)}s 明显长于逐帧时长合计 ${expected.toFixed(2)}s`)
   } finally {
@@ -66,17 +59,20 @@ test('encoded container keeps the final frame duration', { skip: ffmpegPath ? fa
   }
 })
 
-test('encoded container matches the requested output size', { skip: ffmpegPath ? false : '内置 ffmpeg 不可用' }, () => {
+test('encoded container matches the requested output size', { skip: ffmpegPath ? false : '内置 ffmpeg 不可用（运行 npm run fetch:ffmpeg 获取）' }, () => {
   const directory = mkdtempSync(join(tmpdir(), 'guearth-size-'))
   try {
     run(['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc=size=1237x776:rate=30', '-frames:v', '6', 'frame-%08d.jpg'], directory)
     const frames = Array.from({ length: 6 }, (_value, index) => `frame-${String(index + 1).padStart(8, '0')}.jpg`)
-    writeFileSync(join(directory, 'frames.txt'), offscreenConcatPlaylist(frames, frames.map(() => 1 / 30)), 'utf8')
+    const durations = frames.map(() => 1 / 30)
+    const seconds = durations.reduce((total, value) => total + value, 0)
+    writeFileSync(join(directory, 'frames.txt'), offscreenConcatPlaylist(frames, durations), 'utf8')
     run([
       '-hide_banner', '-loglevel', 'error', '-y',
       '-f', 'concat', '-safe', '0', '-i', 'frames.txt',
       '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease:flags=lanczos,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black,fps=30',
-      '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-f', 'mp4', 'recording.mp4'
+      '-t', seconds.toFixed(6),
+      '-an', '-c:v', 'libopenh264', '-profile:v', 'high', '-b:v', '2M', '-pix_fmt', 'yuv420p', '-f', 'mp4', 'recording.mp4'
     ], directory)
     const info = probe('recording.mp4', directory)
     assert.match(info, /1920x1080/)
