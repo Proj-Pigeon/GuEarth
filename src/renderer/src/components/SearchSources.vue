@@ -18,6 +18,17 @@ function domainOf(reference: AiSearchReference): string {
     return reference.url
   }
 }
+
+const allowedSchemes = new Set(['http:', 'https:'])
+
+function safeHref(reference: AiSearchReference): string | undefined {
+  try {
+    const parsed = new URL(reference.url)
+    return allowedSchemes.has(parsed.protocol) ? parsed.href : undefined
+  } catch {
+    return undefined
+  }
+}
 </script>
 
 <template>
@@ -30,19 +41,25 @@ function domainOf(reference: AiSearchReference): string {
       <span v-else>已阅读 {{ references.length }} 个来源</span>
     </div>
     <div class="search-list">
-      <a
-        v-for="reference in visible"
-        :key="reference.url"
-        class="search-row"
-        :href="reference.url"
-        target="_blank"
-        rel="noopener noreferrer"
-        :title="reference.content || reference.title"
-      >
-        <span class="search-favicon" aria-hidden="true">{{ domainOf(reference).charAt(0).toUpperCase() }}</span>
-        <span class="search-row-title">{{ reference.title }}</span>
-        <span class="search-row-domain">{{ domainOf(reference) }}</span>
-      </a>
+      <template v-for="reference in visible" :key="reference.url">
+        <a
+          v-if="safeHref(reference)"
+          class="search-row"
+          :href="safeHref(reference)"
+          target="_blank"
+          rel="noopener noreferrer"
+          :title="reference.content || reference.title"
+        >
+          <span class="search-favicon" aria-hidden="true">{{ domainOf(reference).charAt(0).toUpperCase() }}</span>
+          <span class="search-row-title">{{ reference.title }}</span>
+          <span class="search-row-domain">{{ domainOf(reference) }}</span>
+        </a>
+        <div v-else class="search-row" :title="reference.content || reference.title">
+          <span class="search-favicon" aria-hidden="true">{{ domainOf(reference).charAt(0).toUpperCase() }}</span>
+          <span class="search-row-title">{{ reference.title }}</span>
+          <span class="search-row-domain">{{ domainOf(reference) }}</span>
+        </div>
+      </template>
     </div>
     <button v-if="hiddenCount > 0" type="button" class="search-more" :aria-expanded="expanded" @click="expanded = !expanded">
       <DownOutlined :class="{ 'search-more-open': expanded }" />
@@ -63,7 +80,7 @@ function domainOf(reference: AiSearchReference): string {
 .search-row:focus-visible{outline:2px solid #1677ff;outline-offset:-2px}
 .search-favicon{flex-shrink:0;display:grid;place-items:center;width:16px;height:16px;border-radius:4px;background:rgba(0,0,0,.06);color:rgba(0,0,0,.45);font-size:9px;font-weight:500;line-height:1}
 .search-row-title{flex:1;min-width:0;overflow:hidden;color:rgba(0,0,0,.88);font-size:13.5px;line-height:20px;text-overflow:ellipsis;white-space:nowrap}
-.search-row-domain{flex-shrink:0;color:rgba(0,0,0,.45);font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;font-size:11px;line-height:20px;letter-spacing:-.01em}
+.search-row-domain{flex-shrink:0;max-width:50%;overflow:hidden;color:rgba(0,0,0,.45);font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;font-size:11px;line-height:20px;letter-spacing:-.01em;text-overflow:ellipsis;white-space:nowrap}
 .search-more{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;padding:0;border:0;background:transparent;color:rgba(0,0,0,.45);font:inherit;font-size:12px;line-height:20px;cursor:pointer}
 .search-more:hover{color:#1677ff}
 .search-more:focus-visible{outline:2px solid #1677ff;outline-offset:2px;border-radius:4px}

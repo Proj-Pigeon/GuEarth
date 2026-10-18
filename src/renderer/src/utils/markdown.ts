@@ -96,7 +96,6 @@ interface StreamingState {
   position: number
   windowStart: number
   tokens: StreamingToken[]
-  lastTextInCode: boolean
 }
 
 function countStreamingTokens(children: VNodeChild[], insideCode = false): number {
@@ -121,11 +120,9 @@ function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insi
   for (const child of children) {
     if (typeof child === 'string') {
       if (insideCode) {
-        state.lastTextInCode = true
         result.push(child)
         continue
       }
-      state.lastTextInCode = false
       let plain = ''
       for (const piece of child.match(streamingTokenPattern) ?? [child]) {
         const position = state.position
@@ -159,9 +156,9 @@ function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insi
 export function renderStreamingMarkdown(text: string): VNodeChild[] {
   const nodes = renderMarkdown(text)
   const total = countStreamingTokens(nodes)
-  const state: StreamingState = { position: 0, windowStart: Math.max(0, total - streamingTailTokens), tokens: [], lastTextInCode: false }
+  const state: StreamingState = { position: 0, windowStart: Math.max(0, total - streamingTailTokens), tokens: [] }
   const wrapped = wrapStreamingTokens(nodes, state)
-  if (state.lastTextInCode || state.tokens.length === 0) return wrapped
+  if (state.tokens.length === 0) return wrapped
   const words = state.tokens.filter((token) => token.word)
   for (const token of words.slice(-2)) token.node.props = { ...(token.node.props ?? {}), class: 'stream-token stream-token-fresh' }
   for (const token of state.tokens.slice(-12)) token.node.props = { ...(token.node.props ?? {}), class: `${token.node.props?.class ?? 'stream-token'} stream-token-enter` }

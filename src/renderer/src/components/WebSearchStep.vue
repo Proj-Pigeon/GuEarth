@@ -35,10 +35,10 @@ const error = computed(() => {
 
 <style scoped>
 .web-search{display:flex;flex-direction:column;gap:8px;min-width:0;padding:2px 0 6px}
-.web-search-query{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;max-width:100%;padding:4px 12px;border-radius:999px;background:rgba(0,0,0,.04);color:rgba(0,0,0,.65);font-size:12px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.web-search-icon{flex-shrink:0;color:rgba(0,0,0,.45);font-size:12px}
-.web-search-error{display:flex;align-items:center;gap:6px;min-width:0;color:#ff4d4f;font-size:12px;line-height:20px}
+.web-search-query{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;max-width:100%;padding:2px 8px;border-radius:9999px;background:var(--ant-color-fill-tertiary,rgba(0,0,0,.04));color:var(--ant-color-text-secondary,rgba(0,0,0,.65));font-size:var(--ant-font-size-sm,12px);line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.web-search-icon{flex-shrink:0;color:var(--ant-color-text-tertiary,rgba(0,0,0,.45));font-size:var(--ant-font-size-sm,12px)}
+.web-search-error{display:flex;align-items:center;gap:6px;min-width:0;color:var(--ant-color-error,#ff4d4f);font-size:var(--ant-font-size-sm,12px);line-height:20px}
 .web-search-error-text{min-width:0;overflow-wrap:anywhere}
 .web-search-retry{flex-shrink:0;height:24px;padding-inline:4px;font-size:12px}
-.web-search-empty{display:flex;align-items:center;gap:8px;color:rgba(0,0,0,.45);font-size:12px;line-height:20px}
+.web-search-empty{display:flex;align-items:center;gap:8px;color:var(--ant-color-text-tertiary,rgba(0,0,0,.45));font-size:var(--ant-font-size-sm,12px);line-height:20px}
 </style>
