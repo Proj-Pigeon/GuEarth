@@ -9,10 +9,12 @@ import { fileURLToPath } from 'node:url'
 import {
   FFMPEG_BUILD,
   approvedArchiveSource,
+  archiveRedirectTarget,
   archiveSources,
   assertArchiveSource,
   defaultBinaryPath,
   fetchFfmpeg,
+  isApprovedArchiveRedirectUrl,
   isApprovedArchiveUrl,
   matchesPinnedArchivePath,
   sha256Text,
@@ -24,6 +26,11 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 const pinnedArchivePathSuffix = `/v${FFMPEG_BUILD.version}/${FFMPEG_BUILD.archiveName}`
 const pinnedMirrorUrl = `https://registry.npmmirror.com/-/binary/ffmpeg-builds${pinnedArchivePathSuffix}`
 const pinnedReleaseUrl = `https://github.com/KarinJS/FFmpeg-Builds/releases/download${pinnedArchivePathSuffix}`
+const npmmirrorRedirectTarget = `https://cdn.npmmirror.com/binaries/ffmpeg-builds${pinnedArchivePathSuffix}`
+const githubRedirectTarget =
+  'https://release-assets.githubusercontent.com/github-production-release-asset/1089914849/1ba4c321?sp=r&se=2026-10-18T07%3A55%3A54Z'
+const legacyGithubRedirectTarget = 'https://objects.githubusercontent.com/github-production-release-asset/1089914849/asset?sp=r'
+const cdnRedirectTargets = [npmmirrorRedirectTarget, githubRedirectTarget, legacyGithubRedirectTarget]
 
 function restoreEnv(key, value) {
   if (value === undefined) delete process.env[key]
@@ -50,10 +57,47 @@ test('ffmpeg fetch prefers the configured override then the pinned mirrors', () 
   assert.equal(overridden.length, 3)
 })
 
-test('ffmpeg fetch accepts the pinned and GitHub redirect artifact hosts', () => {
+test('ffmpeg fetch accepts the pinned sources and keeps CDN hosts redirect-only', () => {
   for (const url of archiveSources(undefined)) assert.ok(isApprovedArchiveUrl(url), url)
-  assert.ok(isApprovedArchiveUrl('https://objects.githubusercontent.com/github-production-release-asset/ffmpeg.tar.xz'))
-  assert.ok(isApprovedArchiveUrl(`https://registry.npmmirror.com/-/binary/ffmpeg-builds/v8.1.3/${FFMPEG_BUILD.archiveName}`))
+  assert.ok(isApprovedArchiveUrl(pinnedMirrorUrl))
+  for (const target of cdnRedirectTargets) assert.ok(isApprovedArchiveRedirectUrl(target), target)
+})
+
+test('ffmpeg fetch resolves redirect targets against the current request URL', () => {
+  const relative = `binaries/ffmpeg-builds${pinnedArchivePathSuffix}`
+  assert.equal(
+    archiveRedirectTarget(relative, 'https://registry.npmmirror.com/-/binary/ffmpeg-builds/v8.1.3/'),
+    `https://registry.npmmirror.com/-/binary/ffmpeg-builds/v8.1.3/${relative}`
+  )
+  assert.equal(archiveRedirectTarget(npmmirrorRedirectTarget, pinnedMirrorUrl), npmmirrorRedirectTarget)
+  assert.equal(archiveRedirectTarget(githubRedirectTarget, pinnedReleaseUrl), githubRedirectTarget)
+  assert.equal(archiveRedirectTarget(legacyGithubRedirectTarget, pinnedReleaseUrl), legacyGithubRedirectTarget)
+})
+
+test('ffmpeg fetch rejects redirect targets outside the approved HTTPS hosts', () => {
+  const rejected = [
+    'https://example.com/ffmpeg.tar.xz',
+    'http://cdn.npmmirror.com/binaries/ffmpeg.tar.xz',
+    'file:///C:/ffmpeg/ffmpeg.tar.xz',
+    'https://localhost/ffmpeg.tar.xz',
+    'https://127.0.0.1/ffmpeg.tar.xz',
+    'https://cdn.npmmirror.com.evil.example/ffmpeg.tar.xz'
+  ]
+  for (const location of rejected) {
+    assert.equal(isApprovedArchiveRedirectUrl(location), false, location)
+    assert.throws(() => archiveRedirectTarget(location, pinnedMirrorUrl), /拒绝下载未经验证的重定向目标/, location)
+  }
+  assert.throws(() => archiveRedirectTarget(null, pinnedMirrorUrl), /下载重定向缺少目标地址/)
+  assert.throws(() => archiveRedirectTarget('', pinnedMirrorUrl), /下载重定向缺少目标地址/)
+  assert.throws(() => archiveRedirectTarget('https://[', pinnedMirrorUrl), /下载重定向目标无法解析/)
+})
+
+test('ffmpeg fetch does not accept CDN hosts as initial download sources', () => {
+  for (const url of cdnRedirectTargets) {
+    assert.equal(isApprovedArchiveUrl(url), false, url)
+    assert.throws(() => archiveSources(url), /FFMPEG_FETCH_URL 来源不受信任/, url)
+    assert.throws(() => assertArchiveSource(url), /拒绝下载未经验证的来源/, url)
+  }
 })
 
 test('ffmpeg fetch rejects untrusted override hosts and schemes', () => {

@@ -25,9 +25,13 @@ const pinnedArchiveUrls = [
   'https://github.com/KarinJS/FFmpeg-Builds/releases/download/v8.1.3/ffmpeg-8.1.3-win32-x64-lgpl.tar.xz'
 ]
 
-export const APPROVED_ARCHIVE_HOSTS = ['registry.npmmirror.com', 'github.com', 'objects.githubusercontent.com']
+export const APPROVED_ARCHIVE_HOSTS = ['registry.npmmirror.com', 'github.com']
+
+export const APPROVED_ARCHIVE_REDIRECT_HOSTS = ['cdn.npmmirror.com', 'objects.githubusercontent.com', 'release-assets.githubusercontent.com']
 
 const pinnedArchivePathSuffix = `/v${FFMPEG_BUILD.version}/${FFMPEG_BUILD.archiveName}`
+
+const maxArchiveRedirects = 5
 
 function parseArchiveUrl(value) {
   try {
@@ -45,6 +49,26 @@ function rejectedArchiveLabel(url) {
 export function isApprovedArchiveUrl(url) {
   const parsed = parseArchiveUrl(url)
   return parsed != null && parsed.protocol === 'https:' && APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname)
+}
+
+export function isApprovedArchiveRedirectUrl(url) {
+  const parsed = parseArchiveUrl(url)
+  if (parsed == null || parsed.protocol !== 'https:') return false
+  return APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname) || APPROVED_ARCHIVE_REDIRECT_HOSTS.includes(parsed.hostname)
+}
+
+export function archiveRedirectTarget(location, currentUrl) {
+  if (location == null || location === '') throw new Error(`下载重定向缺少目标地址：${rejectedArchiveLabel(currentUrl)}`)
+  let resolved = null
+  try {
+    resolved = new URL(location, currentUrl).href
+  } catch {
+    throw new Error(`下载重定向目标无法解析：${location}`)
+  }
+  if (!isApprovedArchiveRedirectUrl(resolved)) {
+    throw new Error(`拒绝下载未经验证的重定向目标：${rejectedArchiveLabel(resolved)}`)
+  }
+  return resolved
 }
 
 export function matchesPinnedArchivePath(url) {
@@ -115,10 +139,21 @@ function tarCommand() {
   return existsSync(systemTar) ? systemTar : 'tar'
 }
 
-async function download(url, destination) {
+async function fetchArchive(url) {
   assertArchiveSource(url)
+  let current = url
+  for (let hop = 0; hop <= maxArchiveRedirects; hop += 1) {
+    const response = await fetch(current, { redirect: 'manual', headers: { 'user-agent': 'GuEarth-FFmpeg-Fetch' } })
+    if (response.status < 300 || response.status >= 400) return response
+    if (hop === maxArchiveRedirects) break
+    current = archiveRedirectTarget(response.headers.get('location'), current)
+  }
+  throw new Error(`下载重定向次数过多：${rejectedArchiveLabel(url)}`)
+}
+
+async function download(url, destination) {
   console.log(`下载内置视频编码器：${url}`)
-  const response = await fetch(url, { headers: { 'user-agent': 'GuEarth-FFmpeg-Fetch' } })
+  const response = await fetchArchive(url)
   if (!response.ok || response.body == null) throw new Error(`HTTP ${response.status}`)
   await pipeline(Readable.fromWeb(response.body), createWriteStream(destination))
 }
