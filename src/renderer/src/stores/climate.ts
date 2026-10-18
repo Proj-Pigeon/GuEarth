@@ -2,8 +2,9 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { summerFactor, winterFactor } from '@renderer/thematic/windField'
 import type { EnsoPhase } from '@renderer/thematic/ensoPhases'
+import type { ThematicLayerId } from '../../../common/thematicLayers'
 
-export type ThematicLayerId = 'wind-particles' | 'pressure-belts' | 'koppen-zones' | 'frontal-cyclone' | 'rain-belt' | 'summer-monsoon' | 'winter-monsoon' | 'ocean-currents' | 'climate-zones' | 'coriolis-demo' | 'plate-tectonics' | 'temperature-zones' | 'typhoon' | 'enso' | 'province-population' | 'hu-line' | 'migration-flows' | 'city-tiers' | 'functional-zones' | 'agri-regions' | 'industrial-bases' | 'industrial-transfers' | 'hsr-network' | 'sea-level-rise'
+export type { ThematicLayerId }
 
 export interface ThematicLayerMeta {
   id: ThematicLayerId

@@ -6,6 +6,7 @@ import { hasLegacyTileMirrorSetting, isTileMirrorMode, mirrorCacheStyleId, mirro
 import type { MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 import { serveTileResponse } from '../common/tileProtocol'
+import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
 
 attachConsoleLogTee('main')
 
@@ -747,9 +748,8 @@ function normalizeSceneSimTime(value: unknown): SceneSimTime | null {
 function normalizeSceneSnapshot(value: unknown): SceneSnapshot {
   if (!isRecord(value)) throw new Error('无效的场景快照')
   const overlays = Array.isArray(value.overlays)
-    ? [...new Set(value.overlays.filter((item): item is string => typeof item === 'string').map((item) => safeId(item)))]
+    ? [...new Set(value.overlays.filter((item): item is string => typeof item === 'string' && THEMATIC_LAYER_ID_SET.has(item)))]
     : []
-  if (overlays.length > 14) throw new Error('无效的专题图层')
   const motionPanel = typeof value.motionPanel === 'string' && MOTION_PANEL_IDS.has(value.motionPanel) ? value.motionPanel : null
   return {
     camera: normalizeSceneCamera(value.camera),
