@@ -134,7 +134,7 @@ function compress(): void {
 .context-legend-tokens{min-width:44px;text-align:right}
 .context-legend-share{min-width:44px;text-align:right}
 .context-card :deep(.ant-btn){height:32px}
-.shimmer-text{background:linear-gradient(90deg,rgba(0,0,0,.25) 25%,rgba(0,0,0,.65) 47%,rgba(255,255,255,.95) 50%,rgba(0,0,0,.65) 53%,rgba(0,0,0,.25) 75%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:context-shimmer 3s linear infinite}
+.shimmer-text{background:linear-gradient(90deg,rgba(0,0,0,.25) 25%,rgba(0,0,0,.45) 47%,rgba(0,0,0,.88) 50%,rgba(0,0,0,.45) 53%,rgba(0,0,0,.25) 75%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:context-shimmer 3s linear infinite}
 @keyframes context-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.shimmer-text{animation:none;background:none;-webkit-background-clip:border-box;background-clip:border-box;color:rgba(0,0,0,.45)}}
 @media (max-width:360px){.context-status{font-size:11px}.context-card{width:calc(100vw - 48px)}}
