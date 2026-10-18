@@ -1343,6 +1343,9 @@ function normalizeOffscreenRecordingScript(value: unknown): OffscreenRecordingSc
       }]
     }) : [],
     terrain: normalizeOffscreenTerrain(value.terrain),
+    seaLevelHeights: Array.isArray(value.seaLevelHeights)
+      ? value.seaLevelHeights.slice(0, 4096).map((height) => typeof height === 'number' && Number.isFinite(height) ? Math.round(height * 100) / 100 : null)
+      : [],
     prewarmQuality: value.prewarmQuality === 'standard' || value.prewarmQuality === 'ultra' ? value.prewarmQuality : 'high',
     centerTarget: value.centerTarget === true,
     width: Math.min(1920, Math.max(320, Math.round(normalizeNumber(value.width, 320, 1920, 1280)))),

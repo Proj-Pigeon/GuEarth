@@ -369,6 +369,7 @@ export interface OffscreenRecordingScript {
   scenes: TeachingScene[]
   annotations: OffscreenRecordingAnnotation[]
   terrain: OffscreenRecordingTerrain
+  seaLevelHeights?: Array<number | null>
   prewarmQuality: OffscreenPrewarmQuality
   centerTarget: boolean
   width: number

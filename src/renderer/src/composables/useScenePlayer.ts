@@ -11,6 +11,7 @@ import { useScenesStore } from '@renderer/stores/scenes'
 import { useFailureStore } from '@renderer/stores/failure'
 import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sanitizeCamera, sceneCameraView } from '@renderer/lib/sceneCamera'
 import { transientMirrorShape } from '@renderer/lib/shapeGraphics'
+import { cacheKeyOf, heightCache, seaLevelGridPoints } from '@renderer/thematic/seaLevelRise'
 import { createVideoRecorder, type RecorderOverlay } from './useVideoRecorder'
 
 export interface RecordingMarker {
@@ -604,10 +605,12 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
         ...step.shapes.map((shape) => ({ sceneId, kind: shape.kind, name: shape.name, positions: shape.positions, ...DEFAULT_DRAW_STYLE }))
       ]
     })
+    const recordsSeaLevel = steps.some((step) => step.overlays.includes('sea-level-rise'))
     const script: OffscreenRecordingScript = {
       title,
       scenes,
       annotations,
+      seaLevelHeights: recordsSeaLevel ? seaLevelGridPoints().map(([longitude, latitude]) => heightCache.get(cacheKeyOf(longitude, latitude)) ?? null) : [],
       terrain: { providerId: globeStore.terrainProviderId, exaggeration: globeStore.terrainExaggeration, lighting: globeStore.terrainLighting },
       prewarmQuality: scenesStore.recording.prewarmQuality,
       centerTarget: true,

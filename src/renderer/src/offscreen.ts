@@ -11,6 +11,8 @@ import { styleFor } from './stores/globe'
 import { useSolarStore } from './stores/solar'
 import { useTransportStore } from './stores/transport'
 import { useThematicLayers } from './composables/useThematicLayers'
+import { ensureSeaLevelSamples } from './composables/seaLevelSampling'
+import { seedSampleHeights } from './thematic/seaLevelRise'
 import { terrainProviderFactory, terrainRegistry } from './terrain/terrainRegistry'
 import WindParticles from './components/WindParticles.vue'
 import FrontalCyclone from './components/FrontalCyclone.vue'
@@ -403,6 +405,21 @@ async function prewarm(script: OffscreenRecordingScript, views: PrewarmView[]): 
   prewarmTimedOut = timedOut
 }
 
+async function prepareSeaLevel(script: OffscreenRecordingScript): Promise<void> {
+  if (!script.scenes.some((scene) => scene.snapshot.overlays.includes('sea-level-rise'))) return
+  const seeded = seedSampleHeights(script.seaLevelHeights ?? [])
+  const outcome = await ensureSeaLevelSamples(viewer)
+  if (outcome === 'terrain-required') {
+    reportNotice('当前地形为平滑球面，淹没模拟无法按真实高程判定，成片淹没范围仅供参考')
+    return
+  }
+  if (outcome === 'failed') {
+    reportNotice(`淹没模拟地形采样失败（已预置 ${seeded} 个高程点），成片可能缺少淹没格网`)
+    return
+  }
+  if (outcome === 'partial') reportNotice(`淹没模拟地形采样不完整（已预置 ${seeded} 个高程点），成片可能缺少部分淹没格网`)
+}
+
 async function prepare(script: OffscreenRecordingScript): Promise<void> {
   document.title = script.title || 'GuEarth Offscreen Recorder'
   viewer.resize()
@@ -416,6 +433,7 @@ async function prepare(script: OffscreenRecordingScript): Promise<void> {
   advancePending = false
   try {
     await applyTerrain(script.terrain)
+    await prepareSeaLevel(script)
     await prewarm(script, views)
   } finally {
     viewer.scene.globe.maximumScreenSpaceError = originalScreenSpaceError

@@ -35,6 +35,7 @@ export function ensureLandMask(): Promise<boolean> {
 
 export async function ensureSeaLevelSamples(viewer: Cesium.Viewer): Promise<SeaSampleOutcome> {
   if (samplePromise) return samplePromise
+  await ensureLandMask()
   if (allPointsCached()) {
     seaSamplingStatus.value = 'ready'
     return 'ready'
@@ -49,7 +50,6 @@ export async function ensureSeaLevelSamples(viewer: Cesium.Viewer): Promise<SeaS
       seaSamplingStatus.value = 'terrain-required'
       return 'terrain-required'
     }
-    await ensureLandMask()
     const points = coastalZones.flatMap((zone) => gridPointsOf(zone))
     const cartographics = points.map(([lon, lat]) => Cesium.Cartographic.fromDegrees(lon, lat))
     try {
