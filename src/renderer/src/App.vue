@@ -29,6 +29,10 @@ import { collectStrings, parsePositions, registerAnnotationTools } from '@render
 import { useThematicLayers } from '@renderer/composables/useThematicLayers'
 import { useTimezoneCompare } from '@renderer/composables/useTimezoneCompare'
 import { useScenePlayer, type RecordingStep } from '@renderer/composables/useScenePlayer'
+import { ensoPhaseOptions, type EnsoPhase } from '@renderer/thematic/ensoPhases'
+import { hidesThematicLayers, visibleThematicLayers } from '@renderer/lib/nightBasemap'
+import { SEA_LEVEL_SCENARIOS } from '@renderer/thematic/seaLevelRise'
+import { HSR_END_YEAR, HSR_START_YEAR } from '@renderer/thematic/hsrLines'
 import { datePartsOf, dayLength, declinationForDate, formatClock, isValidDate, noonAltitudeDeg, sunTimes } from '@renderer/thematic/solarMath'
 import { nearestBoundary, plateBoundaryKindName } from '@renderer/thematic/plateBoundaries'
 import GlobeToolbar from '@renderer/components/GlobeToolbar.vue'
@@ -137,7 +141,7 @@ const showGlobeLoading = computed(() => !isGlobeReady.value)
 const globeLoadingText = computed(() => globeError.value ? '地图尚未显示，请检查网络或重试' : globeLoadTimedOut.value ? '地图加载较慢，请检查网络' : '正在加载地图…')
 const globeLoadingRetryable = computed(() => globeLoadTimedOut.value || Boolean(globeError.value))
 const isLabOpen = ref(false)
-const nightBasemapActive = computed(() => store.selectedLayerId === 'viirs-night')
+const nightBasemapActive = computed(() => hidesThematicLayers(store.selectedLayerId))
 const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || environmentStore.panel !== null || decisionStore.panel !== null || activeTool.value === 'timezone')
 
 function closeAllTeachingPanels(): void {
@@ -418,6 +422,7 @@ aiStore.registerTool({
     const layer = thematicLayerCatalog.find((item) => item.id === args.layerId)
     if (!layer) return { error: `未知图层 ${String(args.layerId)}，可用图层：${thematicLayerCatalog.map((item) => `${item.id}（${item.name}）`).join('、')}` }
     if (typeof args.enabled !== 'boolean') return { error: 'enabled 需为布尔值' }
+    if (args.enabled && nightBasemapActive.value) return { error: '夜光底图下教学图层已隐藏，请先用 set_basemap 切换回其他底图再开启图层' }
     climateStore.setOverlay(layer.id, args.enabled)
     if (args.month !== undefined) {
       const month = Number(args.month)
@@ -754,6 +759,12 @@ function cancelRecordingDirectory(): void {
   recordingDirectoryResolver = null
 }
 
+const optionalFiniteNumber = (value: unknown): number | undefined => {
+  if (value === null || value === undefined || value === '') return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
 function parseRecordingStep(raw: unknown, index: number): RecordingStep | { error: string } {
   if (typeof raw !== 'object' || raw === null) return { error: `第 ${index + 1} 步格式无效` }
   const record = raw as Record<string, unknown>
@@ -803,14 +814,23 @@ function parseRecordingStep(raw: unknown, index: number): RecordingStep | { erro
     : []
   const dwellMs = record.dwellMs === undefined ? 6000 : Number(record.dwellMs)
   const flyDurationMs = record.flyMs === undefined ? 3500 : Number(record.flyMs)
+  const ensoPhase = typeof record.ensoPhase === 'string' && ensoPhaseOptions.some((option) => option.value === record.ensoPhase) ? record.ensoPhase as EnsoPhase : climateStore.ensoPhase
+  const requestedRise = Number(record.seaLevelRise)
+  const seaLevelRise = (SEA_LEVEL_SCENARIOS as readonly number[]).includes(requestedRise) ? requestedRise : climateStore.seaLevelRise
+  const requestedYear = optionalFiniteNumber(record.transportYear)
+  const transportYear = requestedYear === undefined ? transportStore.year : Math.round(Math.min(HSR_END_YEAR, Math.max(HSR_START_YEAR, requestedYear)))
   return {
     name: typeof record.name === 'string' && record.name.trim() ? record.name.trim().slice(0, 80) : `第 ${index + 1} 幕`,
     narration: typeof record.narration === 'string' ? record.narration.trim().slice(0, 500) : '',
     camera: { longitude, latitude, height: clampedHeight, heading, pitch },
     basemapId: store.selectedLayerId,
-    overlays: knownOverlays,
+    styleId: store.providerStyles[store.selectedLayerId] ?? '',
+    overlays: visibleThematicLayers(store.selectedLayerId, knownOverlays),
     month: Math.round(month),
     simTime,
+    ensoPhase,
+    seaLevelRise,
+    transportYear,
     dwellMs: Math.min(60000, Math.max(1000, dwellMs)),
     flyDurationMs: Math.min(15000, Math.max(500, flyDurationMs)),
     markers,
@@ -842,6 +862,9 @@ aiStore.registerTool({
               overlays: { type: 'array', description: '本幕开启的教学图层 id 列表（未列出的图层会被关闭），可选项：' + thematicLayerCatalog.map((layer) => `${layer.id}（${layer.name}）`).join('、'), items: { type: 'string' } },
               month: { type: 'number', description: '可选专题月份 1-12（配合季节性图层对比 1 月/7 月）' },
               simTime: { type: 'object', description: '可选昼夜模拟 { date: "YYYY-MM-DD", hour: 北京时间 0-24 }，如夏至 2026-06-22', properties: { date: { type: 'string' }, hour: { type: 'number' } } },
+              ensoPhase: { type: 'string', description: '可选 ENSO 相位：normal（正常）/ el-nino（厄尔尼诺）/ la-nina（拉尼娜），配合 enso 图层讲解', enum: ['normal', 'el-nino', 'la-nina'] },
+              seaLevelRise: { type: 'number', description: '可选海平面上升情景（米）：0.5 / 1 / 2 / 5，配合 sea-level-rise 图层', enum: [0.5, 1, 2, 5] },
+              transportYear: { type: 'number', description: '可选高铁网络年份 2008-2025，配合 hsr-network 图层演示网络生长过程' },
               markers: { type: 'array', description: '命名标记点数组：本幕讲解到的具体地点务必标注（名称用规范地名），便于观众看清讲解位置', items: { type: 'object', properties: { name: { type: 'string' }, longitude: { type: 'number' }, latitude: { type: 'number' } }, required: ['name', 'longitude', 'latitude'] } },
               shapes: { type: 'array', description: '可选线/多边形数组（如胡焕庸线、区域边界）', items: { type: 'object', properties: { kind: { type: 'string', enum: ['polyline', 'polygon'] }, name: { type: 'string' }, points: { type: 'array', items: { type: 'object', properties: { longitude: { type: 'number' }, latitude: { type: 'number' } }, required: ['longitude', 'latitude'] } } }, required: ['kind', 'points'] } },
               narration: { type: 'string', description: '本幕旁白字幕，1-3 句精炼讲解' },
@@ -873,7 +896,7 @@ aiStore.registerTool({
       title,
       totalSteps: result.totalSteps,
       estimatedSeconds: result.estimatedSeconds,
-      message: `录制已在后台开始，共 ${result.totalSteps} 幕，约 ${result.estimatedSeconds} 秒；完成后自动保存到已选择的文件夹并打开所在位置。期间用户可按 Esc 中止（已录制部分仍会保存）。`
+      message: `录制已在后台开始，共 ${result.totalSteps} 幕，约 ${result.estimatedSeconds} 秒；完成后自动保存到已选择的文件夹并打开所在位置。期间用户可按 Esc 取消录制，取消后不会保留视频文件。`
     }
   }
 })
@@ -893,6 +916,7 @@ aiStore.registerTool({
       currentStep: recording.currentStep,
       totalSteps: recording.totalSteps,
       videoPath: recording.videoPath || undefined,
+      fps: recording.fps ? Math.round(recording.fps * 10) / 10 : undefined,
       error: recording.error || undefined,
       cancelled: recording.cancelled || undefined
     }

@@ -6,11 +6,11 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { captureError, captureWarning } from '@renderer/lib/crashReporter'
 import { logger, stringifyLogValue } from '../../../common/logger'
 import { isMirrorSatelliteProvider, mirrorEligibleProviders, withinMirrorSatelliteDetail } from '../../../common/tileMirror'
-import { withoutTileAvailability } from '../../../common/terrainAvailability'
 import type { PlaceSuggestion, TileMirrorStatus } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
 import { resolveFlightDestination } from './terrainFlight'
+import { terrainProviderFactory, terrainRegistry } from '@renderer/terrain/terrainRegistry'
 
 interface LayerProvider {
   meta: ProviderMeta
@@ -25,12 +25,6 @@ const layerRegistry: Record<string, LayerProvider> = {
   opentopomap: { meta: providerMeta('opentopomap'), createImageryProvider: async (styleId) => createBasemapImageryProvider('opentopomap', styleId) },
   baidu: { meta: providerMeta('baidu'), createImageryProvider: async (styleId) => createBasemapImageryProvider('baidu', styleId) },
   'viirs-night': { meta: providerMeta('viirs-night'), createImageryProvider: async (styleId) => createBasemapImageryProvider('viirs-night', styleId) }
-}
-
-const terrainRegistry: Record<string, () => Promise<Cesium.TerrainProvider>> = {
-  ellipsoid: async () => new Cesium.EllipsoidTerrainProvider(),
-  'arcgis-terrain': async () => withoutTileAvailability(await Cesium.ArcGISTiledElevationTerrainProvider.fromUrl('https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer')),
-  'cesium-world-terrain': () => Cesium.CesiumTerrainProvider.fromUrl(Cesium.IonResource.fromAssetId(1), { requestVertexNormals: true })
 }
 
 const terrainName = (id: string): string => terrainCatalog.find((terrain) => terrain.id === id)?.name ?? id
@@ -362,7 +356,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   }
 
   async function setTerrain(id: string, expectedGeneration: number): Promise<void> {
-    const create = terrainRegistry[id] ?? terrainRegistry.ellipsoid
+    const create = terrainProviderFactory(id)
     terrainRequestSeq += 1
     const requestSeq = terrainRequestSeq
     try {
@@ -505,7 +499,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   }
 
   async function resolveInitialTerrain(id: string): Promise<{ provider: Cesium.TerrainProvider; id: string }> {
-    const create = terrainRegistry[id] ?? terrainRegistry.ellipsoid
+    const create = terrainProviderFactory(id)
     let settled = false
     const timeout = new Promise<{ provider: Cesium.TerrainProvider; id: string }>((resolve) => {
       window.setTimeout(() => {

@@ -191,6 +191,24 @@ export function recordSamples(points: Array<[number, number]>, heights: Array<nu
   sampleVersion.value += 1
 }
 
+export function seaLevelGridPoints(): Array<[number, number]> {
+  return coastalZones.flatMap((zone) => gridPointsOf(zone))
+}
+
+export function seedSampleHeights(heights: Array<number | null>): number {
+  const points = seaLevelGridPoints()
+  const seededPoints: Array<[number, number]> = []
+  const seededHeights: Array<number> = []
+  for (let index = 0; index < points.length && index < heights.length; index += 1) {
+    const height = heights[index]
+    if (typeof height !== 'number' || !Number.isFinite(height)) continue
+    seededPoints.push(points[index])
+    seededHeights.push(height)
+  }
+  if (seededPoints.length) recordSamples(seededPoints, seededHeights)
+  return seededPoints.length
+}
+
 export function zoneOf(lon: number, lat: number): CoastalZone {
   return (
     coastalZones.find((zone) => lon >= zone.west && lon <= zone.east && lat >= zone.south && lat <= zone.north) ??

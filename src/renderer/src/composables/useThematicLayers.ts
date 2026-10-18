@@ -305,12 +305,17 @@ function migrationLabelAt(path: Array<[number, number]>, offset: number): [numbe
   ]
 }
 
-export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void {
+export interface ThematicLayerOptions {
+  autoFocus?: boolean
+}
+
+export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, options?: ThematicLayerOptions): void {
   const store = useClimateStore()
   const solarStore = useSolarStore()
   const transportStore = useTransportStore()
   const failureStore = useFailureStore()
   const globeStore = useGlobeStore()
+  const autoFocus = options?.autoFocus !== false
   const sources = new Map<ThematicLayerId, Cesium.CustomDataSource>()
   const coriolisProgress = ref(0)
   useVisibleAnimation(() => store.overlays['coriolis-demo'] && Boolean(viewer.value), (dt) => {
@@ -1610,7 +1615,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
           }
           current.scene.requestRender()
         })
-        const view = enableViews[layer.id]
+        const view = autoFocus ? enableViews[layer.id] : undefined
         if (view) current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height), duration: 1.2 })
       } else if (!enabled && existing) {
         sources.delete(layer.id)
@@ -1656,6 +1661,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>): void 
   watch([() => store.summerStrength > 0.5, () => store.winterStrength > 0.5], () => { refreshSeasonalCurrents(); requestRender() })
   watch(() => solarStore.utcMs, () => { refreshSubsolarPoint(); requestRender() })
   watch(() => store.seaLevelRise, rebuildSeaLevelRise)
+  watch(() => transportStore.year, requestRender)
   watch(() => globeStore.activeTerrainId, () => {
     if (sources.get('sea-level-rise')) rebuildSeaLevelRise()
   })

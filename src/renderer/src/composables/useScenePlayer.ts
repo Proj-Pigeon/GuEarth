@@ -1,12 +1,18 @@
 import { reactive, watch, type Ref } from 'vue'
 import * as Cesium from 'cesium'
-import type { RecordingSaveResult, SceneCamera, SceneSimTime, SceneSnapshot, TeachingScene } from '../../../preload'
+import type { OffscreenRecordingAnnotation, OffscreenRecordingScript, SceneCamera, SceneSimTime, SceneSnapshot, TeachingScene } from '../../../preload'
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useClimateStore, thematicLayerCatalog } from '@renderer/stores/climate'
 import { useSolarStore, type MotionPanel } from '@renderer/stores/solar'
+import { useTransportStore } from '@renderer/stores/transport'
+import type { EnsoPhase } from '@renderer/thematic/ensoPhases'
 import { useDrawingStore, DEFAULT_DRAW_STYLE, type GeoPosition } from '@renderer/stores/drawing'
-import { useScenesStore, type RecordingPrewarmQuality } from '@renderer/stores/scenes'
-import { createVideoRecorder, type RecorderOverlay } from './useVideoRecorder'
+import { useScenesStore } from '@renderer/stores/scenes'
+import { useFailureStore } from '@renderer/stores/failure'
+import { sanitizeCamera, sceneCameraView } from '@renderer/lib/sceneCamera'
+import { transientMirrorShape } from '@renderer/lib/shapeGraphics'
+import { cacheKeyOf, heightCache, seaLevelGridPoints } from '@renderer/thematic/seaLevelRise'
+import { visibleThematicLayers } from '@renderer/lib/nightBasemap'
 
 export interface RecordingMarker {
   name: string
@@ -25,9 +31,13 @@ export interface RecordingStep {
   narration: string
   camera: SceneCamera
   basemapId: string
+  styleId: string
   overlays: string[]
   month: number
   simTime: SceneSimTime | null
+  ensoPhase: EnsoPhase
+  seaLevelRise: number
+  transportYear: number
   dwellMs: number
   flyDurationMs: number
   markers: RecordingMarker[]
@@ -50,16 +60,12 @@ export interface PlayerState {
 
 const PREWARM_TILE_TIMEOUT_MS = 10_000
 const PLAY_TILE_TIMEOUT_MS = 10_000
-const RECORD_TILE_TIMEOUT_MS = 18_000
-const RECORD_PREWARM_QUALITY_CONFIG: Record<RecordingPrewarmQuality, { screenSpaceError: number; viewTimeoutMs: number; totalTimeoutMs: number }> = {
-  standard: { screenSpaceError: 4, viewTimeoutMs: 4_000, totalTimeoutMs: 24_000 },
-  high: { screenSpaceError: 1, viewTimeoutMs: 6_000, totalTimeoutMs: 30_000 },
-  ultra: { screenSpaceError: 0.5, viewTimeoutMs: 10_000, totalTimeoutMs: 45_000 }
-}
+const RECORD_MIN_FLUENT_FPS = 24
 const MORPH_TIMEOUT_MS = 5_000
 const BASEMAP_SETTLE_MS = 500
 const STATE_SETTLE_MS = 250
 const PREWARM_HOLD_MS = 400
+const RECORDING_MIRROR_RESOLUTION_SCALE = 0.6
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -71,64 +77,8 @@ function normalizedHeadingDegrees(radians: number): number {
   return degrees < 0 ? degrees + 360 : degrees
 }
 
-function sanitizeCamera(camera: SceneCamera): SceneCamera {
-  const clampNumber = (value: number, min: number, max: number, fallback: number): number =>
-    Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback
-  return {
-    longitude: clampNumber(camera.longitude, -180, 180, 105),
-    latitude: clampNumber(camera.latitude, -90, 90, 35),
-    height: clampNumber(camera.height, 1000, 20000000, 8000000),
-    heading: Number.isFinite(camera.heading) ? ((camera.heading % 360) + 360) % 360 : 0,
-    pitch: clampNumber(camera.pitch, -89.9, 89.9, -90)
-  }
-}
-
-function cameraDestination(camera: SceneCamera, centerTarget: boolean): Cesium.Cartesian3 {
-  if (!centerTarget) return Cesium.Cartesian3.fromDegrees(camera.longitude, camera.latitude, camera.height)
-  const downward = Math.max(Cesium.Math.toRadians(5), -Cesium.Math.toRadians(camera.pitch))
-  const horizontal = camera.height / Math.tan(downward)
-  const heading = Cesium.Math.toRadians(camera.heading)
-  const offset = new Cesium.Cartesian3(-horizontal * Math.sin(heading), -horizontal * Math.cos(heading), camera.height)
-  const target = Cesium.Cartesian3.fromDegrees(camera.longitude, camera.latitude, 0)
-  const enu = Cesium.Transforms.eastNorthUpToFixedFrame(target)
-  return Cesium.Matrix4.multiplyByPoint(enu, offset, new Cesium.Cartesian3())
-}
-
-function cameraOrientation(camera: SceneCamera): { heading: number; pitch: number; roll: number } {
-  return {
-    heading: Cesium.Math.toRadians(camera.heading),
-    pitch: Cesium.Math.toRadians(camera.pitch),
-    roll: 0
-  }
-}
-
-export function interpolateCamera(start: SceneCamera, end: SceneCamera, amount: number): SceneCamera {
-  const normalizedAmount = Math.min(1, Math.max(0, amount))
-  const lerp = (a: number, b: number): number => a + (b - a) * normalizedAmount
-  const lerpAngle = (a: number, b: number): number => a + (((b - a + 540) % 360) - 180) * normalizedAmount
-  return sanitizeCamera({
-    longitude: ((lerpAngle(start.longitude, end.longitude) + 540) % 360) - 180,
-    latitude: lerp(start.latitude, end.latitude),
-    height: Math.exp(lerp(Math.log(Math.max(1000, start.height)), Math.log(Math.max(1000, end.height)))),
-    heading: lerpAngle(start.heading, end.heading),
-    pitch: lerp(start.pitch, end.pitch)
-  })
-}
-
-interface RecordingPrewarmView {
-  camera: SceneCamera
-  sceneIndex: number
-}
-
-function recordingPrewarmViews(scenes: TeachingScene[]): RecordingPrewarmView[] {
-  const views: RecordingPrewarmView[] = []
-  for (let index = 0; index < scenes.length; index += 1) {
-    const camera = sanitizeCamera(scenes[index].snapshot.camera)
-    if (index > 0) views.push({ camera: interpolateCamera(sanitizeCamera(scenes[index - 1].snapshot.camera), camera, 0.5), sceneIndex: index })
-    views.push({ camera, sceneIndex: index })
-  }
-  return views
-}
+export { interpolateCamera, RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews } from '@renderer/lib/sceneCamera'
+export type { PrewarmView as RecordingPrewarmView } from '@renderer/lib/sceneCamera'
 
 let runId = 0
 let activeRun: (() => void) | null = null
@@ -139,7 +89,8 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   const solarStore = useSolarStore()
   const drawingStore = useDrawingStore()
   const scenesStore = useScenesStore()
-  const recorder = createVideoRecorder()
+  const failureStore = useFailureStore()
+  const transportStore = useTransportStore()
 
   const playerState = reactive<PlayerState>({
     active: false,
@@ -156,9 +107,17 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   })
 
   let aborted = false
-  let recordingQualityRevision = 0
+  let offscreenRecordingActive = false
   let advanceResolver: (() => void) | null = null
   let advanceTimer: ReturnType<typeof setTimeout> | undefined
+  let mirrorShapeIds: string[] = []
+
+  watch(() => scenesStore.recording.skipPrewarm, (value) => {
+    if (value && offscreenRecordingActive) window.guEarth.recordings.offscreenSkipPrewarm()
+  })
+  watch(() => scenesStore.recording.prewarmQuality, (quality) => {
+    if (offscreenRecordingActive) window.guEarth.recordings.offscreenPrewarmQuality(quality)
+  })
 
   function clearAdvance(): void {
     if (advanceTimer !== undefined) {
@@ -168,6 +127,10 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   }
 
   function next(): void {
+    if (offscreenRecordingActive) {
+      window.guEarth.recordings.offscreenNext()
+      return
+    }
     advanceResolver?.()
   }
 
@@ -202,10 +165,14 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
         pitch: Cesium.Math.toDegrees(current.camera.pitch)
       }),
       basemapId: globeStore.selectedLayerId,
-      overlays: thematicLayerCatalog.filter((layer) => climateStore.overlays[layer.id]).map((layer) => layer.id),
+      styleId: globeStore.providerStyles[globeStore.selectedLayerId] ?? '',
+      overlays: visibleThematicLayers(globeStore.selectedLayerId, thematicLayerCatalog.filter((layer) => climateStore.overlays[layer.id]).map((layer) => layer.id)),
       month: climateStore.month,
       simTime: solarStore.active ? { date: solarStore.date, hour: solarStore.hour } : null,
-      motionPanel: solarStore.motionPanel
+      motionPanel: solarStore.motionPanel,
+      ensoPhase: climateStore.ensoPhase,
+      seaLevelRise: climateStore.seaLevelRise,
+      transportYear: transportStore.year
     }
   }
 
@@ -221,9 +188,11 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   }
 
   function applySnapshot(snapshot: SceneSnapshot): void {
+    if (snapshot.styleId && snapshot.basemapId) globeStore.setProviderStyle(snapshot.basemapId, snapshot.styleId)
     if (snapshot.basemapId && snapshot.basemapId !== globeStore.selectedLayerId) switchBasemap(snapshot.basemapId)
+    const overlays = visibleThematicLayers(snapshot.basemapId, snapshot.overlays)
     for (const layer of thematicLayerCatalog) {
-      const enabled = snapshot.overlays.includes(layer.id)
+      const enabled = overlays.includes(layer.id)
       if (climateStore.overlays[layer.id] !== enabled) climateStore.setOverlay(layer.id, enabled)
     }
     if (snapshot.month !== climateStore.month) {
@@ -241,16 +210,19 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     }
     const motionPanel = (snapshot.motionPanel ?? null) as MotionPanel | null
     if (solarStore.motionPanel !== motionPanel) solarStore.setMotionPanel(motionPanel)
+    if (climateStore.ensoPhase !== snapshot.ensoPhase) climateStore.setEnsoPhase(snapshot.ensoPhase)
+    if (climateStore.seaLevelRise !== snapshot.seaLevelRise) climateStore.setSeaLevelRise(snapshot.seaLevelRise)
+    if (transportStore.year !== snapshot.transportYear) transportStore.setYear(snapshot.transportYear)
   }
 
   function flyCamera(rawCamera: SceneCamera, durationSeconds: number, centerTarget = false): Promise<void> {
     const current = viewer.value
     if (!current || current.isDestroyed()) return Promise.resolve()
-    const camera = sanitizeCamera(rawCamera)
+    const view = sceneCameraView(rawCamera, centerTarget)
     return new Promise((resolve) => {
       current.camera.flyTo({
-        destination: cameraDestination(camera, centerTarget),
-        orientation: cameraOrientation(camera),
+        destination: view.destination,
+        orientation: view.orientation,
         duration: Math.max(0.1, durationSeconds),
         complete: () => resolve(),
         cancel: () => resolve()
@@ -261,10 +233,10 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   function setCameraView(rawCamera: SceneCamera, centerTarget = false): void {
     const current = viewer.value
     if (!current || current.isDestroyed() || current.scene.mode !== Cesium.SceneMode.SCENE3D) return
-    const camera = sanitizeCamera(rawCamera)
+    const view = sceneCameraView(rawCamera, centerTarget)
     current.camera.setView({
-      destination: cameraDestination(camera, centerTarget),
-      orientation: cameraOrientation(camera)
+      destination: view.destination,
+      orientation: view.orientation
     })
   }
 
@@ -272,30 +244,6 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     const current = viewer.value
     if (!current || current.isDestroyed()) return
     current.scene.requestRender()
-  }
-
-  function recordingQualityConfig(): { screenSpaceError: number; viewTimeoutMs: number; totalTimeoutMs: number } {
-    return RECORD_PREWARM_QUALITY_CONFIG[scenesStore.recording.prewarmQuality] ?? RECORD_PREWARM_QUALITY_CONFIG.high
-  }
-
-  function withRecordingDetailBias<T>(enabled: boolean, task: () => Promise<T>): Promise<T> {
-    const current = viewer.value
-    if (!enabled || !current || current.isDestroyed()) return task()
-    const globe = current.scene.globe
-    const originalMaximumScreenSpaceError = globe.maximumScreenSpaceError
-    const stopWatching = watch(() => scenesStore.recording.prewarmQuality, () => {
-      if (current.isDestroyed()) return
-      globe.maximumScreenSpaceError = recordingQualityConfig().screenSpaceError
-      recordingQualityRevision += 1
-      current.scene.requestRender()
-    }, { immediate: true, flush: 'sync' })
-    return task().finally(() => {
-      stopWatching()
-      if (!current.isDestroyed()) {
-        globe.maximumScreenSpaceError = originalMaximumScreenSpaceError
-        current.scene.requestRender()
-      }
-    })
   }
 
   function visibleSurfaceReady(): boolean {
@@ -309,15 +257,10 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     if (!current || current.isDestroyed()) return false
     const start = Date.now()
     let stableSince = 0
-    let qualityRevision = recordingQualityRevision
     while (typeof timeoutMs === 'function' ? timeoutMs() > 0 : Date.now() - start < timeoutMs) {
       if (isCancelled?.()) return false
       requestSceneRender()
       await delay(120)
-      if (qualityRevision !== recordingQualityRevision) {
-        qualityRevision = recordingQualityRevision
-        stableSince = 0
-      }
       if (visibleSurfaceReady()) {
         if (!stableSince) stableSince = Date.now()
         if (Date.now() - stableSince >= 500) return true
@@ -345,72 +288,89 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     })
   }
 
-  async function prewarm(scenes: TeachingScene[], id: number, centerTarget: boolean, recording: boolean): Promise<void> {
+  async function prewarm(scenes: TeachingScene[], id: number, centerTarget: boolean): Promise<void> {
     playerState.prewarming = true
     try {
-      await withRecordingDetailBias(recording, async () => {
-        const views = recording ? recordingPrewarmViews(scenes) : scenes.map((scene, sceneIndex) => ({ camera: sanitizeCamera(scene.snapshot.camera), sceneIndex }))
-        const totalStartedAt = Date.now()
-        playerState.prewarmTotal = views.length
-        scenesStore.setRecording({ prewarmStep: 0, prewarmTotal: recording ? views.length : 0, prewarmMessage: recording ? '正在预加载高清录制画面…' : '', prewarmTimedOut: false, skipPrewarm: false })
-        for (let index = 0; index < views.length; index += 1) {
-          if (aborted || runId !== id || scenesStore.recording.skipPrewarm) break
-          const quality = recording ? recordingQualityConfig() : null
-          const timedOut = recording && Date.now() - totalStartedAt >= (quality?.totalTimeoutMs ?? 24_000)
-          if (timedOut) {
-            scenesStore.setRecording({ prewarmTimedOut: true, prewarmMessage: '高清预加载等待超时，正在继续录制准备…' })
-            break
-          }
-          playerState.prewarmIndex = index + 1
-          const view = views[index]
-          const snapshot = scenes[view.sceneIndex].snapshot
-          const previousBasemapId = globeStore.selectedLayerId
-          applySnapshot(snapshot)
-          await delay(snapshot.basemapId && snapshot.basemapId !== previousBasemapId ? BASEMAP_SETTLE_MS : STATE_SETTLE_MS)
-          setCameraView(view.camera, centerTarget)
-          requestSceneRender()
-          if (recording) scenesStore.setRecording({ prewarmStep: index + 1, prewarmMessage: `正在预加载高清录制画面 ${index + 1}/${views.length}` })
-          const viewStartedAt = Date.now()
-          const timeout = (): number => {
-            if (!recording) return PREWARM_TILE_TIMEOUT_MS
-            const selected = recordingQualityConfig()
-            return Math.min(selected.viewTimeoutMs, Math.max(0, selected.totalTimeoutMs - (viewStartedAt - totalStartedAt)))
-          }
-          let loaded = false
-          let qualityRevision: number
-          do {
-            qualityRevision = recordingQualityRevision
-            loaded = await waitTilesLoaded(() => Math.max(0, timeout() - (Date.now() - viewStartedAt)), () => aborted || runId !== id || scenesStore.recording.skipPrewarm)
-            if (aborted || runId !== id || scenesStore.recording.skipPrewarm) break
-            await delay(PREWARM_HOLD_MS)
-          } while (recording && qualityRevision !== recordingQualityRevision && !aborted && runId === id && !scenesStore.recording.skipPrewarm && Date.now() - viewStartedAt < timeout())
-          if (recording && !loaded && !aborted && runId === id && !scenesStore.recording.skipPrewarm) scenesStore.setRecording({ prewarmTimedOut: true, prewarmMessage: '网络较慢，部分高清地图细节可能在录制中继续加载…' })
-        }
-      })
+      const views = scenes.map((scene, sceneIndex) => ({ camera: sanitizeCamera(scene.snapshot.camera), sceneIndex }))
+      playerState.prewarmTotal = views.length
+      for (let index = 0; index < views.length; index += 1) {
+        if (aborted || runId !== id) break
+        playerState.prewarmIndex = index + 1
+        const view = views[index]
+        const snapshot = scenes[view.sceneIndex].snapshot
+        const previousBasemapId = globeStore.selectedLayerId
+        applySnapshot(snapshot)
+        await delay(snapshot.basemapId && snapshot.basemapId !== previousBasemapId ? BASEMAP_SETTLE_MS : STATE_SETTLE_MS)
+        setCameraView(view.camera, centerTarget)
+        requestSceneRender()
+        await waitTilesLoaded(PREWARM_TILE_TIMEOUT_MS, () => aborted || runId !== id)
+        await delay(PREWARM_HOLD_MS)
+      }
     } finally {
       playerState.prewarming = false
     }
   }
 
-  function recorderOverlay(): RecorderOverlay {
-    return { title: playerState.title, narration: playerState.narration }
+  function recordingErrorMessage(error: unknown): string {
+    const raw = error instanceof Error ? error.message : '离屏视频保存失败'
+    return raw.replace(/^Error invoking remote method '[^']*':\s*/, '').replace(/^Error:\s*/, '')
   }
 
-  async function saveRecording(cancelled: boolean): Promise<void> {
-    scenesStore.setRecording({ state: 'saving', cancelled })
+  function clearMirrorShapes(): void {
+    for (const shapeId of mirrorShapeIds) drawingStore.removeShape(shapeId)
+    mirrorShapeIds = []
+  }
+
+  function mirrorScene(scene: TeachingScene, annotations: OffscreenRecordingAnnotation[], index: number, centerTarget: boolean): void {
+    const current = viewer.value
+    if (!current || current.isDestroyed()) return
+    applySnapshot(scene.snapshot)
+    clearMirrorShapes()
+    for (const annotation of annotations.filter((entry) => entry.sceneId === scene.id)) {
+      const shapeId = crypto.randomUUID()
+      drawingStore.addTransientShape(transientMirrorShape({ ...annotation, annotation: annotation.name, id: shapeId, createdAt: Date.now() }))
+      mirrorShapeIds.push(shapeId)
+    }
+    if (index === 0) {
+      setCameraView(scene.snapshot.camera, centerTarget)
+    } else {
+      current.camera.cancelFlight()
+      void flyCamera(scene.snapshot.camera, scene.flyDurationMs / 1000, centerTarget)
+    }
+    requestSceneRender()
+  }
+
+  function reportRecordingFailure(detail: string): void {
+    scenesStore.setRecording({ state: 'error', error: detail })
+    failureStore.reportFailure({
+      scope: 'recording',
+      message: `视频录制失败：${detail}`,
+      detail: '点击重试会按同一份剧本重新录制',
+      retryable: true
+    })
+  }
+
+  async function saveOffscreenRecording(script: OffscreenRecordingScript): Promise<void> {
     try {
-      const result: RecordingSaveResult | null = await recorder.stop()
-      if (!result) {
-        scenesStore.setRecording(cancelled ? { state: 'idle', cancelled: true } : { state: 'error', error: '未能生成视频数据' })
+      const result = await window.guEarth.recordings.offscreenEncode(script)
+      if (result.cancelled) {
+        scenesStore.setRecording({ state: 'idle', cancelled: true, error: '' })
         return
       }
       scenesStore.applyRecordingResult(result)
+      failureStore.clearFailure('recording')
+      if (result.fps && result.fps < RECORD_MIN_FLUENT_FPS) failureStore.reportDegrade(`录制画面帧率偏低（约 ${result.fps.toFixed(1)} FPS），成片可能不够流畅`)
     } catch (error) {
-      scenesStore.setRecording({ state: 'error', error: error instanceof Error ? error.message : '视频保存失败' })
+      const detail = recordingErrorMessage(error)
+      if (detail.includes('录制已取消')) {
+        scenesStore.setRecording({ state: 'idle', cancelled: true, error: '' })
+        return
+      }
+      reportRecordingFailure(detail)
     }
   }
 
-  async function play(options: { scenes: TeachingScene[]; mode: 'manual' | 'auto'; title?: string; recording?: { tempShapeIds: string[] }; centerTarget?: boolean }): Promise<void> {
+  async function play(options: { scenes: TeachingScene[]; mode: 'manual' | 'auto'; title?: string; centerTarget?: boolean }): Promise<void> {
     const current = viewer.value
     if (!current || current.isDestroyed() || !options.scenes.length) return
     if (playerState.active) return
@@ -425,7 +385,6 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     playerState.currentIndex = -1
     playerState.sceneName = ''
     playerState.narration = ''
-    playerState.recording = Boolean(options.recording)
     scenesStore.setPresenting(true)
     const abort = (): void => {
       aborted = true
@@ -435,28 +394,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     try {
       await ensureScene3D()
       if (aborted || runId !== id) return
-      if (options.recording) scenesStore.setRecording({ state: 'preparing', currentStep: 0, totalSteps: options.scenes.length, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '正在预加载录制画面…', prewarmTimedOut: false, skipPrewarm: false, videoPath: '', error: '', cancelled: false })
-      await prewarm(options.scenes, id, centerTarget, Boolean(options.recording))
-      if (options.recording && !aborted && runId === id) {
-        const canvas = viewer.value?.scene.canvas
-        if (!canvas) {
-          scenesStore.setRecording({ state: 'error', error: '当前环境不支持视频录制' })
-          playerState.recording = false
-        } else {
-          try {
-            if (!await recorder.start(canvas, recorderOverlay)) {
-              scenesStore.setRecording({ state: 'error', error: '当前环境不支持视频录制' })
-              playerState.recording = false
-            } else {
-              recorder.pause()
-              scenesStore.setRecording({ state: 'recording' })
-            }
-          } catch (error) {
-            scenesStore.setRecording({ state: 'error', error: error instanceof Error ? error.message : '视频录制初始化失败' })
-            playerState.recording = false
-          }
-        }
-      }
+      await prewarm(options.scenes, id, centerTarget)
       for (let index = 0; index < options.scenes.length; index += 1) {
         if (aborted || runId !== id) break
         const scene = options.scenes[index]
@@ -464,45 +402,20 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
         playerState.sceneName = scene.name
         applySnapshot(scene.snapshot)
         await delay(STATE_SETTLE_MS)
-        if (playerState.recording) {
-          if (index > 0) {
-            recorder.resume()
-            await flyCamera(scene.snapshot.camera, scene.flyDurationMs / 1000, centerTarget)
-          } else {
-            setCameraView(scene.snapshot.camera, centerTarget)
-          }
-          await waitTilesLoaded(RECORD_TILE_TIMEOUT_MS, () => aborted || runId !== id)
-        } else {
-          await flyCamera(scene.snapshot.camera, scene.flyDurationMs / 1000, centerTarget)
-          if (aborted || runId !== id) break
-          await waitTilesLoaded(PLAY_TILE_TIMEOUT_MS, () => aborted || runId !== id)
-        }
+        await flyCamera(scene.snapshot.camera, scene.flyDurationMs / 1000, centerTarget)
+        if (aborted || runId !== id) break
+        await waitTilesLoaded(PLAY_TILE_TIMEOUT_MS, () => aborted || runId !== id)
         if (aborted || runId !== id) break
         playerState.narration = scene.narration
-        if (playerState.recording) {
-          scenesStore.setRecording({ currentStep: index + 1 })
-          recorder.resume()
-        }
         await waitAdvance(options.mode === 'auto' ? scene.dwellMs : null)
-        if (playerState.recording) recorder.pause()
         playerState.narration = ''
-      }
-      if (playerState.recording && recorder.isStarted()) {
-        await saveRecording(aborted)
-      } else if (options.recording) {
-        const state = scenesStore.recording.state
-        if (state === 'preparing' || state === 'recording') scenesStore.setRecording({ state: 'idle' })
       }
     } finally {
       if (activeRun === abort) {
         activeRun = null
         scenesStore.setPresenting(false)
       }
-      if (options.recording?.tempShapeIds.length) {
-        for (const shapeId of options.recording.tempShapeIds) drawingStore.removeShape(shapeId)
-      }
       playerState.active = false
-      playerState.recording = false
     }
   }
 
@@ -513,7 +426,15 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       stop()
       return { error: '正在结束上一次演示或录制，请稍候片刻后重试' }
     }
-    if (typeof MediaRecorder === 'undefined') return { error: '当前环境不支持视频录制' }
+    failureStore.clearFailure('recording')
+    failureStore.clearFailure('recording-quality')
+    offscreenRecordingActive = true
+    const previousMirrorResolutionScale = current.resolutionScale
+    current.resolutionScale = RECORDING_MIRROR_RESOLUTION_SCALE
+    failureStore.registerRetry('recording', async () => {
+      const retried = await recordVideo(title, steps)
+      if ('error' in retried) reportRecordingFailure(retried.error)
+    })
     const scenes: TeachingScene[] = steps.map((step) => ({
       id: crypto.randomUUID(),
       name: step.name,
@@ -523,28 +444,100 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       snapshot: {
         camera: step.camera,
         basemapId: step.basemapId,
+        styleId: step.styleId,
         overlays: step.overlays,
         month: step.month,
         simTime: step.simTime,
-        motionPanel: null
+        motionPanel: null,
+        ensoPhase: step.ensoPhase,
+        seaLevelRise: step.seaLevelRise,
+        transportYear: step.transportYear
       },
       createdAt: Date.now()
     }))
-    const tempShapeIds: string[] = []
-    for (const step of steps) {
-      for (const marker of step.markers) {
-        const id = crypto.randomUUID()
-        drawingStore.addTransientShape({ ...DEFAULT_DRAW_STYLE, id, kind: 'point', positions: [{ longitude: marker.longitude, latitude: marker.latitude, height: 0 }], annotation: marker.name, createdAt: Date.now() })
-        tempShapeIds.push(id)
-      }
-      for (const shape of step.shapes) {
-        const id = crypto.randomUUID()
-        drawingStore.addTransientShape({ ...DEFAULT_DRAW_STYLE, id, kind: shape.kind, positions: shape.positions, annotation: shape.name, createdAt: Date.now() })
-        tempShapeIds.push(id)
-      }
+    const estimatedSeconds = Math.round(scenes.reduce((total, scene, index) => total + (index > 0 ? scene.flyDurationMs / 1000 : 0) + scene.dwellMs / 1000, 0)) + 3
+    const annotations = steps.flatMap((step, index) => {
+      const sceneId = scenes[index].id
+      return [
+        ...step.markers.map((marker) => ({ sceneId, kind: 'point' as const, name: marker.name, positions: [{ longitude: marker.longitude, latitude: marker.latitude, height: 0 }], ...DEFAULT_DRAW_STYLE })),
+        ...step.shapes.map((shape) => ({ sceneId, kind: shape.kind, name: shape.name, positions: shape.positions, ...DEFAULT_DRAW_STYLE }))
+      ]
+    })
+    const recordsSeaLevel = steps.some((step) => step.overlays.includes('sea-level-rise'))
+    const script: OffscreenRecordingScript = {
+      title,
+      scenes,
+      annotations,
+      seaLevelHeights: recordsSeaLevel ? seaLevelGridPoints().map(([longitude, latitude]) => heightCache.get(cacheKeyOf(longitude, latitude)) ?? null) : [],
+      terrain: { providerId: globeStore.terrainProviderId, exaggeration: globeStore.terrainExaggeration, lighting: globeStore.terrainLighting },
+      prewarmQuality: scenesStore.recording.prewarmQuality,
+      centerTarget: true,
+      width: 1920,
+      height: 1080,
+      fps: 30
     }
-    const estimatedSeconds = Math.round(scenes.reduce((total, scene) => total + scene.flyDurationMs / 1000 + scene.dwellMs / 1000, 0)) + 3
-    void play({ scenes, mode: 'auto', title, recording: { tempShapeIds }, centerTarget: true })
+    playerState.active = true
+    playerState.mode = 'auto'
+    playerState.prewarming = true
+    playerState.prewarmIndex = 0
+    playerState.prewarmTotal = 0
+    playerState.title = title
+    playerState.total = scenes.length
+    playerState.currentIndex = 0
+    playerState.sceneName = scenes[0]?.name ?? ''
+    playerState.narration = ''
+    playerState.recording = true
+    scenesStore.setPresenting(true)
+    scenesStore.setRecording({ state: 'preparing', title, currentStep: 0, totalSteps: scenes.length, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '正在启动离屏录制渲染…', prewarmTimedOut: false, skipPrewarm: false, videoPath: '', error: '', cancelled: false })
+    const cancel = (): void => {
+      void window.guEarth.recordings.offscreenCancel()
+    }
+    activeRun = cancel
+    const unsubscribeProgress = window.guEarth.recordings.onOffscreenProgress((progress) => {
+      if (activeRun !== cancel) return
+      if (progress.phase === 'preparing') {
+        playerState.prewarming = true
+        scenesStore.setRecording({
+          state: 'preparing',
+          prewarmStep: progress.sceneIndex,
+          prewarmTotal: progress.totalScenes,
+          prewarmTimedOut: progress.timedOut === true,
+          prewarmMessage: progress.timedOut === true ? '网络较慢，部分高清地图细节可能在录制中继续加载…' : `正在预加载高清录制画面 ${progress.sceneIndex}/${progress.totalScenes}`
+        })
+        return
+      }
+      playerState.prewarming = false
+      playerState.currentIndex = progress.sceneIndex
+      playerState.sceneName = scenes[progress.sceneIndex]?.name ?? ''
+      playerState.narration = scenes[progress.sceneIndex]?.narration ?? ''
+      const mirrored = scenes[progress.sceneIndex]
+      if (mirrored) mirrorScene(mirrored, script.annotations, progress.sceneIndex, script.centerTarget)
+      scenesStore.setRecording({ state: 'recording', currentStep: progress.sceneIndex + 1, totalSteps: progress.totalScenes })
+    })
+    const unsubscribeNotice = window.guEarth.recordings.onOffscreenNotice((notice) => {
+      if (activeRun !== cancel) return
+      failureStore.reportFailure({
+        scope: 'recording-quality',
+        message: notice,
+        detail: '本次录制会继续，成片对应要素可能缺失',
+        retryable: false
+      })
+    })
+    void saveOffscreenRecording(script).finally(() => {
+      if (!current.isDestroyed()) current.resolutionScale = previousMirrorResolutionScale
+      unsubscribeProgress()
+      unsubscribeNotice()
+      clearMirrorShapes()
+      scenesStore.setPresenting(false)
+      if (activeRun === cancel) activeRun = null
+      offscreenRecordingActive = false
+      playerState.active = false
+      playerState.recording = false
+      playerState.prewarming = false
+      playerState.currentIndex = -1
+      playerState.sceneName = ''
+      playerState.narration = ''
+    })
     return { status: 'started', totalSteps: scenes.length, estimatedSeconds }
   }
 

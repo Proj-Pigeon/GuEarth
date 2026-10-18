@@ -1,11 +1,14 @@
 import * as Sentry from '@sentry/electron/main'
-import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, session } from 'electron'
+import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, screen, session } from 'electron'
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
 import { hasLegacyTileMirrorSetting, isTileMirrorMode, mirrorCacheStyleId, mirrorEligibleProviders, normalizeTileMirrorMode, originProbeReachable, TileMirrorRouter } from '../common/tileMirror'
 import type { MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 import { serveTileResponse } from '../common/tileProtocol'
+import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
+import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
+import { ENSO_PHASE_SET, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS, type EnsoPhase } from '../common/thematicState'
 
 attachConsoleLogTee('main')
 
@@ -16,16 +19,19 @@ Sentry.init({
     return event
   }
 })
-import { execFileSync } from 'child_process'
+import { execFileSync, spawn } from 'child_process'
+import { rmSync } from 'fs'
 import { dirname, join } from 'path'
 import { flushJsonWrites, readJson, serialQueue, writeAtomic, writeJson } from './jsonStore'
 import { listTileFiles, pruneTileFiles } from './tileCacheFiles'
 import { storageChildPath } from './storagePath'
-import { access, constants, mkdir, open, readFile, rename as renameFile, stat, rm, unlink } from 'fs/promises'
-import type { FileHandle } from 'fs/promises'
+import { access, constants, mkdtemp, mkdir, readFile, readdir, rename as renameFile, stat, rm, writeFile } from 'fs/promises'
 import { createHash, randomUUID } from 'crypto'
 import icon from '../../resources/icon.png?asset'
-import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey, TileMirrorStatus } from '../preload'
+import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, OffscreenRecordingProbeResult, OffscreenRecordingScript, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey, TileMirrorStatus } from '../preload'
+import { assertOffscreenRecordingSupported, offscreenVideoEncoderArgs, resolveFfmpegBinary } from './ffmpeg'
+import { resolveOffscreenEntry } from './offscreenPaths'
+import { offscreenCaptureSize, offscreenConcatPlaylist, offscreenFrameDurations, offscreenFrameRate, offscreenScriptDurationMs } from './offscreenTiming'
 import { assertEncryptionAvailable, assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
 import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
 import { tileWgs84ShiftPixels, warpTileToWgs84 } from './tileWarp'
@@ -79,12 +85,27 @@ const TILE_TTL_MS = 86_400_000
 
 const TILE_CACHE_MAX_BYTES = 512 * 1024 * 1024
 const TILE_CACHE_PRUNE_INTERVAL_MS = 10 * 60 * 1000
+const OFFSCREEN_TEMP_PREFIX = '.guearth-offscreen-'
+const OFFSCREEN_OWNER_FILE = '.owner'
+const OFFSCREEN_SWEEP_GRACE_MS = 900_000
+const OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS = 90_000
+const OFFSCREEN_PREPARE_TIMEOUT_MS = 180_000
+const OFFSCREEN_MIN_FLUENT_FPS = 24
+const OFFSCREEN_MAX_PENDING_FRAMES = 24
 
 let settingsPath = ''
 let tileCachePath = ''
 let annotationsPath = ''
 let scenesPath = ''
 let tileCacheNamespaceStale = false
+let mainWindow: BrowserWindow | null = null
+let offscreenRecordingWindow: BrowserWindow | null = null
+let offscreenRecordRequester: Electron.WebContents | null = null
+let offscreenPrewarmWarned = false
+let cancelOffscreenRecording: (() => void) | null = null
+let teardownOffscreenRecording: (() => void) | null = null
+let offscreenPaintStartedAt = 0
+let offscreenPaintFrames = 0
 let settings: PersistedSettings = { ...defaultSettings, providerCredentials: {} }
 let annotations: AnnotationDocument = { shapes: [], entries: [] }
 let scenes: SceneDocument = { scenes: [] }
@@ -726,20 +747,38 @@ function normalizeSceneSimTime(value: unknown): SceneSimTime | null {
   return { date: value.date, hour: normalizeNumber(value.hour, 0, 24, 12) }
 }
 
+function normalizeSeaLevelRise(value: unknown): number {
+  const rise = Number(value)
+  return (SEA_LEVEL_SCENARIOS as readonly number[]).includes(rise) ? rise : 1
+}
+
+function normalizeEnsoPhase(value: unknown): EnsoPhase {
+  return typeof value === 'string' && ENSO_PHASE_SET.has(value) ? (value as EnsoPhase) : 'normal'
+}
+
+const STYLE_ID_PATTERN = /^[a-z0-9-]{1,32}$/
+
+function normalizeStyleId(value: unknown): string | undefined {
+  return typeof value === 'string' && STYLE_ID_PATTERN.test(value) ? value : undefined
+}
+
 function normalizeSceneSnapshot(value: unknown): SceneSnapshot {
   if (!isRecord(value)) throw new Error('无效的场景快照')
   const overlays = Array.isArray(value.overlays)
-    ? [...new Set(value.overlays.filter((item): item is string => typeof item === 'string').map((item) => safeId(item)))]
+    ? [...new Set(value.overlays.filter((item): item is string => typeof item === 'string' && THEMATIC_LAYER_ID_SET.has(item)))]
     : []
-  if (overlays.length > 14) throw new Error('无效的专题图层')
   const motionPanel = typeof value.motionPanel === 'string' && MOTION_PANEL_IDS.has(value.motionPanel) ? value.motionPanel : null
   return {
     camera: normalizeSceneCamera(value.camera),
     basemapId: safeId(value.basemapId ?? 'osm'),
+    styleId: normalizeStyleId(value.styleId),
     overlays,
     month: Math.round(normalizeNumber(value.month, 1, 12, 7)),
     simTime: normalizeSceneSimTime(value.simTime),
-    motionPanel
+    motionPanel,
+    ensoPhase: normalizeEnsoPhase(value.ensoPhase),
+    seaLevelRise: normalizeSeaLevelRise(value.seaLevelRise),
+    transportYear: Math.round(normalizeNumber(value.transportYear, HSR_START_YEAR, HSR_END_YEAR, HSR_END_YEAR))
   }
 }
 
@@ -783,43 +822,8 @@ function saveScenes(): Promise<void> {
   return enqueueScenes(() => writeJson(scenesPath, snapshot))
 }
 
-const RECORDING_EXTENSIONS: Record<string, string> = {
-  'video/mp4': 'mp4',
-  'video/webm': 'webm'
-}
-
-interface RecordingWriter {
-  senderId: number
-  path: string
-  temporaryPath: string
-  handle: FileHandle
-  bytes: number
-  queue: Promise<void>
-  state: 'open' | 'finishing'
-}
-
-const recordingWriters = new Map<string, RecordingWriter>()
-
-function recordingExtension(mimeType: unknown): string {
-  if (typeof mimeType !== 'string') throw new Error('无效的视频格式')
-  const extension = RECORDING_EXTENSIONS[mimeType.split(';')[0].trim().toLowerCase()]
-  if (!extension) throw new Error('不支持的视频格式')
-  return extension
-}
-
-function getRecordingWriter(recordingId: unknown, senderId: number): RecordingWriter {
-  if (typeof recordingId !== 'string') throw new Error('无效的录制会话')
-  const writer = recordingWriters.get(recordingId)
-  if (!writer || writer.senderId !== senderId || writer.state !== 'open') throw new Error('录制会话已失效')
-  return writer
-}
-
-async function discardRecordingWriter(recordingId: string, writer: RecordingWriter): Promise<void> {
-  writer.state = 'finishing'
-  recordingWriters.delete(recordingId)
-  await writer.queue.catch(() => undefined)
-  await writer.handle.close().catch(() => undefined)
-  await unlink(writer.temporaryPath).catch(() => undefined)
+function ffmpegPath(): string {
+  return resolveFfmpegBinary(app.getAppPath(), process.resourcesPath, app.isPackaged)
 }
 
 function registerIpcHandlers(): void {
@@ -1029,67 +1033,57 @@ function registerIpcHandlers(): void {
     await saveSettings((current) => ({ ...current, recordingDirectory: directory }))
     return directory
   })
-  ipcMain.handle('recordings:start', async (event, mimeType: unknown): Promise<string> => {
-    const extension = recordingExtension(mimeType)
-    const directory = await usableRecordingDirectory()
-    if (!directory) throw new Error('请先选择可用的视频保存文件夹')
-    const now = new Date()
-    const pad = (value: number): string => String(value).padStart(2, '0')
-    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-    const recordingId = randomUUID()
-    const path = join(directory, `GuEarth-${stamp}-${recordingId.slice(0, 8)}.${extension}`)
-    const temporaryPath = `${path}.part`
-    const handle = await open(temporaryPath, 'wx')
-    recordingWriters.set(recordingId, {
-      senderId: event.sender.id,
-      path,
-      temporaryPath,
-      handle,
-      bytes: 0,
-      queue: Promise.resolve(),
-      state: 'open'
-    })
-    return recordingId
+  ipcMain.handle('recordings:offscreen-probe', async (_event, script: unknown): Promise<OffscreenRecordingProbeResult> => {
+    assertOffscreenRecordingIdle()
+    if (script === undefined) return startOffscreenRecordingWindow()
+    return startOffscreenRecordingWindow(normalizeOffscreenRecordingScript(script))
   })
-  ipcMain.handle('recordings:append', async (event, recordingId: unknown, data: unknown): Promise<void> => {
-    const writer = getRecordingWriter(recordingId, event.sender.id)
-    if (!(data instanceof ArrayBuffer) || data.byteLength === 0 || data.byteLength > 128 * 1024 * 1024) throw new Error('无效的视频分段')
-    const buffer = Buffer.from(data)
-    const write = writer.queue.then(async () => {
-      let offset = 0
-      while (offset < buffer.byteLength) {
-        const result = await writer.handle.write(buffer, offset, buffer.byteLength - offset, null)
-        if (result.bytesWritten === 0) throw new Error('视频分段写入失败')
-        offset += result.bytesWritten
-      }
-      writer.bytes += buffer.byteLength
-    })
-    writer.queue = write
-    await write
-  })
-  ipcMain.handle('recordings:finish', async (event, recordingId: unknown): Promise<RecordingSaveResult> => {
-    const writer = getRecordingWriter(recordingId, event.sender.id)
-    writer.state = 'finishing'
+  ipcMain.handle('recordings:offscreen-encode', async (event, script: unknown): Promise<RecordingSaveResult> => {
+    assertOffscreenRecordingSupported(process.platform)
+    assertOffscreenRecordingIdle()
+    const requester = event.sender
+    offscreenRecordRequester = requester
     try {
-      await writer.queue
-      if (writer.bytes === 0) throw new Error('未能生成视频数据')
-      await writer.handle.close()
-      await renameFile(writer.temporaryPath, writer.path)
-      recordingWriters.delete(recordingId as string)
-      shell.showItemInFolder(writer.path)
-      return { path: writer.path, bytes: writer.bytes }
-    } catch (error) {
-      await discardRecordingWriter(recordingId as string, writer)
-      throw error
+      return await encodeOffscreenRecording(normalizeOffscreenRecordingScript(script))
+    } finally {
+      if (offscreenRecordRequester === requester) offscreenRecordRequester = null
     }
   })
-  ipcMain.handle('recordings:abort', async (event, recordingId: unknown): Promise<void> => {
-    if (typeof recordingId !== 'string') throw new Error('无效的录制会话')
-    const writer = recordingWriters.get(recordingId)
-    if (!writer) return
-    if (writer.senderId !== event.sender.id) throw new Error('录制会话已失效')
-    await discardRecordingWriter(recordingId, writer)
+  ipcMain.on('recordings:offscreen-progress', (event, payload: unknown): void => {
+    const target = offscreenRecordRequester
+    if (!target || target.isDestroyed() || event.sender !== offscreenRecordingWindow?.webContents) return
+    if (!isRecord(payload)) return
+    const sceneIndex = normalizeNumber(payload.sceneIndex, 0, 1000, 0)
+    const totalScenes = normalizeNumber(payload.totalScenes, 0, 1000, 0)
+    const preparing = payload.phase === 'preparing'
+    const timedOut = payload.timedOut === true
+    if (preparing) {
+      logger.info('recording', `预热视角 ${Math.round(sceneIndex)}/${Math.round(totalScenes)}${timedOut ? '（已有视角超出预加载预算）' : ''}`)
+      if (timedOut && !offscreenPrewarmWarned) {
+        offscreenPrewarmWarned = true
+        logger.warn('recording', '部分录制视角的高清瓦片未在预加载预算内完成')
+      }
+    }
+    target.send('recordings:offscreen-progress', { phase: preparing ? 'preparing' : 'recording', sceneIndex: Math.round(sceneIndex), totalScenes: Math.round(totalScenes), timedOut })
   })
+  ipcMain.on('recordings:offscreen-notice', (event, message: unknown): void => {
+    const target = offscreenRecordRequester
+    if (!target || target.isDestroyed() || event.sender !== offscreenRecordingWindow?.webContents) return
+    if (typeof message !== 'string' || !message.trim()) return
+    target.send('recordings:offscreen-notice', message.trim().slice(0, 200))
+  })
+  ipcMain.on('recordings:offscreen-next', (event): void => {
+    forwardOffscreenCommand(event, 'window.guEarthOffscreenRecorder.next()')
+  })
+  ipcMain.on('recordings:offscreen-skip-prewarm', (event): void => {
+    forwardOffscreenCommand(event, 'window.guEarthOffscreenRecorder.skipPrewarm()')
+  })
+  ipcMain.on('recordings:offscreen-prewarm-quality', (event, quality: unknown): void => {
+    const value = quality === 'standard' || quality === 'ultra' ? quality : 'high'
+    forwardOffscreenCommand(event, `window.guEarthOffscreenRecorder.setPrewarmQuality('${value}')`)
+  })
+  ipcMain.handle('recordings:offscreen-cancel', (): void => { cancelOffscreenRecording?.() })
+  ipcMain.handle('recordings:offscreen-stats', (): OffscreenRecordingProbeResult => offscreenRecordingStats())
   ipcMain.handle('logging:copy-report', (_event, rendererDump: unknown): void => {
     if (typeof rendererDump !== 'string') throw new Error('无效的日志数据')
     clipboard.writeText([
@@ -1103,6 +1097,415 @@ function registerIpcHandlers(): void {
       '== 主进程 ==',
       logger.dump() || '（无日志）'
     ].join('\n'))
+  })
+}
+
+function assertOffscreenRecordingIdle(): void {
+  if (!offscreenRecordingWindow && !cancelOffscreenRecording && !teardownOffscreenRecording && !offscreenRecordRequester) return
+  throw new Error('已有离屏录制任务正在进行，请稍后再试')
+}
+
+function stopOffscreenRecordingWindow(): void {
+  const window = offscreenRecordingWindow
+  offscreenRecordingWindow = null
+  if (!window || window.isDestroyed()) return
+  if (!window.webContents.isDestroyed()) window.webContents.stopPainting()
+  window.destroy()
+}
+
+function taskkillProcessTree(pid: number): boolean {
+  try {
+    execFileSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
+    return true
+  } catch {
+    return false
+  }
+}
+
+function terminateOffscreenEncoder(encoder: ReturnType<typeof spawn> | null): void {
+  if (!encoder) return
+  if (process.platform === 'win32' && encoder.pid && taskkillProcessTree(encoder.pid)) return
+  try {
+    encoder.kill()
+  } catch {
+    return
+  }
+}
+
+async function startOffscreenRecordingWindow(script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> {
+  stopOffscreenRecordingWindow()
+  const targetWidth = script?.width ?? 1280
+  const targetHeight = script?.height ?? 720
+  const targetFps = script?.fps ?? 30
+  let created: BrowserWindow | null = null
+  try {
+    created = new BrowserWindow({
+      show: false,
+      width: targetWidth,
+      height: targetHeight,
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        offscreen: true,
+        backgroundThrottling: false,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false
+      }
+    })
+    const window = created
+    offscreenRecordingWindow = window
+    offscreenPaintStartedAt = Date.now()
+    offscreenPaintFrames = 0
+    window.webContents.on('paint', () => {
+      offscreenPaintFrames += 1
+    })
+    window.webContents.setFrameRate(targetFps)
+    const ready = new Promise<void>((resolve, reject) => {
+      window.webContents.once('did-finish-load', () => resolve())
+      window.webContents.once('did-fail-load', (_event, code, description) => reject(new Error(`${code}: ${description}`)))
+    })
+    const loading = process.env['ELECTRON_RENDERER_URL']
+      ? window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/offscreen.html`)
+      : window.loadFile(join(__dirname, '../renderer/offscreen.html'))
+    await Promise.all([loading, ready])
+    if (script) {
+      const serialized = JSON.stringify(script).replace(/</g, '\\u003c')
+      await window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.prepare(${serialized})`)
+    }
+    offscreenPaintStartedAt = Date.now()
+    offscreenPaintFrames = 0
+    window.webContents.startPainting()
+    if (script) {
+      const serialized = JSON.stringify(script).replace(/</g, '\\u003c')
+      await window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.play(${serialized})`)
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+    }
+    const elapsed = Math.max(1, Date.now() - offscreenPaintStartedAt)
+    return { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
+  } finally {
+    if (created && offscreenRecordingWindow === created) stopOffscreenRecordingWindow()
+  }
+}
+
+function offscreenRecordingStats(): { fps: number; frames: number } {
+  const elapsed = Math.max(1, Date.now() - offscreenPaintStartedAt)
+  return { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
+}
+
+function normalizeOffscreenTerrain(value: unknown): OffscreenRecordingScript['terrain'] {
+  if (!isRecord(value)) return { providerId: 'ellipsoid', exaggeration: 1, lighting: false }
+  return {
+    providerId: typeof value.providerId === 'string' && TERRAIN_PROVIDER_ID_SET.has(value.providerId) ? value.providerId : 'ellipsoid',
+    exaggeration: normalizeNumber(value.exaggeration, 1, 5, 1),
+    lighting: value.lighting === true
+  }
+}
+
+function normalizeOffscreenRecordingScript(value: unknown): OffscreenRecordingScript {
+  if (!isRecord(value) || !Array.isArray(value.scenes)) throw new Error('无效的离屏录制脚本')
+  const sceneDocument = normalizeSceneDocument({ scenes: value.scenes })
+  return {
+    title: typeof value.title === 'string' ? value.title.slice(0, 120) : '',
+    scenes: sceneDocument.scenes,
+    annotations: Array.isArray(value.annotations) ? value.annotations.flatMap((entry) => {
+      if (!isRecord(entry) || typeof entry.sceneId !== 'string' || typeof entry.name !== 'string' || !Array.isArray(entry.positions)) return []
+      if (entry.kind !== 'point' && entry.kind !== 'polyline' && entry.kind !== 'polygon') return []
+      const positions = entry.positions.flatMap((position) => isRecord(position) ? [{ longitude: normalizeNumber(position.longitude, -180, 180, 0), latitude: normalizeNumber(position.latitude, -90, 90, 0), height: normalizeNumber(position.height, -10000, 100000000, 0) }] : [])
+      if (!positions.length) return []
+      return [{
+        sceneId: entry.sceneId,
+        kind: entry.kind,
+        name: entry.name.slice(0, 120),
+        positions,
+        color: typeof entry.color === 'string' ? entry.color.slice(0, 32) : '#1677ff',
+        textColor: typeof entry.textColor === 'string' ? entry.textColor.slice(0, 32) : '#1f1f1f',
+        fontFamily: typeof entry.fontFamily === 'string' ? entry.fontFamily.slice(0, 120) : 'Arial',
+        fontSize: normalizeNumber(entry.fontSize, 8, 72, 13),
+        textFrame: entry.textFrame === true,
+        lineWidth: normalizeNumber(entry.lineWidth, 1, 20, 3)
+      }]
+    }) : [],
+    terrain: normalizeOffscreenTerrain(value.terrain),
+    seaLevelHeights: Array.isArray(value.seaLevelHeights)
+      ? value.seaLevelHeights.slice(0, 4096).map((height) => typeof height === 'number' && Number.isFinite(height) ? Math.round(height * 100) / 100 : null)
+      : [],
+    prewarmQuality: value.prewarmQuality === 'standard' || value.prewarmQuality === 'ultra' ? value.prewarmQuality : 'high',
+    centerTarget: value.centerTarget === true,
+    width: Math.min(1920, Math.max(320, Math.round(normalizeNumber(value.width, 320, 1920, 1280)))),
+    height: Math.min(1080, Math.max(240, Math.round(normalizeNumber(value.height, 240, 1080, 720)))),
+    fps: Math.min(60, Math.max(1, Math.round(normalizeNumber(value.fps, 1, 60, 30))))
+  }
+}
+
+function offscreenSceneDurationMs(script: OffscreenRecordingScript): number {
+  return offscreenScriptDurationMs(script.scenes)
+}
+
+async function readFileSize(path: string): Promise<number> {
+  return (await stat(path)).size
+}
+
+function withOffscreenTimeout<T>(task: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return Promise.race([
+    task,
+    new Promise<T>((_resolveTimeout, rejectTimeout) => {
+      const timer = setTimeout(() => rejectTimeout(new Error(message)), timeoutMs)
+      timer.unref?.()
+    })
+  ])
+}
+
+function forwardOffscreenCommand(event: Electron.IpcMainEvent, expression: string): void {
+  if (event.sender !== offscreenRecordRequester) return
+  const window = offscreenRecordingWindow
+  if (!window || window.isDestroyed() || window.webContents.isDestroyed()) return
+  void window.webContents.executeJavaScript(expression).catch(() => undefined)
+}
+
+async function offscreenFrameDirectoryActive(directory: string, entryName: string): Promise<boolean> {
+  const path = resolveOffscreenEntry(directory, entryName)
+  if (!path) return true
+  try {
+    const owner = Number.parseInt((await readFile(join(path, OFFSCREEN_OWNER_FILE), 'utf8')).trim(), 10)
+    if (!Number.isInteger(owner) || owner <= 0) return false
+    if (owner === process.pid) return true
+    process.kill(owner, 0)
+    return true
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ESRCH') return false
+    if (code !== 'ENOENT') return true
+    try {
+      const info = await stat(path)
+      return Date.now() - info.mtimeMs < OFFSCREEN_SWEEP_GRACE_MS
+    } catch {
+      return true
+    }
+  }
+}
+
+async function removeStaleOffscreenDirectories(directory: string): Promise<void> {
+  try {
+    const entries = await readdir(directory, { withFileTypes: true })
+    await Promise.all(entries
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith(OFFSCREEN_TEMP_PREFIX))
+      .map(async (entry) => {
+        if (await offscreenFrameDirectoryActive(directory, entry.name)) return
+        const path = resolveOffscreenEntry(directory, entry.name)
+        if (!path) return
+        await rm(path, { recursive: true, force: true }).catch(() => undefined)
+      }))
+  } catch {
+    return
+  }
+}
+
+function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<RecordingSaveResult> {
+  return new Promise((resolve, reject) => {
+    let settled = false
+    let tempDir: string | null = null
+    let ffmpeg: ReturnType<typeof spawn> | null = null
+    let recorderWindow: BrowserWindow | null = null
+    const release = (): void => {
+      if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
+      if (teardownOffscreenRecording === teardown) teardownOffscreenRecording = null
+      stopOffscreenRecordingWindow()
+      terminateOffscreenEncoder(ffmpeg)
+      ffmpeg = null
+      if (tempDir) void rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
+    }
+    const teardown = (): void => {
+      const pending = !settled
+      settled = true
+      if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
+      if (teardownOffscreenRecording === teardown) teardownOffscreenRecording = null
+      stopOffscreenRecordingWindow()
+      terminateOffscreenEncoder(ffmpeg)
+      ffmpeg = null
+      const directory = tempDir
+      tempDir = null
+      if (directory) rmSync(directory, { recursive: true, force: true })
+      logger.info('recording', pending ? '应用退出，已中止离屏录制并清理临时文件' : '应用退出，已清理离屏录制临时文件')
+      if (pending) resolve({ path: '', bytes: 0, cancelled: true })
+    }
+    teardownOffscreenRecording = teardown
+    const fail = (error: unknown): void => {
+      if (settled) return
+      settled = true
+      release()
+      reject(error instanceof Error ? error : new Error(String(error)))
+    }
+    const cancel = (): void => {
+      if (settled) return
+      settled = true
+      release()
+      logger.info('recording', '离屏录制已取消，未生成视频文件')
+      resolve({ path: '', bytes: 0, cancelled: true })
+    }
+    offscreenPrewarmWarned = false
+    cancelOffscreenRecording = cancel
+    void (async () => {
+      stopOffscreenRecordingWindow()
+      const directory = await usableRecordingDirectory()
+      if (settled) return
+      if (!directory) throw new Error('请先选择可用的视频保存文件夹')
+      await removeStaleOffscreenDirectories(directory)
+      if (settled) return
+      const createdTempDir = await mkdtemp(join(directory, OFFSCREEN_TEMP_PREFIX))
+      if (settled) {
+        void rm(createdTempDir, { recursive: true, force: true }).catch(() => undefined)
+        return
+      }
+      tempDir = createdTempDir
+      await writeFile(join(tempDir, OFFSCREEN_OWNER_FILE), String(process.pid), 'utf8')
+      if (settled) return
+      const frameDirectory = createdTempDir
+      const temporaryPath = join(frameDirectory, 'recording.mp4.part')
+      const now = new Date()
+      const pad = (value: number): string => String(value).padStart(2, '0')
+      const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+      const outputPath = join(directory, `GuEarth-${stamp}-${randomUUID().slice(0, 8)}.mp4`)
+      const targetFps = script.fps
+      const workArea = screen.getPrimaryDisplay().workAreaSize
+      const capture = offscreenCaptureSize(script.width, script.height, workArea.width, workArea.height)
+      recorderWindow = new BrowserWindow({
+        show: false,
+        width: capture.width,
+        height: capture.height,
+        webPreferences: {
+          preload: join(__dirname, '../preload/index.js'),
+          offscreen: true,
+          backgroundThrottling: false,
+          sandbox: false,
+          contextIsolation: true,
+          nodeIntegration: false
+        }
+      })
+      const window = recorderWindow
+      offscreenRecordingWindow = window
+      window.webContents.on('render-process-gone', (_event, details) => {
+        fail(new Error(`离屏录制渲染进程异常退出（${details.reason}）`))
+      })
+      window.on('unresponsive', () => {
+        fail(new Error('离屏录制渲染进程无响应，已中止录制'))
+      })
+      offscreenPaintStartedAt = Date.now()
+      offscreenPaintFrames = 0
+      let capturing = false
+      let captureLogged = false
+      let recordingStartedAt = 0
+      let frameIndex = 0
+      const frameNames: string[] = []
+      const frameTimes: number[] = []
+      let frameWrite: Promise<void> = Promise.resolve()
+      let pendingFrames = 0
+      window.webContents.on('paint', (_event, _dirty, image) => {
+        offscreenPaintFrames += 1
+        if (settled || !capturing || image.isEmpty() || pendingFrames >= OFFSCREEN_MAX_PENDING_FRAMES) return
+        const size = image.getSize()
+        if (!captureLogged) {
+          captureLogged = true
+          logger.info('recording', `离屏采集 ${size.width}x${size.height}，输出 ${script.width}x${script.height}`, `窗口 ${capture.width}x${capture.height} 工作区 ${workArea.width}x${workArea.height}`)
+          if (Math.abs(size.width / size.height - script.width / script.height) > 0.02) logger.warn('recording', '离屏采集比例与输出比例不一致，将以补边方式适配')
+        }
+        const frame = image.toJPEG(95)
+        if (frame.length === 0) return
+        const name = `frame-${String(frameIndex).padStart(8, '0')}.jpg`
+        frameNames.push(name)
+        frameTimes.push(Date.now() - recordingStartedAt)
+        frameIndex += 1
+        pendingFrames += 1
+        frameWrite = frameWrite.then(() => writeFile(join(frameDirectory, name), frame)).catch((error) => { fail(error) }).finally(() => { pendingFrames -= 1 })
+      })
+      const ready = new Promise<void>((resolveReady, rejectReady) => {
+        window.webContents.once('did-finish-load', () => resolveReady())
+        window.webContents.once('did-fail-load', (_event, code, description) => rejectReady(new Error(`${code}: ${description}`)))
+      })
+      const loading = process.env['ELECTRON_RENDERER_URL']
+        ? window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/offscreen.html`)
+        : window.loadFile(join(__dirname, '../renderer/offscreen.html'))
+      await Promise.all([loading, ready])
+      if (settled) return
+      window.webContents.setFrameRate(targetFps)
+      const serialized = JSON.stringify(script).replace(/</g, '\\u003c')
+      offscreenPaintStartedAt = Date.now()
+      window.webContents.startPainting()
+      const prepareStartedAt = Date.now()
+      await withOffscreenTimeout(
+        window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.prepare(${serialized})`),
+        OFFSCREEN_PREPARE_TIMEOUT_MS,
+        '离屏渲染初始化超时，已中止录制'
+      )
+      logger.info('recording', `离屏渲染准备完成，耗时 ${((Date.now() - prepareStartedAt) / 1000).toFixed(1)} 秒`)
+      if (settled) return
+      const captureBudgetMs = offscreenSceneDurationMs(script) + OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS
+      offscreenPaintStartedAt = Date.now()
+      offscreenPaintFrames = 0
+      recordingStartedAt = Date.now()
+      capturing = true
+      await withOffscreenTimeout(
+        window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.play(${serialized})`),
+        captureBudgetMs,
+        '离屏渲染超时，已中止录制'
+      )
+      const recordingElapsedMs = Math.max(1, Date.now() - recordingStartedAt)
+      capturing = false
+      if (settled) return
+      window.webContents.stopPainting()
+      await frameWrite
+      if (settled) return
+      if (frameIndex === 0) {
+        fail(new Error('离屏渲染未产生有效视频帧'))
+        return
+      }
+      const measuredFps = offscreenFrameRate(frameIndex, recordingElapsedMs)
+      logger.info('recording', `离屏录制 ${frameIndex} 帧 / ${(recordingElapsedMs / 1000).toFixed(1)} 秒，实测约 ${measuredFps.toFixed(1)} FPS`)
+      if (measuredFps < OFFSCREEN_MIN_FLUENT_FPS) logger.warn('recording', `离屏采集帧率偏低（${measuredFps.toFixed(1)} FPS），画面可能不够流畅`)
+      const durations = offscreenFrameDurations(frameTimes, recordingElapsedMs)
+      const recordingSeconds = durations.reduce((total, seconds) => total + seconds, 0)
+      await writeFile(join(frameDirectory, 'frames.txt'), offscreenConcatPlaylist(frameNames, durations), 'utf8')
+      if (settled) return
+      const outputFps = Math.min(60, Math.max(1, Math.round(script.fps)))
+      const stderr: Buffer[] = []
+      const encoder = spawn(ffmpegPath(), [
+        '-hide_banner', '-loglevel', 'error', '-y',
+        '-f', 'concat', '-safe', '0', '-i', 'frames.txt',
+        '-vf', `scale=${script.width}:${script.height}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${script.width}:${script.height}:(ow-iw)/2:(oh-ih)/2:color=black,fps=${outputFps}`,
+        '-t', recordingSeconds.toFixed(6), '-an', ...offscreenVideoEncoderArgs, '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
+      ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'], cwd: frameDirectory })
+      ffmpeg = encoder
+      encoder.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
+      const code = await new Promise<number | null>((resolveClose, rejectClose) => {
+        encoder.once('error', rejectClose)
+        encoder.once('close', resolveClose)
+      }).catch((error) => { throw error instanceof Error ? error : new Error(String(error)) })
+      if (settled) return
+      if (code !== 0) {
+        const detail = Buffer.concat(stderr).toString('utf8').trim()
+        fail(new Error(`离屏视频编码失败（FFmpeg 退出码 ${code ?? '未知'}）${detail ? `：${detail.slice(-1000)}` : ''}`))
+        return
+      }
+      const bytes = await readFileSize(temporaryPath)
+      if (settled) return
+      if (bytes === 0) {
+        fail(new Error('未能生成离屏视频数据'))
+        return
+      }
+      await renameFile(temporaryPath, outputPath)
+      if (settled) return
+      await rm(frameDirectory, { recursive: true, force: true }).catch(() => undefined)
+      if (settled) return
+      settled = true
+      if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
+      if (teardownOffscreenRecording === teardown) teardownOffscreenRecording = null
+      ffmpeg = null
+      tempDir = null
+      stopOffscreenRecordingWindow()
+      logger.info('recording', `离屏录制完成：${outputPath}`, `${(bytes / 1024 / 1024).toFixed(1)} MB`)
+      shell.showItemInFolder(outputPath)
+      resolve({ path: outputPath, bytes, fps: measuredFps })
+    })().catch((error) => fail(error))
   })
 }
 
@@ -1123,12 +1526,21 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false
     }
+  })
+
+  mainWindow = win
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = null
   })
 
   win.on('ready-to-show', () => win.show())
   win.on('page-title-updated', (event) => event.preventDefault())
+  win.on('close', () => {
+    cancelOffscreenRecording?.()
+  })
 
   win.webContents.setWindowOpenHandler((details) => {
     if (/^https?:\/\//i.test(details.url)) void shell.openExternal(details.url)
@@ -1153,7 +1565,21 @@ function createWindow(): void {
   }
 }
 
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
+if (!hasSingleInstanceLock) {
+  console.warn('[app] 已有实例在运行，本次启动直接退出')
+  app.quit()
+}
+
+app.on('second-instance', () => {
+  const window = mainWindow
+  if (!window || window.isDestroyed()) return
+  if (window.isMinimized()) window.restore()
+  window.focus()
+})
+
 app.whenReady().then(async () => {
+  if (!hasSingleInstanceLock) return
   logger.info('app', '应用启动', `version=${app.getVersion()} packaged=${app.isPackaged}`)
   const userDataPath = app.getPath('userData')
   settingsPath = join(userDataPath, 'settings.json')
@@ -1205,6 +1631,14 @@ app.on('before-quit', (event) => {
   event.preventDefault()
   quitting = true
   void flushJsonWrites().finally(() => app.quit())
+})
+
+app.on('will-quit', () => {
+  try {
+    teardownOffscreenRecording?.()
+  } catch {
+    return
+  }
 })
 
 app.on('window-all-closed', () => {

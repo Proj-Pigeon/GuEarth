@@ -33,13 +33,13 @@ export function ensureLandMask(): Promise<boolean> {
   return maskPromise
 }
 
-export async function ensureSeaLevelSamples(viewer: Cesium.Viewer): Promise<SeaSampleOutcome> {
-  if (samplePromise) return samplePromise
-  if (allPointsCached()) {
-    seaSamplingStatus.value = 'ready'
-    return 'ready'
-  }
-  samplePromise = (async (): Promise<SeaSampleOutcome> => {
+export function ensureSeaLevelSamples(viewer: Cesium.Viewer): Promise<SeaSampleOutcome> {
+  samplePromise ??= (async (): Promise<SeaSampleOutcome> => {
+    await ensureLandMask()
+    if (allPointsCached()) {
+      seaSamplingStatus.value = 'ready'
+      return 'ready'
+    }
     seaSamplingStatus.value = 'sampling'
     if (viewer.isDestroyed()) {
       seaSamplingStatus.value = 'idle'
@@ -49,7 +49,6 @@ export async function ensureSeaLevelSamples(viewer: Cesium.Viewer): Promise<SeaS
       seaSamplingStatus.value = 'terrain-required'
       return 'terrain-required'
     }
-    await ensureLandMask()
     const points = coastalZones.flatMap((zone) => gridPointsOf(zone))
     const cartographics = points.map(([lon, lat]) => Cesium.Cartographic.fromDegrees(lon, lat))
     try {
@@ -65,10 +64,8 @@ export async function ensureSeaLevelSamples(viewer: Cesium.Viewer): Promise<SeaS
     const missing = points.filter(([lon, lat]) => !heightCache.has(cacheKeyOf(lon, lat))).length
     seaSamplingStatus.value = 'ready'
     return missing > 0 ? 'partial' : 'ready'
-  })()
-  try {
-    return await samplePromise
-  } finally {
+  })().finally(() => {
     samplePromise = undefined
-  }
+  })
+  return samplePromise
 }
