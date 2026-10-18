@@ -47,7 +47,7 @@ const offscreenPinia = createPinia()
 const offscreenViewer = shallowRef(viewer)
 createApp({
   setup() {
-    useThematicLayers(offscreenViewer)
+    useThematicLayers(offscreenViewer, { autoFocus: false })
     const climate = useClimateStore()
     return () => [
       climate.overlays['wind-particles'] ? h(WindParticles, { viewer }) : null,
@@ -316,6 +316,7 @@ function reportCameraClamp(view: SceneCameraView): void {
 function setCamera(camera: SceneCamera): void {
   const view = sceneCameraView(camera, centerTarget)
   reportCameraClamp(view)
+  viewer.camera.cancelFlight()
   viewer.camera.setView({ destination: view.destination, orientation: view.orientation })
 }
 
