@@ -92,6 +92,21 @@ test('the encoder resolver guards the platform before probing the binary path', 
   })
 })
 
+test('a packaged build never tells end users to run a developer command', () => {
+  assert.throws(() => resolveFfmpegBinary(recordingsRoot, join(recordingsRoot, 'absent-resources'), true, 'win32'), (error) => {
+    assert.ok(error.message.includes('重新安装 GuEarth'))
+    assert.ok(!error.message.includes('npm run'))
+    return true
+  })
+})
+
+test('a development build still points the developer at the fetch command', () => {
+  assert.throws(() => resolveFfmpegBinary(join(recordingsRoot, 'absent-app'), '', false, 'win32'), (error) => {
+    assert.ok(error.message.includes('npm run fetch:ffmpeg'))
+    return true
+  })
+})
+
 test('the encode IPC entry rejects unsupported platforms before touching the recorder', () => {
   assert.ok(mainSource.includes("ipcMain.handle('recordings:offscreen-encode'"))
   assert.ok(mainSource.includes('assertOffscreenRecordingSupported(process.platform)'))

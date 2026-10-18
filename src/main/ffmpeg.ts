@@ -16,9 +16,15 @@ export function findFfmpegBinary(appPath: string, resourcesPath: string, package
   return existsSync(binary) ? binary : null
 }
 
+function missingEncoderMessage(binary: string, packaged: boolean): string {
+  return packaged
+    ? '内置视频编码器缺失，教学视频录制暂不可用，请重新安装 GuEarth 修复（Windows x64）'
+    : `内置视频编码器缺失：${binary}。运行 npm run fetch:ffmpeg 获取（Windows x64）`
+}
+
 export function resolveFfmpegBinary(appPath: string, resourcesPath: string, packaged: boolean, platform: string = process.platform): string {
   assertOffscreenRecordingSupported(platform)
   const binary = binaryPathFor(appPath, resourcesPath, packaged)
-  if (!existsSync(binary)) throw new Error(`内置视频编码器缺失：${binary}。开发环境可运行 npm run fetch:ffmpeg 获取（Windows x64）`)
+  if (!existsSync(binary)) throw new Error(missingEncoderMessage(binary, packaged))
   return binary
 }
