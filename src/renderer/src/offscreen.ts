@@ -66,6 +66,7 @@ const solarStore = useSolarStore(offscreenPinia)
 const transportStore = useTransportStore(offscreenPinia)
 
 const imageryLayers = new Map<string, Cesium.ImageryLayer>()
+const failedImageryKeys = new Set<string>()
 let visibleAnnotations: Cesium.Entity[] = []
 const drapedAnnotations = new Map<Cesium.Entity, Cesium.Cartographic[]>()
 let drapeRefreshTimer: number | undefined
@@ -83,6 +84,7 @@ let advancePending = false
 let advanceResolve: (() => void) | null = null
 let currentTitle = ''
 let currentNarration = ''
+let terrainLighting = false
 
 function requestSkipPrewarm(): void {
   prewarmSkipped = true
@@ -144,7 +146,7 @@ function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: num
   const lines: string[] = []
   let line = ''
   for (const character of text) {
-    if (character === '\\n') {
+    if (character === '\n') {
       lines.push(line)
       line = ''
       continue
@@ -274,13 +276,13 @@ async function applySnapshot(snapshot: TeachingScene['snapshot']): Promise<void>
   const basemapId = snapshot.basemapId || 'osm'
   const styleId = styleFor(basemapId, snapshot.styleId ?? '')
   const imageryKey = `${basemapId}/${styleId}`
-  if (!imageryLayers.has(imageryKey)) {
+  if (!imageryLayers.has(imageryKey) && !failedImageryKeys.has(imageryKey)) {
     try {
       const provider = createBasemapImageryProvider(basemapId, styleId)
       imageryLayers.set(imageryKey, viewer.imageryLayers.addImageryProvider(provider, 0))
     } catch {
+      failedImageryKeys.add(imageryKey)
       reportNotice(`录制画面的底图「${basemapId}」加载失败，成片可能缺少地图底图`)
-      return
     }
   }
   imageryLayers.forEach((layer, id) => { layer.show = id === imageryKey })
@@ -304,7 +306,7 @@ async function applySnapshot(snapshot: TeachingScene['snapshot']): Promise<void>
 }
 
 function applySceneState(snapshot: TeachingScene['snapshot']): void {
-  viewer.scene.globe.enableLighting = snapshot.simTime !== null
+  viewer.scene.globe.enableLighting = terrainLighting || snapshot.simTime !== null
   if (snapshot.simTime) viewer.clock.currentTime = Cesium.JulianDate.fromDate(new Date(solarStore.utcMs))
   viewer.scene.requestRender()
 }
@@ -347,6 +349,7 @@ async function applyTerrain(terrain: OffscreenRecordingScript['terrain']): Promi
     viewer.terrainProvider = await terrainRegistry.ellipsoid()
   }
   viewer.scene.verticalExaggeration = Math.min(5, Math.max(1, terrain.exaggeration))
+  viewer.scene.globe.enableLighting = terrainLighting
   viewer.scene.requestRender()
 }
 
@@ -429,6 +432,8 @@ async function prepare(script: OffscreenRecordingScript): Promise<void> {
   const originalScreenSpaceError = viewer.scene.globe.maximumScreenSpaceError
   centerTarget = script.centerTarget
   prewarmQuality = script.prewarmQuality
+  terrainLighting = script.terrain.lighting
+  failedImageryKeys.clear()
   prewarmTimedOut = false
   prewarmSkipped = false
   prewarmRevision = 0
