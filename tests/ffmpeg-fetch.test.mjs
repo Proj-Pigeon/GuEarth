@@ -6,9 +6,29 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { FFMPEG_BUILD, archiveSources, defaultBinaryPath, isApprovedArchiveUrl, sha256Text, verifyFile, verifyFfmpegBinary } from '../scripts/fetch-ffmpeg.mjs'
+import {
+  FFMPEG_BUILD,
+  approvedArchiveSource,
+  archiveSources,
+  assertArchiveSource,
+  defaultBinaryPath,
+  fetchFfmpeg,
+  isApprovedArchiveUrl,
+  matchesPinnedArchivePath,
+  sha256Text,
+  verifyFile,
+  verifyFfmpegBinary
+} from '../scripts/fetch-ffmpeg.mjs'
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
+const pinnedArchivePathSuffix = `/v${FFMPEG_BUILD.version}/${FFMPEG_BUILD.archiveName}`
+const pinnedMirrorUrl = `https://registry.npmmirror.com/-/binary/ffmpeg-builds${pinnedArchivePathSuffix}`
+const pinnedReleaseUrl = `https://github.com/KarinJS/FFmpeg-Builds/releases/download${pinnedArchivePathSuffix}`
+
+function restoreEnv(key, value) {
+  if (value === undefined) delete process.env[key]
+  else process.env[key] = value
+}
 
 test('the pinned ffmpeg build hashes and sizes are well formed', () => {
   assert.match(FFMPEG_BUILD.archiveSha256, /^[0-9a-f]{64}$/)
@@ -53,6 +73,75 @@ test('ffmpeg fetch rejects untrusted override hosts and schemes', () => {
   }
 })
 
+test('ffmpeg fetch accepts the pinned artifact served from an approved mirror host', () => {
+  for (const url of [pinnedMirrorUrl, pinnedReleaseUrl]) {
+    assert.ok(matchesPinnedArchivePath(url), url)
+    const sources = archiveSources(url)
+    assert.equal(sources.length, 3)
+    assert.equal(sources[0], url)
+    assert.deepEqual(sources.slice(1), archiveSources(undefined))
+    for (const source of sources) assert.ok(isApprovedArchiveUrl(source), source)
+  }
+  const relayedMirror = `https://registry.npmmirror.com/mirrors/ffmpeg-builds${pinnedArchivePathSuffix}`
+  assert.equal(approvedArchiveSource(relayedMirror), relayedMirror)
+  assert.equal(archiveSources(undefined).length, 2)
+})
+
+test('ffmpeg fetch rejects override paths that are not the pinned artifact', () => {
+  const wrongArtifacts = [
+    'https://github.com/KarinJS/FFmpeg-Builds/releases/download/v8.1.3/ffmpeg-8.1.3-win32-x64-full.tar.xz',
+    `https://registry.npmmirror.com/-/binary/ffmpeg-builds/v8.1.2/${FFMPEG_BUILD.archiveName}`,
+    `https://github.com/KarinJS/FFmpeg-Builds/releases/download${pinnedArchivePathSuffix}?token=stolen`
+  ]
+  for (const url of wrongArtifacts) {
+    assert.equal(isApprovedArchiveUrl(url), true, url)
+    assert.equal(matchesPinnedArchivePath(url), false, url)
+    assert.throws(
+      () => archiveSources(url),
+      (error) => {
+        assert.match(error.message, /FFMPEG_FETCH_URL 归档路径不受信任/)
+        assert.match(error.message, /FFMPEG_FETCH_FILE/)
+        assert.ok(error.message.includes(new URL(url).pathname), error.message)
+        return true
+      },
+      url
+    )
+  }
+})
+
+test('ffmpeg fetch rejects non-HTTPS overrides even on approved hosts', () => {
+  const insecure = `http://registry.npmmirror.com/-/binary/ffmpeg-builds${pinnedArchivePathSuffix}`
+  assert.equal(matchesPinnedArchivePath(insecure), true)
+  assert.equal(isApprovedArchiveUrl(insecure), false)
+  assert.throws(() => archiveSources(insecure), (error) => {
+    assert.match(error.message, /FFMPEG_FETCH_URL 来源不受信任：registry\.npmmirror\.com/)
+    assert.match(error.message, /FFMPEG_FETCH_FILE/)
+    return true
+  })
+})
+
+test('ffmpeg fetch rejects untrusted hosts that serve the pinned path shape', () => {
+  const untrustedHost = `https://mirror.example.com/mirrors${pinnedArchivePathSuffix}`
+  assert.equal(matchesPinnedArchivePath(untrustedHost), true)
+  assert.equal(isApprovedArchiveUrl(untrustedHost), false)
+  assert.throws(() => archiveSources(untrustedHost), (error) => {
+    assert.match(error.message, /FFMPEG_FETCH_URL 来源不受信任：mirror\.example\.com/)
+    assert.match(error.message, /FFMPEG_FETCH_FILE/)
+    return true
+  })
+  assert.throws(() => assertArchiveSource(untrustedHost), /拒绝下载未经验证的来源：mirror\.example\.com/)
+})
+
+test('the download sink only accepts allowlisted pinned artifact URLs', () => {
+  for (const url of archiveSources(undefined)) assert.equal(assertArchiveSource(url), url)
+  assert.equal(assertArchiveSource(pinnedMirrorUrl), pinnedMirrorUrl)
+  assert.throws(() => assertArchiveSource(`https://example.com/${FFMPEG_BUILD.archiveName}`), /拒绝下载未经验证的来源/)
+  assert.throws(
+    () => assertArchiveSource('https://github.com/KarinJS/FFmpeg-Builds/releases/download/v8.1.3/other.tar.xz'),
+    /拒绝下载未经验证的来源/
+  )
+})
+
 test('binary verification reports matching and mismatching payloads', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'guearth-ffmpeg-verify-'))
   try {
@@ -83,4 +172,24 @@ test('the provisioned binary matches the pinned digest when present', async (t) 
   if (!existsSync(target)) return t.skip('尚未获取内置编码器（npm run fetch:ffmpeg）')
   const result = await verifyFfmpegBinary(target)
   assert.equal(result.ok, true, result.reason)
+})
+
+test('the offline FFMPEG_FETCH_FILE branch bypasses the network source allowlist', async (t) => {
+  if (process.platform !== 'win32') return t.skip('内置编码器仅在 Windows 上获取')
+  const sandbox = await mkdtemp(join(tmpdir(), 'guearth-ffmpeg-offline-'))
+  const previousFile = process.env.FFMPEG_FETCH_FILE
+  const previousUrl = process.env.FFMPEG_FETCH_URL
+  process.env.FFMPEG_FETCH_FILE = join(sandbox, 'absent-archive.tar.xz')
+  process.env.FFMPEG_FETCH_URL = `https://example.com/${FFMPEG_BUILD.archiveName}`
+  try {
+    await assert.rejects(fetchFfmpeg({ repoRoot: sandbox, force: true }), (error) => {
+      assert.equal(error.code, 'ENOENT')
+      assert.doesNotMatch(error.message, /FFMPEG_FETCH_URL/)
+      return true
+    })
+  } finally {
+    restoreEnv('FFMPEG_FETCH_FILE', previousFile)
+    restoreEnv('FFMPEG_FETCH_URL', previousUrl)
+    await rm(sandbox, { recursive: true, force: true })
+  }
 })

@@ -27,33 +27,57 @@ const pinnedArchiveUrls = [
 
 export const APPROVED_ARCHIVE_HOSTS = ['registry.npmmirror.com', 'github.com', 'objects.githubusercontent.com']
 
-export function isApprovedArchiveUrl(url) {
-  let parsed
+const pinnedArchivePathSuffix = `/v${FFMPEG_BUILD.version}/${FFMPEG_BUILD.archiveName}`
+
+function parseArchiveUrl(value) {
   try {
-    parsed = new URL(String(url))
+    return new URL(String(value))
   } catch {
-    return false
+    return null
   }
-  return parsed.protocol === 'https:' && APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname)
 }
 
 function rejectedArchiveLabel(url) {
-  try {
-    const parsed = new URL(String(url))
-    return parsed.hostname || parsed.protocol
-  } catch {
-    return String(url)
-  }
+  const parsed = parseArchiveUrl(url)
+  return parsed?.hostname || parsed?.protocol || String(url)
 }
 
-export function archiveSources(overrideUrl) {
-  if (!overrideUrl) return [...pinnedArchiveUrls]
+export function isApprovedArchiveUrl(url) {
+  const parsed = parseArchiveUrl(url)
+  return parsed != null && parsed.protocol === 'https:' && APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname)
+}
+
+export function matchesPinnedArchivePath(url) {
+  const parsed = parseArchiveUrl(url)
+  return parsed != null && parsed.search === '' && parsed.hash === '' && parsed.pathname.endsWith(pinnedArchivePathSuffix)
+}
+
+export function approvedArchiveSource(overrideUrl) {
   if (!isApprovedArchiveUrl(overrideUrl)) {
     throw new Error(
       `FFMPEG_FETCH_URL 来源不受信任：${rejectedArchiveLabel(overrideUrl)}；仅允许主机为 ${APPROVED_ARCHIVE_HOSTS.join('、')} 的 HTTPS 地址，离线安装请将 FFMPEG_FETCH_FILE 指向本地归档`
     )
   }
-  return [overrideUrl, ...pinnedArchiveUrls]
+  const parsed = parseArchiveUrl(overrideUrl)
+  if (!matchesPinnedArchivePath(parsed.href)) {
+    throw new Error(
+      `FFMPEG_FETCH_URL 归档路径不受信任：${parsed.pathname}${parsed.search}；仅允许指向 v${FFMPEG_BUILD.version} 的 ${FFMPEG_BUILD.archiveName}，离线安装请将 FFMPEG_FETCH_FILE 指向本地归档`
+    )
+  }
+  const approvedHost = APPROVED_ARCHIVE_HOSTS.find((host) => host === parsed.hostname)
+  return new URL(parsed.pathname, `https://${approvedHost}/`).href
+}
+
+export function assertArchiveSource(url) {
+  if (!isApprovedArchiveUrl(url) || !matchesPinnedArchivePath(url)) {
+    throw new Error(`拒绝下载未经验证的来源：${rejectedArchiveLabel(url)}`)
+  }
+  return url
+}
+
+export function archiveSources(overrideUrl) {
+  if (!overrideUrl) return [...pinnedArchiveUrls]
+  return [approvedArchiveSource(overrideUrl), ...pinnedArchiveUrls]
 }
 
 export function sha256Text(text) {
@@ -92,6 +116,7 @@ function tarCommand() {
 }
 
 async function download(url, destination) {
+  assertArchiveSource(url)
   console.log(`下载内置视频编码器：${url}`)
   const response = await fetch(url, { headers: { 'user-agent': 'GuEarth-FFmpeg-Fetch' } })
   if (!response.ok || response.body == null) throw new Error(`HTTP ${response.status}`)
