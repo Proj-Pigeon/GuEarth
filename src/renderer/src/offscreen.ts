@@ -15,6 +15,7 @@ import { ensureSeaLevelSamples } from './composables/seaLevelSampling'
 import { seedSampleHeights } from './thematic/seaLevelRise'
 import { visibleThematicLayers } from './lib/nightBasemap'
 import { terrainProviderFactory, terrainRegistry } from './terrain/terrainRegistry'
+import { wrapText } from './offscreenText'
 import WindParticles from './components/WindParticles.vue'
 import FrontalCyclone from './components/FrontalCyclone.vue'
 import TyphoonOverlay from './components/TyphoonOverlay.vue'
@@ -140,25 +141,6 @@ function resizeOverlay(): void {
     overlayCanvas.width = width
     overlayCanvas.height = height
   }
-}
-
-function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  const lines: string[] = []
-  let line = ''
-  for (const character of text) {
-    if (character === '\n') {
-      lines.push(line)
-      line = ''
-      continue
-    }
-    const candidate = line + character
-    if (line && context.measureText(candidate).width > maxWidth) {
-      lines.push(line)
-      line = character
-    } else line = candidate
-  }
-  if (line) lines.push(line)
-  return lines.slice(0, 3)
 }
 
 function drawOverlay(): void {

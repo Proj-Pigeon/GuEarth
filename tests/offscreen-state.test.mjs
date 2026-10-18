@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 
+import { wrapText } from '../src/renderer/src/offscreenText.ts'
+
 const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
 const viewerSource = await readFile(new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url), 'utf8')
 const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
@@ -14,25 +16,28 @@ function sliceBetween(source, start, end) {
   return source.slice(from, to)
 }
 
-function extractWrapText() {
-  const match = offscreenSource.match(/function wrapText[\s\S]*?\r?\n\}/)
-  assert.ok(match, 'wrapText body missing')
-  const declaration = match[0]
-    .replace('context: CanvasRenderingContext2D, text: string, maxWidth: number): string[]', 'context, text, maxWidth)')
-    .replace('const lines: string[] = []', 'const lines = []')
-  return new Function(`${declaration}\r\nreturn wrapText`)()
-}
+const subtitleContext = { measureText: (text) => ({ width: text.length * 10 }) }
 
 test('subtitle wrapping breaks lines on real newline characters', () => {
-  assert.match(offscreenSource, /if \(character === '\\n'\) \{/)
-  assert.doesNotMatch(offscreenSource, /character === '\\\\n'/)
+  assert.deepEqual(wrapText(subtitleContext, 'abc\ndef', 1000), ['abc', 'def'])
+  assert.deepEqual(wrapText(subtitleContext, 'a\n\nb', 1000), ['a', '', 'b'])
+  assert.deepEqual(wrapText(subtitleContext, '第一行\n第二行', 1000), ['第一行', '第二行'])
+})
 
-  const wrapText = extractWrapText()
-  const context = { measureText: (text) => ({ width: text.length * 10 }) }
-  assert.deepEqual(wrapText(context, 'abc\ndef', 1000), ['abc', 'def'])
-  assert.deepEqual(wrapText(context, 'a\n\nb', 1000), ['a', '', 'b'])
-  assert.deepEqual(wrapText(context, 'abcdef', 25), ['ab', 'cd', 'ef'])
-  assert.deepEqual(wrapText(context, 'abcdefgh', 25).length, 3)
+test('a literal backslash-n in a narration stays on a single line', () => {
+  assert.deepEqual(wrapText(subtitleContext, '第一行\\n第二行', 1000), ['第一行\\n第二行'])
+  assert.deepEqual(wrapText(subtitleContext, 'a\\nb', 1000), ['a\\nb'])
+})
+
+test('long narration wraps at maxWidth and caps at three lines', () => {
+  assert.deepEqual(wrapText(subtitleContext, 'abcdef', 25), ['ab', 'cd', 'ef'])
+  assert.equal(wrapText(subtitleContext, 'abcdefgh', 25).length, 3)
+  assert.deepEqual(wrapText(subtitleContext, 'abcdefghij', 9999), ['abcdefghij'])
+})
+
+test('offscreen imports the subtitle text helper instead of defining it', () => {
+  assert.match(offscreenSource, /import \{ wrapText \} from '\.\/offscreenText'/)
+  assert.doesNotMatch(offscreenSource, /function wrapText/)
 })
 
 test('a failed basemap does not abort the rest of the scene snapshot and is not retried', () => {
