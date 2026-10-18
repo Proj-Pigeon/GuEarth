@@ -1,5 +1,5 @@
 import MarkdownIt from 'markdown-it'
-import { h, type VNodeChild } from 'vue'
+import { h, type VNode, type VNodeChild } from 'vue'
 
 const markdown = new MarkdownIt({ breaks: true, linkify: true, html: false })
 markdown.validateLink = (url) => /^https?:\/\//i.test(url)
@@ -78,4 +78,91 @@ function renderTokens(tokens: MarkdownToken[]): VNodeChild[] {
 
 export function renderMarkdown(text: string): VNodeChild[] {
   return renderTokens(markdown.parse(text, {}))
+}
+
+const streamingTokenPattern = /(\s+|[\u3400-\u9fff\uf900-\ufaff]|[^\s\u3400-\u9fff\uf900-\ufaff]+)/g
+const wordPattern = /[\p{L}\p{N}]/u
+const nonStreamingTags = new Set(['pre', 'code'])
+const streamingTailTokens = 120
+
+interface StreamingToken {
+  node: VNode
+  parent: VNodeChild[]
+  word: boolean
+  space: boolean
+}
+
+interface StreamingState {
+  position: number
+  windowStart: number
+  tokens: StreamingToken[]
+}
+
+function countStreamingTokens(children: VNodeChild[], insideCode = false): number {
+  let count = 0
+  for (const child of children) {
+    if (typeof child === 'string') {
+      if (!insideCode) count += (child.match(streamingTokenPattern) ?? [child]).length
+    } else if (Array.isArray(child)) {
+      count += countStreamingTokens(child, insideCode)
+    } else if (child && typeof child === 'object' && 'type' in child) {
+      const vnode = child as VNode
+      if (Array.isArray(vnode.children)) {
+        count += countStreamingTokens(vnode.children as VNodeChild[], insideCode || (typeof vnode.type === 'string' && nonStreamingTags.has(vnode.type)))
+      }
+    }
+  }
+  return count
+}
+
+function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insideCode = false): VNodeChild[] {
+  const result: VNodeChild[] = []
+  for (const child of children) {
+    if (typeof child === 'string') {
+      if (insideCode) {
+        result.push(child)
+        continue
+      }
+      let plain = ''
+      for (const piece of child.match(streamingTokenPattern) ?? [child]) {
+        const position = state.position
+        state.position += 1
+        if (position < state.windowStart) {
+          plain += piece
+          continue
+        }
+        if (plain) {
+          result.push(plain)
+          plain = ''
+        }
+        const node = h('span', { key: `stream-token-${position}`, class: 'stream-token' }, piece)
+        state.tokens.push({ node, parent: result, word: wordPattern.test(piece), space: /^\s+$/.test(piece) })
+        result.push(node)
+      }
+      if (plain) result.push(plain)
+    } else if (Array.isArray(child)) {
+      result.push(...wrapStreamingTokens(child, state, insideCode))
+    } else if (child && typeof child === 'object' && 'type' in child) {
+      const vnode = child as VNode
+      if (Array.isArray(vnode.children)) {
+        vnode.children = wrapStreamingTokens(vnode.children as VNodeChild[], state, insideCode || (typeof vnode.type === 'string' && nonStreamingTags.has(vnode.type)))
+      }
+      result.push(vnode)
+    } else result.push(child)
+  }
+  return result
+}
+
+export function renderStreamingMarkdown(text: string): VNodeChild[] {
+  const nodes = renderMarkdown(text)
+  const total = countStreamingTokens(nodes)
+  const state: StreamingState = { position: 0, windowStart: Math.max(0, total - streamingTailTokens), tokens: [] }
+  const wrapped = wrapStreamingTokens(nodes, state)
+  if (state.tokens.length === 0) return wrapped
+  const words = state.tokens.filter((token) => token.word)
+  for (const token of words.slice(-2)) token.node.props = { ...(token.node.props ?? {}), class: 'stream-token stream-token-fresh' }
+  for (const token of state.tokens.slice(-12)) token.node.props = { ...(token.node.props ?? {}), class: `${token.node.props?.class ?? 'stream-token'} stream-token-enter` }
+  const last = [...state.tokens].reverse().find((token) => !token.space)
+  if (last) last.parent.push(h('span', { key: 'stream-caret', class: 'stream-caret', 'aria-hidden': 'true' }))
+  return wrapped
 }
