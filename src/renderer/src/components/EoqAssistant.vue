@@ -633,8 +633,6 @@ watch(currentConversationId, () => {
               v-else-if="part.step.name === 'web_search'"
               :step="part.step"
               :busy="isStreaming"
-              :open="openTools.has(part.step.callId)"
-              @toggle="onToolChange(part.step, $event)"
               @retry="submit(`请重新联网搜索：${$event}`)"
             />
             <a-collapse
