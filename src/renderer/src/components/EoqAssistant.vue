@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { Bubble, Sender, Suggestion } from 'ant-design-x-vue'
 import { Modal } from 'ant-design-vue'
 import type { VNode } from 'vue'
-import { CloseCircleOutlined, CloseOutlined, CompassOutlined, CompressOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SettingOutlined, UpOutlined } from '@ant-design/icons-vue'
+import { CheckOutlined, CloseCircleOutlined, CloseOutlined, CompassOutlined, CompressOutlined, CopyOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SettingOutlined, UpOutlined } from '@ant-design/icons-vue'
 import { useAiStore, toolLabel, type ChatMessage, type ReasoningPart, type ToolStep } from '@renderer/stores/ai'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import type { AiModelConfig, AiProviderConfig, StoredAiConversationSummary } from '../../../preload'
@@ -318,6 +318,7 @@ onMounted(() => {
 onUnmounted(() => {
   stopRotate()
   stopDrawerResize()
+  if (copiedTimer !== undefined) clearTimeout(copiedTimer)
   if (scrollFrame !== undefined) {
     cancelAnimationFrame(scrollFrame)
     scrollFrame = undefined
@@ -433,6 +434,23 @@ function handleEditKeydown(event: KeyboardEvent, message: ChatMessage): void {
     event.preventDefault()
     cancelEdit()
   }
+}
+
+const copiedMessageId = ref('')
+let copiedTimer: ReturnType<typeof setTimeout> | undefined
+
+async function copyAnswer(message: ChatMessage): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(message.content)
+  } catch {
+    return
+  }
+  copiedMessageId.value = message.id
+  if (copiedTimer !== undefined) clearTimeout(copiedTimer)
+  copiedTimer = setTimeout(() => {
+    copiedMessageId.value = ''
+    copiedTimer = undefined
+  }, 1600)
 }
 
 function handleRegenerate(message: ChatMessage): void {
@@ -656,7 +674,15 @@ watch(currentConversationId, () => {
             </template>
           </a-alert>
           <div v-if="!isStreaming && message.status === 'done'" class="message-actions">
-            <a-button type="text" size="small" class="action-btn" aria-label="重新生成" @click="handleRegenerate(message)"><ReloadOutlined />重新生成</a-button>
+            <a-tooltip :title="copiedMessageId === message.id ? '已复制' : '复制回复'">
+              <a-button type="text" shape="circle" size="small" class="action-icon-btn" :class="{ 'action-icon-btn-copied': copiedMessageId === message.id }" :aria-label="copiedMessageId === message.id ? '已复制回复' : '复制回复'" @click="void copyAnswer(message)">
+                <CheckOutlined v-if="copiedMessageId === message.id" />
+                <CopyOutlined v-else />
+              </a-button>
+            </a-tooltip>
+            <a-tooltip title="重新生成">
+              <a-button type="text" shape="circle" size="small" class="action-icon-btn" aria-label="重新生成" @click="handleRegenerate(message)"><ReloadOutlined /></a-button>
+            </a-tooltip>
           </div>
         </div>
       </template>
@@ -759,10 +785,13 @@ h2{margin:0;color:rgba(0,0,0,.88);font-size:20px;font-weight:600;line-height:28p
 .user-row{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}
 .edit-box{display:flex;flex-direction:column;gap:8px;width:100%}
 .edit-actions{display:flex;justify-content:flex-end;gap:8px}
-.message-actions{display:flex;opacity:0;transition:opacity .2s ease}
+.message-actions{display:flex;align-items:center;gap:2px;opacity:0;transition:opacity .2s ease}
 .user-row:hover .message-actions,.user-row:focus-within .message-actions,.assistant-block:hover .message-actions,.assistant-block:focus-within .message-actions{opacity:1}
 .action-btn{color:rgba(0,0,0,.45);font-size:12px;padding-inline:4px}
 .action-btn:hover{color:#1677ff}
+.action-icon-btn{width:28px;min-width:28px;height:28px;color:rgba(0,0,0,.45);font-size:14px}
+.action-icon-btn:hover{background:rgba(0,0,0,.06);color:rgba(0,0,0,.88)}
+.action-icon-btn-copied,.action-icon-btn-copied:hover{color:#52c41a}
 .reasoning-collapse,.tool-collapse{margin:-4px 0}
 .reasoning-collapse :deep(.ant-collapse-header),.tool-collapse :deep(.ant-collapse-header){padding:4px 0;color:rgba(0,0,0,.45);font-size:12px;line-height:20px}
 .reasoning-collapse :deep(.ant-collapse-content-box),.tool-collapse :deep(.ant-collapse-content-box){padding:4px 0 8px}
