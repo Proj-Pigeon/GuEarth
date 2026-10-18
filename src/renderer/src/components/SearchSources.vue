@@ -41,7 +41,7 @@ function safeHref(reference: AiSearchReference): string | undefined {
       <span v-else>已阅读 {{ references.length }} 个来源</span>
     </div>
     <div class="search-list">
-      <template v-for="reference in visible" :key="reference.url">
+      <template v-for="(reference, index) in visible" :key="index">
         <a
           v-if="safeHref(reference)"
           class="search-row"
