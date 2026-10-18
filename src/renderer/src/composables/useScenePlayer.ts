@@ -4,6 +4,8 @@ import type { OffscreenRecordingAnnotation, OffscreenRecordingScript, RecordingS
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useClimateStore, thematicLayerCatalog } from '@renderer/stores/climate'
 import { useSolarStore, type MotionPanel } from '@renderer/stores/solar'
+import { useTransportStore } from '@renderer/stores/transport'
+import type { EnsoPhase } from '@renderer/thematic/ensoPhases'
 import { useDrawingStore, DEFAULT_DRAW_STYLE, type GeoPosition } from '@renderer/stores/drawing'
 import { useScenesStore } from '@renderer/stores/scenes'
 import { useFailureStore } from '@renderer/stores/failure'
@@ -31,6 +33,9 @@ export interface RecordingStep {
   overlays: string[]
   month: number
   simTime: SceneSimTime | null
+  ensoPhase: EnsoPhase
+  seaLevelRise: number
+  transportYear: number
   dwellMs: number
   flyDurationMs: number
   markers: RecordingMarker[]
@@ -84,6 +89,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   const drawingStore = useDrawingStore()
   const scenesStore = useScenesStore()
   const failureStore = useFailureStore()
+  const transportStore = useTransportStore()
   const recorder = createVideoRecorder()
 
   const playerState = reactive<PlayerState>({
@@ -183,7 +189,10 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       overlays: thematicLayerCatalog.filter((layer) => climateStore.overlays[layer.id]).map((layer) => layer.id),
       month: climateStore.month,
       simTime: solarStore.active ? { date: solarStore.date, hour: solarStore.hour } : null,
-      motionPanel: solarStore.motionPanel
+      motionPanel: solarStore.motionPanel,
+      ensoPhase: climateStore.ensoPhase,
+      seaLevelRise: climateStore.seaLevelRise,
+      transportYear: transportStore.year
     }
   }
 
@@ -219,6 +228,9 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     }
     const motionPanel = (snapshot.motionPanel ?? null) as MotionPanel | null
     if (solarStore.motionPanel !== motionPanel) solarStore.setMotionPanel(motionPanel)
+    if (climateStore.ensoPhase !== snapshot.ensoPhase) climateStore.setEnsoPhase(snapshot.ensoPhase)
+    if (climateStore.seaLevelRise !== snapshot.seaLevelRise) climateStore.setSeaLevelRise(snapshot.seaLevelRise)
+    if (transportStore.year !== snapshot.transportYear) transportStore.setYear(snapshot.transportYear)
   }
 
   function flyCamera(rawCamera: SceneCamera, durationSeconds: number, centerTarget = false): Promise<void> {
@@ -573,7 +585,10 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
         overlays: step.overlays,
         month: step.month,
         simTime: step.simTime,
-        motionPanel: null
+        motionPanel: null,
+        ensoPhase: step.ensoPhase,
+        seaLevelRise: step.seaLevelRise,
+        transportYear: step.transportYear
       },
       createdAt: Date.now()
     }))

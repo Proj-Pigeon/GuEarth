@@ -2,6 +2,7 @@ import '@sentry/electron/preload'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
 import type { TileMirrorMode } from '../common/tileMirror'
+import type { EnsoPhase } from '../common/thematicState'
 
 export interface ProviderCredentialStatus {
   configured: boolean
@@ -315,6 +316,9 @@ export interface SceneSnapshot {
   month: number
   simTime: SceneSimTime | null
   motionPanel: string | null
+  ensoPhase: EnsoPhase
+  seaLevelRise: number
+  transportYear: number
 }
 
 export interface TeachingScene {

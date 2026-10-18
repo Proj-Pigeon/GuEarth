@@ -29,6 +29,9 @@ import { collectStrings, parsePositions, registerAnnotationTools } from '@render
 import { useThematicLayers } from '@renderer/composables/useThematicLayers'
 import { useTimezoneCompare } from '@renderer/composables/useTimezoneCompare'
 import { useScenePlayer, type RecordingStep } from '@renderer/composables/useScenePlayer'
+import { ensoPhaseOptions, type EnsoPhase } from '@renderer/thematic/ensoPhases'
+import { SEA_LEVEL_SCENARIOS } from '@renderer/thematic/seaLevelRise'
+import { HSR_END_YEAR, HSR_START_YEAR } from '@renderer/thematic/hsrLines'
 import { datePartsOf, dayLength, declinationForDate, formatClock, isValidDate, noonAltitudeDeg, sunTimes } from '@renderer/thematic/solarMath'
 import { nearestBoundary, plateBoundaryKindName } from '@renderer/thematic/plateBoundaries'
 import GlobeToolbar from '@renderer/components/GlobeToolbar.vue'
@@ -803,6 +806,11 @@ function parseRecordingStep(raw: unknown, index: number): RecordingStep | { erro
     : []
   const dwellMs = record.dwellMs === undefined ? 6000 : Number(record.dwellMs)
   const flyDurationMs = record.flyMs === undefined ? 3500 : Number(record.flyMs)
+  const ensoPhase = typeof record.ensoPhase === 'string' && ensoPhaseOptions.some((option) => option.value === record.ensoPhase) ? record.ensoPhase as EnsoPhase : climateStore.ensoPhase
+  const requestedRise = Number(record.seaLevelRise)
+  const seaLevelRise = (SEA_LEVEL_SCENARIOS as readonly number[]).includes(requestedRise) ? requestedRise : climateStore.seaLevelRise
+  const requestedYear = Number(record.transportYear)
+  const transportYear = Number.isFinite(requestedYear) ? Math.round(Math.min(HSR_END_YEAR, Math.max(HSR_START_YEAR, requestedYear))) : transportStore.year
   return {
     name: typeof record.name === 'string' && record.name.trim() ? record.name.trim().slice(0, 80) : `第 ${index + 1} 幕`,
     narration: typeof record.narration === 'string' ? record.narration.trim().slice(0, 500) : '',
@@ -811,6 +819,9 @@ function parseRecordingStep(raw: unknown, index: number): RecordingStep | { erro
     overlays: knownOverlays,
     month: Math.round(month),
     simTime,
+    ensoPhase,
+    seaLevelRise,
+    transportYear,
     dwellMs: Math.min(60000, Math.max(1000, dwellMs)),
     flyDurationMs: Math.min(15000, Math.max(500, flyDurationMs)),
     markers,
@@ -842,6 +853,9 @@ aiStore.registerTool({
               overlays: { type: 'array', description: '本幕开启的教学图层 id 列表（未列出的图层会被关闭），可选项：' + thematicLayerCatalog.map((layer) => `${layer.id}（${layer.name}）`).join('、'), items: { type: 'string' } },
               month: { type: 'number', description: '可选专题月份 1-12（配合季节性图层对比 1 月/7 月）' },
               simTime: { type: 'object', description: '可选昼夜模拟 { date: "YYYY-MM-DD", hour: 北京时间 0-24 }，如夏至 2026-06-22', properties: { date: { type: 'string' }, hour: { type: 'number' } } },
+              ensoPhase: { type: 'string', description: '可选 ENSO 相位：normal（正常）/ el-nino（厄尔尼诺）/ la-nina（拉尼娜），配合 enso 图层讲解', enum: ['normal', 'el-nino', 'la-nina'] },
+              seaLevelRise: { type: 'number', description: '可选海平面上升情景（米）：0.5 / 1 / 2 / 5，配合 sea-level-rise 图层', enum: [0.5, 1, 2, 5] },
+              transportYear: { type: 'number', description: '可选高铁网络年份 2008-2025，配合 hsr-network 图层演示网络生长过程' },
               markers: { type: 'array', description: '命名标记点数组：本幕讲解到的具体地点务必标注（名称用规范地名），便于观众看清讲解位置', items: { type: 'object', properties: { name: { type: 'string' }, longitude: { type: 'number' }, latitude: { type: 'number' } }, required: ['name', 'longitude', 'latitude'] } },
               shapes: { type: 'array', description: '可选线/多边形数组（如胡焕庸线、区域边界）', items: { type: 'object', properties: { kind: { type: 'string', enum: ['polyline', 'polygon'] }, name: { type: 'string' }, points: { type: 'array', items: { type: 'object', properties: { longitude: { type: 'number' }, latitude: { type: 'number' } }, required: ['longitude', 'latitude'] } } }, required: ['kind', 'points'] } },
               narration: { type: 'string', description: '本幕旁白字幕，1-3 句精炼讲解' },

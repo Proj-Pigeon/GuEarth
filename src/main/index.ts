@@ -8,6 +8,7 @@ import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 import { serveTileResponse } from '../common/tileProtocol'
 import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
 import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
+import { ENSO_PHASE_SET, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS, type EnsoPhase } from '../common/thematicState'
 
 attachConsoleLogTee('main')
 
@@ -746,6 +747,15 @@ function normalizeSceneSimTime(value: unknown): SceneSimTime | null {
   return { date: value.date, hour: normalizeNumber(value.hour, 0, 24, 12) }
 }
 
+function normalizeSeaLevelRise(value: unknown): number {
+  const rise = Number(value)
+  return (SEA_LEVEL_SCENARIOS as readonly number[]).includes(rise) ? rise : 1
+}
+
+function normalizeEnsoPhase(value: unknown): EnsoPhase {
+  return typeof value === 'string' && ENSO_PHASE_SET.has(value) ? (value as EnsoPhase) : 'normal'
+}
+
 function normalizeSceneSnapshot(value: unknown): SceneSnapshot {
   if (!isRecord(value)) throw new Error('无效的场景快照')
   const overlays = Array.isArray(value.overlays)
@@ -758,7 +768,10 @@ function normalizeSceneSnapshot(value: unknown): SceneSnapshot {
     overlays,
     month: Math.round(normalizeNumber(value.month, 1, 12, 7)),
     simTime: normalizeSceneSimTime(value.simTime),
-    motionPanel
+    motionPanel,
+    ensoPhase: normalizeEnsoPhase(value.ensoPhase),
+    seaLevelRise: normalizeSeaLevelRise(value.seaLevelRise),
+    transportYear: Math.round(normalizeNumber(value.transportYear, HSR_START_YEAR, HSR_END_YEAR, HSR_END_YEAR))
   }
 }
 

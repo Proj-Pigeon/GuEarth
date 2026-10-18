@@ -8,6 +8,7 @@ import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sceneCameraView, 
 import { centroidOf, pointGraphics, polygonGraphics, polylineOptions, ringOf, sanitizePositions, shapeColorOf, shapeLabelOptions, surfacePosition, terrainSurfacePositions, toCartesian, type ShapeVisual } from './lib/shapeGraphics'
 import { useClimateStore, thematicLayerCatalog } from './stores/climate'
 import { useSolarStore } from './stores/solar'
+import { useTransportStore } from './stores/transport'
 import { useThematicLayers } from './composables/useThematicLayers'
 import { terrainProviderFactory, terrainRegistry } from './terrain/terrainRegistry'
 import WindParticles from './components/WindParticles.vue'
@@ -58,6 +59,7 @@ createApp({
 }).use(offscreenPinia).mount(overlayLayer)
 const climateStore = useClimateStore(offscreenPinia)
 const solarStore = useSolarStore(offscreenPinia)
+const transportStore = useTransportStore(offscreenPinia)
 
 const imageryLayers = new Map<string, Cesium.ImageryLayer>()
 let visibleAnnotations: Cesium.Entity[] = []
@@ -276,6 +278,9 @@ async function applySnapshot(snapshot: TeachingScene['snapshot']): Promise<void>
     }
   }
   imageryLayers.forEach((layer, id) => { layer.show = id === basemapId })
+  climateStore.setEnsoPhase(snapshot.ensoPhase)
+  climateStore.setSeaLevelRise(snapshot.seaLevelRise)
+  transportStore.setYear(snapshot.transportYear)
   for (const layer of thematicLayerCatalog) {
     climateStore.setOverlay(layer.id, snapshot.overlays.includes(layer.id))
   }
