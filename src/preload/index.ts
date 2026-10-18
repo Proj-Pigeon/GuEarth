@@ -442,10 +442,6 @@ const api = {
   recordings: {
     getDirectory: (): Promise<string | null> => ipcRenderer.invoke('recordings:get-directory'),
     chooseDirectory: (): Promise<string | null> => ipcRenderer.invoke('recordings:choose-directory'),
-    start: (mimeType: string): Promise<string> => ipcRenderer.invoke('recordings:start', mimeType),
-    append: (recordingId: string, data: ArrayBuffer): Promise<void> => ipcRenderer.invoke('recordings:append', recordingId, data),
-    finish: (recordingId: string): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:finish', recordingId),
-    abort: (recordingId: string): Promise<void> => ipcRenderer.invoke('recordings:abort', recordingId),
     offscreenProbe: (script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-probe', script),
     offscreenEncode: (script: OffscreenRecordingScript): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:offscreen-encode', script),
     offscreenCancel: (): Promise<void> => ipcRenderer.invoke('recordings:offscreen-cancel'),

@@ -25,8 +25,7 @@ import { dirname, join } from 'path'
 import { flushJsonWrites, readJson, serialQueue, writeAtomic, writeJson } from './jsonStore'
 import { listTileFiles, pruneTileFiles } from './tileCacheFiles'
 import { storageChildPath } from './storagePath'
-import { access, constants, mkdtemp, mkdir, open, readFile, readdir, rename as renameFile, stat, rm, unlink, writeFile } from 'fs/promises'
-import type { FileHandle } from 'fs/promises'
+import { access, constants, mkdtemp, mkdir, readFile, readdir, rename as renameFile, stat, rm, writeFile } from 'fs/promises'
 import { createHash, randomUUID } from 'crypto'
 import icon from '../../resources/icon.png?asset'
 import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, OffscreenRecordingProbeResult, OffscreenRecordingScript, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey, TileMirrorStatus } from '../preload'
@@ -822,63 +821,8 @@ function saveScenes(): Promise<void> {
   return enqueueScenes(() => writeJson(scenesPath, snapshot))
 }
 
-const RECORDING_EXTENSIONS: Record<string, string> = {
-  'video/mp4': 'mp4',
-  'video/webm': 'webm'
-}
-
-interface RecordingWriter {
-  senderId: number
-  path: string
-  temporaryPath: string
-  handle: FileHandle
-  bytes: number
-  queue: Promise<void>
-  state: 'open' | 'finishing'
-}
-
-const recordingWriters = new Map<string, RecordingWriter>()
-
-function recordingExtension(mimeType: unknown): string {
-  if (typeof mimeType !== 'string') throw new Error('无效的视频格式')
-  const extension = RECORDING_EXTENSIONS[mimeType.split(';')[0].trim().toLowerCase()]
-  if (!extension) throw new Error('不支持的视频格式')
-  return extension
-}
-
 function ffmpegPath(): string {
   return resolveFfmpegBinary(app.getAppPath(), process.resourcesPath, app.isPackaged)
-}
-
-function finalizeMp4Recording(inputPath: string, outputPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const stderr: Buffer[] = []
-    const process = spawn(ffmpegPath(), ['-hide_banner', '-loglevel', 'error', '-y', '-i', inputPath, '-map', '0:v:0', '-c:v', 'copy', '-movflags', '+faststart', '-f', 'mp4', outputPath], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
-    process.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
-    process.once('error', reject)
-    process.once('close', (code) => {
-      if (code === 0) resolve()
-      else {
-        const detail = Buffer.concat(stderr).toString('utf8').trim()
-        reject(new Error(`视频容器最终化失败（FFmpeg 退出码 ${code ?? '未知'}）${detail ? `：${detail.slice(-1000)}` : ''}`))
-      }
-    })
-  })
-}
-
-function getRecordingWriter(recordingId: unknown, senderId: number): RecordingWriter {
-  if (typeof recordingId !== 'string') throw new Error('无效的录制会话')
-  const writer = recordingWriters.get(recordingId)
-  if (!writer || writer.senderId !== senderId || writer.state !== 'open') throw new Error('录制会话已失效')
-  return writer
-}
-
-async function discardRecordingWriter(recordingId: string, writer: RecordingWriter): Promise<void> {
-  writer.state = 'finishing'
-  recordingWriters.delete(recordingId)
-  await writer.queue.catch(() => undefined)
-  await writer.handle.close().catch(() => undefined)
-  await unlink(writer.temporaryPath).catch(() => undefined)
 }
 
 function registerIpcHandlers(): void {
@@ -1135,80 +1079,6 @@ function registerIpcHandlers(): void {
   })
   ipcMain.handle('recordings:offscreen-cancel', (): void => { cancelOffscreenRecording?.() })
   ipcMain.handle('recordings:offscreen-stats', (): OffscreenRecordingProbeResult => offscreenRecordingStats())
-  ipcMain.handle('recordings:start', async (event, mimeType: unknown): Promise<string> => {
-    const extension = recordingExtension(mimeType)
-    const directory = await usableRecordingDirectory()
-    if (!directory) throw new Error('请先选择可用的视频保存文件夹')
-    const now = new Date()
-    const pad = (value: number): string => String(value).padStart(2, '0')
-    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-    const recordingId = randomUUID()
-    const path = join(directory, `GuEarth-${stamp}-${recordingId.slice(0, 8)}.${extension}`)
-    const temporaryPath = `${path}.part`
-    const handle = await open(temporaryPath, 'wx')
-    recordingWriters.set(recordingId, {
-      senderId: event.sender.id,
-      path,
-      temporaryPath,
-      handle,
-      bytes: 0,
-      queue: Promise.resolve(),
-      state: 'open'
-    })
-    return recordingId
-  })
-  ipcMain.handle('recordings:append', async (event, recordingId: unknown, data: unknown): Promise<void> => {
-    const writer = getRecordingWriter(recordingId, event.sender.id)
-    if (!(data instanceof ArrayBuffer) || data.byteLength === 0 || data.byteLength > 128 * 1024 * 1024) throw new Error('无效的视频分段')
-    const buffer = Buffer.from(data)
-    const write = writer.queue.then(async () => {
-      let offset = 0
-      while (offset < buffer.byteLength) {
-        const result = await writer.handle.write(buffer, offset, buffer.byteLength - offset, null)
-        if (result.bytesWritten === 0) throw new Error('视频分段写入失败')
-        offset += result.bytesWritten
-      }
-      writer.bytes += buffer.byteLength
-    })
-    writer.queue = write
-    await write
-  })
-  ipcMain.handle('recordings:finish', async (event, recordingId: unknown): Promise<RecordingSaveResult> => {
-    const writer = getRecordingWriter(recordingId, event.sender.id)
-    writer.state = 'finishing'
-    try {
-      await writer.queue
-      if (writer.bytes === 0) throw new Error('未能生成视频数据')
-      await writer.handle.close()
-      if (writer.path.toLowerCase().endsWith('.mp4')) {
-        const finalizedPath = `${writer.path}.final.part`
-        await unlink(finalizedPath).catch(() => undefined)
-        try {
-          await finalizeMp4Recording(writer.temporaryPath, finalizedPath)
-          await renameFile(finalizedPath, writer.path)
-          await unlink(writer.temporaryPath).catch(() => undefined)
-        } catch (error) {
-          await unlink(finalizedPath).catch(() => undefined)
-          throw error
-        }
-      } else {
-        await renameFile(writer.temporaryPath, writer.path)
-      }
-      recordingWriters.delete(recordingId as string)
-      shell.showItemInFolder(writer.path)
-      return { path: writer.path, bytes: writer.bytes }
-    } catch (error) {
-      await discardRecordingWriter(recordingId as string, writer)
-      throw error
-    }
-  })
-  ipcMain.handle('recordings:abort', async (event, recordingId: unknown): Promise<void> => {
-    if (typeof recordingId !== 'string') throw new Error('无效的录制会话')
-    const writer = recordingWriters.get(recordingId)
-    if (!writer) return
-    if (writer.senderId !== event.sender.id) throw new Error('录制会话已失效')
-    await discardRecordingWriter(recordingId, writer)
-  })
   ipcMain.handle('logging:copy-report', (_event, rendererDump: unknown): void => {
     if (typeof rendererDump !== 'string') throw new Error('无效的日志数据')
     clipboard.writeText([

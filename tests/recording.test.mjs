@@ -8,7 +8,6 @@ const viteSource = await readFile(new URL('../electron.vite.config.ts', import.m
 const offscreenHtml = await readFile(new URL('../src/renderer/offscreen.html', import.meta.url), 'utf8')
 const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
 const scenePlayerSource = await readFile(new URL('../src/renderer/src/composables/useScenePlayer.ts', import.meta.url), 'utf8')
-const recorderSource = await readFile(new URL('../src/renderer/src/composables/useVideoRecorder.ts', import.meta.url), 'utf8')
 const ffmpegSource = await readFile(new URL('../src/main/ffmpeg.ts', import.meta.url), 'utf8')
 
 test('offscreen recording has an isolated Cesium entry', () => {
@@ -26,19 +25,12 @@ test('the recording window survives background throttling and keeps explicit fra
   assert.match(mainSource, /offscreen: true/)
   assert.match(mainSource, /window\.webContents\.setFrameRate\(targetFps\)/)
   assert.match(mainSource, /window\.webContents\.on\('paint'/)
-  assert.match(recorderSource, /pacingTimer = window\.setTimeout\(frameTick, Math\.max\(0, nextFrameAt - performance\.now\(\)\)\)/)
   assert.match(scenePlayerSource, /if \(timeoutMs !== null\) advanceTimer = setTimeout\(\(\) => advanceResolver\?\.\(\), timeoutMs\)/)
 })
 
 test('AI lesson recording encodes through the main-process offscreen encoder', () => {
   assert.match(scenePlayerSource, /await window\.guEarth\.recordings\.offscreenEncode\(script\)/)
   assert.doesNotMatch(scenePlayerSource, /MediaRecorder/)
-})
-
-test('recording keeps continuous Cesium rendering while the capture runs', () => {
-  assert.match(scenePlayerSource, /scene\.requestRenderMode = false/)
-  assert.match(scenePlayerSource, /scene\.requestRenderMode = originalRequestRenderMode/)
-  assert.match(scenePlayerSource, /scene\.maximumRenderTimeChange = originalMaximumRenderTimeChange/)
 })
 
 test('the visible window mirrors the recorded lesson without breaking annotation saves', () => {

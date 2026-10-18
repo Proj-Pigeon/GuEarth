@@ -152,27 +152,6 @@ test('sky-facing scenes advance once tiles are ready instead of waiting ten seco
   await playing
 })
 
-test('single-scene prewarm applies standard and live ultra quality, then restores the globe', async (t) => {
-  const { viewer, player, scenes, scene, tick, requests } = playerFixture(t)
-  scenes.setRecording({ prewarmQuality: 'standard' })
-  viewer.value.scene.globe.tilesLoaded = false
-  const playing = player.play({ scenes: [scene], mode: 'auto', recording: { tempShapeIds: [] } })
-  await tick(120)
-  assert.equal(viewer.value.scene.globe.maximumScreenSpaceError, 4)
-  const renders = requests()
-  scenes.setRecording({ prewarmQuality: 'ultra' })
-  assert.equal(viewer.value.scene.globe.maximumScreenSpaceError, 0.5)
-  assert.ok(requests() > renders)
-  for (let index = 0; index < 45; index += 1) await tick(120)
-  assert.equal(player.playerState.prewarming, true)
-  player.stop()
-  for (let index = 0; index < 8; index += 1) await tick(120)
-  await playing
-  assert.equal(viewer.value.scene.globe.maximumScreenSpaceError, 2)
-  scenes.setRecording({ prewarmQuality: 'high' })
-  assert.equal(viewer.value.scene.globe.maximumScreenSpaceError, 2)
-})
-
 test('AI markdown treats HTML as text and omits executable link and image attributes', () => {
   const nodes = renderMarkdown('<script>alert(1)</script>\n\n[x](javascript:alert(1)) ![x](data:image/svg+xml,boom) [safe](https://example.com)')
   const seen = []
