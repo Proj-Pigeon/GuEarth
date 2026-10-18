@@ -36,3 +36,14 @@ test('the offscreen recorder seeds heights and resolves the land mask before rec
   assert.match(offscreenSource, /reportNotice\(`淹没模拟地形采样失败/)
   assert.match(samplingSource, /await ensureLandMask\(\)\r?\n\s+if \(allPointsCached\(\)\)/)
 })
+
+test('one shared promise owns the land mask and the cache check so concurrent callers reuse it', () => {
+  const assignIndex = samplingSource.indexOf('samplePromise ??=')
+  const maskIndex = samplingSource.indexOf('await ensureLandMask()')
+  const cacheIndex = samplingSource.indexOf('if (allPointsCached())')
+  assert.ok(assignIndex >= 0 && maskIndex > assignIndex && cacheIndex > maskIndex)
+  assert.ok(samplingSource.includes('})().finally(() => {'))
+  assert.ok(samplingSource.includes('samplePromise = undefined'))
+  assert.ok(!samplingSource.includes('if (samplePromise) return samplePromise'))
+  assert.ok(!samplingSource.includes('await samplePromise'))
+})

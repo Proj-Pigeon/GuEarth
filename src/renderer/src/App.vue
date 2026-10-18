@@ -759,6 +759,12 @@ function cancelRecordingDirectory(): void {
   recordingDirectoryResolver = null
 }
 
+const optionalFiniteNumber = (value: unknown): number | undefined => {
+  if (value === null || value === undefined || value === '') return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
 function parseRecordingStep(raw: unknown, index: number): RecordingStep | { error: string } {
   if (typeof raw !== 'object' || raw === null) return { error: `第 ${index + 1} 步格式无效` }
   const record = raw as Record<string, unknown>
@@ -811,8 +817,8 @@ function parseRecordingStep(raw: unknown, index: number): RecordingStep | { erro
   const ensoPhase = typeof record.ensoPhase === 'string' && ensoPhaseOptions.some((option) => option.value === record.ensoPhase) ? record.ensoPhase as EnsoPhase : climateStore.ensoPhase
   const requestedRise = Number(record.seaLevelRise)
   const seaLevelRise = (SEA_LEVEL_SCENARIOS as readonly number[]).includes(requestedRise) ? requestedRise : climateStore.seaLevelRise
-  const requestedYear = Number(record.transportYear)
-  const transportYear = Number.isFinite(requestedYear) ? Math.round(Math.min(HSR_END_YEAR, Math.max(HSR_START_YEAR, requestedYear))) : transportStore.year
+  const requestedYear = optionalFiniteNumber(record.transportYear)
+  const transportYear = requestedYear === undefined ? transportStore.year : Math.round(Math.min(HSR_END_YEAR, Math.max(HSR_START_YEAR, requestedYear)))
   return {
     name: typeof record.name === 'string' && record.name.trim() ? record.name.trim().slice(0, 80) : `第 ${index + 1} 幕`,
     narration: typeof record.narration === 'string' ? record.narration.trim().slice(0, 500) : '',
