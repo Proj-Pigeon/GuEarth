@@ -101,7 +101,7 @@ test('offscreen recording cleans stale temporary directories', () => {
 })
 
 test('offscreen recording resolves the bundled LGPL encoder without the retired installer package', () => {
-  assert.match(mainSource, /import \{ offscreenVideoEncoderArgs, resolveFfmpegBinary \} from '\.\/ffmpeg'/)
+  assert.match(mainSource, /import \{ assertOffscreenRecordingSupported, offscreenVideoEncoderArgs, resolveFfmpegBinary \} from '\.\/ffmpeg'/)
   assert.match(mainSource, /function ffmpegPath\(\): string \{\s+return resolveFfmpegBinary\(app\.getAppPath\(\), process\.resourcesPath, app\.isPackaged\)\s+\}/)
   assert.doesNotMatch(mainSource, /@ffmpeg-installer/)
   assert.doesNotMatch(mainSource, /createRequire/)
@@ -109,7 +109,7 @@ test('offscreen recording resolves the bundled LGPL encoder without the retired 
 
 test('the bundled encoder encodes H.264 with libopenh264 and keeps libx264 out', () => {
   assert.match(ffmpegSource, /export const offscreenVideoEncoderArgs = \['-c:v', 'libopenh264', '-profile:v', 'high', '-b:v', '2M'\]/)
-  assert.match(ffmpegSource, /export function resolveFfmpegBinary\(appPath: string, resourcesPath: string, packaged: boolean\): string/)
+  assert.match(ffmpegSource, /export function resolveFfmpegBinary\(appPath: string, resourcesPath: string, packaged: boolean, platform: string = process\.platform\): string/)
   assert.doesNotMatch(ffmpegSource, /libx264/)
   assert.match(mainSource, /const recordingSeconds = durations\.reduce\(\(total, seconds\) => total \+ seconds, 0\)/)
   assert.match(mainSource, /'-t', recordingSeconds\.toFixed\(6\), '-an', \.\.\.offscreenVideoEncoderArgs, '-pix_fmt', 'yuv420p'/)
@@ -265,9 +265,9 @@ test('a second launch focuses the running window instead of racing the recording
 
 test('the stale sweep never removes frame directories owned by a live process', () => {
   assert.match(mainSource, /const OFFSCREEN_OWNER_FILE = '\.owner'/)
-  assert.match(mainSource, /async function offscreenFrameDirectoryActive\(path: string\): Promise<boolean>/)
+  assert.match(mainSource, /async function offscreenFrameDirectoryActive\(directory: string, entryName: string\): Promise<boolean>/)
   assert.match(mainSource, /process\.kill\(owner, 0\)/)
-  assert.match(mainSource, /if \(await offscreenFrameDirectoryActive\(path\)\) return/)
+  assert.match(mainSource, /if \(await offscreenFrameDirectoryActive\(directory, entry\.name\)\) return/)
   assert.match(mainSource, /writeFile\(join\(tempDir, OFFSCREEN_OWNER_FILE\), String\(process\.pid\), 'utf8'\)/)
   assert.doesNotMatch(mainSource, /map\(\(entry\) => rm\(join\(directory, entry\.name\)/)
 })
