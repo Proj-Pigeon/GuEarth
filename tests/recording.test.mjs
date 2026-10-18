@@ -277,3 +277,21 @@ test('a cancelled session removes a frame directory created after the cancel', (
   assert.match(mainSource, /if \(settled\) \{\r?\n\s+void rm\(createdTempDir, \{ recursive: true, force: true \}\)\.catch\(\(\) => undefined\)\r?\n\s+return\r?\n\s+\}/)
   assert.match(mainSource, /tempDir = createdTempDir/)
 })
+
+test('offscreen recording refuses a new session while another one is busy', () => {
+  assert.match(mainSource, /function assertOffscreenRecordingIdle\(\): void \{\r?\n\s+if \(!offscreenRecordingWindow && !cancelOffscreenRecording && !teardownOffscreenRecording && !offscreenRecordRequester\) return\r?\n\s+throw new Error\('已有离屏录制任务正在进行，请稍后再试'\)\r?\n\}/)
+  const probeBody = mainSource.slice(mainSource.indexOf("ipcMain.handle('recordings:offscreen-probe'"), mainSource.indexOf("ipcMain.handle('recordings:offscreen-encode'"))
+  assert.match(probeBody, /assertOffscreenRecordingIdle\(\)/)
+  const encodeBody = mainSource.slice(mainSource.indexOf("ipcMain.handle('recordings:offscreen-encode'"), mainSource.indexOf("ipcMain.on('recordings:offscreen-progress'"))
+  assert.match(encodeBody, /assertOffscreenRecordingIdle\(\)/)
+})
+
+test('the offscreen requester is only cleared by the invocation that claimed it', () => {
+  assert.match(mainSource, /const requester = event\.sender\r?\n\s+offscreenRecordRequester = requester\r?\n\s+try \{/)
+  assert.match(mainSource, /return await encodeOffscreenRecording\(normalizeOffscreenRecordingScript\(script\)\)\r?\n\s+\} finally \{\r?\n\s+if \(offscreenRecordRequester === requester\) offscreenRecordRequester = null\r?\n\s+\}/)
+  assert.doesNotMatch(mainSource, /finally \{\r?\n\s+offscreenRecordRequester = null/)
+})
+
+test('a failed or cancelled offscreen session clears its teardown hook', () => {
+  assert.match(mainSource, /const release = \(\): void => \{\r?\n\s+if \(cancelOffscreenRecording === cancel\) cancelOffscreenRecording = null\r?\n\s+if \(teardownOffscreenRecording === teardown\) teardownOffscreenRecording = null\r?\n\s+stopOffscreenRecordingWindow\(\)/)
+})

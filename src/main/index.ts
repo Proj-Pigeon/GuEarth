@@ -1034,16 +1034,19 @@ function registerIpcHandlers(): void {
     return directory
   })
   ipcMain.handle('recordings:offscreen-probe', async (_event, script: unknown): Promise<OffscreenRecordingProbeResult> => {
+    assertOffscreenRecordingIdle()
     if (script === undefined) return startOffscreenRecordingWindow()
     return startOffscreenRecordingWindow(normalizeOffscreenRecordingScript(script))
   })
   ipcMain.handle('recordings:offscreen-encode', async (event, script: unknown): Promise<RecordingSaveResult> => {
     assertOffscreenRecordingSupported(process.platform)
-    offscreenRecordRequester = event.sender
+    assertOffscreenRecordingIdle()
+    const requester = event.sender
+    offscreenRecordRequester = requester
     try {
       return await encodeOffscreenRecording(normalizeOffscreenRecordingScript(script))
     } finally {
-      offscreenRecordRequester = null
+      if (offscreenRecordRequester === requester) offscreenRecordRequester = null
     }
   })
   ipcMain.on('recordings:offscreen-progress', (event, payload: unknown): void => {
@@ -1095,6 +1098,11 @@ function registerIpcHandlers(): void {
       logger.dump() || '（无日志）'
     ].join('\n'))
   })
+}
+
+function assertOffscreenRecordingIdle(): void {
+  if (!offscreenRecordingWindow && !cancelOffscreenRecording && !teardownOffscreenRecording && !offscreenRecordRequester) return
+  throw new Error('已有离屏录制任务正在进行，请稍后再试')
 }
 
 function stopOffscreenRecordingWindow(): void {
@@ -1301,6 +1309,7 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
     let recorderWindow: BrowserWindow | null = null
     const release = (): void => {
       if (cancelOffscreenRecording === cancel) cancelOffscreenRecording = null
+      if (teardownOffscreenRecording === teardown) teardownOffscreenRecording = null
       stopOffscreenRecordingWindow()
       terminateOffscreenEncoder(ffmpeg)
       ffmpeg = null
