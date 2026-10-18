@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, shallowRef, watch, type VNodeChild } from 'vue'
-import { renderMarkdown } from '@renderer/utils/markdown'
+import { renderMarkdown, renderStreamingMarkdown } from '@renderer/utils/markdown'
 
 const props = defineProps<{ text: string; streaming: boolean }>()
 const emit = defineEmits<{ rendered: [] }>()
@@ -12,7 +12,7 @@ let timer: ReturnType<typeof setTimeout> | undefined
 function render(): void {
   if (timer !== undefined) clearTimeout(timer)
   timer = undefined
-  nodes.value = renderMarkdown(props.text)
+  nodes.value = props.streaming ? renderStreamingMarkdown(props.text) : renderMarkdown(props.text)
   emit('rendered')
 }
 

@@ -37,7 +37,7 @@ const { listTileFiles, pruneTileFiles } = await import('../src/main/tileCacheFil
 const { writeAtomic, serialQueue, writeJson } = await import('../src/main/jsonStore.ts')
 const { interpolateCamera, useScenePlayer } = await import('../src/renderer/src/composables/useScenePlayer.ts')
 const { useScenesStore } = await import('../src/renderer/src/stores/scenes.ts')
-const { renderMarkdown } = await import('../src/renderer/src/utils/markdown.ts')
+const { renderMarkdown, renderStreamingMarkdown } = await import('../src/renderer/src/utils/markdown.ts')
 
 async function directory(t) {
   const path = await mkdtemp(join(tmpdir(), 'guearth-review-'))
@@ -187,4 +187,20 @@ test('AI markdown treats HTML as text and omits executable link and image attrib
   const link = seen.find((node) => node.type === 'a')
   assert.equal(link.props.href, 'https://example.com')
   assert.equal(link.props.rel, 'noopener noreferrer')
+})
+
+test('streaming markdown tints the last two words, appends one caret and leaves code untouched', () => {
+  const nodes = renderStreamingMarkdown('前言 **加粗** 结尾\n\n```js\nconst answer = 42\n```\n')
+  const seen = []
+  function walk(value) {
+    if (Array.isArray(value)) value.forEach(walk)
+    else if (value && typeof value === 'object') { seen.push(value); walk(value.children) }
+  }
+  walk(nodes)
+  const fresh = seen.filter((node) => node.props?.class?.includes('stream-token-fresh'))
+  const carets = seen.filter((node) => node.props?.class === 'stream-caret')
+  assert.equal(fresh.length, 2)
+  assert.equal(carets.length, 1)
+  assert.deepEqual(fresh.map((node) => node.children[0]), ['结', '尾'])
+  assert.equal(seen.some((node) => node.type === 'pre' && node.children.some((child) => child?.props?.class?.includes('stream-token'))), false)
 })

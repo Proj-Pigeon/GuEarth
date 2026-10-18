@@ -798,6 +798,12 @@ h2{margin:0;color:rgba(0,0,0,.88);font-size:20px;font-weight:600;line-height:28p
 .answer-text :deep(a){color:#1677ff}
 .answer-text :deep(hr){margin:12px 0;border:0;border-top:1px solid rgba(5,5,5,.06)}
 .answer-text :deep(img){max-width:100%;border-radius:6px}
+.answer-text :deep(.stream-token){transition:color .7s ease}
+.answer-text :deep(.stream-token-enter){animation:stream-token-in .3s ease both}
+.answer-text :deep(.stream-token-fresh){color:#1677ff}
+.answer-text :deep(.stream-caret){display:inline-block;width:2px;height:1em;margin-left:2px;border-radius:1px;background:#1677ff;vertical-align:-.15em;animation:stream-caret-pulse 1s ease-in-out infinite}
+@keyframes stream-token-in{from{opacity:0}to{opacity:1}}
+@keyframes stream-caret-pulse{0%,100%{opacity:1}50%{opacity:.2}}
 .pending-line{margin:2px 0}
 .ai-disclaimer{margin:-6px 4px 0;color:rgba(0,0,0,.45);font-size:12px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .composer-tools{display:flex;align-items:center;gap:8px;min-width:0}
@@ -830,6 +836,8 @@ h2{margin:0;color:rgba(0,0,0,.88);font-size:20px;font-weight:600;line-height:28p
   .shimmer-text{animation:none;background:none;-webkit-background-clip:border-box;background-clip:border-box;color:rgba(0,0,0,.45)}
   .suggestion-fade-enter-active,.suggestion-fade-leave-active{transition:none}
   .message-actions{transition:none}
+  .answer-text :deep(.stream-token){transition:none;animation:none}
+  .answer-text :deep(.stream-caret){animation:none}
 }
 </style>
 
