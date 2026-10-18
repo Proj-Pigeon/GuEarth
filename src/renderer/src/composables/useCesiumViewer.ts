@@ -10,7 +10,7 @@ import type { PlaceSuggestion, TileMirrorStatus } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
 import { resolveFlightDestination } from './terrainFlight'
-import { terrainRegistry } from '@renderer/terrain/terrainRegistry'
+import { terrainProviderFactory, terrainRegistry } from '@renderer/terrain/terrainRegistry'
 
 interface LayerProvider {
   meta: ProviderMeta
@@ -356,7 +356,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   }
 
   async function setTerrain(id: string, expectedGeneration: number): Promise<void> {
-    const create = terrainRegistry[id] ?? terrainRegistry.ellipsoid
+    const create = terrainProviderFactory(id)
     terrainRequestSeq += 1
     const requestSeq = terrainRequestSeq
     try {
@@ -499,7 +499,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   }
 
   async function resolveInitialTerrain(id: string): Promise<{ provider: Cesium.TerrainProvider; id: string }> {
-    const create = terrainRegistry[id] ?? terrainRegistry.ellipsoid
+    const create = terrainProviderFactory(id)
     let settled = false
     const timeout = new Promise<{ provider: Cesium.TerrainProvider; id: string }>((resolve) => {
       window.setTimeout(() => {

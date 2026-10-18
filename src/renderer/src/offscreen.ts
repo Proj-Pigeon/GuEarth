@@ -9,7 +9,7 @@ import { centroidOf, pointGraphics, polygonGraphics, polylineOptions, ringOf, sa
 import { useClimateStore, thematicLayerCatalog } from './stores/climate'
 import { useSolarStore } from './stores/solar'
 import { useThematicLayers } from './composables/useThematicLayers'
-import { terrainRegistry } from './terrain/terrainRegistry'
+import { terrainProviderFactory, terrainRegistry } from './terrain/terrainRegistry'
 import WindParticles from './components/WindParticles.vue'
 import FrontalCyclone from './components/FrontalCyclone.vue'
 import TyphoonOverlay from './components/TyphoonOverlay.vue'
@@ -326,7 +326,7 @@ function flyCamera(camera: SceneCamera, durationMs: number): Promise<void> {
 }
 
 async function applyTerrain(terrain: OffscreenRecordingScript['terrain']): Promise<void> {
-  const create = terrainRegistry[terrain.providerId] ?? terrainRegistry.ellipsoid
+  const create = terrainProviderFactory(terrain.providerId)
   try {
     viewer.terrainProvider = await create()
   } catch {

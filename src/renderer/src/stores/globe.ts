@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { normalizeTileMirrorMode, type TileMirrorMode } from '../../../common/tileMirror'
+import type { TerrainProviderId } from '../../../common/terrainProviders'
 import { useFailureStore } from './failure'
 
 export type LayerKind = 'basemap' | 'overlay'
@@ -80,7 +81,7 @@ const defaultLayers: LayerMeta[] = providerCatalog.map((provider) => ({
 }))
 
 export interface TerrainMeta {
-  id: string
+  id: TerrainProviderId
   name: string
   description: string
 }
@@ -91,7 +92,7 @@ export const terrainCatalog: TerrainMeta[] = [
   { id: 'ellipsoid', name: '椭球（无起伏）', description: '光滑球面，无山脉' }
 ]
 
-const terrainProviderIds = new Set(terrainCatalog.map((terrain) => terrain.id))
+const terrainProviderIds = new Set<string>(terrainCatalog.map((terrain) => terrain.id))
 
 function providerFor(id: string): ProviderMeta | undefined {
   return providerCatalog.find((provider) => provider.id === id) || credentialOnlyProviders.find((provider) => provider.id === id)

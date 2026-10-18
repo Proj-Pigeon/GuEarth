@@ -7,6 +7,7 @@ import type { MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileM
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 import { serveTileResponse } from '../common/tileProtocol'
 import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
+import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
 
 attachConsoleLogTee('main')
 
@@ -1288,12 +1289,10 @@ function offscreenRecordingStats(): { fps: number; frames: number } {
   return { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
 }
 
-const OFFSCREEN_TERRAIN_PROVIDER_IDS = new Set(['ellipsoid', 'arcgis-terrain', 'cesium-world-terrain'])
-
 function normalizeOffscreenTerrain(value: unknown): OffscreenRecordingScript['terrain'] {
   if (!isRecord(value)) return { providerId: 'ellipsoid', exaggeration: 1, lighting: false }
   return {
-    providerId: typeof value.providerId === 'string' && OFFSCREEN_TERRAIN_PROVIDER_IDS.has(value.providerId) ? value.providerId : 'ellipsoid',
+    providerId: typeof value.providerId === 'string' && TERRAIN_PROVIDER_ID_SET.has(value.providerId) ? value.providerId : 'ellipsoid',
     exaggeration: normalizeNumber(value.exaggeration, 1, 5, 1),
     lighting: value.lighting === true
   }
