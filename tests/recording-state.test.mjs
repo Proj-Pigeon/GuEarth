@@ -47,3 +47,14 @@ test('AI recording scripts can set the thematic state per step', () => {
   assert.match(appSource, /ensoPhase,\r?\n\s+seaLevelRise,\r?\n\s+transportYear,/)
   assert.match(scenePlayerSource, /seaLevelRise: step\.seaLevelRise/)
 })
+
+test('scene snapshots carry the basemap style instead of hardcoding standard', () => {
+  assert.match(preloadSource, /styleId\?: string/)
+  assert.match(mainSource, /styleId: normalizeStyleId\(value\.styleId\)/)
+  assert.match(scenePlayerSource, /styleId: globeStore\.providerStyles\[globeStore\.selectedLayerId\]/)
+  assert.match(scenePlayerSource, /styleId: step\.styleId/)
+  assert.match(appSource, /styleId: store\.providerStyles\[store\.selectedLayerId\]/)
+  assert.match(offscreenSource, /const styleId = styleFor\(basemapId, snapshot\.styleId \?\? ''\)/)
+  assert.match(offscreenSource, /createBasemapImageryProvider\(basemapId, styleId\)/)
+  assert.doesNotMatch(offscreenSource, /createBasemapImageryProvider\(basemapId, 'standard'\)/)
+})

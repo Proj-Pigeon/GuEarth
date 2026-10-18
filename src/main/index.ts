@@ -756,6 +756,12 @@ function normalizeEnsoPhase(value: unknown): EnsoPhase {
   return typeof value === 'string' && ENSO_PHASE_SET.has(value) ? (value as EnsoPhase) : 'normal'
 }
 
+const STYLE_ID_PATTERN = /^[a-z0-9-]{1,32}$/
+
+function normalizeStyleId(value: unknown): string | undefined {
+  return typeof value === 'string' && STYLE_ID_PATTERN.test(value) ? value : undefined
+}
+
 function normalizeSceneSnapshot(value: unknown): SceneSnapshot {
   if (!isRecord(value)) throw new Error('无效的场景快照')
   const overlays = Array.isArray(value.overlays)
@@ -765,6 +771,7 @@ function normalizeSceneSnapshot(value: unknown): SceneSnapshot {
   return {
     camera: normalizeSceneCamera(value.camera),
     basemapId: safeId(value.basemapId ?? 'osm'),
+    styleId: normalizeStyleId(value.styleId),
     overlays,
     month: Math.round(normalizeNumber(value.month, 1, 12, 7)),
     simTime: normalizeSceneSimTime(value.simTime),

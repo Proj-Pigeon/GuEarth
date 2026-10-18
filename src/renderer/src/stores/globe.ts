@@ -98,7 +98,7 @@ function providerFor(id: string): ProviderMeta | undefined {
   return providerCatalog.find((provider) => provider.id === id) || credentialOnlyProviders.find((provider) => provider.id === id)
 }
 
-function styleFor(providerId: string, styleId: string): string {
+export function styleFor(providerId: string, styleId: string): string {
   const provider = providerFor(providerId)
   return provider?.styles.some((style) => style.id === styleId) ? styleId : provider?.defaultStyleId ?? 'standard'
 }

@@ -7,6 +7,7 @@ import { createPinia } from 'pinia'
 import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sceneCameraView, type PrewarmView, type SceneCameraView } from './lib/sceneCamera'
 import { centroidOf, pointGraphics, polygonGraphics, polylineOptions, ringOf, sanitizePositions, shapeColorOf, shapeLabelOptions, surfacePosition, terrainSurfacePositions, toCartesian, type ShapeVisual } from './lib/shapeGraphics'
 import { useClimateStore, thematicLayerCatalog } from './stores/climate'
+import { styleFor } from './stores/globe'
 import { useSolarStore } from './stores/solar'
 import { useTransportStore } from './stores/transport'
 import { useThematicLayers } from './composables/useThematicLayers'
@@ -268,16 +269,18 @@ function reportNotice(message: string): void {
 
 async function applySnapshot(snapshot: TeachingScene['snapshot']): Promise<void> {
   const basemapId = snapshot.basemapId || 'osm'
-  if (!imageryLayers.has(basemapId)) {
+  const styleId = styleFor(basemapId, snapshot.styleId ?? '')
+  const imageryKey = `${basemapId}/${styleId}`
+  if (!imageryLayers.has(imageryKey)) {
     try {
-      const provider = createBasemapImageryProvider(basemapId, 'standard')
-      imageryLayers.set(basemapId, viewer.imageryLayers.addImageryProvider(provider, 0))
+      const provider = createBasemapImageryProvider(basemapId, styleId)
+      imageryLayers.set(imageryKey, viewer.imageryLayers.addImageryProvider(provider, 0))
     } catch {
       reportNotice(`录制画面的底图「${basemapId}」加载失败，成片可能缺少地图底图`)
       return
     }
   }
-  imageryLayers.forEach((layer, id) => { layer.show = id === basemapId })
+  imageryLayers.forEach((layer, id) => { layer.show = id === imageryKey })
   climateStore.setEnsoPhase(snapshot.ensoPhase)
   climateStore.setSeaLevelRise(snapshot.seaLevelRise)
   transportStore.setYear(snapshot.transportYear)

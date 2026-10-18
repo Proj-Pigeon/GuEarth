@@ -30,6 +30,7 @@ export interface RecordingStep {
   narration: string
   camera: SceneCamera
   basemapId: string
+  styleId: string
   overlays: string[]
   month: number
   simTime: SceneSimTime | null
@@ -186,6 +187,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
         pitch: Cesium.Math.toDegrees(current.camera.pitch)
       }),
       basemapId: globeStore.selectedLayerId,
+      styleId: globeStore.providerStyles[globeStore.selectedLayerId] ?? '',
       overlays: thematicLayerCatalog.filter((layer) => climateStore.overlays[layer.id]).map((layer) => layer.id),
       month: climateStore.month,
       simTime: solarStore.active ? { date: solarStore.date, hour: solarStore.hour } : null,
@@ -208,6 +210,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   }
 
   function applySnapshot(snapshot: SceneSnapshot): void {
+    if (snapshot.styleId && snapshot.basemapId) globeStore.setProviderStyle(snapshot.basemapId, snapshot.styleId)
     if (snapshot.basemapId && snapshot.basemapId !== globeStore.selectedLayerId) switchBasemap(snapshot.basemapId)
     for (const layer of thematicLayerCatalog) {
       const enabled = snapshot.overlays.includes(layer.id)
@@ -582,6 +585,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       snapshot: {
         camera: step.camera,
         basemapId: step.basemapId,
+        styleId: step.styleId,
         overlays: step.overlays,
         month: step.month,
         simTime: step.simTime,

@@ -816,6 +816,7 @@ function parseRecordingStep(raw: unknown, index: number): RecordingStep | { erro
     narration: typeof record.narration === 'string' ? record.narration.trim().slice(0, 500) : '',
     camera: { longitude, latitude, height: clampedHeight, heading, pitch },
     basemapId: store.selectedLayerId,
+    styleId: store.providerStyles[store.selectedLayerId] ?? '',
     overlays: knownOverlays,
     month: Math.round(month),
     simTime,

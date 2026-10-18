@@ -312,6 +312,7 @@ export interface SceneSimTime {
 export interface SceneSnapshot {
   camera: SceneCamera
   basemapId: string
+  styleId?: string
   overlays: string[]
   month: number
   simTime: SceneSimTime | null
