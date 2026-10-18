@@ -334,6 +334,53 @@ export interface SceneDocument {
 export interface RecordingSaveResult {
   path: string
   bytes: number
+  fps?: number
+  cancelled?: boolean
+}
+
+export interface OffscreenRecordingAnnotation {
+  sceneId: string
+  kind: 'point' | 'polyline' | 'polygon'
+  name: string
+  positions: GeoPosition[]
+  color: string
+  textColor: string
+  fontFamily: string
+  fontSize: number
+  textFrame: boolean
+  lineWidth: number
+}
+
+export interface OffscreenRecordingTerrain {
+  providerId: string
+  exaggeration: number
+  lighting: boolean
+}
+
+export type OffscreenPrewarmQuality = 'standard' | 'high' | 'ultra'
+
+export interface OffscreenRecordingScript {
+  title: string
+  scenes: TeachingScene[]
+  annotations: OffscreenRecordingAnnotation[]
+  terrain: OffscreenRecordingTerrain
+  prewarmQuality: OffscreenPrewarmQuality
+  centerTarget: boolean
+  width: number
+  height: number
+  fps: number
+}
+
+export interface OffscreenRecordingProbeResult {
+  fps: number
+  frames: number
+}
+
+export interface OffscreenRecordingProgress {
+  phase: 'preparing' | 'recording'
+  sceneIndex: number
+  totalScenes: number
+  timedOut?: boolean
 }
 
 export interface UpdateState {
@@ -392,7 +439,26 @@ const api = {
     start: (mimeType: string): Promise<string> => ipcRenderer.invoke('recordings:start', mimeType),
     append: (recordingId: string, data: ArrayBuffer): Promise<void> => ipcRenderer.invoke('recordings:append', recordingId, data),
     finish: (recordingId: string): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:finish', recordingId),
-    abort: (recordingId: string): Promise<void> => ipcRenderer.invoke('recordings:abort', recordingId)
+    abort: (recordingId: string): Promise<void> => ipcRenderer.invoke('recordings:abort', recordingId),
+    offscreenProbe: (script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-probe', script),
+    offscreenEncode: (script: OffscreenRecordingScript): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:offscreen-encode', script),
+    offscreenCancel: (): Promise<void> => ipcRenderer.invoke('recordings:offscreen-cancel'),
+    offscreenProgress: (progress: OffscreenRecordingProgress): void => ipcRenderer.send('recordings:offscreen-progress', progress),
+    onOffscreenProgress: (listener: (progress: OffscreenRecordingProgress) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: OffscreenRecordingProgress): void => listener(payload)
+      ipcRenderer.on('recordings:offscreen-progress', wrapped)
+      return () => ipcRenderer.removeListener('recordings:offscreen-progress', wrapped)
+    },
+    offscreenNotice: (message: string): void => ipcRenderer.send('recordings:offscreen-notice', message),
+    onOffscreenNotice: (listener: (message: string) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: string): void => listener(payload)
+      ipcRenderer.on('recordings:offscreen-notice', wrapped)
+      return () => ipcRenderer.removeListener('recordings:offscreen-notice', wrapped)
+    },
+    offscreenNext: (): void => ipcRenderer.send('recordings:offscreen-next'),
+    offscreenSkipPrewarm: (): void => ipcRenderer.send('recordings:offscreen-skip-prewarm'),
+    offscreenPrewarmQuality: (quality: OffscreenPrewarmQuality): void => ipcRenderer.send('recordings:offscreen-prewarm-quality', quality),
+    offscreenStats: (): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-stats')
   },
   system: {
     fonts: (): Promise<string[]> => ipcRenderer.invoke('system:fonts')

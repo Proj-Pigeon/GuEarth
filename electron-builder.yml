@@ -10,6 +10,11 @@ files:
   - '!node_modules/**'
 asarUnpack:
   - out/renderer/cesium/**
+extraResources:
+  - from: resources/licenses
+    to: licenses
+  - from: THIRD-PARTY-NOTICES.md
+    to: licenses/THIRD-PARTY-NOTICES.md
 mac:
   category: public.app-category.education
   target:
@@ -20,8 +25,12 @@ dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
 win:
   executableName: GuEarth
+  extraResources:
+    - from: resources/bin/ffmpeg.exe
+      to: bin/ffmpeg.exe
 nsis:
   artifactName: ${name}-${version}-${arch}-setup.${ext}
+  license: license.txt
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always

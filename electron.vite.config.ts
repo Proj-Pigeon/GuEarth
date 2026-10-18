@@ -60,6 +60,10 @@ export default defineConfig({
     plugins: [vue(), cesiumStaticPlugin()],
     build: {
       rollupOptions: {
+        input: {
+          index: resolve('src/renderer/index.html'),
+          offscreen: resolve('src/renderer/offscreen.html')
+        },
         output: {
           manualChunks(id) {
             const normalizedId = id.replaceAll('\\', '/')

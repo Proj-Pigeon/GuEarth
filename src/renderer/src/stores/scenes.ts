@@ -18,11 +18,12 @@ export interface RecordingSessionState {
   prewarmQuality: RecordingPrewarmQuality
   videoPath: string
   bytes: number
+  fps: number
   error: string
   cancelled: boolean
 }
 
-const idleRecording: RecordingSessionState = { state: 'idle', title: '', currentStep: 0, totalSteps: 0, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '', prewarmTimedOut: false, skipPrewarm: false, prewarmQuality: 'high', videoPath: '', bytes: 0, error: '', cancelled: false }
+const idleRecording: RecordingSessionState = { state: 'idle', title: '', currentStep: 0, totalSteps: 0, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '', prewarmTimedOut: false, skipPrewarm: false, prewarmQuality: 'high', videoPath: '', bytes: 0, fps: 0, error: '', cancelled: false }
 
 export const useScenesStore = defineStore('scenes', () => {
   const scenes = ref<TeachingScene[]>([])
@@ -94,7 +95,7 @@ export const useScenesStore = defineStore('scenes', () => {
   }
 
   function applyRecordingResult(result: RecordingSaveResult): void {
-    recording.value = { ...recording.value, state: 'done', videoPath: result.path, bytes: result.bytes }
+    recording.value = { ...recording.value, state: 'done', videoPath: result.path, bytes: result.bytes, fps: result.fps ?? 0 }
   }
 
   return {

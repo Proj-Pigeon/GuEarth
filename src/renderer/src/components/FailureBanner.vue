@@ -15,7 +15,7 @@ watch(
 )
 
 function alertType(notice: FailureNotice): 'error' | 'warning' {
-  return notice.scope === 'terrain' ? 'warning' : 'error'
+  return notice.scope === 'terrain' || notice.scope === 'recording-quality' ? 'warning' : 'error'
 }
 </script>
 

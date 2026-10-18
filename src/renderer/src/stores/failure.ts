@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-export type FailureScope = 'basemap' | 'terrain' | 'dataset' | 'province-dataset' | 'annotations' | 'settings' | 'sea-level-terrain'
+export type FailureScope = 'basemap' | 'terrain' | 'dataset' | 'province-dataset' | 'annotations' | 'settings' | 'sea-level-terrain' | 'recording' | 'recording-quality'
 
 export interface FailureNotice {
   scope: FailureScope
@@ -15,7 +15,7 @@ export interface DegradeNotice {
   message: string
 }
 
-const scopeOrder: FailureScope[] = ['basemap', 'terrain', 'dataset', 'province-dataset', 'annotations', 'settings', 'sea-level-terrain']
+const scopeOrder: FailureScope[] = ['basemap', 'terrain', 'dataset', 'province-dataset', 'annotations', 'settings', 'sea-level-terrain', 'recording', 'recording-quality']
 
 export const useFailureStore = defineStore('failure', () => {
   const notices = ref<Partial<Record<FailureScope, FailureNotice>>>({})
