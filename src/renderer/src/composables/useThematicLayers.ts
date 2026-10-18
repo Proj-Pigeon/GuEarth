@@ -1661,6 +1661,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   watch([() => store.summerStrength > 0.5, () => store.winterStrength > 0.5], () => { refreshSeasonalCurrents(); requestRender() })
   watch(() => solarStore.utcMs, () => { refreshSubsolarPoint(); requestRender() })
   watch(() => store.seaLevelRise, rebuildSeaLevelRise)
+  watch(() => transportStore.year, requestRender)
   watch(() => globeStore.activeTerrainId, () => {
     if (sources.get('sea-level-rise')) rebuildSeaLevelRise()
   })
