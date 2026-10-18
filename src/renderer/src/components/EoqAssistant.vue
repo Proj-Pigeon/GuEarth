@@ -815,7 +815,7 @@ h2{margin:0;color:rgba(0,0,0,.88);font-size:20px;font-weight:600;line-height:28p
   display:inline-block;
   font-size:12px;
   line-height:20px;
-  background:linear-gradient(90deg,rgba(0,0,0,.25) 25%,rgba(0,0,0,.65) 47%,rgba(255,255,255,.95) 50%,rgba(0,0,0,.65) 53%,rgba(0,0,0,.25) 75%);
+  background:linear-gradient(90deg,rgba(0,0,0,.25) 25%,rgba(0,0,0,.45) 47%,rgba(0,0,0,.88) 50%,rgba(0,0,0,.45) 53%,rgba(0,0,0,.25) 75%);
   background-size:200% 100%;
   -webkit-background-clip:text;
   background-clip:text;
