@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { FFMPEG_BUILD, archiveSources, defaultBinaryPath, sha256Text, verifyFile, verifyFfmpegBinary } from '../scripts/fetch-ffmpeg.mjs'
+import { FFMPEG_BUILD, archiveSources, defaultBinaryPath, isApprovedArchiveUrl, sha256Text, verifyFile, verifyFfmpegBinary } from '../scripts/fetch-ffmpeg.mjs'
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 
@@ -24,9 +24,33 @@ test('ffmpeg fetch prefers the configured override then the pinned mirrors', () 
   assert.match(pinned[0], /^https:\/\/registry\.npmmirror\.com\//)
   assert.match(pinned[1], /^https:\/\/github\.com\/KarinJS\/FFmpeg-Builds\//)
   for (const url of pinned) assert.ok(url.endsWith(`v8.1.3/${FFMPEG_BUILD.archiveName}`))
-  const overridden = archiveSources('https://example.com/ffmpeg.tar.xz')
-  assert.equal(overridden[0], 'https://example.com/ffmpeg.tar.xz')
+  const override = `https://github.com/KarinJS/FFmpeg-Builds/releases/download/v8.1.3/${FFMPEG_BUILD.archiveName}`
+  const overridden = archiveSources(override)
+  assert.equal(overridden[0], override)
   assert.equal(overridden.length, 3)
+})
+
+test('ffmpeg fetch accepts the pinned and GitHub redirect artifact hosts', () => {
+  for (const url of archiveSources(undefined)) assert.ok(isApprovedArchiveUrl(url), url)
+  assert.ok(isApprovedArchiveUrl('https://objects.githubusercontent.com/github-production-release-asset/ffmpeg.tar.xz'))
+  assert.ok(isApprovedArchiveUrl(`https://registry.npmmirror.com/-/binary/ffmpeg-builds/v8.1.3/${FFMPEG_BUILD.archiveName}`))
+})
+
+test('ffmpeg fetch rejects untrusted override hosts and schemes', () => {
+  const untrusted = [
+    `http://registry.npmmirror.com/-/binary/ffmpeg-builds/v8.1.3/${FFMPEG_BUILD.archiveName}`,
+    `file:///C:/ffmpeg/${FFMPEG_BUILD.archiveName}`,
+    `https://localhost/${FFMPEG_BUILD.archiveName}`,
+    `https://example.com/${FFMPEG_BUILD.archiveName}`
+  ]
+  for (const url of untrusted) {
+    assert.equal(isApprovedArchiveUrl(url), false, url)
+    assert.throws(() => archiveSources(url), (error) => {
+      assert.match(error.message, /FFMPEG_FETCH_URL 来源不受信任/)
+      assert.match(error.message, /FFMPEG_FETCH_FILE/)
+      return true
+    })
+  }
 })
 
 test('binary verification reports matching and mismatching payloads', async () => {

@@ -39,6 +39,7 @@
 - 组件：Apache ECharts（图表库）
 - 许可证：Apache-2.0
 - 许可证文本：`licenses/ECharts-LICENSE.txt`
+- 内含子组件 d3.js（BSD-3-Clause）的许可证文本：`licenses/LICENSE-d3`
 - 上游项目：https://github.com/apache/echarts
 
 ## MIT 许可组件

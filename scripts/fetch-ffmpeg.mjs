@@ -25,8 +25,35 @@ const pinnedArchiveUrls = [
   'https://github.com/KarinJS/FFmpeg-Builds/releases/download/v8.1.3/ffmpeg-8.1.3-win32-x64-lgpl.tar.xz'
 ]
 
+export const APPROVED_ARCHIVE_HOSTS = ['registry.npmmirror.com', 'github.com', 'objects.githubusercontent.com']
+
+export function isApprovedArchiveUrl(url) {
+  let parsed
+  try {
+    parsed = new URL(String(url))
+  } catch {
+    return false
+  }
+  return parsed.protocol === 'https:' && APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname)
+}
+
+function rejectedArchiveLabel(url) {
+  try {
+    const parsed = new URL(String(url))
+    return parsed.hostname || parsed.protocol
+  } catch {
+    return String(url)
+  }
+}
+
 export function archiveSources(overrideUrl) {
-  return overrideUrl ? [overrideUrl, ...pinnedArchiveUrls] : [...pinnedArchiveUrls]
+  if (!overrideUrl) return [...pinnedArchiveUrls]
+  if (!isApprovedArchiveUrl(overrideUrl)) {
+    throw new Error(
+      `FFMPEG_FETCH_URL 来源不受信任：${rejectedArchiveLabel(overrideUrl)}；仅允许主机为 ${APPROVED_ARCHIVE_HOSTS.join('、')} 的 HTTPS 地址，离线安装请将 FFMPEG_FETCH_FILE 指向本地归档`
+    )
+  }
+  return [overrideUrl, ...pinnedArchiveUrls]
 }
 
 export function sha256Text(text) {

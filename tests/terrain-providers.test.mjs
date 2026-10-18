@@ -10,8 +10,9 @@ const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.ur
 test('every shared terrain provider id has a registry factory and a catalog entry', () => {
   for (const id of TERRAIN_PROVIDER_IDS) {
     assert.ok(TERRAIN_PROVIDER_ID_SET.has(id))
-    assert.match(registrySource, new RegExp(`['"]?${id}['"]?:`), `registry factory missing for ${id}`)
-    assert.match(globeSource, new RegExp(`id: '${id}'`), `terrain catalog entry missing for ${id}`)
+    const registryKey = registrySource.includes(`'${id}':`) || registrySource.includes(`${id}:`)
+    assert.ok(registryKey, `registry factory missing for ${id}`)
+    assert.ok(globeSource.includes(`id: '${id}'`), `terrain catalog entry missing for ${id}`)
   }
   assert.match(registrySource, /Record<TerrainProviderId, \(\) => Promise<Cesium\.TerrainProvider>>/)
   assert.match(globeSource, /id: TerrainProviderId/)

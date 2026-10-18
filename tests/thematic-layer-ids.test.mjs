@@ -17,8 +17,8 @@ test('the shared layer id list is the single source for the renderer store', () 
 test('every shared layer id has a catalog entry and an overlay default', () => {
   for (const id of THEMATIC_LAYER_IDS) {
     assert.ok(THEMATIC_LAYER_ID_SET.has(id))
-    assert.match(climateSource, new RegExp(`id: '${id}'`), `catalog entry missing for ${id}`)
-    assert.match(climateSource, new RegExp(`'${id}':`), `overlay default missing for ${id}`)
+    assert.ok(climateSource.includes(`id: '${id}'`), `catalog entry missing for ${id}`)
+    assert.ok(climateSource.includes(`'${id}':`), `overlay default missing for ${id}`)
   }
 })
 
