@@ -30,6 +30,7 @@ import { useThematicLayers } from '@renderer/composables/useThematicLayers'
 import { useTimezoneCompare } from '@renderer/composables/useTimezoneCompare'
 import { useScenePlayer, type RecordingStep } from '@renderer/composables/useScenePlayer'
 import { ensoPhaseOptions, type EnsoPhase } from '@renderer/thematic/ensoPhases'
+import { hidesThematicLayers, visibleThematicLayers } from '@renderer/lib/nightBasemap'
 import { SEA_LEVEL_SCENARIOS } from '@renderer/thematic/seaLevelRise'
 import { HSR_END_YEAR, HSR_START_YEAR } from '@renderer/thematic/hsrLines'
 import { datePartsOf, dayLength, declinationForDate, formatClock, isValidDate, noonAltitudeDeg, sunTimes } from '@renderer/thematic/solarMath'
@@ -140,7 +141,7 @@ const showGlobeLoading = computed(() => !isGlobeReady.value)
 const globeLoadingText = computed(() => globeError.value ? '地图尚未显示，请检查网络或重试' : globeLoadTimedOut.value ? '地图加载较慢，请检查网络' : '正在加载地图…')
 const globeLoadingRetryable = computed(() => globeLoadTimedOut.value || Boolean(globeError.value))
 const isLabOpen = ref(false)
-const nightBasemapActive = computed(() => store.selectedLayerId === 'viirs-night')
+const nightBasemapActive = computed(() => hidesThematicLayers(store.selectedLayerId))
 const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || environmentStore.panel !== null || decisionStore.panel !== null || activeTool.value === 'timezone')
 
 function closeAllTeachingPanels(): void {
@@ -421,6 +422,7 @@ aiStore.registerTool({
     const layer = thematicLayerCatalog.find((item) => item.id === args.layerId)
     if (!layer) return { error: `未知图层 ${String(args.layerId)}，可用图层：${thematicLayerCatalog.map((item) => `${item.id}（${item.name}）`).join('、')}` }
     if (typeof args.enabled !== 'boolean') return { error: 'enabled 需为布尔值' }
+    if (args.enabled && nightBasemapActive.value) return { error: '夜光底图下教学图层已隐藏，请先用 set_basemap 切换回其他底图再开启图层' }
     climateStore.setOverlay(layer.id, args.enabled)
     if (args.month !== undefined) {
       const month = Number(args.month)
@@ -817,7 +819,7 @@ function parseRecordingStep(raw: unknown, index: number): RecordingStep | { erro
     camera: { longitude, latitude, height: clampedHeight, heading, pitch },
     basemapId: store.selectedLayerId,
     styleId: store.providerStyles[store.selectedLayerId] ?? '',
-    overlays: knownOverlays,
+    overlays: visibleThematicLayers(store.selectedLayerId, knownOverlays),
     month: Math.round(month),
     simTime,
     ensoPhase,

@@ -13,6 +13,7 @@ import { useTransportStore } from './stores/transport'
 import { useThematicLayers } from './composables/useThematicLayers'
 import { ensureSeaLevelSamples } from './composables/seaLevelSampling'
 import { seedSampleHeights } from './thematic/seaLevelRise'
+import { visibleThematicLayers } from './lib/nightBasemap'
 import { terrainProviderFactory, terrainRegistry } from './terrain/terrainRegistry'
 import WindParticles from './components/WindParticles.vue'
 import FrontalCyclone from './components/FrontalCyclone.vue'
@@ -286,8 +287,9 @@ async function applySnapshot(snapshot: TeachingScene['snapshot']): Promise<void>
   climateStore.setEnsoPhase(snapshot.ensoPhase)
   climateStore.setSeaLevelRise(snapshot.seaLevelRise)
   transportStore.setYear(snapshot.transportYear)
+  const overlays = visibleThematicLayers(basemapId, snapshot.overlays)
   for (const layer of thematicLayerCatalog) {
-    climateStore.setOverlay(layer.id, snapshot.overlays.includes(layer.id))
+    climateStore.setOverlay(layer.id, overlays.includes(layer.id))
   }
   climateStore.setMonth(snapshot.month)
   if (snapshot.simTime) {

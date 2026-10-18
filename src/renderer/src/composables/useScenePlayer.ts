@@ -12,6 +12,7 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sanitizeCamera, sceneCameraView } from '@renderer/lib/sceneCamera'
 import { transientMirrorShape } from '@renderer/lib/shapeGraphics'
 import { cacheKeyOf, heightCache, seaLevelGridPoints } from '@renderer/thematic/seaLevelRise'
+import { visibleThematicLayers } from '@renderer/lib/nightBasemap'
 import { createVideoRecorder, type RecorderOverlay } from './useVideoRecorder'
 
 export interface RecordingMarker {
@@ -189,7 +190,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
       }),
       basemapId: globeStore.selectedLayerId,
       styleId: globeStore.providerStyles[globeStore.selectedLayerId] ?? '',
-      overlays: thematicLayerCatalog.filter((layer) => climateStore.overlays[layer.id]).map((layer) => layer.id),
+      overlays: visibleThematicLayers(globeStore.selectedLayerId, thematicLayerCatalog.filter((layer) => climateStore.overlays[layer.id]).map((layer) => layer.id)),
       month: climateStore.month,
       simTime: solarStore.active ? { date: solarStore.date, hour: solarStore.hour } : null,
       motionPanel: solarStore.motionPanel,
@@ -213,8 +214,9 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
   function applySnapshot(snapshot: SceneSnapshot): void {
     if (snapshot.styleId && snapshot.basemapId) globeStore.setProviderStyle(snapshot.basemapId, snapshot.styleId)
     if (snapshot.basemapId && snapshot.basemapId !== globeStore.selectedLayerId) switchBasemap(snapshot.basemapId)
+    const overlays = visibleThematicLayers(snapshot.basemapId, snapshot.overlays)
     for (const layer of thematicLayerCatalog) {
-      const enabled = snapshot.overlays.includes(layer.id)
+      const enabled = overlays.includes(layer.id)
       if (climateStore.overlays[layer.id] !== enabled) climateStore.setOverlay(layer.id, enabled)
     }
     if (snapshot.month !== climateStore.month) {
