@@ -18,7 +18,7 @@ export function findFfmpegBinary(appPath: string, resourcesPath: string, package
 
 function missingEncoderMessage(binary: string, packaged: boolean): string {
   return packaged
-    ? '内置视频编码器缺失，教学视频录制暂不可用，请重新安装 GuEarth 修复（Windows x64）'
+    ? '内置视频编码器缺失，教学视频录制暂不可用，请重新安装咕咕地球修复（Windows x64）'
     : `内置视频编码器缺失：${binary}。运行 npm run fetch:ffmpeg 获取（Windows x64）`
 }
 

@@ -1,6 +1,7 @@
 import '@sentry/electron/preload'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
+import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
 import type { TileMirrorMode } from '../common/tileMirror'
 import type { EnsoPhase } from '../common/thematicState'
 
@@ -399,6 +400,8 @@ export interface UpdateState {
 
 export type UpdateCheckOutcome = 'available' | 'latest' | 'failed' | 'disabled'
 
+export type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState }
+
 export type UpdaterEvent =
   | { type: 'available'; version: string; notes: string }
   | { type: 'progress'; received: number; total: number }
@@ -464,6 +467,20 @@ const api = {
   },
   system: {
     fonts: (): Promise<string[]> => ipcRenderer.invoke('system:fonts')
+  },
+  account: {
+    getState: (): Promise<AccountState> => ipcRenderer.invoke('account:get-state'),
+    login: (): Promise<AccountState> => ipcRenderer.invoke('account:login'),
+    cancelLogin: (): Promise<AccountState> => ipcRenderer.invoke('account:cancel-login'),
+    signOut: (): Promise<AccountState> => ipcRenderer.invoke('account:sign-out'),
+    dismissRevocationWarning: (): Promise<AccountState> => ipcRenderer.invoke('account:dismiss-revocation-warning'),
+    openDeviceList: (): Promise<void> => ipcRenderer.invoke('account:open-device-list'),
+    openVerification: (): Promise<void> => ipcRenderer.invoke('account:open-verification'),
+    onState: (listener: (state: AccountState) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: AccountState): void => listener(payload)
+      ipcRenderer.on('account:event', wrapped)
+      return () => ipcRenderer.removeListener('account:event', wrapped)
+    }
   },
   logs: {
     copy: (rendererDump: string): Promise<void> => ipcRenderer.invoke('logging:copy-report', rendererDump)
