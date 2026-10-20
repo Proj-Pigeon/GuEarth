@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { setImmediate as nextTurn } from 'node:timers/promises'
 import { test } from 'node:test'
+import { compileFunction } from 'node:vm'
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 import * as passport from '../src/common/passport.ts'
 import { serialQueue } from '../src/main/jsonStore.ts'
@@ -11,30 +12,33 @@ const source = readFileSync(new URL('../src/main/account.ts', import.meta.url), 
 const { outputText } = transpileModule(source, {
   compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 }
 })
-const require = createRequire(import.meta.url)
+const nodeRequire = createRequire(import.meta.url)
 const tokenPayload = { access_token: 'local-access', refresh_token: 'local-refresh', expires_in: 600 }
 const json = (payload, status = 200, headers) => Response.json(payload, { status, headers })
 
-function fixture(t, fetch, refreshToken = '') {
+function fixture(t, respond, refreshToken = '') {
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 })
   const secrets = new Map(refreshToken ? [['passport-refresh-token', refreshToken]] : [])
   const requests = []
   const timeoutDurations = []
-  const dependencies = {
-    electron: {
-      net: { fetch: async (url, options) => { requests.push({ url, ...options }); return fetch(url, options) } },
+  const dependencies = new Map([
+    ['electron', {
+      net: { fetch: async (url, options) => { requests.push({ url, ...options }); return respond(url, options) } },
       BrowserWindow: { getAllWindows: () => [] },
       shell: { openExternal: async () => {} }
-    },
-    '../common/logger': { logger: { info() {}, warn() {}, error() {} } },
-    '../common/passport': passport,
-    './keyVault': {
+    }],
+    ['../common/logger', { logger: { info() {}, warn() {}, error() {} } }],
+    ['../common/passport', passport],
+    ['./keyVault', {
       readProviderKey: (id) => secrets.get(id),
       writeProviderKey: (id, value) => secrets.set(id, value),
       clearProviderKey: (id) => secrets.delete(id)
-    },
-    './jsonStore': { serialQueue, writeJson: async () => {} }
-  }
+    }],
+    ['./jsonStore', { serialQueue, writeJson: async () => {} }],
+    ['crypto', nodeRequire('crypto')],
+    ['os', nodeRequire('os')],
+    ['path', nodeRequire('path')]
+  ])
   const signals = {
     any: AbortSignal.any.bind(AbortSignal),
     timeout: (ms) => {
@@ -44,14 +48,19 @@ function fixture(t, fetch, refreshToken = '') {
       return controller.signal
     }
   }
-  const api = new Function('require', 'exports', 'AbortSignal', `${outputText}
+  const loadAccountModule = compileFunction(`${outputText}
     return { postForm, resolveEndpoints, exchangeDeviceCode, startLogin, refreshAccessToken, snapshot }
-  `)((id) => dependencies[id] ?? require(id), {}, signals)
+  `, ['require', 'exports', 'AbortSignal'])
+  const api = loadAccountModule((id) => {
+    const dependency = dependencies.get(id)
+    if (!dependency) throw new Error(`Unexpected module dependency: ${id}`)
+    return dependency
+  }, {}, signals)
   const tick = async (ms) => { t.mock.timers.tick(ms); await nextTurn() }
   return { ...api, requests, secrets, timeoutDurations, tick }
 }
 
-function stalledFetch(_url, { signal }) {
+function stalledResponse(_url, { signal }) {
   return new Promise((_resolve, reject) => {
     if (signal.aborted) reject(signal.reason)
     else signal.addEventListener('abort', () => reject(signal.reason), { once: true })
@@ -60,7 +69,7 @@ function stalledFetch(_url, { signal }) {
 
 for (const endpoint of ['device_authorization', 'token']) {
   test(`${endpoint} POST times out with a caller signal and still supports cancellation`, async (t) => {
-    const account = fixture(t, stalledFetch)
+    const account = fixture(t, stalledResponse)
     const controller = new AbortController()
     const url = `https://passport.project-pigeon.com/oauth2/${endpoint}`
     const timedOut = assert.rejects(account.postForm(url, new URLSearchParams(), controller.signal), { name: 'TimeoutError' })
@@ -77,7 +86,7 @@ for (const endpoint of ['device_authorization', 'token']) {
 }
 
 test('discovery times out with a caller signal and falls back to standard endpoints', async (t) => {
-  const account = fixture(t, stalledFetch)
+  const account = fixture(t, stalledResponse)
   const controller = new AbortController()
   const resolving = account.resolveEndpoints(controller.signal)
   await account.tick(15_000)
@@ -88,7 +97,7 @@ test('discovery times out with a caller signal and falls back to standard endpoi
 })
 
 test('discovery still respects caller cancellation', async (t) => {
-  const account = fixture(t, stalledFetch)
+  const account = fixture(t, stalledResponse)
   const controller = new AbortController()
   const resolving = account.resolveEndpoints(controller.signal)
   controller.abort()
@@ -102,7 +111,7 @@ test('polling retries network failures and timed out token requests at the curre
     if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) return json({}, 404)
     polls += 1
     if (polls === 1) throw new TypeError('Network unavailable')
-    if (polls === 2) return stalledFetch(url, options)
+    if (polls === 2) return stalledResponse(url, options)
     return json(tokenPayload)
   })
   const controller = new AbortController()
@@ -145,7 +154,7 @@ test('polling keeps slow_down and Retry-After intervals for retryable responses'
 })
 
 test('polling stops immediately on caller cancellation during a token request', async (t) => {
-  const account = fixture(t, (url, options) => url.endsWith(passport.PASSPORT_DISCOVERY_PATH) ? json({}, 404) : stalledFetch(url, options))
+  const account = fixture(t, (url, options) => url.endsWith(passport.PASSPORT_DISCOVERY_PATH) ? json({}, 404) : stalledResponse(url, options))
   const controller = new AbortController()
   const cancelled = assert.rejects(account.exchangeDeviceCode('local-device-code', 1, Date.now() + 60_000, controller.signal), { name: 'LoginCancelledError' })
   await account.tick(1000)
@@ -211,7 +220,7 @@ test('login without a refresh token starts device authorization directly', async
 })
 
 test('refresh retains its overall timeout and preserves a token after a network timeout', async (t) => {
-  const account = fixture(t, stalledFetch, 'existing-local-refresh')
+  const account = fixture(t, stalledResponse, 'existing-local-refresh')
   const rejected = assert.rejects(account.refreshAccessToken(), { name: 'AbortError' })
   await account.tick(15_000)
   await rejected
