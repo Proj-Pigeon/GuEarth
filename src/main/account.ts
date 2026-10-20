@@ -134,12 +134,17 @@ function fallbackEndpoints(issuer: string): PassportEndpoints {
   }
 }
 
+function requestSignal(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+  return signal ? AbortSignal.any([signal, timeout]) : timeout
+}
+
 async function postForm(url: string, body: URLSearchParams, signal: AbortSignal): Promise<Response> {
   return net.fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
     body: body.toString(),
-    signal,
+    signal: requestSignal(signal),
     redirect: 'error'
   })
 }
@@ -156,7 +161,7 @@ async function resolveEndpoints(signal?: AbortSignal): Promise<PassportEndpoints
   const issuer = passportIssuer()
   const cached = endpoints
   if (cached && cached.issuer === issuer && Date.now() - endpointsFetchedAt < DISCOVERY_TTL_MS) return cached
-  const timeoutSignal = signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+  const timeoutSignal = requestSignal(signal)
   try {
     const response = await net.fetch(`${issuer}${PASSPORT_DISCOVERY_PATH}`, {
       headers: { Accept: 'application/json' },
@@ -331,7 +336,7 @@ async function exchangeDeviceCode(deviceCode: string, initialInterval: number, e
         interval = clampInterval(interval + SLOW_DOWN_INCREMENT_SECONDS)
         continue
       }
-      if (failure.retryable && !failure.terminal && Date.now() < expiresAt) {
+      if (!failure.terminal && Date.now() < expiresAt) {
         const wait = failure.retryAfterSeconds && failure.retryAfterSeconds > 0 ? failure.retryAfterSeconds : interval
         interval = clampInterval(Math.max(wait, interval))
         continue
@@ -365,6 +370,10 @@ async function adoptTokens(tokens: PassportTokenResponse): Promise<AccountProfil
 async function startLogin(): Promise<AccountState> {
   if (loginController) throw new Error('已有登录流程正在进行')
   if (phase === 'signed-in') throw new Error('当前已登录，请先退出登录')
+  if (readRefreshToken()) {
+    await restoreSession()
+    if (snapshot().phase === 'signed-in') return snapshot()
+  }
   const controller = new AbortController()
   loginController = controller
   challenge = null
