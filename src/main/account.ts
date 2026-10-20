@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, net, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, net, shell } from 'electron'
 import { randomBytes } from 'crypto'
 import { hostname } from 'os'
 import { join } from 'path'
@@ -464,14 +464,11 @@ async function refreshAccessToken(): Promise<string> {
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   const task = (async () => {
     try {
-      const tokens = await requestToken(
-        new URLSearchParams({
-          grant_type: PASSPORT_REFRESH_GRANT_TYPE,
-          client_id: passportClientId(),
-          refresh_token: refreshToken
-        }),
-        controller.signal
-      )
+      const body = new URLSearchParams()
+      body.set('grant_type', PASSPORT_REFRESH_GRANT_TYPE)
+      body.set('client_id', passportClientId())
+      body.set('refresh_token', refreshToken)
+      const tokens = await requestToken(body, controller.signal)
       accessToken = tokens.accessToken
       accessTokenExpiresAt = Date.now() + tokens.expiresIn * 1000
       writeRefreshToken(tokens.refreshToken)
@@ -516,15 +513,11 @@ async function discardAdoptedSession(): Promise<void> {
 async function revokeRemote(refreshToken: string, signal: AbortSignal): Promise<boolean> {
   try {
     const active = await resolveEndpoints(signal)
-    const response = await postForm(
-      active.revocationEndpoint,
-      new URLSearchParams({
-        client_id: passportClientId(),
-        token: refreshToken,
-        token_type_hint: 'refresh_token'
-      }),
-      signal
-    )
+    const body = new URLSearchParams()
+    body.set('client_id', passportClientId())
+    body.set('token', refreshToken)
+    body.set('token_type_hint', 'refresh_token')
+    const response = await postForm(active.revocationEndpoint, body, signal)
     if (response.ok) return true
     logger.warn('account', `Passport 撤销请求返回 HTTP ${response.status}`)
     return false
@@ -620,8 +613,8 @@ async function openVerificationPage(): Promise<void> {
   await shell.openExternal(url)
 }
 
-export function initAccount(userDataPath: string): void {
-  accountPath = join(userDataPath, 'account.json')
+export function initAccount(): void {
+  accountPath = join(app.getPath('userData'), 'account.json')
   ipcMain.handle('account:get-state', (): AccountState => snapshot())
   ipcMain.handle('account:login', (): Promise<AccountState> => beginLogin())
   ipcMain.handle('account:cancel-login', async (): Promise<AccountState> => {

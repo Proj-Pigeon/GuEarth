@@ -1609,7 +1609,7 @@ app.whenReady().then(async () => {
   registerIpcHandlers()
   registerAiIpcHandlers(aiSettings, aiChatHistory, aiMemories)
   initUpdater(join(userDataPath, 'updates'))
-  initAccount(userDataPath)
+  initAccount()
   logger.info('app', '主进程服务就绪')
   protocol.handle('guearth-tile', async (request) => {
     const response = await serveTileResponse(

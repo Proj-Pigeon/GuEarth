@@ -25,20 +25,20 @@ const handlers = {}
 const listeners = []
 const calls = []
 
-function bridgeResult(name) {
-  return handlers[name]?.() ?? Promise.resolve(signedOutAccountState(DEVICE_LIST_URL))
+function bridgeResult(handler) {
+  return handler?.() ?? Promise.resolve(signedOutAccountState(DEVICE_LIST_URL))
 }
 
 globalThis.window = {
   guEarth: {
     account: {
-      getState: (...args) => { calls.push('getState'); return bridgeResult('getState', ...args) },
-      login: () => { calls.push('login'); return bridgeResult('login') },
-      cancelLogin: () => { calls.push('cancelLogin'); return bridgeResult('cancelLogin') },
-      signOut: () => { calls.push('signOut'); return bridgeResult('signOut') },
-      dismissRevocationWarning: () => { calls.push('dismissRevocationWarning'); return bridgeResult('dismissRevocationWarning') },
-      openDeviceList: () => { calls.push('openDeviceList'); return bridgeResult('openDeviceList') },
-      openVerification: () => { calls.push('openVerification'); return bridgeResult('openVerification') },
+      getState: (...args) => { calls.push('getState'); return bridgeResult(handlers.getState, ...args) },
+      login: () => { calls.push('login'); return bridgeResult(handlers.login) },
+      cancelLogin: () => { calls.push('cancelLogin'); return bridgeResult(handlers.cancelLogin) },
+      signOut: () => { calls.push('signOut'); return bridgeResult(handlers.signOut) },
+      dismissRevocationWarning: () => { calls.push('dismissRevocationWarning'); return bridgeResult(handlers.dismissRevocationWarning) },
+      openDeviceList: () => { calls.push('openDeviceList'); return bridgeResult(handlers.openDeviceList) },
+      openVerification: () => { calls.push('openVerification'); return bridgeResult(handlers.openVerification) },
       onState: (listener) => {
         listeners.push(listener)
         return () => listeners.splice(listeners.indexOf(listener), 1)
