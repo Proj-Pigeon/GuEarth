@@ -45,6 +45,7 @@ import { searchBaiduPlaces } from './ai/baidu'
 import { beginPlacesRequest } from './ai/searchThrottle'
 import { initDatasets, loadEarthquakeFeed, loadProvinceGeometry } from './datasets'
 import { initUpdater } from './updater'
+import { initAccount } from './account'
 
 interface PersistedSettings {
   selectedImageryProviderId: string
@@ -1087,7 +1088,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle('logging:copy-report', (_event, rendererDump: unknown): void => {
     if (typeof rendererDump !== 'string') throw new Error('无效的日志数据')
     clipboard.writeText([
-      '=== GuEarth 诊断日志 ===',
+      '=== 咕咕地球诊断日志 ===',
       `版本 ${app.getVersion()} | Electron ${process.versions.electron} | Chrome ${process.versions.chrome} | Node ${process.versions.node} | ${process.platform} ${process.getSystemVersion()}`,
       `生成时间 ${new Date().toLocaleString()}`,
       '',
@@ -1608,6 +1609,7 @@ app.whenReady().then(async () => {
   registerIpcHandlers()
   registerAiIpcHandlers(aiSettings, aiChatHistory, aiMemories)
   initUpdater(join(userDataPath, 'updates'))
+  initAccount(userDataPath)
   logger.info('app', '主进程服务就绪')
   protocol.handle('guearth-tile', async (request) => {
     const response = await serveTileResponse(

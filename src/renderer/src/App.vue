@@ -11,6 +11,7 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { useDrawingStore, type DrawnShape, type DrawTool } from '@renderer/stores/drawing'
 import { useAiStore } from '@renderer/stores/ai'
 import { useUpdaterStore } from '@renderer/stores/updater'
+import { useAccountStore } from '@renderer/stores/account'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import { useScenesStore } from '@renderer/stores/scenes'
 import { thematicLayerCatalog, useClimateStore } from '@renderer/stores/climate'
@@ -124,6 +125,7 @@ const drawingStore = useDrawingStore()
 const { activeTool, shapes, entries, selectedShapeId, saveError } = storeToRefs(drawingStore)
 const aiStore = useAiStore()
 const updaterStore = useUpdaterStore()
+const accountStore = useAccountStore()
 const failureStore = useFailureStore()
 const scenesStore = useScenesStore()
 const isScenesPanelOpen = ref(false)
@@ -926,6 +928,7 @@ aiStore.registerTool({
 onMounted(async () => {
   void updaterStore.hydrate()
   void scenesStore.hydrate()
+  void accountStore.hydrate()
   try {
     const installedFonts = await window.guEarth.system.fonts()
     const existingFonts = shapes.value.map((shape) => shape.fontFamily)
@@ -1006,7 +1009,7 @@ function handleUpdateClick(): void {
   if (updaterStore.status === 'ready') {
     Modal.confirm({
       title: `重启并安装新版本 v${updaterStore.version}？`,
-      content: '应用将退出并启动安装程序，完成后可重新打开 GuEarth。',
+      content: '应用将退出并启动安装程序，完成后可重新打开咕咕地球。',
       okText: '重启安装',
       cancelText: '稍后',
       onOk: () => updaterStore.installNow()

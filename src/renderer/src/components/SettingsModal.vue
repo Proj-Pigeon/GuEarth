@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ControlOutlined, GlobalOutlined, InfoCircleOutlined, RobotOutlined } from '@ant-design/icons-vue'
+import { ControlOutlined, GlobalOutlined, InfoCircleOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { useSettingsWindowStore, type SettingsSection } from '@renderer/stores/settingsWindow'
+import AccountSettings from './settings/AccountSettings.vue'
 import GeneralSettings from './settings/GeneralSettings.vue'
 import MapSettings from './settings/MapSettings.vue'
 import AiSettingsSection from './settings/AiSettingsSection.vue'
@@ -24,6 +25,7 @@ const navGroups: NavGroup[] = [
   {
     caption: '常规',
     items: [
+      { id: 'account', label: '账户', icon: UserOutlined },
       { id: 'general', label: '通用', icon: ControlOutlined },
       { id: 'map', label: '地图', icon: GlobalOutlined }
     ]
@@ -62,6 +64,7 @@ const navGroups: NavGroup[] = [
         </div>
       </nav>
       <div class="settings-pane">
+        <AccountSettings v-show="settingsWindow.activeSection === 'account'" />
         <GeneralSettings v-show="settingsWindow.activeSection === 'general'" @restart-guide="emit('restartGuide')" />
         <MapSettings v-show="settingsWindow.activeSection === 'map'" />
         <AiSettingsSection v-show="settingsWindow.activeSection === 'ai'" :active="settingsWindow.activeSection === 'ai'" />

@@ -94,7 +94,7 @@ test('the encoder resolver guards the platform before probing the binary path', 
 
 test('a packaged build never tells end users to run a developer command', () => {
   assert.throws(() => resolveFfmpegBinary(recordingsRoot, join(recordingsRoot, 'absent-resources'), true, 'win32'), (error) => {
-    assert.ok(error.message.includes('重新安装 GuEarth'))
+    assert.ok(error.message.includes('重新安装咕咕地球'))
     assert.ok(!error.message.includes('npm run'))
     return true
   })
