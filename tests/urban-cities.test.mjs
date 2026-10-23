@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { CITY_TIER_META, cityTierOf, urbanCities } from '../src/renderer/src/thematic/urbanCities.ts'
+import { CITY_TIER_META, cityTierOf, FUNCTIONAL_ZONES, functionalZoneCities, functionalZoneCityById, urbanCities } from '../src/renderer/src/thematic/urbanCities.ts'
 
 test('city tier metadata contains exactly five tiers with strictly shrinking service radii', () => {
   assert.equal(CITY_TIER_META.length, 5)
@@ -42,4 +42,33 @@ test('city names are unique and every tier is represented', () => {
   for (const meta of CITY_TIER_META) {
     assert.ok(urbanCities.some((city) => city.tier === meta.id), `no city for tier ${meta.id}`)
   }
+})
+
+test('functional-zone cities: seven cities with unique ids and complete zone kinds', () => {
+  assert.equal(functionalZoneCities.length, 7)
+  const ids = functionalZoneCities.map((city) => city.id)
+  assert.equal(new Set(ids).size, ids.length)
+  const kinds = new Set(FUNCTIONAL_ZONES.map((zone) => zone.kind))
+  for (const city of functionalZoneCities) {
+    assert.ok(city.districts.length >= 5, `${city.name} needs at least five districts`)
+    assert.ok(city.longitude > 73 && city.longitude < 136 && city.latitude > 18 && city.latitude < 54, `${city.name} center outside China bounds`)
+    assert.ok(city.viewHeight >= 80000 && city.viewHeight <= 300000, `${city.name} view height implausible`)
+    assert.ok(city.overview.length >= 20, `${city.name} overview too short`)
+    const present = new Set(city.districts.map((district) => district.kind))
+    for (const kind of kinds) {
+      assert.ok(present.has(kind), `${city.name} lacks ${kind} districts`)
+    }
+    for (const district of city.districts) {
+      assert.ok(kinds.has(district.kind), `${city.name}/${district.name} unknown kind`)
+      assert.ok(district.radiusKm >= 0.5 && district.radiusKm <= 6, `${city.name}/${district.name} radius implausible`)
+      assert.ok(Math.abs(district.longitude - city.longitude) <= 0.6 && Math.abs(district.latitude - city.latitude) <= 0.6, `${city.name}/${district.name} too far from city center`)
+      assert.ok(district.note.length >= 8, `${city.name}/${district.name} note too short`)
+    }
+  }
+})
+
+test('functionalZoneCityById resolves catalogue entries', () => {
+  assert.equal(functionalZoneCityById('wuhan')?.name, '武汉')
+  assert.equal(functionalZoneCityById('shenyang')?.districts.some((district) => district.name.includes('铁西')), true)
+  assert.equal(functionalZoneCityById('nonexistent'), undefined)
 })

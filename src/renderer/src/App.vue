@@ -38,6 +38,7 @@ import { HSR_END_YEAR, HSR_START_YEAR } from '@renderer/thematic/hsrLines'
 import { datePartsOf, dayLength, declinationForDate, formatClock, isValidDate, noonAltitudeDeg, sunTimes } from '@renderer/thematic/solarMath'
 import { mountainById, zonationMountains } from '@renderer/thematic/mountainZonation'
 import { findPeaksNear, nearestPeaks } from '@renderer/thematic/notablePeaks'
+import { functionalZoneCities, functionalZoneCityById } from '@renderer/thematic/urbanCities'
 import { clearTransectOverlay, flyTransect } from '@renderer/composables/useTransectFlight'
 import { nearestBoundary, plateBoundaryKindName } from '@renderer/thematic/plateBoundaries'
 import GlobeToolbar from '@renderer/components/GlobeToolbar.vue'
@@ -515,7 +516,7 @@ aiStore.registerTool({
   label: '专题图层开关',
   definition: {
     name: 'set_layer',
-    description: '开关教学专题图层并可选设置月份（1-12），用于讲解气压带与风带、气候类型、锋面气旋、洋流等。气压带风带图层会随月份在1月与7月位置间移动，适合对比讲解。',
+    description: '开关教学专题图层并可选设置月份（1-12）或功能分区城市（仅 functional-zones），用于讲解气压带与风带、气候类型、锋面气旋、洋流、城市功能分区等。气压带风带图层会随月份在1月与7月位置间移动，适合对比讲解。',
     parameters: {
       type: 'object',
       properties: {
@@ -525,7 +526,12 @@ aiStore.registerTool({
           description: '图层 id：pressure-belts 气压带与风带、koppen-zones 世界气候类型、frontal-cyclone 锋面气旋、ocean-currents 世界洋流、climate-zones 中国气候区、coriolis-demo 地转偏向力等'
         },
         enabled: { type: 'boolean', description: 'true 开启图层，false 关闭图层' },
-        month: { type: 'number', description: '1-12 的月份整数，设置专题时间轴（如 1 月与 7 月对比气压带位置）' }
+        month: { type: 'number', description: '1-12 的月份整数，设置专题时间轴（如 1 月与 7 月对比气压带位置）' },
+        city: {
+          type: 'string',
+          enum: functionalZoneCities.map((city) => city.id),
+          description: '仅 functional-zones 城市功能分区图层使用：切换展示的城市（' + functionalZoneCities.map((city) => `${city.id}（${city.name}）`).join('、') + '），默认武汉'
+        }
       },
       required: ['layerId', 'enabled']
     }
@@ -535,6 +541,14 @@ aiStore.registerTool({
     if (!layer) return { error: `未知图层 ${String(args.layerId)}，可用图层：${thematicLayerCatalog.map((item) => `${item.id}（${item.name}）`).join('、')}` }
     if (typeof args.enabled !== 'boolean') return { error: 'enabled 需为布尔值' }
     if (args.enabled && nightBasemapActive.value) return { error: '夜光底图下教学图层已隐藏，请先用 set_basemap 切换回其他底图再开启图层' }
+    let cityName: string | undefined
+    if (args.city !== undefined) {
+      if (layer.id !== 'functional-zones') return { error: 'city 参数仅用于 functional-zones 城市功能分区图层' }
+      const city = functionalZoneCityById(String(args.city))
+      if (!city) return { error: `未知城市 ${String(args.city)}，可用城市：${functionalZoneCities.map((item) => `${item.id}（${item.name}）`).join('、')}` }
+      climateStore.setFunctionalZoneCity(city.id)
+      cityName = city.name
+    }
     climateStore.setOverlay(layer.id, args.enabled)
     if (args.month !== undefined) {
       const month = Number(args.month)
@@ -548,8 +562,9 @@ aiStore.registerTool({
       name: layer.name,
       enabled: args.enabled,
       month: climateStore.month,
+      city: cityName,
       message: args.enabled
-        ? `已开启「${layer.name}」图层${args.month !== undefined ? `并设置月份为 ${climateStore.month} 月` : ''}；可在地球上点击图层要素查看成因`
+        ? `已开启「${layer.name}」图层${cityName ? `，展示城市：${cityName}` : ''}${args.month !== undefined ? `并设置月份为 ${climateStore.month} 月` : ''}；可在地球上点击图层要素查看成因`
         : `已关闭「${layer.name}」图层`
     }
   }
