@@ -21,6 +21,7 @@ import FrontalCyclone from './components/FrontalCyclone.vue'
 import TyphoonOverlay from './components/TyphoonOverlay.vue'
 import WalkerCirculationOverlay from './components/WalkerCirculationOverlay.vue'
 import HuLineOverlay from './components/HuLineOverlay.vue'
+import './offscreenEncoder'
 
 const container = document.getElementById('cesium-container')
 if (!container) throw new Error('Offscreen Cesium 容器不存在')

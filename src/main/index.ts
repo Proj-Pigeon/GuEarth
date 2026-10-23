@@ -32,6 +32,7 @@ import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings,
 import { assertOffscreenRecordingSupported, offscreenVideoEncoderArgs, resolveFfmpegBinary } from './ffmpeg'
 import { resolveOffscreenEntry } from './offscreenPaths'
 import { offscreenCaptureSize, offscreenConcatPlaylist, offscreenFrameDurations, offscreenFrameRate, offscreenScriptDurationMs } from './offscreenTiming'
+import { deliverMacOffscreenVideo, encodeMacOffscreenRecording, noteMacOffscreenFrameAck, type OffscreenMacSessionHost } from './offscreenMac'
 import { assertEncryptionAvailable, assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
 import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
 import { tileWgs84ShiftPixels, warpTileToWgs84 } from './tileWarp'
@@ -827,6 +828,21 @@ function ffmpegPath(): string {
   return resolveFfmpegBinary(app.getAppPath(), process.resourcesPath, app.isPackaged)
 }
 
+const macRecordingHost: OffscreenMacSessionHost = {
+  assertIdle: assertOffscreenRecordingIdle,
+  setCancelHook: (hook) => { cancelOffscreenRecording = hook },
+  clearCancelHook: (hook) => { if (cancelOffscreenRecording === hook) cancelOffscreenRecording = null },
+  setTeardownHook: (hook) => { teardownOffscreenRecording = hook },
+  clearTeardownHook: (hook) => { if (teardownOffscreenRecording === hook) teardownOffscreenRecording = null },
+  adoptWindow: (window) => { offscreenRecordingWindow = window },
+  dropWindow: stopOffscreenRecordingWindow,
+  notePaintFrame: () => { offscreenPaintFrames += 1 },
+  resetPaintStats: () => { offscreenPaintStartedAt = Date.now(); offscreenPaintFrames = 0 },
+  resetPrewarnWarned: () => { offscreenPrewarmWarned = false },
+  usableDirectory: usableRecordingDirectory,
+  sweepStaleDirectories: removeStaleOffscreenDirectories
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle('system:fonts', (): string[] => {
     const families = new Set(['Arial', 'Segoe UI', 'Microsoft YaHei'])
@@ -1040,6 +1056,16 @@ function registerIpcHandlers(): void {
     return startOffscreenRecordingWindow(normalizeOffscreenRecordingScript(script))
   })
   ipcMain.handle('recordings:offscreen-encode', async (event, script: unknown): Promise<RecordingSaveResult> => {
+    if (process.platform === 'darwin') {
+      assertOffscreenRecordingIdle()
+      const requester = event.sender
+      offscreenRecordRequester = requester
+      try {
+        return await encodeMacOffscreenRecording(normalizeOffscreenRecordingScript(script), macRecordingHost)
+      } finally {
+        if (offscreenRecordRequester === requester) offscreenRecordRequester = null
+      }
+    }
     assertOffscreenRecordingSupported(process.platform)
     assertOffscreenRecordingIdle()
     const requester = event.sender
@@ -1098,6 +1124,14 @@ function registerIpcHandlers(): void {
       '== 主进程 ==',
       logger.dump() || '（无日志）'
     ].join('\n'))
+  })
+  ipcMain.on('recordings:offscreen-frame-ack', (event, count: unknown): void => {
+    if (event.sender !== offscreenRecordingWindow?.webContents) return
+    noteMacOffscreenFrameAck(count)
+  })
+  ipcMain.on('recordings:offscreen-video', (event, bytes: unknown): void => {
+    if (event.sender !== offscreenRecordingWindow?.webContents) return
+    deliverMacOffscreenVideo(bytes)
   })
 }
 
