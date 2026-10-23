@@ -290,7 +290,6 @@ const keyPoints = [
 }
 
 .space-label {
-  fill: rgba(0, 0, 0, 0.45);
   font-size: 10px;
 }
 

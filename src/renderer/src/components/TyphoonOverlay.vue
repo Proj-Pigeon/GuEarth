@@ -56,8 +56,8 @@ function spiralArm(startAngle: number): string {
   const pts: string[] = []
   for (let i = 0; i <= 24; i += 1) {
     const t = i / 24
-    const angle = ((startAngle + t * 300) * Math.PI) / 180
-    const r = 34 + t * 104
+    const angle = ((startAngle + 300 - t * 300) * Math.PI) / 180
+    const r = 138 - t * 104
     const x = cx + r * Math.cos(angle)
     const y = cy + r * Math.sin(angle)
     pts.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`)
@@ -143,7 +143,7 @@ const inflowArrows: Array<{ x: number; y: number; angle: number }> = [
 
 @keyframes typhoon-spin {
   to {
-    transform: rotate(360deg);
+    transform: rotate(-360deg);
   }
 }
 
