@@ -2,6 +2,7 @@
 import { computed, ref, toRaw } from 'vue'
 import * as Cesium from 'cesium'
 import { CloseOutlined } from '@ant-design/icons-vue'
+import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 
 const emit = defineEmits<{ close: [] }>()
 const props = defineProps<{ viewer?: Cesium.Viewer }>()
@@ -14,12 +15,7 @@ const tabOptions = [
   { value: 'fault', label: '断层' }
 ] as const
 
-const foldLayers = [
-  { dy: 0, color: '#b7a6d9' },
-  { dy: 12, color: '#e4c28e' },
-  { dy: 24, color: '#a3cfbb' },
-  { dy: 36, color: '#e0b3a6' }
-]
+const foldLayers = dc.strata.map((color, index) => ({ dy: index * 12, color }))
 
 const foldFacts = [
   '褶皱：岩层受水平挤压发生弯曲变形。背斜岩层向上拱起（中心岩层老、两翼新），向斜岩层向下弯曲（中心岩层新、两翼老）。',
@@ -72,54 +68,70 @@ const facts = computed(() => (tab.value === 'fold' ? foldFacts : faultFacts))
       </a-button>
     </div>
     <svg v-if="tab === 'fold'" viewBox="0 0 340 180" class="fold-svg" role="img" aria-label="背斜与向斜剖面示意">
+      <defs>
+        <marker id="fold-head" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" :fill="dc.fault" opacity="0.85" />
+        </marker>
+      </defs>
+      <rect x="0" y="0" width="340" height="180" rx="8" fill="#fbf7f2" />
       <g v-for="layer in foldLayers" :key="layer.dy">
         <path
-          :d="`M 10 ${96 + layer.dy} C 70 ${52 + layer.dy}, 110 ${48 + layer.dy}, 150 ${86 + layer.dy} C 190 ${124 + layer.dy}, 230 ${128 + layer.dy}, 330 ${92 + layer.dy}`"
+          :d="`M 8 ${96 + layer.dy} C 70 ${52 + layer.dy}, 110 ${48 + layer.dy}, 150 ${86 + layer.dy} C 190 ${124 + layer.dy}, 230 ${128 + layer.dy}, 332 ${92 + layer.dy}`"
           fill="none"
           :stroke="layer.color"
           stroke-width="7"
+          stroke-linecap="round"
+          opacity="0.9"
         />
       </g>
-      <path d="M 96 26 L 150 82 L 96 26" fill="none" stroke="rgba(0,0,0,0)" />
-      <g font-size="11" font-family='"Microsoft YaHei", "PingFang SC", sans-serif'>
-        <text x="150" y="30" fill="rgba(0,0,0,0.88)" font-weight="600" text-anchor="middle">背斜（岩层上拱，中心老两翼新）</text>
-        <text x="150" y="158" fill="rgba(0,0,0,0.88)" font-weight="600" text-anchor="middle">向斜（岩层下弯，中心新两翼老）</text>
-        <path d="M 138 66 L 138 50 M 162 66 L 162 50" stroke="rgba(245,79,60,0.8)" stroke-width="2" marker-end="url(#fold-head)" class="fold-arrow" />
-        <text x="150" y="46" fill="rgba(245,79,60,0.9)" text-anchor="middle" font-weight="600">易侵蚀成谷</text>
-        <text x="150" y="120" fill="rgba(82,196,26,0.9)" text-anchor="middle" font-weight="600">抗侵蚀成山</text>
+      <path d="M 136 64 L 136 48 M 164 64 L 164 48" :stroke="dc.fault" stroke-width="1.8" opacity="0.85" marker-end="url(#fold-head)" class="fold-arrow" />
+      <g :font-family="diagramFont">
+        <text x="150" y="24" :fill="dc.ink" font-size="11" font-weight="600" text-anchor="middle">背斜（岩层上拱，中心老两翼新）</text>
+        <text x="150" y="42" :fill="dc.fault" font-size="10" text-anchor="middle" opacity="0.9">顶部受张力 · 易侵蚀成谷</text>
+        <text x="150" y="132" fill="#389e0d" font-size="10" text-anchor="middle" font-weight="600" class="svg-stroked">槽部坚实 · 抗侵蚀成山</text>
+        <text x="150" y="166" :fill="dc.ink" font-size="11" font-weight="600" text-anchor="middle">向斜（岩层下弯，中心新两翼老）</text>
       </g>
-      <defs>
-        <marker id="fold-head" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill="rgba(245,79,60,0.8)" />
-        </marker>
-      </defs>
     </svg>
     <svg v-else viewBox="0 0 340 180" class="fold-svg" role="img" aria-label="地垒与地堑剖面示意">
-      <rect x="0" y="120" width="340" height="60" fill="rgba(139, 115, 85, 0.35)" />
-      <g>
-        <path d="M 0 90 L 84 90 L 84 150 L 0 150 Z" fill="#c8b7a6" stroke="rgba(0,0,0,0.3)" />
-        <path d="M 116 60 L 224 60 L 224 150 L 116 150 Z" fill="#dcc9b4" stroke="rgba(0,0,0,0.35)" />
-        <path d="M 256 100 L 340 100 L 340 150 L 256 150 Z" fill="#c8b7a6" stroke="rgba(0,0,0,0.3)" />
-      </g>
-      <path d="M 92 30 L 78 150" stroke="#f5222d" stroke-width="2.5" class="fault-line" />
-      <path d="M 248 30 L 262 150" stroke="#f5222d" stroke-width="2.5" class="fault-line" />
-      <g stroke="rgba(245,79,60,0.9)" stroke-width="2" marker-end="url(#fault-head)">
-        <path d="M 170 40 L 170 24" />
-        <path d="M 42 62 L 42 76" />
-        <path d="M 298 72 L 298 86" />
-      </g>
-      <g font-size="11" font-family='"Microsoft YaHei", "PingFang SC", sans-serif'>
-        <text x="170" y="18" fill="rgba(245,79,60,0.9)" text-anchor="middle" font-weight="600">地垒：相对上升 → 块状山地（华山）</text>
-        <text x="42" y="58" fill="rgba(245,79,60,0.9)" text-anchor="middle" font-weight="600">下降</text>
-        <text x="298" y="68" fill="rgba(245,79,60,0.9)" text-anchor="middle" font-weight="600">下降</text>
-        <text x="42" y="140" fill="rgba(0,0,0,0.65)" text-anchor="middle">地堑：相对下降</text>
-        <text x="298" y="140" fill="rgba(0,0,0,0.65)" text-anchor="middle">→ 谷地平原</text>
-      </g>
       <defs>
-        <marker id="fault-head" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill="rgba(245,79,60,0.9)" />
+        <marker id="fault-head" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" :fill="dc.fault" opacity="0.9" />
         </marker>
+        <linearGradient id="ff-horst" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#e6d3b8" />
+          <stop offset="100%" stop-color="#cbb08a" />
+        </linearGradient>
+        <linearGradient id="ff-graben" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#c8b7a6" />
+          <stop offset="100%" stop-color="#a8937c" />
+        </linearGradient>
       </defs>
+      <rect x="0" y="0" width="340" height="180" rx="8" fill="#fbf7f2" />
+      <rect x="0" y="148" width="340" height="32" :fill="dc.strataBase" />
+      <g stroke="rgba(0,0,0,0.28)" stroke-width="1">
+        <path d="M 4 96 L 82 96 L 82 148 L 4 148 Z" fill="url(#ff-graben)" />
+        <path d="M 118 60 L 222 60 L 222 148 L 118 148 Z" fill="url(#ff-horst)" />
+        <path d="M 258 100 L 336 100 L 336 148 L 258 148 Z" fill="url(#ff-graben)" />
+      </g>
+      <g stroke="rgba(0,0,0,0.14)" stroke-width="1">
+        <path d="M 8 116 L 78 116 M 8 132 L 78 132" />
+        <path d="M 122 84 L 218 84 M 122 108 L 218 108 M 122 132 L 218 132" />
+        <path d="M 262 118 L 332 118 M 262 134 L 332 134" />
+      </g>
+      <path d="M 94 34 L 82 148" :stroke="dc.fault" stroke-width="2.2" class="fault-line" />
+      <path d="M 246 34 L 258 148" :stroke="dc.fault" stroke-width="2.2" class="fault-line" />
+      <g :stroke="dc.fault" stroke-width="1.8" opacity="0.9" marker-end="url(#fault-head)">
+        <path d="M 170 44 L 170 26" />
+        <path d="M 44 66 L 44 82" />
+        <path d="M 296 74 L 296 90" />
+      </g>
+      <g :font-family="diagramFont">
+        <text x="170" y="18" :fill="dc.fault" font-size="11" text-anchor="middle" font-weight="600">地垒：相对上升 → 块状山地（华山）</text>
+        <text x="44" y="60" :fill="dc.fault" font-size="10" text-anchor="middle" opacity="0.9">下降</text>
+        <text x="296" y="68" :fill="dc.fault" font-size="10" text-anchor="middle" opacity="0.9">下降</text>
+        <text x="44" y="166" :fill="dc.inkSecondary" font-size="10" text-anchor="middle">地堑：相对下降 → 谷地平原</text>
+        <text x="296" y="166" :fill="dc.inkSecondary" font-size="10" text-anchor="middle">谷地平原（渭河平原）</text>
+      </g>
     </svg>
     <div v-for="fact in facts" :key="fact" class="fact">· {{ fact }}</div>
     <div class="section-title">在地球上观察</div>
@@ -167,6 +179,14 @@ const facts = computed(() => (tab.value === 'fold' ? foldFacts : faultFacts))
 .fold-svg {
   width: 100%;
   height: auto;
+  border-radius: 8px;
+}
+
+.svg-stroked {
+  paint-order: stroke;
+  stroke: rgba(251, 247, 242, 0.9);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .fold-arrow {

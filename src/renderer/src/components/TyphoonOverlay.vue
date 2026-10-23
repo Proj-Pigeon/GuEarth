@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, toRaw, watch } from 'vue'
 import * as Cesium from 'cesium'
+import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 
 const props = defineProps<{ viewer?: Cesium.Viewer }>()
 
@@ -48,54 +49,80 @@ onBeforeUnmount(() => {
   removeListener?.()
   removeListener = undefined
 })
+
+function spiralArm(startAngle: number): string {
+  const cx = 170
+  const cy = 168
+  const pts: string[] = []
+  for (let i = 0; i <= 24; i += 1) {
+    const t = i / 24
+    const angle = ((startAngle + 300 - t * 300) * Math.PI) / 180
+    const r = 138 - t * 104
+    const x = cx + r * Math.cos(angle)
+    const y = cy + r * Math.sin(angle)
+    pts.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`)
+  }
+  return pts.join(' ')
+}
+
+const arms = [spiralArm(20), spiralArm(140), spiralArm(260)]
+
+const inflowArrows: Array<{ x: number; y: number; angle: number }> = [
+  { x: 300, y: 96, angle: 145 },
+  { x: 62, y: 122, angle: -55 },
+  { x: 100, y: 286, angle: -20 },
+  { x: 268, y: 272, angle: -160 }
+]
 </script>
 
 <template>
   <div ref="overlayRef" class="typhoon-overlay" style="display: none" aria-hidden="true">
     <svg viewBox="0 0 340 340" width="340" height="340">
-      <rect x="2" y="2" width="336" height="336" rx="10" fill="rgba(255,255,255,0.82)" stroke="rgba(5,5,5,0.06)" />
+      <defs>
+        <radialGradient id="ty-eyewall" cx="50%" cy="50%" r="50%">
+          <stop offset="55%" stop-color="#f5222d" stop-opacity="0" />
+          <stop offset="78%" stop-color="#f5222d" stop-opacity="0.28" />
+          <stop offset="100%" stop-color="#f5222d" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="ty-cloud" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+          <stop offset="70%" stop-color="#91caff" stop-opacity="0.10" />
+          <stop offset="100%" stop-color="#91caff" stop-opacity="0.22" />
+        </radialGradient>
+        <marker id="ty-head" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" :fill="dc.neutralArrow" />
+        </marker>
+        <marker id="ty-head-orange" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" :fill="dc.energy" />
+        </marker>
+      </defs>
+      <rect x="2" y="2" width="336" height="336" rx="12" fill="rgba(255,255,255,0.9)" :stroke="dc.hairline" />
+      <circle cx="170" cy="168" r="142" fill="url(#ty-cloud)" />
       <g class="typhoon-spin">
-        <g fill="none" stroke="#fa8c16" stroke-width="3" opacity="0.75">
-          <path d="M 170 128 A 34 34 0 0 1 204 166" />
-          <path d="M 196 210 A 34 34 0 0 1 140 194" />
-          <path d="M 118 152 A 46 46 0 0 1 172 112" opacity="0.6" />
-          <path d="M 212 176 A 46 46 0 0 1 158 208" opacity="0.6" />
+        <g fill="none" :stroke="dc.energy" stroke-width="6" stroke-linecap="round" opacity="0.32">
+          <path v-for="arm in arms" :key="arm" :d="arm" />
         </g>
-        <g fill="none" stroke="#fa8c16" stroke-width="5" opacity="0.45" stroke-linecap="round">
-          <path d="M 170 44 Q 232 52 262 96" />
-          <path d="M 262 96 Q 288 134 284 178" />
-          <path d="M 148 44 Q 84 58 62 110" />
-          <path d="M 62 110 Q 44 152 60 198" />
-          <path d="M 88 268 Q 128 296 172 292" />
-          <path d="M 252 246 Q 226 288 178 292" />
-        </g>
-        <g fill="none" stroke="#fa8c16" stroke-width="2" stroke-dasharray="1 7" opacity="0.85" stroke-linecap="round">
-          <path d="M 170 44 Q 232 52 262 96" />
-          <path d="M 148 44 Q 84 58 62 110" />
-          <path d="M 62 110 Q 44 152 60 198" />
-          <path d="M 88 268 Q 128 296 172 292" />
-          <path d="M 252 246 Q 226 288 178 292" />
-        </g>
-        <g fill="#fa8c16" opacity="0.9">
-          <polygon points="0,-6 11,0 0,6" transform="translate(262 96) rotate(52)" />
-          <polygon points="0,-6 11,0 0,6" transform="translate(62 110) rotate(-118)" />
-          <polygon points="0,-6 11,0 0,6" transform="translate(88 268) rotate(14)" />
-          <polygon points="0,-6 11,0 0,6" transform="translate(252 246) rotate(-158)" />
+        <g fill="none" :stroke="dc.energy" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 8" opacity="0.9">
+          <path v-for="arm in arms" :key="arm" :d="arm" marker-end="url(#ty-head-orange)" />
         </g>
       </g>
-      <circle cx="170" cy="170" r="30" fill="none" stroke="#f5222d" stroke-width="10" opacity="0.35" />
-      <circle cx="170" cy="170" r="30" fill="none" stroke="#f5222d" stroke-width="2.5" />
-      <circle cx="170" cy="170" r="14" fill="#ffffff" stroke="#f5222d" stroke-width="2" />
-      <g font-size="11" font-family='"Microsoft YaHei", "PingFang SC", sans-serif' text-anchor="middle">
-        <text x="170" y="174" fill="#f5222d" font-weight="600">台风眼</text>
-        <text x="238" y="122" fill="#f5222d" font-weight="600">眼墙</text>
-        <text x="238" y="136" fill="rgba(0,0,0,0.65)">狂风暴雨最强</text>
-        <text x="268" y="304" fill="#fa8c16" font-weight="600">漩涡风雨区</text>
-        <text x="268" y="318" fill="rgba(0,0,0,0.65)">外围螺旋云雨带</text>
-        <text x="62" y="60" fill="rgba(0,0,0,0.65)">气流逆时针</text>
-        <text x="62" y="74" fill="rgba(0,0,0,0.65)">向中心辐合</text>
+      <circle cx="170" cy="168" r="34" fill="url(#ty-eyewall)" />
+      <circle cx="170" cy="168" r="30" fill="none" :stroke="dc.warmAir" stroke-width="2" opacity="0.85" />
+      <circle cx="170" cy="168" r="15" fill="#ffffff" :stroke="dc.warmAir" stroke-width="2" />
+      <text x="170" y="168" text-anchor="middle" dominant-baseline="central" font-size="10.5" font-weight="600" :fill="dc.warmAir" :font-family="diagramFont">台风眼</text>
+      <g fill="none" :stroke="dc.neutralArrow" stroke-width="1.6" marker-end="url(#ty-head)">
+        <path v-for="a in inflowArrows" :key="`${a.x}-${a.y}`" :d="`M ${a.x} ${a.y} l 26 0`" :transform="`rotate(${a.angle} ${a.x} ${a.y})`" />
       </g>
-      <text x="170" y="330" text-anchor="middle" font-size="11" fill="rgba(0,0,0,0.45)" font-family='"Microsoft YaHei", "PingFang SC", sans-serif'>北半球台风（热带气旋）俯视结构示意</text>
+      <g :font-family="diagramFont" text-anchor="middle">
+        <text x="252" y="112" font-size="11" font-weight="600" :fill="dc.warmAir">眼墙</text>
+        <text x="252" y="126" font-size="10" :fill="dc.inkSecondary">狂风暴雨最强</text>
+        <path d="M 232 118 L 202 140" :stroke="dc.warmAirSoft" stroke-width="1" fill="none" />
+        <text x="66" y="52" font-size="10.5" :fill="dc.inkSecondary">气流逆时针向中心辐合</text>
+        <text x="20" y="262" font-size="11" font-weight="600" :fill="dc.energy" text-anchor="start">漩涡风雨区</text>
+        <text x="20" y="277" font-size="10" :fill="dc.inkSecondary" text-anchor="start">外围螺旋云雨带</text>
+        <path d="M 72 284 L 92 296" :stroke="dc.energySoft" stroke-width="1" fill="none" />
+      </g>
+      <text x="170" y="330" text-anchor="middle" font-size="10.5" :fill="dc.inkTertiary" :font-family="diagramFont">北半球台风（热带气旋）俯视结构示意</text>
     </svg>
   </div>
 </template>
@@ -110,13 +137,13 @@ onBeforeUnmount(() => {
 }
 
 .typhoon-spin {
-  transform-origin: 170px 170px;
-  animation: typhoon-spin 26s linear infinite;
+  transform-origin: 170px 168px;
+  animation: typhoon-spin 30s linear infinite;
 }
 
 @keyframes typhoon-spin {
   to {
-    transform: rotate(360deg);
+    transform: rotate(-360deg);
   }
 }
 

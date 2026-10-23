@@ -2,6 +2,7 @@
 import { onBeforeUnmount, ref, toRaw, watch } from 'vue'
 import * as Cesium from 'cesium'
 import { ensoPhaseMeta, type EnsoPhase } from '@renderer/thematic/ensoPhases'
+import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 
 const props = defineProps<{ viewer?: Cesium.Viewer; phase: EnsoPhase }>()
 
@@ -50,54 +51,94 @@ onBeforeUnmount(() => {
   removeListener = undefined
 })
 
-const RISING = '#f5222d'
-const SINKING = '#1677ff'
-const FLOW = '#722ed1'
+interface FlowPath {
+  d: string
+  color: string
+  width: number
+  dashed?: boolean
+  faded?: boolean
+}
+
+const phaseFlows: Record<EnsoPhase, FlowPath[]> = {
+  normal: [
+    { d: 'M 96 150 C 90 110 100 72 122 52', color: dc.warmAir, width: 3 },
+    { d: 'M 130 46 Q 195 26 258 44', color: dc.vaporFlow, width: 3 },
+    { d: 'M 274 50 C 286 78 292 112 294 146', color: dc.coldAir, width: 3 },
+    { d: 'M 278 152 Q 190 178 108 154', color: dc.vaporFlow, width: 3 }
+  ],
+  'el-nino': [
+    { d: 'M 200 150 C 194 112 202 80 218 62', color: dc.warmAir, width: 3 },
+    { d: 'M 226 56 Q 264 46 296 58', color: dc.vaporFlow, width: 3 },
+    { d: 'M 306 68 C 314 94 318 120 320 146', color: dc.coldAir, width: 2.2, dashed: true },
+    { d: 'M 312 152 Q 254 172 200 156', color: dc.vaporFlow, width: 2, dashed: true },
+    { d: 'M 182 152 Q 130 170 92 158', color: dc.vaporFlow, width: 1.6, dashed: true, faded: true }
+  ],
+  'la-nina': [
+    { d: 'M 88 150 C 80 106 92 66 116 44', color: dc.warmAir, width: 3.6 },
+    { d: 'M 126 38 Q 196 16 268 40', color: dc.vaporFlow, width: 3.6 },
+    { d: 'M 286 48 C 300 80 306 116 308 148', color: dc.coldAir, width: 3.6 },
+    { d: 'M 294 154 Q 190 184 94 156', color: dc.vaporFlow, width: 3.6 }
+  ]
+}
+
+const thermoclines: Record<EnsoPhase, string> = {
+  normal: 'M 16 168 Q 100 128 200 124 Q 300 120 368 142',
+  'el-nino': 'M 16 156 Q 110 130 200 128 Q 296 126 368 132',
+  'la-nina': 'M 16 176 Q 96 124 200 120 Q 302 118 368 148'
+}
 </script>
 
 <template>
   <div ref="overlayRef" class="walker-overlay" style="display: none" aria-hidden="true">
     <svg viewBox="0 0 380 200" width="380" height="200">
-      <rect x="2" y="2" width="376" height="196" rx="10" fill="rgba(255,255,255,0.85)" stroke="rgba(5,5,5,0.06)" />
-      <path d="M0 160 L110 160 A 80 34 0 0 1 270 160 L380 160 L380 200 L0 200 Z" fill="rgba(22, 119, 255, 0.18)" />
-      <path d="M60 160 Q 75 96 118 74" :fill="phase === 'el-nino' ? 'none' : 'none'" stroke="rgba(0,0,0,0.2)" stroke-width="1" />
-      <path v-if="phase !== 'el-nino'" d="M0 158 Q 90 120 200 116 Q 300 112 380 130 L 380 160 L 0 160 Z" fill="rgba(82, 196, 26, 0.14)" />
-      <path v-else d="M0 158 Q 90 120 150 116 L 380 118 L 380 160 L 0 160 Z" fill="rgba(82, 196, 26, 0.14)" />
-      <g v-if="phase === 'normal'">
-        <path d="M 96 148 C 92 110 100 76 118 56" fill="none" :stroke="RISING" stroke-width="3" marker-end="url(#walker-head)" class="walker-flow" />
-        <path d="M 124 50 Q 190 30 250 46" fill="none" :stroke="FLOW" stroke-width="3" marker-end="url(#walker-head)" class="walker-flow" />
-        <path d="M 268 52 C 280 78 286 112 288 144" fill="none" :stroke="SINKING" stroke-width="3" marker-end="url(#walker-head)" class="walker-flow" />
-        <path d="M 272 150 Q 190 176 112 152" fill="none" :stroke="FLOW" stroke-width="3" marker-end="url(#walker-head)" class="walker-flow" />
-      </g>
-      <g v-else-if="phase === 'el-nino'">
-        <path d="M 196 148 C 192 112 198 82 212 62" fill="none" :stroke="RISING" stroke-width="3" marker-end="url(#walker-head)" class="walker-flow" />
-        <path d="M 218 56 Q 262 44 296 56" fill="none" :stroke="FLOW" stroke-width="3" marker-end="url(#walker-head)" class="walker-flow" />
-        <path d="M 306 66 C 314 92 318 118 320 144" fill="none" :stroke="SINKING" stroke-width="2.2" stroke-dasharray="6 5" marker-end="url(#walker-head)" class="walker-flow" />
-        <path d="M 310 150 Q 250 170 196 154" fill="none" :stroke="FLOW" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#walker-head)" class="walker-flow" />
-        <path d="M 180 150 Q 130 168 92 156" fill="none" :stroke="FLOW" stroke-width="1.4" stroke-dasharray="3 6" opacity="0.7" marker-end="url(#walker-head)" class="walker-flow" />
-      </g>
-      <g v-else>
-        <path d="M 88 148 C 82 108 92 70 112 48" fill="none" :stroke="RISING" stroke-width="3.6" marker-end="url(#walker-head)" class="walker-flow" />
-        <path d="M 120 42 Q 195 20 268 42" fill="none" :stroke="FLOW" stroke-width="3.6" marker-end="url(#walker-head)" class="walker-flow" />
-        <path d="M 286 50 C 298 80 304 116 306 146" fill="none" :stroke="SINKING" stroke-width="3.6" marker-end="url(#walker-head)" class="walker-flow" />
-        <path d="M 292 152 Q 190 182 96 154" fill="none" :stroke="FLOW" stroke-width="3.6" marker-end="url(#walker-head)" class="walker-flow" />
-      </g>
       <defs>
-        <marker id="walker-head" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="rgba(0,0,0,0.55)" />
+        <linearGradient id="wk-ocean" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#69b1ff" stop-opacity="0.5" />
+          <stop offset="100%" stop-color="#0958d9" stop-opacity="0.55" />
+        </linearGradient>
+        <linearGradient id="wk-warm" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ffa39e" stop-opacity="0.55" />
+          <stop offset="100%" stop-color="#ffa39e" stop-opacity="0" />
+        </linearGradient>
+        <marker id="wk-head" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" :fill="dc.neutralArrow" />
         </marker>
       </defs>
-      <g font-size="11" font-family='"Microsoft YaHei", "PingFang SC", sans-serif'>
-        <text x="96" y="176" fill="rgba(0,0,0,0.65)" text-anchor="middle">西太平洋·暖池（印尼）</text>
-        <text x="296" y="176" fill="rgba(0,0,0,0.65)" text-anchor="middle">东太平洋（南美沿岸）</text>
-        <text x="60" y="96" :fill="RISING" font-weight="600" v-if="phase !== 'el-nino'">上升气流</text>
-        <text x="222" y="120" :fill="RISING" font-weight="600" v-else>上升气流东移</text>
-        <text x="296" y="112" :fill="SINKING" font-weight="600">下沉气流</text>
-        <text x="190" y="42" :fill="FLOW" font-weight="600" text-anchor="middle">高空向东流</text>
-        <text x="190" y="168" :fill="FLOW" font-weight="600" text-anchor="middle" v-if="phase !== 'el-nino'">信风（近地面自东向西）</text>
-        <text x="190" y="168" :fill="FLOW" font-weight="600" text-anchor="middle" v-else>信风减弱甚至转向</text>
+      <rect x="2" y="2" width="376" height="196" rx="12" fill="rgba(255,255,255,0.92)" :stroke="dc.hairline" />
+      <rect x="12" y="12" width="356" height="150" rx="8" fill="rgba(22,119,255,0.05)" />
+      <path d="M 12 162 L 368 162 L 368 188 L 12 188 Z" fill="url(#wk-ocean)" />
+      <path v-if="phase !== 'el-nino'" d="M 12 162 L 120 162 Q 160 130 200 128 L 368 162 Z" fill="url(#wk-warm)" />
+      <path v-else d="M 12 162 L 368 162 L 368 140 Q 260 126 190 128 Q 100 130 12 150 Z" fill="url(#wk-warm)" />
+      <path :d="thermoclines[phase]" fill="none" :stroke="dc.warmAir" stroke-width="1.4" stroke-dasharray="5 4" opacity="0.7" />
+      <g>
+        <path
+          v-for="(flow, index) in phaseFlows[phase]"
+          :key="index"
+          :d="flow.d"
+          fill="none"
+          :stroke="flow.color"
+          :stroke-width="flow.width"
+          :stroke-dasharray="flow.dashed ? '6 5' : undefined"
+          :opacity="flow.faded ? 0.65 : 1"
+          stroke-linecap="round"
+          marker-end="url(#wk-head)"
+          class="walker-flow"
+        />
       </g>
-      <text x="190" y="192" text-anchor="middle" font-size="11" fill="rgba(0,0,0,0.45)" font-family='"Microsoft YaHei", "PingFang SC", sans-serif'>沃克环流剖面示意（{{ ensoPhaseMeta[phase].name }}）</text>
+      <g :font-family="diagramFont">
+        <text x="66" y="184" font-size="10.5" :fill="dc.inkSecondary">西太平洋·暖池</text>
+        <text x="312" y="184" font-size="10.5" :fill="dc.inkSecondary" text-anchor="middle">东太平洋（南美沿岸）</text>
+        <template v-if="phase !== 'el-nino'">
+          <text x="74" y="96" font-size="11" font-weight="600" :fill="dc.warmAir" text-anchor="middle">上升气流</text>
+        </template>
+        <text v-else x="176" y="100" font-size="11" font-weight="600" :fill="dc.warmAir" text-anchor="middle">上升气流东移</text>
+        <text x="330" y="100" font-size="11" font-weight="600" :fill="dc.coldAir" text-anchor="middle">下沉气流</text>
+        <text x="195" y="24" font-size="11" font-weight="600" :fill="dc.vaporFlow" text-anchor="middle">高空向东流</text>
+        <text v-if="phase !== 'el-nino'" x="195" y="146" font-size="11" font-weight="600" :fill="dc.vaporFlow" text-anchor="middle">信风（近地面自东向西）</text>
+        <text v-else x="150" y="140" font-size="11" font-weight="600" :fill="dc.vaporFlow" text-anchor="middle">信风减弱甚至转向</text>
+        <text x="368" y="172" font-size="9.5" :fill="dc.warmAir" text-anchor="end" opacity="0.8">温跃层</text>
+      </g>
+      <text x="190" y="196" text-anchor="middle" font-size="10.5" :fill="dc.inkTertiary" :font-family="diagramFont">沃克环流剖面示意（{{ ensoPhaseMeta[phase].name }}）</text>
     </svg>
   </div>
 </template>
@@ -112,13 +153,12 @@ const FLOW = '#722ed1'
 }
 
 .walker-flow {
-  stroke-dasharray: 8 6;
-  animation: walker-dash 1.2s linear infinite;
+  animation: walker-dash 1.4s linear infinite;
 }
 
 @keyframes walker-dash {
   to {
-    stroke-dashoffset: -14;
+    stroke-dashoffset: -11;
   }
 }
 
