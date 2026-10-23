@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository. Read this file before 
 
 ## Project
 
-**GuEarth** (`E:\Code\GuEarth`, GitHub: `Proj-Pigeon/GuEarth`) is an Electron desktop "digital
+**GuEarth** (GitHub: `Proj-Pigeon/GuEarth`) is an Electron desktop "digital
 earth" for geography education — a local, Google-Earth-style 3D globe with terrain, integrated
 map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing tools.
 
@@ -42,15 +42,17 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 ## Architecture
 
 ```
-src/main/       Main process: window, KeyVault, AI proxy (streaming), tile cache, SQLite
+src/main/       Main process: window, KeyVault, AI proxy (streaming), tile cache, auto-updater
 src/preload/    contextBridge API + type declarations
 src/renderer/   Vue app: globe view, layer registry, drawing tools, EOQ assistant UI
 ```
 
 - The renderer never touches Node APIs or secrets. All privileged work goes through IPC.
-- EOQ agent loop: renderer chat → main-process LLM call → model tool calls (flyTo / queryTerrain
-  / addLayer / explainLandform) dispatched to renderer globe APIs → results fed back → streamed
-  answer. Globe tools are registered renderer-side; new capabilities = new tool definitions.
+- EOQ agent loop: renderer chat → main-process LLM call → model tool calls (`fly_to` / `set_layer`
+  / `query_population` / `record_video` …) dispatched to renderer globe APIs → results fed back →
+  streamed answer. Globe tools are registered renderer-side; place-search, web-search and
+  memory/knowledge tools run in the main process (`agent.ts`); new capabilities = new tool
+  definitions.
 - Map providers (OSM, Mapbox, ArcGIS) implement a unified `LayerProvider`
   interface; terrain providers are pluggable for future offline terrain packs.
 
