@@ -143,8 +143,15 @@ function flyToPlace(): void {
 }
 
 .case-picker {
-  width: fit-content;
   max-width: 100%;
+}
+
+.case-picker :deep(.ant-segmented-group) {
+  flex-wrap: wrap;
+}
+
+.case-picker :deep(.ant-segmented-item) {
+  flex: none;
 }
 
 .intro {
@@ -173,9 +180,14 @@ function flyToPlace(): void {
 }
 
 .factor-row {
-  padding: 4px 6px;
+  padding: 6px 8px;
   border: 1px solid rgba(5, 5, 5, 0.06);
   border-radius: 6px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.factor-row:hover {
+  border-color: rgba(0, 0, 0, 0.14);
 }
 
 .factor-row.selected {
@@ -204,7 +216,7 @@ function flyToPlace(): void {
 }
 
 .factor-hint {
-  margin: 4px 0 0 34px;
+  margin: 4px 0 2px 34px;
   color: rgba(0, 0, 0, 0.65);
   font-size: 12px;
   line-height: 18px;
@@ -214,11 +226,18 @@ function flyToPlace(): void {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
 }
 
 .case-fly {
   flex: none;
   color: rgba(0, 0, 0, 0.45);
+  transition: color 0.1s ease-out;
+}
+
+.case-fly:hover {
+  color: #1677ff;
 }
 
 .critique-button {

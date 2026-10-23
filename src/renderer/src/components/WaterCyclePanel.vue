@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue'
 import * as Cesium from 'cesium'
 import { CloseOutlined } from '@ant-design/icons-vue'
+import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 
 const emit = defineEmits<{ close: [] }>()
 const props = defineProps<{ viewer?: Cesium.Viewer }>()
@@ -80,34 +81,49 @@ const notes = [
       </a-button>
     </div>
     <svg viewBox="0 0 340 200" class="cycle-svg" role="img" aria-label="海陆间水循环环节示意图">
-      <path d="M0 158 L150 158 L150 200 L0 200 Z" fill="rgba(22, 119, 255, 0.18)" />
-      <path d="M150 158 L206 158 L256 108 L340 66 L340 200 L150 200 Z" fill="rgba(82, 196, 26, 0.16)" />
-      <g :class="{ 'stage-on': stepActive(1) }" class="stage">
-        <path d="M 74 150 C 70 124 78 104 88 92" fill="none" stroke="#1677ff" stroke-width="3" marker-end="url(#cycle-head)" class="cycle-arrow" />
-        <text x="74" y="136" class="stage-label" fill="#1677ff">蒸发</text>
-      </g>
-      <g :class="{ 'stage-on': stepActive(2) }" class="stage">
-        <path d="M 96 84 Q 168 44 246 66" fill="none" stroke="#722ed1" stroke-width="3" marker-end="url(#cycle-head)" class="cycle-arrow" />
-        <text x="168" y="52" class="stage-label" fill="#722ed1" text-anchor="middle">水汽输送</text>
-      </g>
-      <g :class="{ 'stage-on': stepActive(3) }" class="stage">
-        <path d="M 232 76 L 228 98 M 248 72 L 244 96 M 264 68 L 260 92" stroke="#1677ff" stroke-width="2" stroke-linecap="round" />
-        <text x="268" y="86" class="stage-label" fill="#1677ff">降水</text>
-      </g>
-      <g :class="{ 'stage-on': stepActive(4) }" class="stage">
-        <path d="M 252 118 C 216 138 188 146 158 150" fill="none" stroke="#13c2c2" stroke-width="3" marker-end="url(#cycle-head)" class="cycle-arrow" />
-        <text x="206" y="146" class="stage-label" fill="#13c2c2" text-anchor="middle">地表径流</text>
-        <path d="M 262 130 C 252 152 210 168 176 172" fill="none" stroke="#13c2c2" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#cycle-head)" class="cycle-arrow" />
-        <text x="216" y="182" class="stage-label" fill="#13c2c2" text-anchor="middle">下渗·地下径流</text>
-      </g>
       <defs>
-        <marker id="cycle-head" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="rgba(0,0,0,0.55)" />
+        <linearGradient id="wc-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#e6f4ff" />
+          <stop offset="100%" stop-color="#ffffff" />
+        </linearGradient>
+        <linearGradient id="wc-ocean" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" :stop-color="dc.oceanShallow" />
+          <stop offset="100%" :stop-color="dc.oceanDeep" />
+        </linearGradient>
+        <linearGradient id="wc-land" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" :stop-color="dc.landHigh" />
+          <stop offset="100%" stop-color="#d9f7be" />
+        </linearGradient>
+        <marker id="cycle-head" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" :fill="dc.neutralArrow" />
         </marker>
       </defs>
-      <g font-size="11" font-family='"Microsoft YaHei", "PingFang SC", sans-serif'>
-        <text x="66" y="180" fill="rgba(0,0,0,0.65)" text-anchor="middle">海洋</text>
-        <text x="296" y="180" fill="rgba(0,0,0,0.65)" text-anchor="middle">陆地（山地）</text>
+      <rect x="0" y="0" width="340" height="200" rx="8" fill="url(#wc-sky)" />
+      <path d="M0 158 L150 158 L150 200 L0 200 Z" fill="url(#wc-ocean)" />
+      <path d="M150 158 L206 158 L256 108 L340 66 L340 200 L150 200 Z" fill="url(#wc-land)" />
+      <path d="M150 158 L206 158 L256 108 L340 66" fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="1.2" />
+      <g :class="{ 'stage-on': stepActive(1) }" class="stage">
+        <path d="M 66 148 C 62 122 70 102 82 90" fill="none" :stroke="dc.rain" stroke-width="2.5" marker-end="url(#cycle-head)" class="cycle-arrow" />
+        <path d="M 88 150 C 86 128 92 112 100 102" fill="none" :stroke="dc.rain" stroke-width="1.6" marker-end="url(#cycle-head)" class="cycle-arrow" opacity="0.7" />
+        <text x="52" y="106" class="stage-label" :fill="dc.rain" text-anchor="middle">蒸发</text>
+      </g>
+      <g :class="{ 'stage-on': stepActive(2) }" class="stage">
+        <path d="M 104 82 Q 172 40 244 60" fill="none" :stroke="dc.vaporFlow" stroke-width="2.5" marker-end="url(#cycle-head)" class="cycle-arrow" />
+        <text x="172" y="40" class="stage-label" :fill="dc.vaporFlow" text-anchor="middle">水汽输送</text>
+      </g>
+      <g :class="{ 'stage-on': stepActive(3) }" class="stage">
+        <path d="M 242 68 L 236 92 M 258 64 L 252 90 M 274 60 L 268 86" :stroke="dc.rain" stroke-width="2" stroke-linecap="round" class="rain-streak" />
+        <text x="290" y="70" class="stage-label" :fill="dc.rain">降水</text>
+      </g>
+      <g :class="{ 'stage-on': stepActive(4) }" class="stage">
+        <path d="M 262 116 C 230 134 196 144 162 150" fill="none" :stroke="dc.waterFlow" stroke-width="2.5" marker-end="url(#cycle-head)" class="cycle-arrow" />
+        <text x="268" y="112" class="stage-label" :fill="dc.waterFlow">地表径流</text>
+        <path d="M 268 136 C 258 156 220 170 184 174" fill="none" :stroke="dc.waterFlow" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#cycle-head)" class="cycle-arrow" />
+        <text x="246" y="166" class="stage-label" :fill="dc.waterFlow">下渗·地下径流</text>
+      </g>
+      <g font-size="11" :font-family="diagramFont">
+        <text x="70" y="184" fill="rgba(255,255,255,0.95)" text-anchor="middle" font-weight="600">海洋</text>
+        <text x="304" y="150" :fill="dc.inkSecondary" text-anchor="middle">陆地（山地）</text>
       </g>
     </svg>
     <div class="note-row">
@@ -180,7 +196,8 @@ const notes = [
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cycle-arrow {
+  .cycle-arrow,
+  .rain-streak {
     animation: none;
   }
 }
@@ -189,6 +206,21 @@ const notes = [
   font-size: 11px;
   font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.rain-streak {
+  animation: rain-fall 0.9s ease-in infinite alternate;
+}
+
+@keyframes rain-fall {
+  to {
+    transform: translateY(3px);
+    opacity: 0.6;
+  }
 }
 
 .note-row {

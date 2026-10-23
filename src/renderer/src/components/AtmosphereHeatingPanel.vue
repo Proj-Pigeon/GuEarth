@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { CloseOutlined } from '@ant-design/icons-vue'
+import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 
 type Period = 'day' | 'night'
 type CloudCover = 'clear' | 'cloudy'
@@ -21,9 +22,9 @@ const emit = defineEmits<{ close: [] }>()
 const period = ref<Period>('day')
 const cloud = ref<CloudCover>('clear')
 
-const SOLAR = '#fa8c16'
-const GROUND_RADIATION = '#f5222d'
-const COUNTER_RADIATION = '#722ed1'
+const SOLAR = dc.energy
+const GROUND_RADIATION = dc.heatRadiation
+const COUNTER_RADIATION = dc.counterRadiation
 
 const periodOptions = [
   { value: 'day', label: '白天' },
@@ -136,32 +137,55 @@ const keyPoints = [
       </div>
     </div>
     <svg viewBox="0 0 360 200" class="heating-svg" role="img" aria-label="大气受热过程示意图：太阳辐射、地面辐射与大气逆辐射">
-      <rect x="0" y="0" width="360" height="170" fill="rgba(22, 119, 255, 0.06)" />
-      <text x="10" y="16" class="space-label">宇宙空间</text>
-      <g v-if="period === 'day'">
-        <circle cx="44" cy="36" r="9" fill="#faad14" />
-      </g>
-      <g v-else>
-        <circle cx="44" cy="36" r="9" fill="rgba(0, 0, 0, 0.25)" />
-        <circle cx="48" cy="33" r="8" fill="#ffffff" />
-      </g>
-      <g v-if="cloud === 'cloudy'">
-        <ellipse cx="218" cy="54" rx="34" ry="12" fill="rgba(0, 0, 0, 0.18)" />
-        <ellipse cx="195" cy="60" rx="20" ry="9" fill="rgba(0, 0, 0, 0.14)" />
-        <ellipse cx="245" cy="60" rx="22" ry="9" fill="rgba(0, 0, 0, 0.14)" />
-        <text x="218" y="36" text-anchor="middle" class="space-label">云层</text>
-      </g>
       <defs>
-        <marker id="ah-solar" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+        <linearGradient id="ah-sky-day" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#d6ecff" />
+          <stop offset="100%" stop-color="#f4faff" />
+        </linearGradient>
+        <linearGradient id="ah-sky-night" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1d2b4d" />
+          <stop offset="100%" stop-color="#3a4a6b" />
+        </linearGradient>
+        <linearGradient id="ah-ground" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#e8c9a0" />
+          <stop offset="100%" stop-color="#c9a06c" />
+        </linearGradient>
+        <radialGradient id="ah-sun" cx="42%" cy="38%" r="65%">
+          <stop offset="0%" stop-color="#ffd666" />
+          <stop offset="100%" :stop-color="dc.sun" />
+        </radialGradient>
+        <marker id="ah-solar" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
           <path d="M0,0 L7,3.5 L0,7 Z" :fill="SOLAR" />
         </marker>
-        <marker id="ah-ground" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+        <marker id="ah-ground-m" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
           <path d="M0,0 L7,3.5 L0,7 Z" :fill="GROUND_RADIATION" />
         </marker>
-        <marker id="ah-counter" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+        <marker id="ah-counter" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
           <path d="M0,0 L7,3.5 L0,7 Z" :fill="COUNTER_RADIATION" />
         </marker>
       </defs>
+      <rect x="0" y="0" width="360" height="170" :fill="period === 'day' ? 'url(#ah-sky-day)' : 'url(#ah-sky-night)'" class="sky-fade" />
+      <text x="10" y="16" class="space-label" :fill="period === 'day' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.55)'">宇宙空间</text>
+      <g v-if="period === 'night'" fill="rgba(255,255,255,0.75)">
+        <circle cx="120" cy="26" r="1.2" />
+        <circle cx="186" cy="14" r="1" />
+        <circle cx="262" cy="30" r="1.2" />
+        <circle cx="320" cy="18" r="1" />
+      </g>
+      <g v-if="period === 'day'">
+        <circle cx="44" cy="36" r="14" fill="url(#ah-sun)" opacity="0.35" />
+        <circle cx="44" cy="36" r="9" fill="url(#ah-sun)" />
+      </g>
+      <g v-else>
+        <circle cx="44" cy="36" r="9" fill="#e8e8e8" />
+        <circle cx="48" cy="33" r="8" fill="#2c3a5c" />
+      </g>
+      <g v-if="cloud === 'cloudy'" class="cloud-group">
+        <ellipse cx="218" cy="54" rx="34" ry="12" :fill="period === 'day' ? 'rgba(0,0,0,0.14)' : 'rgba(255,255,255,0.16)'" />
+        <ellipse cx="195" cy="60" rx="20" ry="9" :fill="period === 'day' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'" />
+        <ellipse cx="245" cy="60" rx="22" ry="9" :fill="period === 'day' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'" />
+        <text x="218" y="34" text-anchor="middle" class="space-label" :fill="period === 'day' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.6)'">云层</text>
+      </g>
       <path
         v-for="(arrow, index) in arrows"
         :key="`r-${index}`"
@@ -170,7 +194,8 @@ const keyPoints = [
         :stroke="arrow.color"
         :stroke-width="arrow.width"
         :stroke-dasharray="arrow.dashed ? '5 4' : undefined"
-        :marker-end="`url(#ah-${arrow.marker})`"
+        :marker-end="`url(#ah-${arrow.marker === 'ground' ? 'ground-m' : arrow.marker})`"
+        stroke-linecap="round"
       />
       <text
         v-for="(arrow, index) in arrows.filter((item) => item.label && item.labelAt)"
@@ -179,10 +204,12 @@ const keyPoints = [
         :y="arrow.labelAt![1]"
         :text-anchor="arrow.labelAnchor ?? 'middle'"
         class="arrow-label"
+        :class="{ 'arrow-label-dark': period === 'night' }"
         :fill="arrow.color"
+        :font-family="diagramFont"
       >{{ arrow.label }}</text>
-      <rect x="0" y="170" width="360" height="30" fill="rgba(250, 140, 22, 0.18)" />
-      <line x1="0" y1="170" x2="360" y2="170" stroke="rgba(0, 0, 0, 0.45)" stroke-width="1.5" />
+      <rect x="0" y="170" width="360" height="30" fill="url(#ah-ground)" />
+      <line x1="0" y1="170" x2="360" y2="170" stroke="rgba(0, 0, 0, 0.35)" stroke-width="1.5" />
       <text x="180" y="188" text-anchor="middle" class="ground-label">{{ groundText }}</text>
     </svg>
     <div class="legend-row">
@@ -267,6 +294,14 @@ const keyPoints = [
   font-size: 10px;
 }
 
+.sky-fade {
+  transition: fill 0.4s ease;
+}
+
+.cloud-group {
+  transition: opacity 0.3s ease;
+}
+
 .ground-label {
   fill: rgba(0, 0, 0, 0.65);
   font-size: 11px;
@@ -279,6 +314,10 @@ const keyPoints = [
   stroke: rgba(255, 255, 255, 0.9);
   stroke-width: 3px;
   stroke-linejoin: round;
+}
+
+.arrow-label-dark {
+  stroke: rgba(29, 43, 77, 0.9);
 }
 
 .legend-row {
