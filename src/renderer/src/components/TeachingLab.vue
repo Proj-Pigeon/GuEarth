@@ -9,6 +9,7 @@ import { usePopulationStore } from '@renderer/stores/population'
 import { useTransportStore } from '@renderer/stores/transport'
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useDecisionStore } from '@renderer/stores/decision'
+import { useZonationStore } from '@renderer/stores/zonation'
 import { useDrawingStore } from '@renderer/stores/drawing'
 
 interface LabEntry {
@@ -38,6 +39,7 @@ const populationStore = usePopulationStore()
 const transportStore = useTransportStore()
 const environmentStore = useEnvironmentStore()
 const decisionStore = useDecisionStore()
+const zonationStore = useZonationStore()
 const drawingStore = useDrawingStore()
 
 function closeAllPanels(): void {
@@ -49,6 +51,7 @@ function closeAllPanels(): void {
   transportStore.setPanel(null)
   environmentStore.setPanel(null)
   decisionStore.setPanel(null)
+  zonationStore.setPanel(null)
   drawingStore.setActiveTool(null)
 }
 
@@ -189,6 +192,20 @@ function decisionPanelEntry(name: string, description: string): LabEntry {
   }
 }
 
+function zonationPanelEntry(name: string, description: string): LabEntry {
+  return {
+    key: 'zonation',
+    name,
+    description,
+    active: () => zonationStore.panel === 'zonation-profile',
+    toggle: () => {
+      const next = zonationStore.panel !== 'zonation-profile'
+      closeAllPanels()
+      if (next) zonationStore.setPanel('zonation-profile')
+    }
+  }
+}
+
 const chapters: LabChapter[] = [
   {
     id: 'earth-motion',
@@ -286,6 +303,13 @@ const chapters: LabChapter[] = [
       landformPanelEntry('exogenic', '外力作用过程', '风化→侵蚀→搬运→堆积→固结成岩链条'),
       landformPanelEntry('earth-layers', '地球的圈层结构', '地壳/地幔/地核切球剖面与地震波界线'),
       layerEntry('plate-tectonics')
+    ]
+  },
+  {
+    id: 'zonation',
+    title: '第五章 · 自然环境的整体性与差异性',
+    entries: [
+      zonationPanelEntry('山地垂直带谱剖面', '珠峰/天山/乞力马扎罗等南北坡带谱、雪线与真实剖面，支持沿剖面飞行')
     ]
   },
   {

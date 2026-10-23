@@ -23,6 +23,7 @@ import { usePopulationStore } from '@renderer/stores/population'
 import { useTransportStore } from '@renderer/stores/transport'
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useDecisionStore } from '@renderer/stores/decision'
+import { useZonationStore } from '@renderer/stores/zonation'
 import { registerPopulationTools } from '@renderer/ai/populationTools'
 import { useCesiumViewer } from '@renderer/composables/useCesiumViewer'
 import { useDrawing } from '@renderer/composables/useDrawing'
@@ -35,6 +36,9 @@ import { hidesThematicLayers, visibleThematicLayers } from '@renderer/lib/nightB
 import { SEA_LEVEL_SCENARIOS } from '@renderer/thematic/seaLevelRise'
 import { HSR_END_YEAR, HSR_START_YEAR } from '@renderer/thematic/hsrLines'
 import { datePartsOf, dayLength, declinationForDate, formatClock, isValidDate, noonAltitudeDeg, sunTimes } from '@renderer/thematic/solarMath'
+import { mountainById, zonationMountains } from '@renderer/thematic/mountainZonation'
+import { findPeaksNear, nearestPeaks } from '@renderer/thematic/notablePeaks'
+import { clearTransectOverlay, flyTransect } from '@renderer/composables/useTransectFlight'
 import { nearestBoundary, plateBoundaryKindName } from '@renderer/thematic/plateBoundaries'
 import GlobeToolbar from '@renderer/components/GlobeToolbar.vue'
 import CameraStatus from '@renderer/components/CameraStatus.vue'
@@ -64,6 +68,7 @@ import RiverLandformPanel from '@renderer/components/RiverLandformPanel.vue'
 import LandformGuidePanel from '@renderer/components/LandformGuidePanel.vue'
 import ExogenicPanel from '@renderer/components/ExogenicPanel.vue'
 import EarthLayersPanel from '@renderer/components/EarthLayersPanel.vue'
+import ZonationPanel from '@renderer/components/ZonationPanel.vue'
 import TimezonePanel from '@renderer/components/TimezonePanel.vue'
 import PopulationPanel from '@renderer/components/PopulationPanel.vue'
 import CitiesPanel from '@renderer/components/CitiesPanel.vue'
@@ -117,6 +122,7 @@ const populationStore = usePopulationStore()
 const transportStore = useTransportStore()
 const environmentStore = useEnvironmentStore()
 const decisionStore = useDecisionStore()
+const zonationStore = useZonationStore()
 const { overlays: thematicOverlays } = storeToRefs(climateStore)
 useThematicLayers(viewer)
 registerPopulationTools()
@@ -144,7 +150,7 @@ const globeLoadingText = computed(() => globeError.value ? '地图尚未显示�
 const globeLoadingRetryable = computed(() => globeLoadTimedOut.value || Boolean(globeError.value))
 const isLabOpen = ref(false)
 const nightBasemapActive = computed(() => hidesThematicLayers(store.selectedLayerId))
-const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || environmentStore.panel !== null || decisionStore.panel !== null || activeTool.value === 'timezone')
+const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || environmentStore.panel !== null || decisionStore.panel !== null || zonationStore.panel !== null || activeTool.value === 'timezone')
 
 function closeAllTeachingPanels(): void {
   solarStore.setMotionPanel(null)
@@ -155,6 +161,8 @@ function closeAllTeachingPanels(): void {
   transportStore.setPanel(null)
   environmentStore.setPanel(null)
   decisionStore.setPanel(null)
+  zonationStore.setPanel(null)
+  clearTransectOverlay(viewer.value)
   closeTimezoneCompare()
 }
 
@@ -234,6 +242,108 @@ aiStore.registerTool({
     return typeof fallback === 'number' && Number.isFinite(fallback)
       ? { height: Math.round(fallback * 100) / 100, unit: '米（已加载地形近似值）', longitude, latitude }
       : { error: '该位置地形数据暂不可用，可稍后重试或先用 fly_to 飞往附近再查询' }
+  }
+})
+
+aiStore.registerTool({
+  label: '名山高峰查找',
+  definition: {
+    name: 'find_peaks',
+    description: '在指定经纬度附近查找内置名山高峰名录（含海拔、方位与距离），用于回答“这附近有什么山”“最高的山峰是哪座”等问题。结果按海拔从高到低排序，可配合 fly_to 逐一展示。',
+    parameters: {
+      type: 'object',
+      properties: {
+        longitude: { type: 'number', description: '查询中心经度（WGS-84）。省略时使用当前视角中心' },
+        latitude: { type: 'number', description: '查询中心纬度（WGS-84）。省略时使用当前视角中心' },
+        radiusKm: { type: 'number', description: '查询半径（千米，10-3000）。省略时为 300 千米' }
+      }
+    }
+  },
+  execute: async (args) => {
+    let longitude = Number(args.longitude)
+    let latitude = Number(args.latitude)
+    if (args.longitude === undefined || args.latitude === undefined) {
+      longitude = camera.value.longitude
+      latitude = camera.value.latitude
+    }
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude) || longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) return { error: '坐标无效，需要 WGS-84 经纬度' }
+    const radiusKm = args.radiusKm === undefined ? 300 : Number(args.radiusKm)
+    if (!Number.isFinite(radiusKm) || radiusKm < 10 || radiusKm > 3000) return { error: 'radiusKm 需为 10-3000 的千米数' }
+    const found = findPeaksNear(longitude, latitude, radiusKm)
+    if (!found.length) {
+      const nearest = nearestPeaks(longitude, latitude, 3)
+      return {
+        status: 'none',
+        center: { longitude: Math.round(longitude * 10000) / 10000, latitude: Math.round(latitude * 10000) / 10000 },
+        radiusKm,
+        nearest,
+        message: '查询范围内没有收录的名山高峰，nearest 为全球范围内距该点最近的三座；名录仅收录教材常用名山，不代表当地没有其他山峰'
+      }
+    }
+    return {
+      status: 'ok',
+      center: { longitude: Math.round(longitude * 10000) / 10000, latitude: Math.round(latitude * 10000) / 10000 },
+      radiusKm,
+      peaks: found.slice(0, 8),
+      totalMatches: found.length,
+      message: `附近共收录 ${found.length} 座名山高峰，已按海拔从高到低列出前 ${Math.min(8, found.length)} 座；可用 fly_to 逐一展示，讲解山地垂直带谱时可配合 open_panel 打开 zonation 面板`
+    }
+  }
+})
+
+aiStore.registerTool({
+  label: '剖面引导飞行',
+  definition: {
+    name: 'fly_transect',
+    description: '引导视角沿剖面线依次飞行观察地形起伏：可使用内置山脉的预设剖面（珠穆朗玛峰、天山博格达峰、乞力马扎罗山、阿尔卑斯勃朗峰、长白山），也可传入自定义途经点。飞行中会在地球上保留蓝色剖面线，飞行高度自动避开地形。适合讲解山地垂直地域分异、地势起伏与剖面判读。',
+    parameters: {
+      type: 'object',
+      properties: {
+        mountainId: {
+          type: 'string',
+          enum: zonationMountains.map((mountain) => mountain.id),
+          description: '内置剖面：' + zonationMountains.map((mountain) => `${mountain.id}（${mountain.name}）`).join('、')
+        },
+        waypoints: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              longitude: { type: 'number', description: '途经点经度（WGS-84）' },
+              latitude: { type: 'number', description: '途经点纬度（WGS-84）' }
+            },
+            required: ['longitude', 'latitude']
+          },
+          description: '自定义剖面途经点（2-6 个），与 mountainId 二选一，同时提供时优先使用 mountainId'
+        },
+        altitudeM: { type: 'number', description: '期望飞行高度（米），实际高度不会低于地形安全高度' }
+      }
+    }
+  },
+  execute: async (args) => {
+    const current = viewer.value
+    if (!current || current.isDestroyed()) return { error: '地球尚未就绪' }
+    let waypoints: Array<[number, number]>
+    if (typeof args.mountainId === 'string') {
+      const mountain = mountainById(args.mountainId)
+      if (!mountain) return { error: `未知山脉 ${String(args.mountainId)}，可用剖面：${zonationMountains.map((item) => `${item.id}（${item.name}）`).join('、')}` }
+      waypoints = mountain.transect
+    } else if (Array.isArray(args.waypoints)) {
+      waypoints = args.waypoints.map((point) => [Number(point?.longitude), Number(point?.latitude)])
+    } else {
+      return { error: '请提供 mountainId（内置山脉剖面）或 waypoints（2-6 个途经点）' }
+    }
+    const result = await flyTransect(current, waypoints, args.altitudeM === undefined ? {} : { altitudeM: Number(args.altitudeM) })
+    if ('error' in result) return result
+    if (result.status === 'interrupted') {
+      return { status: 'interrupted', completedLegs: result.completedLegs, totalKm: result.totalKm, message: '剖面飞行被用户操作中断；剖面线已保留在地球上，可重新调用 fly_transect 继续' }
+    }
+    return {
+      status: 'ok',
+      totalKm: result.totalKm,
+      flightAltitudeM: result.flightAltitudeM,
+      message: `剖面飞行完成，全程约 ${result.totalKm} 千米，飞行高度约 ${result.flightAltitudeM} 米；蓝色剖面线已保留，可用 open_panel 打开 zonation 面板对照垂直带谱讲解`
+    }
   }
 })
 
@@ -461,6 +571,7 @@ const teachingPanelCatalog: { id: string; name: string; hint: string; open: () =
   { id: 'landform-guide', name: '典型地貌识别', hint: '按喀斯特、雅丹、冰川、海岸、黄土等类型实地飞行导览', open: () => landformStore.setPanel('landform-guide') },
   { id: 'exogenic', name: '外力作用过程', hint: '演示风化、侵蚀、搬运、堆积的外力作用链条', open: () => landformStore.setPanel('exogenic') },
   { id: 'earth-layers', name: '地球的圈层结构', hint: '展示地球内部圈层划分剖面', open: () => landformStore.setPanel('earth-layers') },
+  { id: 'zonation', name: '山地垂直带谱剖面', hint: '选择典型山脉查看南/北坡垂直带谱与雪线，沿剖面采样真实地形并可引导飞行', open: () => zonationStore.setPanel('zonation-profile') },
   {
     id: 'population',
     name: '人口数据面板',
@@ -1164,6 +1275,7 @@ function deleteSelectedShape(): void {
       <LandformGuidePanel v-if="landformStore.panel === 'landform-guide'" :viewer="viewer" @close="landformStore.setPanel(null)" />
       <ExogenicPanel v-if="landformStore.panel === 'exogenic'" :viewer="viewer" @close="landformStore.setPanel(null)" />
       <EarthLayersPanel v-if="landformStore.panel === 'earth-layers'" @close="landformStore.setPanel(null)" />
+      <ZonationPanel v-if="zonationStore.panel === 'zonation-profile'" :viewer="viewer" @close="zonationStore.setPanel(null)" />
       <PopulationPanel v-if="populationStore.panel === 'population'" @close="populationStore.setPanel(null)" />
       <CitiesPanel v-if="populationStore.panel === 'cities'" @close="populationStore.setPanel(null)" />
       <TransportPanel v-if="transportStore.panel === 'transport'" :viewer="viewer" @close="transportStore.setPanel(null)" />
