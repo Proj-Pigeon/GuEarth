@@ -1,7 +1,7 @@
 import { rmSync } from 'fs'
 import { mkdtemp, rename as renameFile, rm, stat, writeFile } from 'fs/promises'
 import { randomUUID } from 'crypto'
-import { join } from 'path'
+import { format, join } from 'path'
 import { BrowserWindow, shell } from 'electron'
 import { logger } from '../common/logger'
 import type { OffscreenRecordingScript, RecordingSaveResult } from '../preload'
@@ -36,6 +36,10 @@ const OFFSCREEN_ENCODE_TIMEOUT_MS = 120_000
 const OFFSCREEN_ENCODE_MS_PER_FRAME = 50
 const OFFSCREEN_ACK_DRAIN_TIMEOUT_MS = 10_000
 const OFFSCREEN_MAC_BITRATE = 2_000_000
+
+function recordingPath(directory: string, name: string): string {
+  return format({ dir: directory, base: name })
+}
 
 let activeMacSession: OffscreenMacIpcSession | null = null
 
@@ -126,19 +130,19 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       if (!directory) throw new Error('请先选择可用的视频保存文件夹')
       await host.sweepStaleDirectories(directory)
       if (settled) return
-      const createdTempDir = await mkdtemp(join(directory, OFFSCREEN_TEMP_PREFIX))
+      const createdTempDir = await mkdtemp(recordingPath(directory, OFFSCREEN_TEMP_PREFIX))
       if (settled) {
         void rm(createdTempDir, { recursive: true, force: true }).catch(() => undefined)
         return
       }
       tempDir = createdTempDir
-      await writeFile(join(tempDir, OFFSCREEN_OWNER_FILE), String(process.pid), 'utf8')
+      await writeFile(recordingPath(tempDir, OFFSCREEN_OWNER_FILE), String(process.pid), 'utf8')
       if (settled) return
-      const temporaryPath = join(tempDir, 'recording.mp4.part')
+      const temporaryPath = recordingPath(tempDir, 'recording.mp4.part')
       const now = new Date()
       const pad = (value: number): string => String(value).padStart(2, '0')
       const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-      const outputPath = join(directory, `GuEarth-${stamp}-${randomUUID().slice(0, 8)}.mp4`)
+      const outputPath = recordingPath(directory, `GuEarth-${stamp}-${randomUUID().slice(0, 8)}.mp4`)
       const targetFps = script.fps
       recorderWindow = new BrowserWindow({
         show: false,
@@ -228,19 +232,17 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
           resolveDrain()
           return
         }
-        const finishDrain = (): void => {
-          clearTimeout(timer)
-          frameDrainResolve = null
-          resolveDrain()
-        }
         const timer = setTimeout(() => {
-          if (frameDrainResolve !== finishDrain) return
           frameDrainResolve = null
           if (!settled) logger.warn('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码')
           resolveDrain()
         }, OFFSCREEN_ACK_DRAIN_TIMEOUT_MS)
         timer.unref?.()
-        frameDrainResolve = finishDrain
+        frameDrainResolve = (): void => {
+          clearTimeout(timer)
+          frameDrainResolve = null
+          resolveDrain()
+        }
       })
       if (settled) return
       if (frameIndex === 0) {

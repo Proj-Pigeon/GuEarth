@@ -56,7 +56,7 @@ test('the macOS session reuses the Windows temp-directory, ownership and naming 
   assert.match(macSource, /const OFFSCREEN_TEMP_PREFIX = '\.guearth-offscreen-'/)
   assert.match(macSource, /const OFFSCREEN_OWNER_FILE = '\.owner'/)
   assert.match(macSource, /GuEarth-\$\{stamp\}-\$\{randomUUID\(\)\.slice\(0, 8\)\}\.mp4/)
-  assert.match(macSource, /writeFile\(join\(tempDir, OFFSCREEN_OWNER_FILE\), String\(process\.pid\), 'utf8'\)/)
+  assert.match(macSource, /writeFile\(recordingPath\(tempDir, OFFSCREEN_OWNER_FILE\), String\(process\.pid\), 'utf8'\)/)
   assert.match(macSource, /'请先选择可用的视频保存文件夹'/)
   assert.match(macSource, /'recording\.mp4\.part'/)
 })
@@ -90,7 +90,8 @@ test('the macOS encode deadline scales with the captured frame count', () => {
 test('the macOS frame-drain wait clears its timer once acks settle the queue', () => {
   assert.match(macSource, /clearTimeout\(timer\)/)
   assert.match(macSource, /if \(!settled\) logger\.warn\('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码'\)/)
-  assert.match(macSource, /frameDrainResolve = finishDrain/)
+  assert.match(macSource, /frameDrainResolve = \(\): void => \{/)
+  assert.match(macSource, /frameDrainResolve = null/)
 })
 
 test('record_video no longer advertises a fixed Movies save location', () => {
