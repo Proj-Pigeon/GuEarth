@@ -13,6 +13,7 @@ const MAX_LEG_DURATION_S = 4.2
 const PREWARM_HOP_TIMEOUT_MS = 6000
 const PREWARM_TOTAL_BUDGET_MS = 45000
 const PREWARM_MAX_HOPS = 24
+const PREWARM_SWEEP_HOP_MS = 50
 const PREWARM_SETTLE_MS = 120
 
 export interface TransectFlightResult {
@@ -117,7 +118,7 @@ function waitForTilesLoaded(viewer: Cesium.Viewer, timeoutMs: number): Promise<v
   })
 }
 
-async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudeM: number, onProgress?: (progress: TransectFlightProgress) => void): Promise<void> {
+async function sweepTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudeM: number, started: number, waitPerHop: boolean, onProgress?: (progress: TransectFlightProgress) => void): Promise<void> {
   const scene = viewer.scene
   const headingAt = (index: number): number => {
     const neighbor = index < path.length - 1 ? path[index + 1] : path[index - 1]
@@ -127,7 +128,6 @@ async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoin
   const hops: number[] = []
   for (let index = path.length - 1; index >= 0; index -= stride) hops.push(index)
   if (hops[hops.length - 1] !== 0) hops.push(0)
-  const started = Date.now()
   for (let done = 0; done < hops.length; done += 1) {
     if (Date.now() - started > PREWARM_TOTAL_BUDGET_MS) break
     const index = hops[done]
@@ -138,9 +138,24 @@ async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoin
     })
     scene.requestRender()
     onProgress?.({ stage: 'prewarm', completed: done, total: hops.length })
-    await waitForTilesLoaded(viewer, PREWARM_HOP_TIMEOUT_MS)
+    if (waitPerHop) await waitForTilesLoaded(viewer, PREWARM_HOP_TIMEOUT_MS)
+    else await delay(PREWARM_SWEEP_HOP_MS)
   }
   onProgress?.({ stage: 'prewarm', completed: hops.length, total: hops.length })
+}
+
+async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudeM: number, onProgress?: (progress: TransectFlightProgress) => void): Promise<void> {
+  const canvas = viewer.canvas
+  const previousOpacity = canvas.style.opacity
+  canvas.style.opacity = '0.15'
+  const started = Date.now()
+  try {
+    await sweepTransectTiles(viewer, path, altitudeM, started, false, onProgress)
+    await sweepTransectTiles(viewer, path, altitudeM, started, true, onProgress)
+  } finally {
+    canvas.style.opacity = previousOpacity
+    viewer.scene.requestRender()
+  }
 }
 
 function replaceOverlay(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudeM: number): Cesium.Entity[] {

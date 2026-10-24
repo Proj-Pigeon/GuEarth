@@ -5,9 +5,11 @@ import { CloseOutlined, LoadingOutlined } from '@ant-design/icons-vue'
 import { mountainById, snowlineM, zonationMountains, zonationPrinciples, type ZonationMountain, type ZonationSlope } from '@renderer/thematic/mountainZonation'
 import { greatCircleKm, interpolateWaypoints, transectTotalKm } from '@renderer/lib/transect'
 import { clearTransectOverlay, flyTransect } from '@renderer/composables/useTransectFlight'
+import { useZonationStore } from '@renderer/stores/zonation'
 
 const emit = defineEmits<{ close: [] }>()
 const props = defineProps<{ viewer?: Cesium.Viewer }>()
+const zonationStore = useZonationStore()
 
 const SPECTRUM_W = 348
 const SPECTRUM_H = 168
@@ -129,7 +131,7 @@ async function startFlight(): Promise<void> {
   try {
     const result = await flyTransect(current, active.value.transect, {
       onProgress: ({ stage, completed, total }) => {
-        if (stage === 'prewarm') flightNote.value = `飞行准备：沿线预载卫星影像与地形 ${completed}/${total}…`
+        if (stage === 'prewarm') flightNote.value = `飞行准备：并发预载沿线影像（画面短暂降暗）${completed}/${total}…`
         else if (stage === 'flying') flightNote.value = `剖面飞行中（第 ${completed}/${total} 段）…`
       }
     })
