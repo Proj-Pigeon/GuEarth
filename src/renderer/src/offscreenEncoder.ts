@@ -1,4 +1,4 @@
-import type { ArrayBufferTarget, Muxer } from 'mp4-muxer'
+import type { Muxer, StreamTarget } from 'mp4-muxer'
 
 export interface OffscreenMacEncoderConfig {
   width: number
@@ -24,7 +24,7 @@ interface OffscreenMacEncoderSession {
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
   encoder: VideoEncoder
-  muxer: Muxer<ArrayBufferTarget>
+  muxer: Muxer<StreamTarget>
   drainWaiters: Array<() => void>
   pumping: boolean
   received: number
@@ -58,9 +58,12 @@ async function begin(config: OffscreenMacEncoderConfig): Promise<void> {
   canvas.height = config.height
   const context = canvas.getContext('2d')
   if (!context) throw new Error('无法创建 macOS 编码合成画布')
-  const { Muxer: MuxerCtor, ArrayBufferTarget: ArrayBufferTargetCtor } = await import('mp4-muxer')
+  const { Muxer: MuxerCtor, StreamTarget: StreamTargetCtor } = await import('mp4-muxer')
   const muxer = new MuxerCtor({
-    target: new ArrayBufferTargetCtor(),
+    target: new StreamTargetCtor({
+      chunked: true,
+      onData: (data, position) => window.guEarth?.recordings?.sendOffscreenVideoChunk(data, position)
+    }),
     video: { codec: 'avc', width: config.width, height: config.height, frameRate: config.framerate },
     fastStart: 'in-memory',
     firstTimestampBehavior: 'offset'
@@ -183,9 +186,7 @@ async function finish(): Promise<{ frames: number }> {
   await encoder.flush()
   encoder.close()
   muxer.finalize()
-  const bytes = muxer.target.buffer
-  if (!bytes || bytes.byteLength === 0) throw new Error(active.failure || '未能生成离屏视频数据')
-  window.guEarth?.recordings?.sendOffscreenVideo(bytes)
+  window.guEarth?.recordings?.sendOffscreenVideoComplete()
   return { frames: active.encoded }
 }
 

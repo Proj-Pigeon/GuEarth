@@ -470,7 +470,8 @@ const api = {
       return () => ipcRenderer.removeListener('recordings:offscreen-frame', wrapped)
     },
     sendOffscreenFrameAck: (count: number): void => ipcRenderer.send('recordings:offscreen-frame-ack', count),
-    sendOffscreenVideo: (bytes: ArrayBuffer): void => ipcRenderer.send('recordings:offscreen-video', bytes)
+    sendOffscreenVideoChunk: (bytes: Uint8Array, position: number): void => ipcRenderer.send('recordings:offscreen-video-chunk', bytes, position),
+    sendOffscreenVideoComplete: (): void => ipcRenderer.send('recordings:offscreen-video-complete')
   },
   system: {
     fonts: (): Promise<string[]> => ipcRenderer.invoke('system:fonts')

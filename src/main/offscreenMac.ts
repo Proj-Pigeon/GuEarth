@@ -1,5 +1,5 @@
 import { rmSync } from 'fs'
-import { mkdtemp, rename as renameFile, rm, stat, writeFile } from 'fs/promises'
+import { mkdtemp, open, rename as renameFile, rm, stat, writeFile, type FileHandle } from 'fs/promises'
 import { randomUUID } from 'crypto'
 import { format, join } from 'path'
 import { BrowserWindow, shell } from 'electron'
@@ -23,7 +23,8 @@ export interface OffscreenMacSessionHost {
 
 interface OffscreenMacIpcSession {
   noteFrameAck: (count: number) => void
-  deliverVideo: (bytes: ArrayBuffer) => void
+  appendVideoChunk: (bytes: Uint8Array, position: number) => void
+  completeVideo: () => void
 }
 
 const OFFSCREEN_TEMP_PREFIX = '.guearth-offscreen-'
@@ -49,14 +50,15 @@ export function noteMacOffscreenFrameAck(count: unknown): void {
   session.noteFrameAck(Math.min(1024, Math.round(count)))
 }
 
-export function deliverMacOffscreenVideo(value: unknown): void {
+export function deliverMacOffscreenVideo(value: unknown, position: unknown): void {
   const session = activeMacSession
-  if (!session) return
-  let bytes: ArrayBuffer | null = null
-  if (value instanceof ArrayBuffer) bytes = value
-  else if (ArrayBuffer.isView(value)) bytes = value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength) as ArrayBuffer
-  if (!bytes || bytes.byteLength === 0) return
-  session.deliverVideo(bytes)
+  if (!session || !ArrayBuffer.isView(value)) return
+  if (typeof position !== 'number' || !Number.isSafeInteger(position) || position < 0) return
+  session.appendVideoChunk(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), position)
+}
+
+export function deliverMacOffscreenVideoComplete(): void {
+  activeMacSession?.completeVideo()
 }
 
 async function readFileSize(path: string): Promise<number> {
@@ -78,14 +80,18 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
     let settled = false
     let tempDir: string | null = null
     let recorderWindow: BrowserWindow | null = null
+    let videoFile: FileHandle | null = null
+    let videoWrite = Promise.resolve()
+    let videoCompleteResolve: (() => void) | null = null
+    let videoCompleteReject: ((error: unknown) => void) | null = null
     let pendingFrames = 0
     let frameDrainResolve: (() => void) | null = null
-    let resolveVideoBytes: ((bytes: ArrayBuffer) => void) | null = null
     const release = (): void => {
       host.clearCancelHook(cancel)
       host.clearTeardownHook(teardown)
       activeMacSession = null
       host.dropWindow()
+      if (videoFile) void videoFile.close().catch(() => undefined)
       if (tempDir) void rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
     }
     const teardown = (): void => {
@@ -95,6 +101,7 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       host.clearTeardownHook(teardown)
       activeMacSession = null
       host.dropWindow()
+      if (videoFile) void videoFile.close().catch(() => undefined)
       const directory = tempDir
       tempDir = null
       if (directory) rmSync(directory, { recursive: true, force: true })
@@ -122,7 +129,14 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
         pendingFrames = Math.max(0, pendingFrames - count)
         if (pendingFrames === 0) frameDrainResolve?.()
       },
-      deliverVideo: (bytes) => resolveVideoBytes?.(bytes)
+      appendVideoChunk: (bytes, position) => {
+        if (!videoFile) return
+        const copy = new Uint8Array(bytes)
+        videoWrite = videoWrite.then(() => videoFile!.write(copy, 0, copy.byteLength, position)).then(() => undefined)
+      },
+      completeVideo: () => {
+        void videoWrite.then(() => videoCompleteResolve?.(), (error) => videoCompleteReject?.(error))
+      }
     }
     void (async () => {
       const directory = await host.usableDirectory()
@@ -139,6 +153,7 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       await writeFile(recordingPath(tempDir, OFFSCREEN_OWNER_FILE), String(process.pid), 'utf8')
       if (settled) return
       const temporaryPath = recordingPath(tempDir, 'recording.mp4.part')
+      videoFile = await open(temporaryPath, 'w')
       const now = new Date()
       const pad = (value: number): string => String(value).padStart(2, '0')
       const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
@@ -252,33 +267,36 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       const measuredFps = offscreenFrameRate(frameIndex, recordingElapsedMs)
       logger.info('recording', `离屏录制 ${frameIndex} 帧 / ${(recordingElapsedMs / 1000).toFixed(1)} 秒，实测约 ${measuredFps.toFixed(1)} FPS`)
       if (measuredFps < OFFSCREEN_MIN_FLUENT_FPS) logger.warn('recording', `离屏采集帧率偏低（${measuredFps.toFixed(1)} FPS），画面可能不够流畅`)
-      const videoPromise = new Promise<ArrayBuffer>((resolveVideo) => {
-        resolveVideoBytes = resolveVideo
+      const videoReady = new Promise<void>((resolveVideo, rejectVideo) => {
+        videoCompleteResolve = resolveVideo
+        videoCompleteReject = rejectVideo
       })
       const encodeStartedAt = Date.now()
       const encodeBudgetMs = Math.max(OFFSCREEN_ENCODE_TIMEOUT_MS, frameIndex * OFFSCREEN_ENCODE_MS_PER_FRAME)
-      const [, videoBytes] = await Promise.all([
+      await Promise.all([
         withOffscreenTimeout(
           window.webContents.executeJavaScript('window.guEarthOffscreenMacEncoder.finish()'),
           encodeBudgetMs,
           '离屏视频编码超时，已中止录制'
         ),
-        withOffscreenTimeout(videoPromise, encodeBudgetMs, '离屏视频编码超时，已中止录制')
+        withOffscreenTimeout(videoReady, encodeBudgetMs, '离屏视频编码超时，已中止录制')
       ])
       if (settled) return
-      logger.info('recording', `离屏编码完成，耗时 ${((Date.now() - encodeStartedAt) / 1000).toFixed(1)} 秒，产物 ${(videoBytes.byteLength / 1024 / 1024).toFixed(1)} MB`)
-      if (videoBytes.byteLength === 0) {
-        fail(new Error('未能生成离屏视频数据'))
-        return
-      }
-      await writeFile(temporaryPath, Buffer.from(videoBytes))
-      if (settled) return
+      await videoWrite
+      await videoFile?.close()
+      videoFile = null
       const bytes = await readFileSize(temporaryPath)
       if (settled) return
       await renameFile(temporaryPath, outputPath)
-      if (settled) return
+      if (settled) {
+        await rm(outputPath, { force: true }).catch(() => undefined)
+        return
+      }
       await rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
-      if (settled) return
+      if (settled) {
+        await rm(outputPath, { force: true }).catch(() => undefined)
+        return
+      }
       settled = true
       host.clearCancelHook(cancel)
       host.clearTeardownHook(teardown)

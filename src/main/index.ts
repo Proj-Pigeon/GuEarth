@@ -32,7 +32,7 @@ import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings,
 import { assertOffscreenRecordingSupported, offscreenVideoEncoderArgs, resolveFfmpegBinary } from './ffmpeg'
 import { resolveOffscreenEntry } from './offscreenPaths'
 import { offscreenCaptureSize, offscreenConcatPlaylist, offscreenFrameDurations, offscreenFrameRate, offscreenScriptDurationMs } from './offscreenTiming'
-import { deliverMacOffscreenVideo, encodeMacOffscreenRecording, noteMacOffscreenFrameAck, type OffscreenMacSessionHost } from './offscreenMac'
+import { deliverMacOffscreenVideo, deliverMacOffscreenVideoComplete, encodeMacOffscreenRecording, noteMacOffscreenFrameAck, type OffscreenMacSessionHost } from './offscreenMac'
 import { assertEncryptionAvailable, assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
 import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
 import { tileWgs84ShiftPixels, warpTileToWgs84 } from './tileWarp'
@@ -1128,9 +1128,13 @@ function registerIpcHandlers(): void {
     if (event.sender !== offscreenRecordingWindow?.webContents) return
     noteMacOffscreenFrameAck(count)
   })
-  ipcMain.on('recordings:offscreen-video', (event, bytes: unknown): void => {
+  ipcMain.on('recordings:offscreen-video-chunk', (event, bytes: unknown, position: unknown): void => {
     if (event.sender !== offscreenRecordingWindow?.webContents) return
-    deliverMacOffscreenVideo(bytes)
+    deliverMacOffscreenVideo(bytes, position)
+  })
+  ipcMain.on('recordings:offscreen-video-complete', (event): void => {
+    if (event.sender !== offscreenRecordingWindow?.webContents) return
+    deliverMacOffscreenVideoComplete()
   })
 }
 

@@ -29,14 +29,16 @@ test('the macOS muxer mirrors the ffmpeg faststart and wall-clock frame timing',
   assert.match(encoderSource, /fastStart: 'in-memory'/)
   assert.match(encoderSource, /firstTimestampBehavior: 'offset'/)
   assert.match(encoderSource, /captureTimeMs \* 1000/)
-  assert.match(encoderSource, /sendOffscreenVideo\(bytes\)/)
+  assert.match(encoderSource, /sendOffscreenVideoComplete\(\)/)
+  assert.match(encoderSource, /sendOffscreenVideoChunk\(data, position\)/)
 })
 
 test('the offscreen frame channel is appended to the shared preload', () => {
   assert.match(preloadSource, /onOffscreenFrame: \(listener: \(index: number, captureTimeMs: number, jpeg: Uint8Array\) => void\): \(\(\) => void\) => \{/)
   assert.match(preloadSource, /ipcRenderer\.on\('recordings:offscreen-frame', wrapped\)/)
   assert.match(preloadSource, /sendOffscreenFrameAck: \(count: number\): void => ipcRenderer\.send\('recordings:offscreen-frame-ack', count\)/)
-  assert.match(preloadSource, /sendOffscreenVideo: \(bytes: ArrayBuffer\): void => ipcRenderer\.send\('recordings:offscreen-video', bytes\)/)
+  assert.match(preloadSource, /sendOffscreenVideoChunk: \(bytes: Uint8Array, position: number\): void => ipcRenderer\.send\('recordings:offscreen-video-chunk', bytes, position\)/)
+  assert.match(preloadSource, /sendOffscreenVideoComplete: \(\): void => ipcRenderer\.send\('recordings:offscreen-video-complete'\)/)
 })
 
 test('the offscreen page mounts the macOS encoder module', () => {
@@ -45,11 +47,12 @@ test('the offscreen page mounts the macOS encoder module', () => {
 
 test('main forwards frame acks and encoded video only from the offscreen window', () => {
   assert.match(mainSource, /ipcMain\.on\('recordings:offscreen-frame-ack', \(event, count: unknown\): void => \{/)
-  assert.match(mainSource, /ipcMain\.on\('recordings:offscreen-video', \(event, bytes: unknown\): void => \{/)
+  assert.match(mainSource, /ipcMain\.on\('recordings:offscreen-video-chunk', \(event, bytes: unknown, position: unknown\): void => \{/)
+  assert.match(mainSource, /ipcMain\.on\('recordings:offscreen-video-complete', \(event\): void => \{/)
   const frameAckBody = mainSource.slice(mainSource.indexOf("ipcMain.on('recordings:offscreen-frame-ack'"), mainSource.indexOf('function assertOffscreenRecordingIdle'))
   assert.match(frameAckBody, /if \(event\.sender !== offscreenRecordingWindow\?\.webContents\) return/)
   assert.match(frameAckBody, /noteMacOffscreenFrameAck\(count\)/)
-  assert.match(frameAckBody, /deliverMacOffscreenVideo\(bytes\)/)
+  assert.match(frameAckBody, /deliverMacOffscreenVideo\(bytes, position\)/)
 })
 
 test('the macOS session reuses the Windows temp-directory, ownership and naming contract', () => {
