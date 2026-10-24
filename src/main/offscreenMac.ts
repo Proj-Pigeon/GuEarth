@@ -8,7 +8,6 @@ import type { OffscreenRecordingScript, RecordingSaveResult } from '../preload'
 import { offscreenFrameRate, offscreenScriptDurationMs } from './offscreenTiming'
 
 export interface OffscreenMacSessionHost {
-  assertIdle(): void
   setCancelHook(hook: () => void): void
   clearCancelHook(hook: () => void): void
   setTeardownHook(hook: () => void): void
@@ -70,7 +69,6 @@ function withOffscreenTimeout<T>(task: Promise<T>, timeoutMs: number, message: s
 }
 
 export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, host: OffscreenMacSessionHost): Promise<RecordingSaveResult> {
-  host.assertIdle()
   return new Promise((resolve, reject) => {
     let settled = false
     let tempDir: string | null = null

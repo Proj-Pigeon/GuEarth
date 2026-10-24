@@ -829,7 +829,6 @@ function ffmpegPath(): string {
 }
 
 const macRecordingHost: OffscreenMacSessionHost = {
-  assertIdle: assertOffscreenRecordingIdle,
   setCancelHook: (hook) => { cancelOffscreenRecording = hook },
   clearCancelHook: (hook) => { if (cancelOffscreenRecording === hook) cancelOffscreenRecording = null },
   setTeardownHook: (hook) => { teardownOffscreenRecording = hook },
