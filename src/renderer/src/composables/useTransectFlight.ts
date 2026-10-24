@@ -1,5 +1,6 @@
 import * as Cesium from 'cesium'
 import { bearingDeg, interpolateWaypoints, planTransectAltitudes, transectHops, transectLegsKm, transectTotalKm, type TransectWaypoint } from '@renderer/lib/transect'
+import { useGlobeStore } from '@renderer/stores/globe'
 import { useZonationStore } from '@renderer/stores/zonation'
 
 const SAMPLE_DEADLINE_MS = 15000
@@ -223,6 +224,18 @@ async function animateAlongTransect(viewer: Cesium.Viewer, path: TransectWaypoin
   const scene = viewer.scene
   animationInputLocks += 1
   if (animationInputLocks === 1) scene.screenSpaceCameraController.enableInputs = false
+  const globeStore = useGlobeStore()
+  const refreshCameraReadout = (): void => {
+    const cartographic = scene.camera.positionCartographic
+    const headingDegrees = Cesium.Math.toDegrees(scene.camera.heading) % 360
+    globeStore.setCameraReadout({
+      longitude: Cesium.Math.toDegrees(cartographic.longitude),
+      latitude: Cesium.Math.toDegrees(cartographic.latitude),
+      height: cartographic.height,
+      heading: headingDegrees < 0 ? headingDegrees + 360 : headingDegrees,
+      pitch: Cesium.Math.toDegrees(scene.camera.pitch)
+    })
+  }
   const legKm = transectLegsKm(path)
   const cumulativeKm: number[] = [0]
   for (const leg of legKm) cumulativeKm.push(cumulativeKm[cumulativeKm.length - 1] + leg)
@@ -255,9 +268,13 @@ async function animateAlongTransect(viewer: Cesium.Viewer, path: TransectWaypoin
       run.lastPathIndex = index
       if (index !== reportedIndex) {
         reportedIndex = index
+        refreshCameraReadout()
         onProgress?.({ stage: 'flying', completed: index, total: path.length - 1, altitudeM: Math.round(altitude) })
       }
-      if (t >= 1) return true
+      if (t >= 1) {
+        refreshCameraReadout()
+        return true
+      }
       await nextFrame()
     }
   } finally {
