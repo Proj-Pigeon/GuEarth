@@ -70,3 +70,41 @@ export function safeFlightAltitudeM(
   if (requestedM === undefined) return floor
   return Math.max(floor, requestedM)
 }
+
+export function transectHops(sampleCount: number, maxHops: number): number[] {
+  if (sampleCount <= 0) return []
+  const stride = Math.max(1, Math.ceil(sampleCount / Math.max(1, maxHops)))
+  const hops: number[] = []
+  for (let index = sampleCount - 1; index >= 0; index -= stride) hops.push(index)
+  if (hops[hops.length - 1] !== 0) hops.push(0)
+  return hops
+}
+
+export function planTransectAltitudes(surfaceHeightsM: number[], clearanceM: number, minimumM: number, requestedM?: number): number[] {
+  if (surfaceHeightsM.length === 0) return []
+  const floorAt = (surfaceM: number): number => {
+    const floor = Math.max(surfaceM + clearanceM, minimumM)
+    return requestedM === undefined ? floor : Math.max(floor, requestedM)
+  }
+  const localMax = surfaceHeightsM.map((surface, index) => {
+    let max = surface
+    if (index > 0) max = Math.max(max, surfaceHeightsM[index - 1])
+    if (index < surfaceHeightsM.length - 1) max = Math.max(max, surfaceHeightsM[index + 1])
+    return max
+  })
+  const planned = localMax.map((surface) => floorAt(surface))
+  const smoothed = planned.map((altitude, index) => {
+    let sum = altitude
+    let count = 1
+    if (index > 0) {
+      sum += planned[index - 1]
+      count += 1
+    }
+    if (index < planned.length - 1) {
+      sum += planned[index + 1]
+      count += 1
+    }
+    return sum / count
+  })
+  return smoothed.map((altitude, index) => Math.max(altitude, floorAt(surfaceHeightsM[index])))
+}

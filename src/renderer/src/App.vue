@@ -296,7 +296,7 @@ aiStore.registerTool({
   label: '剖面引导飞行',
   definition: {
     name: 'fly_transect',
-    description: '引导视角沿剖面线依次飞行观察地形起伏：可使用内置山脉的预设剖面（珠穆朗玛峰、天山博格达峰、乞力马扎罗山、阿尔卑斯勃朗峰、长白山），也可传入自定义途经点。飞行中会在地球上保留蓝色剖面线，飞行高度自动避开地形。适合讲解山地垂直地域分异、地势起伏与剖面判读。',
+    description: '引导视角沿剖面线依次飞行观察地形起伏：可使用内置山脉的预设剖面（珠穆朗玛峰、天山博格达峰、乞力马扎罗山、阿尔卑斯勃朗峰、长白山），也可传入自定义途经点。飞行前自动预载沿线影像，飞行高度随地形平滑调整并自动避开地形，结束后蓝色剖面线自动清理。适合讲解山地垂直地域分异、地势起伏与剖面判读。',
     parameters: {
       type: 'object',
       properties: {
@@ -337,13 +337,13 @@ aiStore.registerTool({
     const result = await flyTransect(current, waypoints, args.altitudeM === undefined ? {} : { altitudeM: Number(args.altitudeM) })
     if ('error' in result) return result
     if (result.status === 'interrupted') {
-      return { status: 'interrupted', completedLegs: result.completedLegs, totalKm: result.totalKm, message: '剖面飞行被用户操作中断；剖面线已保留在地球上，可重新调用 fly_transect 继续' }
+      return { status: 'interrupted', completedLegs: result.completedLegs, totalKm: result.totalKm, message: '剖面飞行已取消（可能是新一次飞行取代了本次），剖面线已清理，可重新调用 fly_transect 继续' }
     }
     return {
       status: 'ok',
       totalKm: result.totalKm,
       flightAltitudeM: result.flightAltitudeM,
-      message: `剖面飞行完成，全程约 ${result.totalKm} 千米，飞行高度约 ${result.flightAltitudeM} 米（已按垂直夸张与沿线地形最高点自动校正，并预载了沿线卫星影像）；蓝色剖面线已保留，可用 open_panel 打开 zonation 面板对照垂直带谱讲解`
+      message: `剖面飞行完成，全程约 ${result.totalKm} 千米，最高飞行高度约 ${result.flightAltitudeM} 米（高度随地形平滑调整并按垂直夸张校正，已预载沿线卫星影像）；剖面线已自动清理，可用 open_panel 打开 zonation 面板对照垂直带谱讲解`
     }
   }
 })

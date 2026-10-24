@@ -3,8 +3,8 @@ import { computed, onUnmounted, ref, toRaw, watch } from 'vue'
 import * as Cesium from 'cesium'
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons-vue'
 import { mountainById, snowlineM, zonationMountains, zonationPrinciples, type ZonationMountain, type ZonationSlope } from '@renderer/thematic/mountainZonation'
-import { greatCircleKm, interpolateWaypoints, transectTotalKm } from '@renderer/lib/transect'
-import { clearTransectOverlay, flyTransect } from '@renderer/composables/useTransectFlight'
+import { greatCircleKm } from '@renderer/lib/transect'
+import { cancelTransectFlight, clearTransectOverlay, flyTransect, sampleTransectGround } from '@renderer/composables/useTransectFlight'
 import { useZonationStore } from '@renderer/stores/zonation'
 
 const emit = defineEmits<{ close: [] }>()
@@ -22,7 +22,6 @@ const PROFILE_LEFT = 40
 const PROFILE_RIGHT = 6
 const PROFILE_TOP = 10
 const PROFILE_BOTTOM = 20
-const PROFILE_SAMPLES_PER_LEG = 6
 
 const activeId = ref<string>(zonationMountains[0].id)
 const active = ref<ZonationMountain>(zonationMountains[0])
@@ -95,21 +94,12 @@ async function sampleProfile(mountain: ZonationMountain): Promise<void> {
   sampling.value = true
   degraded.value = false
   try {
-    const points = interpolateWaypoints(mountain.transect, PROFILE_SAMPLES_PER_LEG)
-    const cartographics = points.map(([longitude, latitude]) => Cesium.Cartographic.fromDegrees(longitude, latitude))
-    let heights: number[]
-    try {
-      const sampled = await Cesium.sampleTerrainMostDetailed(current.terrainProvider, cartographics)
-      heights = sampled.map((item) => (Number.isFinite(item.height) ? item.height : current.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(item.longitude * 180 / Math.PI, item.latitude * 180 / Math.PI)) ?? 0))
-      degraded.value = sampled.some((item) => !Number.isFinite(item.height))
-    } catch {
-      heights = cartographics.map((item) => current.scene.globe.getHeight(item) ?? 0)
-      degraded.value = true
-    }
+    const { path, heights, degraded: sampledDegraded } = await sampleTransectGround(current, mountain.transect)
+    degraded.value = sampledDegraded
     let distance = 0
-    profile.value = points.map((point, index) => {
+    profile.value = path.map((point, index) => {
       if (index > 0) {
-        const [previousLon, previousLat] = points[index - 1]
+        const [previousLon, previousLat] = path[index - 1]
         distance += greatCircleKm(previousLon, previousLat, point[0], point[1])
       }
       return [Math.round(distance * 10) / 10, Math.round((heights[index] ?? 0) * 10) / 10]
@@ -136,8 +126,8 @@ async function startFlight(): Promise<void> {
       }
     })
     if ('error' in result) flightNote.value = result.error
-    else if (result.status === 'interrupted') flightNote.value = '剖面飞行被中断（鼠标操作会打断飞行），可再次点击继续'
-    else flightNote.value = `剖面飞行完成：全程约 ${result.totalKm} 千米，飞行高度约 ${result.flightAltitudeM} 米（已按当前垂直夸张校正）`
+    else if (result.status === 'interrupted') flightNote.value = '剖面飞行已取消，可再次点击重新开始'
+    else flightNote.value = `剖面飞行完成：全程约 ${result.totalKm} 千米，最高飞行高度约 ${result.flightAltitudeM} 米（高度随地形平滑调整，剖面线已自动清理）`
   } finally {
     flying.value = false
   }
@@ -206,6 +196,7 @@ onUnmounted(() => {
     </div>
     <div class="flight-row">
       <a-button type="primary" size="small" :loading="flying" @click="startFlight">沿剖面飞行</a-button>
+      <a-button v-if="flying" size="small" @click="cancelTransectFlight">停止</a-button>
       <span v-if="flightNote" class="flight-note">{{ flightNote }}</span>
     </div>
     <div class="chart-title">

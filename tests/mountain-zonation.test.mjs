@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { beltAtAltitude, mountainById, snowlineM, zonationMountains, zonationPrinciples } from '../src/renderer/src/thematic/mountainZonation.ts'
-import { bearingDeg, greatCircleKm, interpolateWaypoints, safeFlightAltitudeM, transectLegsKm, transectTotalKm } from '../src/renderer/src/lib/transect.ts'
+import { bearingDeg, greatCircleKm, interpolateWaypoints, planTransectAltitudes, safeFlightAltitudeM, transectHops, transectLegsKm, transectTotalKm } from '../src/renderer/src/lib/transect.ts'
 
 test('zonation mountains: ids unique, coordinates valid, transects bracket the summit', () => {
   const ids = zonationMountains.map((mountain) => mountain.id)
@@ -108,4 +108,36 @@ test('safeFlightAltitudeM respects clearance, exaggeration and floor', () => {
   assert.equal(safeFlightAltitudeM([10000], 1, 0, 1500, 9000, 20000), 20000, 'requested higher altitude wins')
   assert.equal(safeFlightAltitudeM([10000], 1, 0, 1500, 9000, 5000), 11500, 'requested altitude cannot undercut terrain safety')
   assert.equal(safeFlightAltitudeM([1000], 2, 500, 1500, 9000), 9000, 'relative-height offset handled under exaggeration')
+})
+
+test('transectHops walks from the end to the start within the hop budget', () => {
+  assert.deepEqual(transectHops(5, 24), [4, 3, 2, 1, 0])
+  const hops = transectHops(65, 24)
+  assert.equal(hops[0], 64)
+  assert.equal(hops[hops.length - 1], 0)
+  assert.ok(hops.length <= 25)
+  for (let index = 1; index < hops.length; index += 1) {
+    assert.ok(hops[index] < hops[index - 1], 'hops must descend')
+  }
+  assert.deepEqual(transectHops(0, 24), [])
+})
+
+test('planTransectAltitudes keeps every point safe, floored, bounded and convex-proof', () => {
+  const clearance = 2000
+  const minimum = 9000
+  const surfaces = [1000, 20000, 15000, 3000, 500]
+  const altitudes = planTransectAltitudes(surfaces, clearance, minimum)
+  assert.equal(altitudes.length, surfaces.length)
+  for (let index = 0; index < surfaces.length; index += 1) {
+    assert.ok(altitudes[index] >= surfaces[index] + clearance, `point ${index} below local safety`)
+    assert.ok(altitudes[index] >= minimum, `point ${index} below minimum altitude`)
+  }
+  assert.ok(Math.max(...altitudes) <= Math.max(...surfaces) + clearance, 'altitude overshoots the highest local surface')
+  const convex = planTransectAltitudes([0, 19000, 0], clearance, minimum)
+  for (const altitude of convex) {
+    assert.ok(altitude >= 19000 + clearance, 'convex mid-bump must lift neighbouring samples too')
+  }
+  const requested = planTransectAltitudes([100, 200], clearance, minimum, 25000)
+  for (const altitude of requested) assert.ok(altitude >= 25000)
+  assert.deepEqual(planTransectAltitudes([], clearance, minimum), [])
 })
