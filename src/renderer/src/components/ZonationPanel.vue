@@ -125,12 +125,17 @@ async function startFlight(): Promise<void> {
     return
   }
   flying.value = true
-  flightNote.value = '剖面飞行中，视角将沿剖面线依次掠过…'
+  flightNote.value = '正在采样沿线地形并计算安全飞行高度…'
   try {
-    const result = await flyTransect(current, active.value.transect)
+    const result = await flyTransect(current, active.value.transect, {
+      onProgress: ({ stage, completed, total }) => {
+        if (stage === 'prewarm') flightNote.value = `飞行准备：沿线预载卫星影像与地形 ${completed}/${total}…`
+        else if (stage === 'flying') flightNote.value = `剖面飞行中（第 ${completed}/${total} 段）…`
+      }
+    })
     if ('error' in result) flightNote.value = result.error
     else if (result.status === 'interrupted') flightNote.value = '剖面飞行被中断（鼠标操作会打断飞行），可再次点击继续'
-    else flightNote.value = `剖面飞行完成：全程约 ${result.totalKm} 千米，飞行高度约 ${result.flightAltitudeM} 米`
+    else flightNote.value = `剖面飞行完成：全程约 ${result.totalKm} 千米，飞行高度约 ${result.flightAltitudeM} 米（已按当前垂直夸张校正）`
   } finally {
     flying.value = false
   }

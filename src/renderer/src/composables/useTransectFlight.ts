@@ -1,14 +1,19 @@
 import * as Cesium from 'cesium'
 import { bearingDeg, interpolateWaypoints, safeFlightAltitudeM, transectLegsKm, transectTotalKm, type TransectWaypoint } from '@renderer/lib/transect'
 
-const SAMPLE_TIMEOUT_MS = 5000
-const FLIGHT_CLEARANCE_M = 1500
+const SAMPLE_DEADLINE_MS = 15000
+const SAMPLE_RETRY_DEADLINE_MS = 8000
+const FLIGHT_CLEARANCE_M = 2000
 const MIN_FLIGHT_ALTITUDE_M = 9000
 const TRANSECT_LINE_COLOR = '#1677ff'
-const MAX_TOTAL_SAMPLES = 40
+const MAX_TOTAL_SAMPLES = 64
 const LEG_DURATION_PER_KM = 25
 const MIN_LEG_DURATION_S = 1.6
 const MAX_LEG_DURATION_S = 4.2
+const PREWARM_HOP_TIMEOUT_MS = 6000
+const PREWARM_TOTAL_BUDGET_MS = 45000
+const PREWARM_MAX_HOPS = 24
+const PREWARM_SETTLE_MS = 120
 
 export interface TransectFlightResult {
   status: 'ok' | 'interrupted'
@@ -18,8 +23,15 @@ export interface TransectFlightResult {
   completedLegs: number
 }
 
+export interface TransectFlightProgress {
+  stage: 'sampling' | 'prewarm' | 'flying'
+  completed: number
+  total: number
+}
+
 export interface TransectFlightOptions {
   altitudeM?: number
+  onProgress?: (progress: TransectFlightProgress) => void
 }
 
 let activeTransect: { viewer: Cesium.Viewer; entities: Cesium.Entity[] } | null = null
@@ -47,31 +59,88 @@ function validateWaypoints(waypoints: TransectWaypoint[]): string | null {
 }
 
 function samplesPerLeg(waypointCount: number): number {
-  return Math.min(10, Math.max(3, Math.floor(MAX_TOTAL_SAMPLES / Math.max(1, waypointCount - 1))))
+  return Math.min(16, Math.max(4, Math.floor(MAX_TOTAL_SAMPLES / Math.max(1, waypointCount - 1))))
 }
 
-async function sampleGroundHeights(viewer: Cesium.Viewer, points: TransectWaypoint[]): Promise<number[]> {
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function sampleGroundHeights(viewer: Cesium.Viewer, points: TransectWaypoint[], onProgress?: (progress: TransectFlightProgress) => void): Promise<{ heights: number[]; degraded: boolean }> {
   const cartographics = points.map(([longitude, latitude]) => Cesium.Cartographic.fromDegrees(longitude, latitude))
-  let sampled: number[] | undefined
-  let timeoutId: ReturnType<typeof setTimeout> | undefined
-  try {
-    sampled = await Promise.race([
-      Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, cartographics).then((items) => items.map((item) => (Number.isFinite(item.height) ? item.height : Number.NaN))),
-      new Promise<undefined>((resolve) => {
-        timeoutId = setTimeout(() => resolve(undefined), SAMPLE_TIMEOUT_MS)
-      })
+  onProgress?.({ stage: 'sampling', completed: 0, total: points.length })
+  await Promise.race([
+    Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, cartographics).catch(() => undefined),
+    delay(SAMPLE_DEADLINE_MS)
+  ])
+  const missing = cartographics.filter((item) => !Number.isFinite(item.height))
+  if (missing.length > 0 && missing.length < cartographics.length) {
+    await Promise.race([
+      Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, missing).catch(() => undefined),
+      delay(SAMPLE_RETRY_DEADLINE_MS)
     ])
-  } catch {
-    sampled = undefined
-  } finally {
-    clearTimeout(timeoutId)
   }
-  return points.map((_, index) => {
-    const fromSample = sampled?.[index]
-    if (fromSample !== undefined && Number.isFinite(fromSample)) return fromSample
-    const [longitude, latitude] = points[index]
-    return viewer.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(longitude, latitude)) ?? 0
+  let degraded = false
+  const heights = points.map(([longitude, latitude], index) => {
+    const sampled = cartographics[index].height
+    if (Number.isFinite(sampled)) return sampled
+    const fallback = viewer.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(longitude, latitude))
+    if (fallback !== undefined && Number.isFinite(fallback)) return fallback
+    degraded = true
+    return 0
   })
+  return { heights, degraded }
+}
+
+function waitForTilesLoaded(viewer: Cesium.Viewer, timeoutMs: number): Promise<void> {
+  const scene = viewer.scene
+  const settle = async (): Promise<void> => {
+    await delay(PREWARM_SETTLE_MS)
+    scene.requestRender()
+  }
+  if (scene.globe.tilesLoaded) return settle()
+  return new Promise((resolve) => {
+    let finished = false
+    const finish = (): void => {
+      if (finished) return
+      finished = true
+      clearTimeout(timer)
+      scene.globe.tileLoadProgressEvent.removeEventListener(onProgressEvent)
+      resolve()
+    }
+    const onProgressEvent = (): void => {
+      scene.requestRender()
+      if (scene.globe.tilesLoaded) finish()
+    }
+    const timer = setTimeout(finish, timeoutMs)
+    scene.globe.tileLoadProgressEvent.addEventListener(onProgressEvent)
+  })
+}
+
+async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudeM: number, onProgress?: (progress: TransectFlightProgress) => void): Promise<void> {
+  const scene = viewer.scene
+  const headingAt = (index: number): number => {
+    const neighbor = index < path.length - 1 ? path[index + 1] : path[index - 1]
+    return bearingDeg(path[index][0], path[index][1], neighbor[0], neighbor[1])
+  }
+  const stride = Math.max(1, Math.ceil(path.length / PREWARM_MAX_HOPS))
+  const hops: number[] = []
+  for (let index = path.length - 1; index >= 0; index -= stride) hops.push(index)
+  if (hops[hops.length - 1] !== 0) hops.push(0)
+  const started = Date.now()
+  for (let done = 0; done < hops.length; done += 1) {
+    if (Date.now() - started > PREWARM_TOTAL_BUDGET_MS) break
+    const index = hops[done]
+    const [longitude, latitude] = path[index]
+    scene.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, altitudeM),
+      orientation: { heading: Cesium.Math.toRadians(headingAt(index)), pitch: Cesium.Math.toRadians(-18), roll: 0 }
+    })
+    scene.requestRender()
+    onProgress?.({ stage: 'prewarm', completed: done, total: hops.length })
+    await waitForTilesLoaded(viewer, PREWARM_HOP_TIMEOUT_MS)
+  }
+  onProgress?.({ stage: 'prewarm', completed: hops.length, total: hops.length })
 }
 
 function replaceOverlay(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudeM: number): Cesium.Entity[] {
@@ -119,13 +188,16 @@ export async function flyTransect(viewer: Cesium.Viewer, waypoints: TransectWayp
   if (requestedAltitude !== undefined && (!Number.isFinite(requestedAltitude) || requestedAltitude < 1000 || requestedAltitude > 20000000)) {
     return { error: 'altitudeM 需为 1000-20000000 的海拔高度（米）' }
   }
+  const onProgress = options.onProgress
   const path = interpolateWaypoints(waypoints, samplesPerLeg(waypoints.length))
-  const groundHeights = await sampleGroundHeights(viewer, path)
+  const { heights: groundHeights, degraded } = await sampleGroundHeights(viewer, path, onProgress)
   const scene = viewer.scene
+  const minimumAltitudeM = degraded ? MIN_FLIGHT_ALTITUDE_M * scene.verticalExaggeration + FLIGHT_CLEARANCE_M : MIN_FLIGHT_ALTITUDE_M
   const flightAltitudeM = Math.round(
-    safeFlightAltitudeM(groundHeights, scene.verticalExaggeration, scene.verticalExaggerationRelativeHeight, FLIGHT_CLEARANCE_M, MIN_FLIGHT_ALTITUDE_M, requestedAltitude)
+    safeFlightAltitudeM(groundHeights, scene.verticalExaggeration, scene.verticalExaggerationRelativeHeight, FLIGHT_CLEARANCE_M, minimumAltitudeM, requestedAltitude)
   )
-  const entities = replaceOverlay(viewer, path, flightAltitudeM)
+  replaceOverlay(viewer, path, flightAltitudeM)
+  await prewarmTransectTiles(viewer, path, flightAltitudeM, onProgress)
   const legDistances = transectLegsKm(waypoints)
   let completedLegs = 0
   for (let index = 1; index < waypoints.length; index += 1) {
@@ -133,6 +205,7 @@ export async function flyTransect(viewer: Cesium.Viewer, waypoints: TransectWayp
     const [toLon, toLat] = waypoints[index]
     const heading = bearingDeg(fromLon, fromLat, toLon, toLat)
     const duration = Math.min(MAX_LEG_DURATION_S, Math.max(MIN_LEG_DURATION_S, legDistances[index - 1] / LEG_DURATION_PER_KM))
+    onProgress?.({ stage: 'flying', completed: index, total: waypoints.length - 1 })
     const finished = await flyLeg(viewer, toLon, toLat, heading, flightAltitudeM, duration)
     if (!finished) {
       return { status: 'interrupted', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM, legs: waypoints.length - 1, completedLegs }

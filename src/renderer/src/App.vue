@@ -343,7 +343,7 @@ aiStore.registerTool({
       status: 'ok',
       totalKm: result.totalKm,
       flightAltitudeM: result.flightAltitudeM,
-      message: `剖面飞行完成，全程约 ${result.totalKm} 千米，飞行高度约 ${result.flightAltitudeM} 米；蓝色剖面线已保留，可用 open_panel 打开 zonation 面板对照垂直带谱讲解`
+      message: `剖面飞行完成，全程约 ${result.totalKm} 千米，飞行高度约 ${result.flightAltitudeM} 米（已按垂直夸张与沿线地形最高点自动校正，并预载了沿线卫星影像）；蓝色剖面线已保留，可用 open_panel 打开 zonation 面板对照垂直带谱讲解`
     }
   }
 })
