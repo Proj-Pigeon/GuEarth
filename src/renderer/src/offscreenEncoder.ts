@@ -20,11 +20,16 @@ interface OffscreenMacFrameEntry {
 
 interface OffscreenMacEncoderSession {
   config: OffscreenMacEncoderConfig
-  frames: Map<number, OffscreenMacFrameEntry>
+  queue: OffscreenMacFrameEntry[]
+  canvas: HTMLCanvasElement
+  context: CanvasRenderingContext2D
   encoder: VideoEncoder
   muxer: Muxer<ArrayBufferTarget>
+  drainWaiters: Array<() => void>
+  pumping: boolean
   received: number
   encoded: number
+  lastTimestampUs: number
   failure: string
   finished: boolean
 }
@@ -48,6 +53,11 @@ async function begin(config: OffscreenMacEncoderConfig): Promise<void> {
     avc: { format: 'avc' }
   })
   if (!support.supported) throw new Error(`当前系统缺少 H.264 视频编码器（${OFFSCREEN_MAC_CODEC} 不可用），无法录制视频`)
+  const canvas = document.createElement('canvas')
+  canvas.width = config.width
+  canvas.height = config.height
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('无法创建 macOS 编码合成画布')
   const { Muxer: MuxerCtor, ArrayBufferTarget: ArrayBufferTargetCtor } = await import('mp4-muxer')
   const muxer = new MuxerCtor({
     target: new ArrayBufferTargetCtor(),
@@ -70,7 +80,21 @@ async function begin(config: OffscreenMacEncoderConfig): Promise<void> {
     framerate: config.framerate,
     avc: { format: 'avc' }
   })
-  session = { config, frames: new Map(), encoder, muxer, received: 0, encoded: 0, failure: '', finished: false }
+  session = {
+    config,
+    queue: [],
+    canvas,
+    context,
+    encoder,
+    muxer,
+    drainWaiters: [],
+    pumping: false,
+    received: 0,
+    encoded: 0,
+    lastTimestampUs: -OFFSCREEN_MAC_MIN_FRAME_GAP_US,
+    failure: '',
+    finished: false
+  }
 }
 
 async function decodeJpegFrame(jpeg: Uint8Array): Promise<VideoFrame> {
@@ -93,42 +117,69 @@ function drainEncodeQueue(encoder: VideoEncoder, maxQueue: number): Promise<void
   })
 }
 
+function settleDrainWaiters(active: OffscreenMacEncoderSession): void {
+  if (active.drainWaiters.length === 0) return
+  const waiters = active.drainWaiters
+  active.drainWaiters = []
+  for (const waiter of waiters) waiter()
+}
+
+function pump(active: OffscreenMacEncoderSession): void {
+  if (active.pumping) return
+  active.pumping = true
+  void (async () => {
+    try {
+      while (active.queue.length > 0 && !active.failure) {
+        const entry = active.queue.shift()
+        if (!entry) break
+        await encodeFrame(active, entry)
+        active.encoded += 1
+        window.guEarth?.recordings?.sendOffscreenFrameAck(1)
+      }
+    } catch (error) {
+      if (!active.failure) active.failure = error instanceof Error ? error.message : String(error)
+    } finally {
+      active.pumping = false
+      if (active.queue.length === 0 || active.failure) settleDrainWaiters(active)
+    }
+  })()
+}
+
+async function encodeFrame(active: OffscreenMacEncoderSession, entry: OffscreenMacFrameEntry): Promise<void> {
+  if (active.failure) throw new Error(active.failure)
+  const { config, canvas, context, encoder } = active
+  const image = await decodeJpegFrame(entry.jpeg)
+  context.fillStyle = '#000'
+  context.fillRect(0, 0, config.width, config.height)
+  const scale = Math.min(config.width / image.displayWidth, config.height / image.displayHeight)
+  const drawWidth = Math.max(1, Math.round(image.displayWidth * scale))
+  const drawHeight = Math.max(1, Math.round(image.displayHeight * scale))
+  context.drawImage(image, Math.round((config.width - drawWidth) / 2), Math.round((config.height - drawHeight) / 2), drawWidth, drawHeight)
+  image.close()
+  const capturedUs = Math.round(entry.captureTimeMs * 1000)
+  const timestampUs = capturedUs > active.lastTimestampUs + OFFSCREEN_MAC_MIN_FRAME_GAP_US ? capturedUs : active.lastTimestampUs + OFFSCREEN_MAC_MIN_FRAME_GAP_US
+  active.lastTimestampUs = timestampUs
+  const frame = new VideoFrame(canvas, { timestamp: timestampUs })
+  encoder.encode(frame, { keyFrame: active.encoded % OFFSCREEN_MAC_KEYFRAME_INTERVAL === 0 })
+  frame.close()
+  await drainEncodeQueue(encoder, OFFSCREEN_MAC_MAX_ENCODE_QUEUE)
+}
+
+function whenDrained(active: OffscreenMacEncoderSession): Promise<void> {
+  if (!active.pumping && (active.queue.length === 0 || active.failure)) return Promise.resolve()
+  return new Promise((resolve) => {
+    active.drainWaiters.push(resolve)
+  })
+}
+
 async function finish(): Promise<{ frames: number }> {
   const active = session
   if (!active) throw new Error('macOS 编码会话尚未开始')
   if (active.finished) throw new Error('macOS 编码会话已结束')
   active.finished = true
+  await whenDrained(active)
   if (active.failure) throw new Error(active.failure)
-  const { config, frames, encoder, muxer } = active
-  const canvas = document.createElement('canvas')
-  canvas.width = config.width
-  canvas.height = config.height
-  const context = canvas.getContext('2d')
-  if (!context) throw new Error('无法创建 macOS 编码合成画布')
-  const indexes = [...frames.keys()].sort((first, second) => first - second)
-  let lastTimestampUs = -OFFSCREEN_MAC_MIN_FRAME_GAP_US
-  for (let position = 0; position < indexes.length; position += 1) {
-    if (active.failure) throw new Error(active.failure)
-    const entry = frames.get(indexes[position])
-    if (!entry) continue
-    const image = await decodeJpegFrame(entry.jpeg)
-    context.fillStyle = '#000'
-    context.fillRect(0, 0, config.width, config.height)
-    const scale = Math.min(config.width / image.displayWidth, config.height / image.displayHeight)
-    const drawWidth = Math.max(1, Math.round(image.displayWidth * scale))
-    const drawHeight = Math.max(1, Math.round(image.displayHeight * scale))
-    context.drawImage(image, Math.round((config.width - drawWidth) / 2), Math.round((config.height - drawHeight) / 2), drawWidth, drawHeight)
-    image.close()
-    const capturedUs = Math.round(entry.captureTimeMs * 1000)
-    const timestampUs = capturedUs > lastTimestampUs + OFFSCREEN_MAC_MIN_FRAME_GAP_US ? capturedUs : lastTimestampUs + OFFSCREEN_MAC_MIN_FRAME_GAP_US
-    lastTimestampUs = timestampUs
-    const frame = new VideoFrame(canvas, { timestamp: timestampUs })
-    encoder.encode(frame, { keyFrame: position % OFFSCREEN_MAC_KEYFRAME_INTERVAL === 0 })
-    frame.close()
-    active.encoded += 1
-    await drainEncodeQueue(encoder, OFFSCREEN_MAC_MAX_ENCODE_QUEUE)
-  }
-  if (active.failure) throw new Error(active.failure)
+  const { encoder, muxer } = active
   await encoder.flush()
   encoder.close()
   muxer.finalize()
@@ -146,12 +197,12 @@ function stats(): OffscreenMacEncoderStats {
   }
 }
 
-window.guEarth?.recordings?.onOffscreenFrame((index, captureTimeMs, jpeg) => {
+window.guEarth?.recordings?.onOffscreenFrame((_index, captureTimeMs, jpeg) => {
   const active = session
   if (!active || active.finished) return
-  active.frames.set(index, { captureTimeMs, jpeg })
   active.received += 1
-  window.guEarth?.recordings?.sendOffscreenFrameAck(1)
+  active.queue.push({ captureTimeMs, jpeg })
+  pump(active)
 })
 
 Object.assign(window, { guEarthOffscreenMacEncoder: { begin, finish, stats } })

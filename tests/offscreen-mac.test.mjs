@@ -98,6 +98,17 @@ test('record_video no longer advertises a fixed Movies save location', () => {
   assert.match(agentSource, /录制前会请你选择保存文件夹/)
 })
 
+test('the macOS encoder streams frames through a serial queue and acks after encoding', () => {
+  const listenerBody = encoderSource.slice(encoderSource.indexOf('onOffscreenFrame(('), encoderSource.indexOf('Object.assign(window'))
+  assert.match(listenerBody, /active\.queue\.push\(\{ captureTimeMs, jpeg \}\)/)
+  assert.doesNotMatch(listenerBody, /sendOffscreenFrameAck/)
+  const pumpBody = encoderSource.slice(encoderSource.indexOf('function pump'), encoderSource.indexOf('async function encodeFrame'))
+  assert.match(pumpBody, /sendOffscreenFrameAck\(1\)/)
+  const finishBody = encoderSource.slice(encoderSource.indexOf('async function finish'), encoderSource.indexOf('function stats'))
+  assert.match(finishBody, /await whenDrained\(active\)/)
+  assert.doesNotMatch(encoderSource, /frames: Map/)
+})
+
 test('mp4-muxer ships under the MIT license inventory', async () => {
   await access(new URL('../resources/licenses/mit/mp4-muxer.txt', import.meta.url))
   const notices = await readFile(new URL('../THIRD-PARTY-NOTICES.md', import.meta.url), 'utf8')
