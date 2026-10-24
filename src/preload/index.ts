@@ -463,7 +463,15 @@ const api = {
     offscreenNext: (): void => ipcRenderer.send('recordings:offscreen-next'),
     offscreenSkipPrewarm: (): void => ipcRenderer.send('recordings:offscreen-skip-prewarm'),
     offscreenPrewarmQuality: (quality: OffscreenPrewarmQuality): void => ipcRenderer.send('recordings:offscreen-prewarm-quality', quality),
-    offscreenStats: (): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-stats')
+    offscreenStats: (): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-stats'),
+    onOffscreenFrame: (listener: (index: number, captureTimeMs: number, jpeg: Uint8Array) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, index: number, captureTimeMs: number, jpeg: Uint8Array): void => listener(index, captureTimeMs, jpeg)
+      ipcRenderer.on('recordings:offscreen-frame', wrapped)
+      return () => ipcRenderer.removeListener('recordings:offscreen-frame', wrapped)
+    },
+    sendOffscreenFrameAck: (count: number): void => ipcRenderer.send('recordings:offscreen-frame-ack', count),
+    sendOffscreenVideoChunk: (bytes: Uint8Array, position: number): void => ipcRenderer.send('recordings:offscreen-video-chunk', bytes, position),
+    sendOffscreenVideoComplete: (): void => ipcRenderer.send('recordings:offscreen-video-complete')
   },
   system: {
     fonts: (): Promise<string[]> => ipcRenderer.invoke('system:fonts')

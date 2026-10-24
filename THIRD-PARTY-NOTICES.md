@@ -30,7 +30,7 @@
   - 许可证文本：`licenses/ECharts-LICENSE.txt`
   - 内含子组件 d3.js（BSD-3-Clause）的许可证文本：`licenses/LICENSE-d3`
   - 上游项目：https://github.com/apache/echarts
-- 组件：Vue.js、Pinia、Ant Design Vue、Ant Design X Vue、@ant-design/x、antd、Vue-ECharts、Markdown-It、KaTeX、Day.js、Sentry Electron SDK、React、React DOM
+- 组件：Vue.js、Pinia、Ant Design Vue、Ant Design X Vue、@ant-design/x、antd、Vue-ECharts、Markdown-It、KaTeX、Day.js、Sentry Electron SDK、React、React DOM、mp4-muxer（macOS 录制的 MP4 封装）
   - 许可证：MIT
   - 许可证原文（含各自版权行）：`licenses/mit/`
 - 组件：Electron 与 Chromium
