@@ -19,7 +19,7 @@ test('darwin encodes through the WebCodecs path while Windows keeps the ffmpeg p
 })
 
 test('the macOS encoder pins the measured High-profile codec and never requests prefer-hardware', () => {
-  assert.match(encoderSource, /avc1\.640028/)
+  assert.match(encoderSource, /avc1\.64002A/)
   assert.doesNotMatch(encoderSource, /prefer-hardware/)
   assert.match(encoderSource, /avc: \{ format: 'avc' \}/)
   assert.match(encoderSource, /VideoEncoder\.isConfigSupported\(/)
@@ -80,6 +80,17 @@ test('the macOS capture window skips the work-area clamp and waits for the page-
   assert.match(macSource, /window\.guEarthOffscreenMacEncoder\.begin\(\$\{encoderConfig\}\)/)
   assert.match(macSource, /window\.guEarthOffscreenMacEncoder\.finish\(\)/)
   assert.match(macSource, /webContents\.send\('recordings:offscreen-frame', frameIndex, captureTimeMs, frame\)/)
+})
+
+test('the macOS encode deadline scales with the captured frame count', () => {
+  assert.match(macSource, /const OFFSCREEN_ENCODE_MS_PER_FRAME = 50/)
+  assert.match(macSource, /const encodeBudgetMs = Math\.max\(OFFSCREEN_ENCODE_TIMEOUT_MS, frameIndex \* OFFSCREEN_ENCODE_MS_PER_FRAME\)/)
+})
+
+test('the macOS frame-drain wait clears its timer once acks settle the queue', () => {
+  assert.match(macSource, /clearTimeout\(timer\)/)
+  assert.match(macSource, /if \(!settled\) logger\.warn\('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码'\)/)
+  assert.match(macSource, /frameDrainResolve = finishDrain/)
 })
 
 test('record_video no longer advertises a fixed Movies save location', () => {

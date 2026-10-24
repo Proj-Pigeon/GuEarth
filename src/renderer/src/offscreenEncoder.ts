@@ -29,7 +29,7 @@ interface OffscreenMacEncoderSession {
   finished: boolean
 }
 
-const OFFSCREEN_MAC_CODEC = 'avc1.640028'
+const OFFSCREEN_MAC_CODEC = 'avc1.64002A'
 const OFFSCREEN_MAC_KEYFRAME_INTERVAL = 60
 const OFFSCREEN_MAC_MIN_FRAME_GAP_US = Math.ceil(1_000_000 / 240)
 const OFFSCREEN_MAC_MAX_ENCODE_QUEUE = 8

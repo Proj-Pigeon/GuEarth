@@ -33,6 +33,7 @@ const OFFSCREEN_PREPARE_TIMEOUT_MS = 180_000
 const OFFSCREEN_MIN_FLUENT_FPS = 24
 const OFFSCREEN_MAX_PENDING_FRAMES = 24
 const OFFSCREEN_ENCODE_TIMEOUT_MS = 120_000
+const OFFSCREEN_ENCODE_MS_PER_FRAME = 50
 const OFFSCREEN_ACK_DRAIN_TIMEOUT_MS = 10_000
 const OFFSCREEN_MAC_BITRATE = 2_000_000
 
@@ -227,15 +228,19 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
           resolveDrain()
           return
         }
-        frameDrainResolve = resolveDrain
+        const finishDrain = (): void => {
+          clearTimeout(timer)
+          frameDrainResolve = null
+          resolveDrain()
+        }
         const timer = setTimeout(() => {
-          if (frameDrainResolve === resolveDrain) {
-            frameDrainResolve = null
-            logger.warn('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码')
-            resolveDrain()
-          }
+          if (frameDrainResolve !== finishDrain) return
+          frameDrainResolve = null
+          if (!settled) logger.warn('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码')
+          resolveDrain()
         }, OFFSCREEN_ACK_DRAIN_TIMEOUT_MS)
         timer.unref?.()
+        frameDrainResolve = finishDrain
       })
       if (settled) return
       if (frameIndex === 0) {
@@ -249,13 +254,14 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
         resolveVideoBytes = resolveVideo
       })
       const encodeStartedAt = Date.now()
+      const encodeBudgetMs = Math.max(OFFSCREEN_ENCODE_TIMEOUT_MS, frameIndex * OFFSCREEN_ENCODE_MS_PER_FRAME)
       const [, videoBytes] = await Promise.all([
         withOffscreenTimeout(
           window.webContents.executeJavaScript('window.guEarthOffscreenMacEncoder.finish()'),
-          OFFSCREEN_ENCODE_TIMEOUT_MS,
+          encodeBudgetMs,
           '离屏视频编码超时，已中止录制'
         ),
-        withOffscreenTimeout(videoPromise, OFFSCREEN_ENCODE_TIMEOUT_MS, '离屏视频编码超时，已中止录制')
+        withOffscreenTimeout(videoPromise, encodeBudgetMs, '离屏视频编码超时，已中止录制')
       ])
       if (settled) return
       logger.info('recording', `离屏编码完成，耗时 ${((Date.now() - encodeStartedAt) / 1000).toFixed(1)} 秒，产物 ${(videoBytes.byteLength / 1024 / 1024).toFixed(1)} MB`)
