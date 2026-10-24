@@ -70,6 +70,7 @@ import LandformGuidePanel from '@renderer/components/LandformGuidePanel.vue'
 import ExogenicPanel from '@renderer/components/ExogenicPanel.vue'
 import EarthLayersPanel from '@renderer/components/EarthLayersPanel.vue'
 import ZonationPanel from '@renderer/components/ZonationPanel.vue'
+import ZonationFlightHud from '@renderer/components/ZonationFlightHud.vue'
 import TimezonePanel from '@renderer/components/TimezonePanel.vue'
 import PopulationPanel from '@renderer/components/PopulationPanel.vue'
 import CitiesPanel from '@renderer/components/CitiesPanel.vue'
@@ -1298,6 +1299,7 @@ function deleteSelectedShape(): void {
       <LocationDecisionPanel v-if="decisionStore.panel === 'location'" :viewer="viewer" @close="decisionStore.setPanel(null)" />
       <TimezonePanel v-if="timezoneComparison" :comparison="timezoneComparison" @clear="closeTimezoneCompare" />
       <ThematicLegend />
+      <ZonationFlightHud />
       <ThematicInfoCard />
       <div v-if="drawHint" class="draw-hint">{{ drawHint }}</div>
       <CameraStatus :camera="camera" />
