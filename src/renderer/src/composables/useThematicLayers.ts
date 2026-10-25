@@ -19,7 +19,7 @@ import { typhoonIntensityStyles, typhoonTracks } from '@renderer/thematic/typhoo
 import { ensoAnomalyColor, ensoPhaseMeta } from '@renderer/thematic/ensoPhases'
 import { subsolarPointDeg } from '@renderer/thematic/solarMath'
 import { densityColor, densityOf, fanMigrationEndpoints, huLineEndpoints, huLineFacts, huLinePath, migrationFacts, migrationFlows, provincePopulation, provinceSummary, smoothMigrationPath } from '@renderer/thematic/populationCensus'
-import { cityTierOf, FUNCTIONAL_ZONES, urbanCities, wuhanFunctionalDistricts } from '@renderer/thematic/urbanCities'
+import { cityTierOf, DEFAULT_FUNCTIONAL_ZONE_CITY_ID, FUNCTIONAL_ZONES, functionalZoneCities, functionalZoneCityById, urbanCities } from '@renderer/thematic/urbanCities'
 import { agriCategoryOf, agriculturalRegions, agriFacts, agriRegionSummary } from '@renderer/thematic/agriculturalRegions'
 import { industrialBases, industrialTransferFacts, industrialTransferFlows } from '@renderer/thematic/industrialBases'
 import { HSR_COLOR, hsrFacts, hsrLines } from '@renderer/thematic/hsrLines'
@@ -1198,7 +1198,8 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   }
 
   function buildFunctionalZones(dataSource: Cesium.CustomDataSource): void {
-    for (const district of wuhanFunctionalDistricts) {
+    const city = functionalZoneCityById(store.functionalZoneCityId) ?? functionalZoneCityById(DEFAULT_FUNCTIONAL_ZONE_CITY_ID) ?? functionalZoneCities[0]
+    for (const district of city.districts) {
       const spec = FUNCTIONAL_ZONES.find((item) => item.kind === district.kind) ?? FUNCTIONAL_ZONES[0]
       const color = Cesium.Color.fromCssColorString(spec.color)
       const properties = new Cesium.PropertyBag({
@@ -1462,6 +1463,28 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
     sources.set('sea-level-rise', dataSource)
   }
 
+  function rebuildFunctionalZones(): void {
+    const current = viewer.value
+    if (!current || current.isDestroyed()) return
+    const existing = sources.get('functional-zones')
+    if (!existing) return
+    current.dataSources.remove(existing, true)
+    sources.delete('functional-zones')
+    const dataSource = new Cesium.CustomDataSource('functional-zones')
+    try {
+      buildFunctionalZones(dataSource)
+    } catch (error) {
+      console.error('[thematic] failed to rebuild functional-zones layer', error)
+    }
+    void current.dataSources.add(dataSource)
+    sources.set('functional-zones', dataSource)
+  }
+
+  function functionalZoneView(): LayerView {
+    const city = functionalZoneCityById(store.functionalZoneCityId) ?? functionalZoneCityById(DEFAULT_FUNCTIONAL_ZONE_CITY_ID) ?? functionalZoneCities[0]
+    return { longitude: city.longitude, latitude: city.latitude, height: city.viewHeight }
+  }
+
   function provinceRingsToHierarchy(rings: number[][][]): Cesium.PolygonHierarchy | null {
     const [outer, ...holes] = rings.map((ring) => toRingCartesians(ring.map(([lon, lat]) => [lon, lat] as [number, number])))
     if (!outer || outer.length < 3) return null
@@ -1559,7 +1582,6 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
     'hu-line': { longitude: 112, latitude: 36, height: 9000000 },
     'migration-flows': { longitude: 110, latitude: 30, height: 10000000 },
     'city-tiers': { longitude: 108, latitude: 33, height: 10500000 },
-    'functional-zones': { longitude: 114.34, latitude: 30.56, height: 130000 },
     'agri-regions': { longitude: 108, latitude: 34, height: 9500000 },
     'industrial-bases': { longitude: 118, latitude: 32, height: 8500000 },
     'industrial-transfers': { longitude: 112, latitude: 28, height: 9000000 },
@@ -1615,7 +1637,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
           }
           current.scene.requestRender()
         })
-        const view = autoFocus ? enableViews[layer.id] : undefined
+        const view = autoFocus ? (layer.id === 'functional-zones' ? functionalZoneView() : enableViews[layer.id]) : undefined
         if (view) current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height), duration: 1.2 })
       } else if (!enabled && existing) {
         sources.delete(layer.id)
@@ -1661,6 +1683,13 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   watch([() => store.summerStrength > 0.5, () => store.winterStrength > 0.5], () => { refreshSeasonalCurrents(); requestRender() })
   watch(() => solarStore.utcMs, () => { refreshSubsolarPoint(); requestRender() })
   watch(() => store.seaLevelRise, rebuildSeaLevelRise)
+  watch(() => store.functionalZoneCityId, () => {
+    rebuildFunctionalZones()
+    const current = viewer.value
+    if (!autoFocus || !current || current.isDestroyed() || !sources.get('functional-zones')) return
+    const view = functionalZoneView()
+    current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height), duration: 1.2 })
+  })
   watch(() => transportStore.year, requestRender)
   watch(() => globeStore.activeTerrainId, () => {
     if (sources.get('sea-level-rise')) rebuildSeaLevelRise()

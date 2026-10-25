@@ -113,6 +113,132 @@ export const wuhanFunctionalDistricts: FunctionalDistrict[] = [
   { name: '阳逻开发区', kind: 'industrial', longitude: 114.558, latitude: 30.662, radiusKm: 2.5, note: '港口重工配套：依托长江深水港，位于主城区东北沿江' }
 ]
 
+export interface FunctionalZoneCity {
+  id: string
+  name: string
+  longitude: number
+  latitude: number
+  viewHeight: number
+  overview: string
+  districts: FunctionalDistrict[]
+}
+
+export const DEFAULT_FUNCTIONAL_ZONE_CITY_ID = 'wuhan'
+
+export const functionalZoneCities: FunctionalZoneCity[] = [
+  {
+    id: 'wuhan',
+    name: '武汉',
+    longitude: 114.34,
+    latitude: 30.56,
+    viewHeight: 130000,
+    overview: '武汉：长江与汉江交汇的三镇格局——商业区集中于汉口、武昌中心，大型住宅区向外拓展，工业区沿长江与城市外缘布局，光谷代表高新技术产业新形态。',
+    districts: wuhanFunctionalDistricts
+  },
+  {
+    id: 'shanghai',
+    name: '上海',
+    longitude: 121.47,
+    latitude: 31.23,
+    viewHeight: 150000,
+    overview: '上海：浦西中心商业区与浦东陆家嘴CBD隔江相望，工业区沿黄浦江下游与宝山一线布局，居住区随轨道交通向外环外扩展。',
+    districts: [
+      { name: '陆家嘴金融贸易区', kind: 'commercial', longitude: 121.502, latitude: 31.24, radiusKm: 2, note: '浦东CBD：中国金融要素最集聚的中心商务区，与外滩隔江相望' },
+      { name: '人民广场·南京东路商圈', kind: 'commercial', longitude: 121.474, latitude: 31.233, radiusKm: 1.6, note: '浦西传统商业核心，市级商业中心' },
+      { name: '徐家汇商圈', kind: 'commercial', longitude: 121.437, latitude: 31.196, radiusKm: 1.4, note: '轨交枢纽带动的西南商业中心' },
+      { name: '联洋·花木高级住宅区', kind: 'residential', longitude: 121.55, latitude: 31.22, radiusKm: 2, note: '浦东环境优美的高级住宅区，毗邻世纪公园' },
+      { name: '莘庄大型居住区', kind: 'residential', longitude: 121.385, latitude: 31.113, radiusKm: 2.5, note: '轨道1号线终端带动的外环居住新区——交通与住宅扩展案例' },
+      { name: '张江高科技园区', kind: 'industrial', longitude: 121.587, latitude: 31.204, radiusKm: 3, note: '集成电路、生物医药与软件：高新技术工业地域' },
+      { name: '金桥出口加工区', kind: 'industrial', longitude: 121.559, latitude: 31.254, radiusKm: 2.5, note: '先进制造与出口加工，位于浦东城市外缘' },
+      { name: '宝钢·宝山工业区', kind: 'industrial', longitude: 121.481, latitude: 31.402, radiusKm: 3.5, note: '沿长江布局的钢铁基地：兼顾水运与城市环境' }
+    ]
+  },
+  {
+    id: 'beijing',
+    name: '北京',
+    longitude: 116.4,
+    latitude: 39.9,
+    viewHeight: 150000,
+    overview: '北京：CBD（国贸）与金融街东西呼应，中关村依托科教资源发展高新技术产业，回龙观天通苑体现职住分离，首钢搬迁是工业区区位调整的经典案例。',
+    districts: [
+      { name: '国贸CBD', kind: 'commercial', longitude: 116.459, latitude: 39.909, radiusKm: 1.8, note: '北京商务中心区：跨国公司总部与金融保险集聚' },
+      { name: '金融街', kind: 'commercial', longitude: 116.357, latitude: 39.914, radiusKm: 1.3, note: '国家级金融管理功能区，专业性商业区' },
+      { name: '王府井商圈', kind: 'commercial', longitude: 116.411, latitude: 39.909, radiusKm: 1.2, note: '传统市级商业中心，邻近旧城' },
+      { name: '望京居住区', kind: 'residential', longitude: 116.474, latitude: 39.996, radiusKm: 2.2, note: '东北部大型居住区兼商务副中心' },
+      { name: '回龙观·天通苑居住区', kind: 'residential', longitude: 116.33, latitude: 40.07, radiusKm: 3, note: '北部超大型居住区：职住分离的"睡城"讨论案例' },
+      { name: '中关村科技园区', kind: 'industrial', longitude: 116.317, latitude: 39.982, radiusKm: 3, note: '中国第一个国家级高新区：科教资源依托型高新技术产业' },
+      { name: '亦庄经济技术开发区', kind: 'industrial', longitude: 116.502, latitude: 39.795, radiusKm: 4, note: '东南郊先进制造与生物医药基地' },
+      { name: '首钢老工业区（石景山）', kind: 'industrial', longitude: 116.178, latitude: 39.921, radiusKm: 2.5, note: '因环境与奥运整体搬迁的老钢铁工业区——工业区区位变化案例' }
+    ]
+  },
+  {
+    id: 'guangzhou',
+    name: '广州',
+    longitude: 113.29,
+    latitude: 23.13,
+    viewHeight: 140000,
+    overview: '广州：传统中轴（北京路）与新中轴（珠江新城）并行，工业"东进"黄埔开发区，居住"南拓"番禺华南板块。',
+    districts: [
+      { name: '珠江新城CBD', kind: 'commercial', longitude: 113.322, latitude: 23.119, radiusKm: 1.8, note: '广州CBD：金融总部集聚，与广州塔构成城市新中轴' },
+      { name: '北京路·上下九商圈', kind: 'commercial', longitude: 113.257, latitude: 23.122, radiusKm: 1.5, note: '岭南传统商业核心，老城中轴' },
+      { name: '天河路商圈', kind: 'commercial', longitude: 113.362, latitude: 23.137, radiusKm: 1.4, note: '华南客流第一商圈（天河城、正佳广场）' },
+      { name: '番禺华南板块居住区', kind: 'residential', longitude: 113.32, latitude: 23.0, radiusKm: 4, note: '大型楼盘集聚的近郊居住板块——郊区化居住扩展案例' },
+      { name: '广州科学城', kind: 'industrial', longitude: 113.453, latitude: 23.166, radiusKm: 3, note: '高新技术产业与科研机构集聚' },
+      { name: '黄埔·广州开发区', kind: 'industrial', longitude: 113.462, latitude: 23.109, radiusKm: 4, note: '东部工业走廊：外向型先进制造基地' }
+    ]
+  },
+  {
+    id: 'shenzhen',
+    name: '深圳',
+    longitude: 114.06,
+    latitude: 22.55,
+    viewHeight: 110000,
+    overview: '深圳：多中心带状城市——福田CBD、罗湖传统商业、南山科技园高新产业、蛇口前海自贸片区，居住组团沿轨道交通向外扩展。',
+    districts: [
+      { name: '福田CBD', kind: 'commercial', longitude: 114.057, latitude: 22.543, radiusKm: 1.8, note: '深圳CBD：金融与总部经济（平安金融中心）' },
+      { name: '东门商圈', kind: 'commercial', longitude: 114.117, latitude: 22.547, radiusKm: 1.2, note: '罗湖传统商业核心，特区最早的商圈' },
+      { name: '华强北商圈', kind: 'commercial', longitude: 114.088, latitude: 22.547, radiusKm: 1, note: '"中国电子第一街"：专业市场型商业区' },
+      { name: '龙华居住区', kind: 'residential', longitude: 114.02, latitude: 22.65, radiusKm: 3, note: '大型通勤居住组团：产业人口沿轨交外溢' },
+      { name: '南山科技园', kind: 'industrial', longitude: 113.945, latitude: 22.537, radiusKm: 3, note: '高新技术产业园区：电子信息龙头企业集聚' },
+      { name: '蛇口·前海片区', kind: 'industrial', longitude: 113.917, latitude: 22.489, radiusKm: 2.5, note: '改革开放最早的出口加工工业区，现转型为自贸片区' }
+    ]
+  },
+  {
+    id: 'chengdu',
+    name: '成都',
+    longitude: 104.07,
+    latitude: 30.66,
+    viewHeight: 130000,
+    overview: '成都：单中心圈层结构向"双城"演进——春熙路老商圈与金融城新城CBD并存，高新技术产业南拓天府软件园，居住区向南、向外环扩展。',
+    districts: [
+      { name: '春熙路·太古里商圈', kind: 'commercial', longitude: 104.081, latitude: 30.657, radiusKm: 1.3, note: '百年市级商业中心，文旅消费地标' },
+      { name: '金融城', kind: 'commercial', longitude: 104.063, latitude: 30.576, radiusKm: 1.6, note: '城南新城CBD：金融与总部办公' },
+      { name: '天府软件园', kind: 'industrial', longitude: 104.068, latitude: 30.545, radiusKm: 3, note: '西部软件与数字经济核心区——高新技术工业地域' },
+      { name: '华阳·天府新区居住区', kind: 'residential', longitude: 104.072, latitude: 30.505, radiusKm: 3.5, note: '向南发展的大型居住新城' },
+      { name: '青白江国际铁路港区', kind: 'industrial', longitude: 104.25, latitude: 30.878, radiusKm: 4, note: '中欧班列始发地：临港工业与物流仓储' }
+    ]
+  },
+  {
+    id: 'shenyang',
+    name: '沈阳',
+    longitude: 123.43,
+    latitude: 41.8,
+    viewHeight: 120000,
+    overview: '沈阳：铁西区是新中国工业摇篮，"东搬西建"后老厂区更新为住宅与商业，装备制造西迁经济技术开发区——老工业区改造的教科书案例。',
+    districts: [
+      { name: '中街商圈', kind: 'commercial', longitude: 123.455, latitude: 41.803, radiusKm: 1.2, note: '东北历史最久的商业街之一' },
+      { name: '太原街商圈', kind: 'commercial', longitude: 123.406, latitude: 41.795, radiusKm: 1.2, note: '铁路车站带动的传统商业中心' },
+      { name: '浑南居住区', kind: 'residential', longitude: 123.464, latitude: 41.705, radiusKm: 3.5, note: '浑河南岸新居住板块与奥体中心' },
+      { name: '铁西老工业区', kind: 'industrial', longitude: 123.376, latitude: 41.787, radiusKm: 4, note: '机床与重型装备基地：搬迁改造后原址更新为住宅商业' },
+      { name: '沈阳经开区·中德园', kind: 'industrial', longitude: 123.29, latitude: 41.745, radiusKm: 4.5, note: '装备制造新片区，承接铁西产业转移' }
+    ]
+  }
+]
+
+export function functionalZoneCityById(id: string): FunctionalZoneCity | undefined {
+  return functionalZoneCities.find((city) => city.id === id)
+}
+
 export interface CentralPlaceCase {
   name: string
   city: string

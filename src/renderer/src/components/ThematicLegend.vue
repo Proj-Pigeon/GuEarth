@@ -5,7 +5,7 @@ import { climateZones } from '@renderer/thematic/climateZones'
 import { koppenZones } from '@renderer/thematic/koppenZones'
 import { windRampStops } from '@renderer/thematic/windField'
 import { densityBins } from '@renderer/thematic/populationCensus'
-import { CITY_TIER_META, FUNCTIONAL_ZONES } from '@renderer/thematic/urbanCities'
+import { CITY_TIER_META, FUNCTIONAL_ZONES, functionalZoneCities } from '@renderer/thematic/urbanCities'
 import { AGRI_CATEGORY_META } from '@renderer/thematic/agriculturalRegions'
 import { industrialBases } from '@renderer/thematic/industrialBases'
 
@@ -17,6 +17,7 @@ const koppenEntries = koppenZones.map((zone) => ({ name: zone.name, color: zone.
 const densityEntries = densityBins.map((bin) => ({ label: bin.label, color: bin.color }))
 const tierEntries = CITY_TIER_META.map((meta) => ({ name: meta.name, color: meta.color }))
 const functionalZoneEntries = FUNCTIONAL_ZONES.map((spec) => ({ name: spec.name, color: spec.color }))
+const functionalZoneCityOptions = functionalZoneCities.map((city) => ({ label: city.name, value: city.id }))
 const agriCategoryEntries = AGRI_CATEGORY_META.map((meta) => ({ name: meta.name, color: meta.color }))
 const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, color: base.color }))
 </script>
@@ -118,10 +119,12 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
       <div class="legend-item legend-hint"><span>圆圈为该等级典型服务范围示意</span></div>
     </div>
     <div v-if="store.overlays['functional-zones']" class="legend-group">
-      <div class="legend-heading">武汉城市功能分区（真实区位）</div>
+      <div class="legend-heading">城市功能分区（真实区位）</div>
+      <a-select size="small" :value="store.functionalZoneCityId" :options="functionalZoneCityOptions" style="width: 100%" aria-label="选择功能分区城市" @change="store.setFunctionalZoneCity" />
       <div v-for="zone in functionalZoneEntries" :key="zone.name" class="legend-item">
         <span class="swatch" :style="{ background: zone.color }"></span><span>{{ zone.name }}</span>
       </div>
+      <div class="legend-item legend-hint"><span>切换城市后视角自动飞往该城；点击地图上的功能区查看区位说明</span></div>
     </div>
     <div v-if="store.overlays['agri-regions']" class="legend-group">
       <div class="legend-heading">农业区划</div>

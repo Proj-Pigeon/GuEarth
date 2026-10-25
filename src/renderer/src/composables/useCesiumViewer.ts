@@ -10,6 +10,7 @@ import type { PlaceSuggestion, TileMirrorStatus } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
 import { resolveFlightDestination } from './terrainFlight'
+import { cancelTransectFlight } from './useTransectFlight'
 import { terrainProviderFactory, terrainRegistry } from '@renderer/terrain/terrainRegistry'
 
 interface LayerProvider {
@@ -215,6 +216,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     const currentViewer = viewer.value
     if (!currentViewer || currentViewer.isDestroyed()) return
     flightRequestSequence += 1
+    if (currentViewer.terrainProvider !== terrain) cancelTransectFlight()
     currentViewer.terrainProvider = terrain
     currentViewer.scene.requestRender()
     if (polarCaps) currentViewer.scene.primitives.remove(polarCaps)
@@ -881,7 +883,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     flyTo,
     flyToPlace,
     toggleLevelView,
-    setTerrain: (id: string) => { store.setTerrainProvider(id); void setTerrain(id, generation) },
+    setTerrain: (id: string) => { cancelTransectFlight(); store.setTerrainProvider(id); void setTerrain(id, generation) },
     setTerrainExaggeration: (value: number) => { flightRequestSequence += 1; store.setTerrainExaggeration(value); const currentViewer = viewer.value; if (currentViewer && !currentViewer.isDestroyed()) currentViewer.scene.verticalExaggeration = store.terrainExaggeration },
     setTerrainLighting: (value: boolean) => {
       store.setTerrainLighting(value)

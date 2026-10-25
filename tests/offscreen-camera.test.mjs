@@ -9,7 +9,7 @@ const appSource = await readFile(new URL('../src/renderer/src/App.vue', import.m
 test('the offscreen recorder suppresses thematic layer auto focus', () => {
   assert.match(offscreenSource, /useThematicLayers\(offscreenViewer, \{ autoFocus: false \}\)/)
   assert.match(layersSource, /const autoFocus = options\?\.autoFocus !== false/)
-  assert.match(layersSource, /const view = autoFocus \? enableViews\[layer\.id\] : undefined/)
+  assert.match(layersSource, /const view = autoFocus \? \(layer\.id === 'functional-zones' \? functionalZoneView\(\) : enableViews\[layer\.id\]\) : undefined/)
   assert.match(appSource, /useThematicLayers\(viewer\)/)
 })
 
