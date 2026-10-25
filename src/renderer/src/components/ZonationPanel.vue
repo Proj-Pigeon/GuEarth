@@ -94,7 +94,7 @@ async function sampleProfile(mountain: ZonationMountain): Promise<void> {
   sampling.value = true
   degraded.value = false
   try {
-    const { path, heights, degraded: sampledDegraded } = await sampleTransectGround(current, mountain.transect)
+    const { path, heights, degraded: sampledDegraded } = await sampleTransectGround(current, mountain.transect, undefined, mountain.summitM)
     degraded.value = sampledDegraded
     let distance = 0
     profile.value = path.map((point, index) => {
@@ -120,6 +120,7 @@ async function startFlight(): Promise<void> {
   flightNote.value = '正在采样沿线地形并计算安全飞行高度…'
   try {
     const result = await flyTransect(current, active.value.transect, {
+      expectedMaxGroundM: active.value.summitM,
       onProgress: ({ stage, completed, total }) => {
         if (stage === 'prewarm') flightNote.value = `飞行准备：并发预载沿线影像（画面短暂降暗）${completed}/${total}…`
         else if (stage === 'flying') flightNote.value = `剖面飞行中（第 ${completed}/${total} 段）…`

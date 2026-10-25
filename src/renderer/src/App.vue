@@ -326,16 +326,18 @@ aiStore.registerTool({
     const current = viewer.value
     if (!current || current.isDestroyed()) return { error: '地球尚未就绪' }
     let waypoints: Array<[number, number]>
+    let expectedMaxGroundM: number | undefined
     if (typeof args.mountainId === 'string') {
       const mountain = mountainById(args.mountainId)
       if (!mountain) return { error: `未知山脉 ${String(args.mountainId)}，可用剖面：${zonationMountains.map((item) => `${item.id}（${item.name}）`).join('、')}` }
       waypoints = mountain.transect
+      expectedMaxGroundM = mountain.summitM
     } else if (Array.isArray(args.waypoints)) {
       waypoints = args.waypoints.map((point) => [Number(point?.longitude), Number(point?.latitude)])
     } else {
       return { error: '请提供 mountainId（内置山脉剖面）或 waypoints（2-6 个途经点）' }
     }
-    const result = await flyTransect(current, waypoints, args.altitudeM === undefined ? {} : { altitudeM: Number(args.altitudeM) })
+    const result = await flyTransect(current, waypoints, args.altitudeM === undefined ? { expectedMaxGroundM } : { altitudeM: Number(args.altitudeM), expectedMaxGroundM })
     if ('error' in result) return result
     const samplingNote = result.maxGroundM !== undefined
       ? `沿线采样最高地表 ${result.maxGroundM} 米${result.degraded ? '（地形数据不完整，已启用安全盲飞高度）' : ''}`

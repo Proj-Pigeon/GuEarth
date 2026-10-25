@@ -73,8 +73,10 @@ export function planTransectAltitudes(surfaceHeightsM: number[], clearanceM: num
   }
   const localMax = surfaceHeightsM.map((surface, index) => {
     let max = surface
-    if (index > 0) max = Math.max(max, surfaceHeightsM[index - 1])
-    if (index < surfaceHeightsM.length - 1) max = Math.max(max, surfaceHeightsM[index + 1])
+    for (let offset = -2; offset <= 2; offset += 1) {
+      const neighbor = surfaceHeightsM[index + offset]
+      if (neighbor !== undefined) max = Math.max(max, neighbor)
+    }
     return max
   })
   const planned = localMax.map((surface) => floorAt(surface))
@@ -92,4 +94,12 @@ export function planTransectAltitudes(surfaceHeightsM: number[], clearanceM: num
     return sum / count
   })
   return smoothed.map((altitude, index) => Math.max(altitude, floorAt(localMax[index])))
+}
+
+export const GROUND_PROFILE_PLAUSIBLE_RATIO = 0.7
+
+export function groundProfileImplausible(heights: number[], expectedMaxGroundM?: number): boolean {
+  if (expectedMaxGroundM === undefined || !Number.isFinite(expectedMaxGroundM) || expectedMaxGroundM <= 0) return false
+  if (heights.length === 0) return false
+  return Math.max(...heights) < expectedMaxGroundM * GROUND_PROFILE_PLAUSIBLE_RATIO
 }

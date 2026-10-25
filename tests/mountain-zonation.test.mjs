@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { beltAtAltitude, mountainById, snowlineM, zonationMountains, zonationPrinciples } from '../src/renderer/src/thematic/mountainZonation.ts'
-import { bearingDeg, greatCircleKm, interpolateWaypoints, planTransectAltitudes, transectHops, transectLegsKm, transectTotalKm } from '../src/renderer/src/lib/transect.ts'
+import { bearingDeg, greatCircleKm, groundProfileImplausible, interpolateWaypoints, planTransectAltitudes, transectHops, transectLegsKm, transectTotalKm } from '../src/renderer/src/lib/transect.ts'
 
 test('zonation mountains: ids unique, coordinates valid, transects bracket the summit', () => {
   const ids = zonationMountains.map((mountain) => mountain.id)
@@ -140,4 +140,21 @@ test('planTransectAltitudes keeps ridge shoulders above the ridge after smoothin
   for (const index of [1, 2, 3]) {
     assert.ok(ridge[index] >= 19000 + clearance - 1e-6, `shoulder ${index} dipped to ${ridge[index]} below the ridge surface`)
   }
+})
+
+test('planTransectAltitudes lifts samples two steps away from a ridge', () => {
+  const clearance = 2000
+  const minimum = 2500
+  const altitudes = planTransectAltitudes([0, 0, 0, 19000, 0, 0, 0], clearance, minimum)
+  for (const index of [1, 2, 3, 4, 5]) {
+    assert.ok(altitudes[index] >= 19000 + clearance - 1e-6, `two-step shoulder ${index} dipped to ${altitudes[index]} below the ridge surface`)
+  }
+})
+
+test('groundProfileImplausible flags damped level-zero style profiles against the catalogue summit', () => {
+  assert.ok(groundProfileImplausible([3000, 3800, 3200], 8848), 'level-zero damped Everest profile must be flagged')
+  assert.ok(!groundProfileImplausible([8300, 8700, 6200], 8848), 'a profile crossing the massif is plausible')
+  assert.ok(!groundProfileImplausible([3000, 3800, 3200]), 'no expected summit means no plausibility verdict')
+  assert.ok(!groundProfileImplausible([], 8848), 'empty profile has no verdict')
+  assert.ok(!groundProfileImplausible([3000, 3800, 3200], Number.NaN), 'non-finite expected summit has no verdict')
 })

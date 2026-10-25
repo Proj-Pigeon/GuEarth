@@ -1,5 +1,7 @@
 import * as Cesium from 'cesium'
-import { bearingDeg, exaggeratedSurfaceHeightM, interpolateWaypoints, planTransectAltitudes, transectHops, transectLegsKm, transectTotalKm, type TransectWaypoint } from '@renderer/lib/transect'
+import { bearingDeg, exaggeratedSurfaceHeightM, groundProfileImplausible, interpolateWaypoints, planTransectAltitudes, transectHops, transectLegsKm, transectTotalKm, type TransectWaypoint } from '@renderer/lib/transect'
+import { isAvailabilityStripped } from '../../../common/terrainAvailability'
+import { detailedSamplingTerrain } from '@renderer/terrain/terrainRegistry'
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useZonationStore } from '@renderer/stores/zonation'
 
@@ -10,7 +12,7 @@ const FLIGHT_CLEARANCE_M = 2000
 const MIN_FLIGHT_ALTITUDE_M = 2500
 const MIN_BLIND_ALTITUDE_M = 9000
 const TRANSECT_LINE_COLOR = '#1677ff'
-const MAX_TOTAL_SAMPLES = 64
+const MAX_TOTAL_SAMPLES = 128
 const FLIGHT_SPEED_KM_PER_S = 25
 const MIN_FLIGHT_DURATION_S = 6
 const MAX_FLIGHT_DURATION_S = 30
@@ -47,6 +49,7 @@ export interface TransectGroundSample {
 
 export interface TransectFlightOptions {
   altitudeM?: number
+  expectedMaxGroundM?: number
   onProgress?: (progress: TransectFlightProgress) => void
 }
 
@@ -103,18 +106,36 @@ function validateWaypoints(waypoints: TransectWaypoint[]): string | null {
 }
 
 function samplesPerLeg(waypointCount: number): number {
-  return Math.min(16, Math.max(4, Math.floor(MAX_TOTAL_SAMPLES / Math.max(1, waypointCount - 1))))
+  return Math.min(32, Math.max(8, Math.floor(MAX_TOTAL_SAMPLES / Math.max(1, waypointCount - 1))))
 }
 
-export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: TransectWaypoint[], onProgress?: (progress: TransectFlightProgress) => void): Promise<TransectGroundSample> {
+const detailedTerrainProviders = new Map<string, Promise<Cesium.TerrainProvider>>()
+
+function resolveSamplingTerrainProvider(viewer: Cesium.Viewer): Promise<Cesium.TerrainProvider> {
+  const active = viewer.terrainProvider
+  if (!isAvailabilityStripped(active)) return Promise.resolve(active)
+  const id = useGlobeStore().terrainProviderId
+  const create = detailedSamplingTerrain(id)
+  if (!create) return Promise.resolve(active)
+  let provider = detailedTerrainProviders.get(id)
+  if (!provider) {
+    provider = create()
+    detailedTerrainProviders.set(id, provider)
+    provider.catch(() => detailedTerrainProviders.delete(id))
+  }
+  return provider.catch(() => active)
+}
+
+export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: TransectWaypoint[], onProgress?: (progress: TransectFlightProgress) => void, expectedMaxGroundM?: number): Promise<TransectGroundSample> {
   const path = interpolateWaypoints(waypoints, samplesPerLeg(waypoints.length))
-  const key = JSON.stringify(waypoints)
+  const key = JSON.stringify({ waypoints, expectedMaxGroundM })
   const cached = groundSampleCache.get(viewer)
   if (cached && cached.key === key && Date.now() - cached.at < SAMPLE_CACHE_TTL_MS) return cached.sample
   const cartographics = path.map(([longitude, latitude]) => Cesium.Cartographic.fromDegrees(longitude, latitude))
   onProgress?.({ stage: 'sampling', completed: 0, total: path.length })
+  const samplingProvider = await resolveSamplingTerrainProvider(viewer)
   const outcome = await Promise.race([
-    Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, cartographics)
+    Cesium.sampleTerrainMostDetailed(samplingProvider, cartographics)
       .then(() => 'resolved' as const)
       .catch(() => 'rejected' as const),
     delay(SAMPLE_DEADLINE_MS).then(() => 'timeout' as const)
@@ -123,7 +144,7 @@ export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: Tra
   let detailedSampling = outcome === 'resolved'
   if (outcome === 'rejected') {
     const retried = await Promise.race([
-      Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, cartographics).then(() => true).catch(() => false),
+      Cesium.sampleTerrainMostDetailed(samplingProvider, cartographics).then(() => true).catch(() => false),
       delay(SAMPLE_RETRY_DEADLINE_MS).then(() => false)
     ])
     detailedSampling = retried
@@ -149,9 +170,9 @@ export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: Tra
     holeCount += 1
     return 0
   })
-  const degraded = !detailedSampling || fallbackCount > Math.floor(path.length / 5) || holeCount > 0
+  const degraded = !detailedSampling || fallbackCount > 0 || holeCount > 0 || groundProfileImplausible(finalHeights, expectedMaxGroundM)
   const sample: TransectGroundSample = { path, heights: finalHeights, degraded }
-  groundSampleCache.set(viewer, { key, at: Date.now(), sample })
+  if (!degraded) groundSampleCache.set(viewer, { key, at: Date.now(), sample })
   return sample
 }
 
@@ -343,9 +364,13 @@ export async function flyTransect(viewer: Cesium.Viewer, waypoints: TransectWayp
     duration: 1.6
   })
   try {
-    const { path, heights, degraded } = await sampleTransectGround(viewer, waypoints, report)
+    const exaggerationBeforeSampling = scene.verticalExaggeration
+    const { path, heights, degraded } = await sampleTransectGround(viewer, waypoints, report, options.expectedMaxGroundM)
     if (run.cancelled) return { status: 'interrupted', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM: 0, legs: waypoints.length - 1, completedLegs: 0, reason: run.interruptReason }
-    const exaggeration = scene.verticalExaggeration
+    if (scene.verticalExaggeration !== exaggerationBeforeSampling) {
+      return { status: 'interrupted', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM: 0, legs: waypoints.length - 1, completedLegs: 0, reason: 'exaggeration-changed' }
+    }
+    const exaggeration = exaggerationBeforeSampling
     const relativeHeight = scene.verticalExaggerationRelativeHeight
     const surfaces = heights.map((height) => exaggeratedSurfaceHeightM(height, exaggeration, relativeHeight))
     const minimumAltitudeM = degraded ? MIN_BLIND_ALTITUDE_M * exaggeration + FLIGHT_CLEARANCE_M : MIN_FLIGHT_ALTITUDE_M
