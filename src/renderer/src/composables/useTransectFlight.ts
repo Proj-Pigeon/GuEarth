@@ -63,8 +63,7 @@ interface ActiveRun {
 let activeRun: ActiveRun | null = null
 let activeTransect: { viewer: Cesium.Viewer; entities: Cesium.Entity[]; token: symbol } | null = null
 let animationInputLocks = 0
-let prewarmDimLocks = 0
-let canvasOpacityOriginal = ''
+const prewarmDimStates = new WeakMap<HTMLCanvasElement, { locks: number; original: string }>()
 let tileCacheOriginal: number | null = null
 const groundSampleCache = new WeakMap<Cesium.Viewer, { key: string; at: number; sample: TransectGroundSample; terrainProvider: Cesium.TerrainProvider; samplingProviderId: string }>()
 
@@ -235,16 +234,21 @@ async function sweepTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[
 
 async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudes: number[], run: ActiveRun, plannedExaggeration: number, onProgress?: (progress: TransectFlightProgress) => void): Promise<void> {
   const canvas = viewer.canvas
-  if (prewarmDimLocks === 0) canvasOpacityOriginal = canvas.style.opacity
-  prewarmDimLocks += 1
+  let dim = prewarmDimStates.get(canvas)
+  if (!dim) {
+    dim = { locks: 0, original: canvas.style.opacity }
+    prewarmDimStates.set(canvas, dim)
+  }
+  if (dim.locks === 0) dim.original = canvas.style.opacity
+  dim.locks += 1
   canvas.style.opacity = '0.15'
   const started = Date.now()
   try {
     await sweepTransectTiles(viewer, path, altitudes, started, run, plannedExaggeration, false, onProgress)
     await sweepTransectTiles(viewer, path, altitudes, started, run, plannedExaggeration, true, onProgress)
   } finally {
-    prewarmDimLocks -= 1
-    if (prewarmDimLocks === 0) canvas.style.opacity = canvasOpacityOriginal
+    dim.locks -= 1
+    if (dim.locks === 0) canvas.style.opacity = dim.original
     viewer.scene.requestRender()
   }
 }
