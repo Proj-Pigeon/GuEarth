@@ -56,21 +56,6 @@ export function exaggeratedSurfaceHeightM(groundM: number, verticalExaggeration:
   return (groundM - relativeHeightM) * verticalExaggeration + relativeHeightM
 }
 
-export function safeFlightAltitudeM(
-  groundHeightsM: number[],
-  verticalExaggeration: number,
-  relativeHeightM: number,
-  clearanceM: number,
-  minimumM: number,
-  requestedM?: number
-): number {
-  const maxSurface = groundHeightsM.reduce((max, ground) => Math.max(max, exaggeratedSurfaceHeightM(ground, verticalExaggeration, relativeHeightM)), 0)
-  const safe = maxSurface + clearanceM
-  const floor = Math.max(minimumM, safe)
-  if (requestedM === undefined) return floor
-  return Math.max(floor, requestedM)
-}
-
 export function transectHops(sampleCount: number, maxHops: number): number[] {
   if (sampleCount <= 0) return []
   const stride = Math.max(1, Math.ceil(sampleCount / Math.max(1, maxHops)))

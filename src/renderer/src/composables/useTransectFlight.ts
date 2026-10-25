@@ -1,13 +1,14 @@
 import * as Cesium from 'cesium'
-import { bearingDeg, interpolateWaypoints, planTransectAltitudes, transectHops, transectLegsKm, transectTotalKm, type TransectWaypoint } from '@renderer/lib/transect'
+import { bearingDeg, exaggeratedSurfaceHeightM, interpolateWaypoints, planTransectAltitudes, transectHops, transectLegsKm, transectTotalKm, type TransectWaypoint } from '@renderer/lib/transect'
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useZonationStore } from '@renderer/stores/zonation'
 
-const SAMPLE_DEADLINE_MS = 15000
+const SAMPLE_DEADLINE_MS = 30000
 const SAMPLE_RETRY_DEADLINE_MS = 8000
 const SAMPLE_CACHE_TTL_MS = 60000
 const FLIGHT_CLEARANCE_M = 2000
-const MIN_FLIGHT_ALTITUDE_M = 9000
+const MIN_FLIGHT_ALTITUDE_M = 2500
+const MIN_BLIND_ALTITUDE_M = 9000
 const TRANSECT_LINE_COLOR = '#1677ff'
 const MAX_TOTAL_SAMPLES = 64
 const FLIGHT_SPEED_KM_PER_S = 25
@@ -107,27 +108,39 @@ export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: Tra
   if (cached && cached.key === key && Date.now() - cached.at < SAMPLE_CACHE_TTL_MS) return cached.sample
   const cartographics = path.map(([longitude, latitude]) => Cesium.Cartographic.fromDegrees(longitude, latitude))
   onProgress?.({ stage: 'sampling', completed: 0, total: path.length })
-  await Promise.race([
-    Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, cartographics).catch(() => undefined),
-    delay(SAMPLE_DEADLINE_MS)
+  const outcome = await Promise.race([
+    Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, cartographics)
+      .then(() => 'resolved' as const)
+      .catch(() => 'rejected' as const),
+    delay(SAMPLE_DEADLINE_MS).then(() => 'timeout' as const)
   ])
-  const missing = cartographics.filter((item) => !Number.isFinite(item.height))
-  if (missing.length > 0 && missing.length < cartographics.length) {
-    await Promise.race([
-      Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, missing).catch(() => undefined),
-      delay(SAMPLE_RETRY_DEADLINE_MS)
-    ])
-  }
+  const heightsFromSampling = (): number[] => path.map((_, index) => {
+    const height = cartographics[index].height
+    if (Number.isFinite(height)) return height
+    return Number.NaN
+  })
+  let heights: number[]
   let degraded = false
-  const heights = path.map(([longitude, latitude], index) => {
-    const sampled = cartographics[index].height
-    if (Number.isFinite(sampled)) return sampled
+  if (outcome === 'resolved') {
+    heights = heightsFromSampling()
+  } else if (outcome === 'rejected') {
+    const retried = await Promise.race([
+      Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, cartographics).then(() => true).catch(() => false),
+      delay(SAMPLE_RETRY_DEADLINE_MS).then(() => false)
+    ])
+    heights = retried ? heightsFromSampling() : path.map(() => Number.NaN)
+  } else {
+    heights = path.map(() => Number.NaN)
+  }
+  const finalHeights = heights.map((height, index) => {
+    if (Number.isFinite(height)) return height
+    const [longitude, latitude] = path[index]
     const fallback = viewer.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(longitude, latitude))
     if (fallback !== undefined && Number.isFinite(fallback)) return fallback
     degraded = true
     return 0
   })
-  const sample: TransectGroundSample = { path, heights, degraded }
+  const sample: TransectGroundSample = { path, heights: finalHeights, degraded }
   groundSampleCache.set(viewer, { key, at: Date.now(), sample })
   return sample
 }
@@ -314,8 +327,8 @@ export async function flyTransect(viewer: Cesium.Viewer, waypoints: TransectWayp
     if (run.cancelled) return { status: 'interrupted', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM: 0, legs: waypoints.length - 1, completedLegs: 0 }
     const exaggeration = scene.verticalExaggeration
     const relativeHeight = scene.verticalExaggerationRelativeHeight
-    const surfaces = heights.map((height) => (height - relativeHeight) * exaggeration + relativeHeight)
-    const minimumAltitudeM = degraded ? MIN_FLIGHT_ALTITUDE_M * exaggeration + FLIGHT_CLEARANCE_M : MIN_FLIGHT_ALTITUDE_M
+    const surfaces = heights.map((height) => exaggeratedSurfaceHeightM(height, exaggeration, relativeHeight))
+    const minimumAltitudeM = degraded ? MIN_BLIND_ALTITUDE_M * exaggeration + FLIGHT_CLEARANCE_M : MIN_FLIGHT_ALTITUDE_M
     const altitudes = planTransectAltitudes(surfaces, FLIGHT_CLEARANCE_M, minimumAltitudeM, requestedAltitude)
     const flightAltitudeM = Math.round(Math.max(...altitudes))
     replaceOverlay(viewer, path, altitudes, run.token)

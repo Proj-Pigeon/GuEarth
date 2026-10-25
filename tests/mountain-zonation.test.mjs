@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { beltAtAltitude, mountainById, snowlineM, zonationMountains, zonationPrinciples } from '../src/renderer/src/thematic/mountainZonation.ts'
-import { bearingDeg, greatCircleKm, interpolateWaypoints, planTransectAltitudes, safeFlightAltitudeM, transectHops, transectLegsKm, transectTotalKm } from '../src/renderer/src/lib/transect.ts'
+import { bearingDeg, greatCircleKm, interpolateWaypoints, planTransectAltitudes, transectHops, transectLegsKm, transectTotalKm } from '../src/renderer/src/lib/transect.ts'
 
 test('zonation mountains: ids unique, coordinates valid, transects bracket the summit', () => {
   const ids = zonationMountains.map((mountain) => mountain.id)
@@ -99,15 +99,6 @@ test('interpolateWaypoints preserves endpoints and count', () => {
   assert.equal(legs.length, points.length - 1)
   assert.ok(transectTotalKm(points) > 0)
   assert.ok(Math.abs(transectTotalKm(points) - legs.reduce((sum, leg) => sum + leg, 0)) < 1e-9)
-})
-
-test('safeFlightAltitudeM respects clearance, exaggeration and floor', () => {
-  assert.equal(safeFlightAltitudeM([1000, 3000, 2000], 1, 0, 1500, 2000), 3000 + 1500)
-  assert.equal(safeFlightAltitudeM([1000, 3000, 2000], 2, 0, 1500, 2000), 6000 + 1500)
-  assert.equal(safeFlightAltitudeM([10, 20], 1, 0, 1500, 9000), 9000, 'minimum altitude floors flat terrain')
-  assert.equal(safeFlightAltitudeM([10000], 1, 0, 1500, 9000, 20000), 20000, 'requested higher altitude wins')
-  assert.equal(safeFlightAltitudeM([10000], 1, 0, 1500, 9000, 5000), 11500, 'requested altitude cannot undercut terrain safety')
-  assert.equal(safeFlightAltitudeM([1000], 2, 500, 1500, 9000), 9000, 'relative-height offset handled under exaggeration')
 })
 
 test('transectHops walks from the end to the start within the hop budget', () => {
