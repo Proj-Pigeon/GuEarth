@@ -883,7 +883,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     flyTo,
     flyToPlace,
     toggleLevelView,
-    setTerrain: (id: string) => { store.setTerrainProvider(id); void setTerrain(id, generation) },
+    setTerrain: (id: string) => { cancelTransectFlight(); store.setTerrainProvider(id); void setTerrain(id, generation) },
     setTerrainExaggeration: (value: number) => { flightRequestSequence += 1; store.setTerrainExaggeration(value); const currentViewer = viewer.value; if (currentViewer && !currentViewer.isDestroyed()) currentViewer.scene.verticalExaggeration = store.terrainExaggeration },
     setTerrainLighting: (value: boolean) => {
       store.setTerrainLighting(value)
