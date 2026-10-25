@@ -28,7 +28,7 @@
     "antd": "6.6.5",
     "cesium": "^1.145.0",
     "echarts": "^6.1.0",
-    "electron": "^44.5.1",
+    "electron": "^44.9.1",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "markdown-it": "^15.0.3",
