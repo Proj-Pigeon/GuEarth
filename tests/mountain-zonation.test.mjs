@@ -132,3 +132,12 @@ test('planTransectAltitudes keeps every point safe, floored, bounded and convex-
   for (const altitude of requested) assert.ok(altitude >= 25000)
   assert.deepEqual(planTransectAltitudes([], clearance, minimum), [])
 })
+
+test('planTransectAltitudes keeps ridge shoulders above the ridge after smoothing', () => {
+  const clearance = 2000
+  const minimum = 2500
+  const ridge = planTransectAltitudes([0, 0, 19000, 0, 0], clearance, minimum)
+  for (const index of [1, 2, 3]) {
+    assert.ok(ridge[index] >= 19000 + clearance - 1e-6, `shoulder ${index} dipped to ${ridge[index]} below the ridge surface`)
+  }
+})

@@ -337,14 +337,22 @@ aiStore.registerTool({
     }
     const result = await flyTransect(current, waypoints, args.altitudeM === undefined ? {} : { altitudeM: Number(args.altitudeM) })
     if ('error' in result) return result
+    const samplingNote = result.maxGroundM !== undefined
+      ? `沿线采样最高地表 ${result.maxGroundM} 米${result.degraded ? '（地形数据不完整，已启用安全盲飞高度）' : ''}`
+      : ''
     if (result.status === 'interrupted') {
-      return { status: 'interrupted', completedLegs: result.completedLegs, totalKm: result.totalKm, message: '剖面飞行已取消（可能是新一次飞行取代了本次），剖面线已清理，可重新调用 fly_transect 继续' }
+      const reason = result.reason === 'exaggeration-changed'
+        ? '飞行中垂直夸张被调整，高度计划已失效，飞行自动中断'
+        : result.reason === 'superseded'
+          ? '本次飞行被新一次飞行取代'
+          : '飞行被手动停止'
+      return { status: 'interrupted', completedLegs: result.completedLegs, totalKm: result.totalKm, reason: result.reason, message: `剖面飞行中断：${reason}。${samplingNote}。剖面线已清理，调整好垂直夸张后可重新调用 fly_transect` }
     }
     return {
       status: 'ok',
       totalKm: result.totalKm,
       flightAltitudeM: result.flightAltitudeM,
-      message: `剖面飞行完成，全程约 ${result.totalKm} 千米，最高飞行高度约 ${result.flightAltitudeM} 米（高度随地形平滑调整并按垂直夸张校正，已预载沿线卫星影像）；剖面线已自动清理，可用 open_panel 打开 zonation 面板对照垂直带谱讲解`
+      message: `剖面飞行完成，全程约 ${result.totalKm} 千米，最高飞行高度约 ${result.flightAltitudeM} 米（${samplingNote}；高度随地形平滑调整并按垂直夸张校正，已预载沿线卫星影像）；剖面线已自动清理，可用 open_panel 打开 zonation 面板对照垂直带谱讲解`
     }
   }
 })

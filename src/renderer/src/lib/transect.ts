@@ -91,5 +91,5 @@ export function planTransectAltitudes(surfaceHeightsM: number[], clearanceM: num
     }
     return sum / count
   })
-  return smoothed.map((altitude, index) => Math.max(altitude, floorAt(surfaceHeightsM[index])))
+  return smoothed.map((altitude, index) => Math.max(altitude, floorAt(localMax[index])))
 }

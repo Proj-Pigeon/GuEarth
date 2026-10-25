@@ -126,8 +126,17 @@ async function startFlight(): Promise<void> {
       }
     })
     if ('error' in result) flightNote.value = result.error
-    else if (result.status === 'interrupted') flightNote.value = '剖面飞行已取消，可再次点击重新开始'
-    else flightNote.value = `剖面飞行完成：全程约 ${result.totalKm} 千米，最高飞行高度约 ${result.flightAltitudeM} 米（高度随地形平滑调整，剖面线已自动清理）`
+    else if (result.status === 'interrupted') {
+      const reason = result.reason === 'exaggeration-changed'
+        ? '飞行中垂直夸张被调整，高度计划已失效，请调整好后重新飞行'
+        : result.reason === 'superseded'
+          ? '本次飞行被新一次飞行取代'
+          : '剖面飞行已停止'
+      flightNote.value = reason
+    } else {
+      const samplingNote = result.maxGroundM !== undefined ? `，沿线最高地表 ${result.maxGroundM} 米${result.degraded ? '（数据不完整，已用安全盲飞高度）' : ''}` : ''
+      flightNote.value = `剖面飞行完成：全程约 ${result.totalKm} 千米，最高飞行高度约 ${result.flightAltitudeM} 米${samplingNote}`
+    }
   } finally {
     flying.value = false
   }
