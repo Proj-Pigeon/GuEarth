@@ -1686,7 +1686,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   watch(() => store.functionalZoneCityId, () => {
     rebuildFunctionalZones()
     const current = viewer.value
-    if (!current || current.isDestroyed() || !sources.get('functional-zones')) return
+    if (!autoFocus || !current || current.isDestroyed() || !sources.get('functional-zones')) return
     const view = functionalZoneView()
     current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height), duration: 1.2 })
   })

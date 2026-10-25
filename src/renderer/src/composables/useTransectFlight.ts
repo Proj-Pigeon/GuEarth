@@ -63,8 +63,10 @@ interface ActiveRun {
 let activeRun: ActiveRun | null = null
 let activeTransect: { viewer: Cesium.Viewer; entities: Cesium.Entity[]; token: symbol } | null = null
 let animationInputLocks = 0
+let prewarmDimLocks = 0
+let canvasOpacityOriginal = ''
 let tileCacheOriginal: number | null = null
-const groundSampleCache = new WeakMap<Cesium.Viewer, { key: string; at: number; sample: TransectGroundSample }>()
+const groundSampleCache = new WeakMap<Cesium.Viewer, { key: string; at: number; sample: TransectGroundSample; terrainProvider: Cesium.TerrainProvider; samplingProviderId: string }>()
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -128,9 +130,11 @@ function resolveSamplingTerrainProvider(viewer: Cesium.Viewer): Promise<Cesium.T
 
 export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: TransectWaypoint[], onProgress?: (progress: TransectFlightProgress) => void, expectedMaxGroundM?: number): Promise<TransectGroundSample> {
   const path = interpolateWaypoints(waypoints, samplesPerLeg(waypoints.length))
+  const terrainProvider = viewer.terrainProvider
+  const samplingProviderId = useGlobeStore().terrainProviderId
   const key = JSON.stringify({ waypoints, expectedMaxGroundM })
   const cached = groundSampleCache.get(viewer)
-  if (cached && cached.key === key && Date.now() - cached.at < SAMPLE_CACHE_TTL_MS) return cached.sample
+  if (cached && cached.key === key && cached.terrainProvider === terrainProvider && cached.samplingProviderId === samplingProviderId && Date.now() - cached.at < SAMPLE_CACHE_TTL_MS) return cached.sample
   const cartographics = path.map(([longitude, latitude]) => Cesium.Cartographic.fromDegrees(longitude, latitude))
   onProgress?.({ stage: 'sampling', completed: 0, total: path.length })
   const samplingProvider = await resolveSamplingTerrainProvider(viewer)
@@ -172,7 +176,7 @@ export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: Tra
   })
   const degraded = !detailedSampling || fallbackCount > 0 || holeCount > 0 || groundProfileImplausible(finalHeights, expectedMaxGroundM)
   const sample: TransectGroundSample = { path, heights: finalHeights, degraded }
-  if (!degraded) groundSampleCache.set(viewer, { key, at: Date.now(), sample })
+  if (!degraded) groundSampleCache.set(viewer, { key, at: Date.now(), sample, terrainProvider, samplingProviderId })
   return sample
 }
 
@@ -231,14 +235,16 @@ async function sweepTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[
 
 async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudes: number[], run: ActiveRun, plannedExaggeration: number, onProgress?: (progress: TransectFlightProgress) => void): Promise<void> {
   const canvas = viewer.canvas
-  const previousOpacity = canvas.style.opacity
+  if (prewarmDimLocks === 0) canvasOpacityOriginal = canvas.style.opacity
+  prewarmDimLocks += 1
   canvas.style.opacity = '0.15'
   const started = Date.now()
   try {
     await sweepTransectTiles(viewer, path, altitudes, started, run, plannedExaggeration, false, onProgress)
     await sweepTransectTiles(viewer, path, altitudes, started, run, plannedExaggeration, true, onProgress)
   } finally {
-    canvas.style.opacity = previousOpacity
+    prewarmDimLocks -= 1
+    if (prewarmDimLocks === 0) canvas.style.opacity = canvasOpacityOriginal
     viewer.scene.requestRender()
   }
 }
@@ -389,8 +395,8 @@ export async function flyTransect(viewer: Cesium.Viewer, waypoints: TransectWayp
       ? { status: 'ok', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM, legs: waypoints.length - 1, completedLegs, ...diagnostics }
       : { status: 'interrupted', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM, legs: waypoints.length - 1, completedLegs, reason: run.interruptReason ?? 'cancelled', ...diagnostics }
   } finally {
-    zonationStore.setFlightHud(null)
     if (activeRun === run) {
+      zonationStore.setFlightHud(null)
       activeRun = null
       if (tileCacheOriginal !== null) {
         scene.globe.tileCacheSize = tileCacheOriginal

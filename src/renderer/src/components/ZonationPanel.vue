@@ -87,7 +87,11 @@ const profileLayout = computed(() => {
   }
 })
 
+let profileRequestId = 0
+
 async function sampleProfile(mountain: ZonationMountain): Promise<void> {
+  profileRequestId += 1
+  const requestId = profileRequestId
   const current = props.viewer && !props.viewer.isDestroyed() ? toRaw(props.viewer) : undefined
   profile.value = []
   if (!current) return
@@ -95,6 +99,7 @@ async function sampleProfile(mountain: ZonationMountain): Promise<void> {
   degraded.value = false
   try {
     const { path, heights, degraded: sampledDegraded } = await sampleTransectGround(current, mountain.transect, undefined, mountain.summitM)
+    if (requestId !== profileRequestId) return
     degraded.value = sampledDegraded
     let distance = 0
     profile.value = path.map((point, index) => {
@@ -105,7 +110,7 @@ async function sampleProfile(mountain: ZonationMountain): Promise<void> {
       return [Math.round(distance * 10) / 10, Math.round((heights[index] ?? 0) * 10) / 10]
     })
   } finally {
-    sampling.value = false
+    if (requestId === profileRequestId) sampling.value = false
   }
 }
 

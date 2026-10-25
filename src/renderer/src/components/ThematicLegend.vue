@@ -124,7 +124,7 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
       <div v-for="zone in functionalZoneEntries" :key="zone.name" class="legend-item">
         <span class="swatch" :style="{ background: zone.color }"></span><span>{{ zone.name }}</span>
       </div>
-      <div class="legend-item legend-hint"><span>切换城市后视角自动飞往该城；点击色块查看功能区区位说明</span></div>
+      <div class="legend-item legend-hint"><span>切换城市后视角自动飞往该城；点击地图上的功能区查看区位说明</span></div>
     </div>
     <div v-if="store.overlays['agri-regions']" class="legend-group">
       <div class="legend-heading">农业区划</div>
