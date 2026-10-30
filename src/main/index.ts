@@ -45,7 +45,7 @@ import { poiStatistics, searchPlaces } from './ai/amap'
 import { searchBaiduPlaces } from './ai/baidu'
 import { beginPlacesRequest } from './ai/searchThrottle'
 import { initDatasets, loadProvinceGeometry } from './datasets'
-import { ensureTyphoons, getOnlineData, getStartupEarthquakes, invalidateTyphoons, startOnlineData } from './onlineData'
+import { ensureTyphoons, getOnlineData, getStartupEarthquakes, invalidateTyphoons, refreshEarthquakes, startOnlineData } from './onlineData'
 import { listLaboratoryProviders, removeLaboratoryProvider, saveLaboratoryProvider } from './laboratory'
 import { initUpdater } from './updater'
 import { initAccount } from './account'
@@ -1014,7 +1014,7 @@ function registerIpcHandlers(): void {
   })
   ipcMain.handle('datasets:online-data', () => getOnlineData())
   ipcMain.handle('datasets:ensure-typhoons', (_event, retry) => ensureTyphoons(retry === true))
-  ipcMain.handle('datasets:earthquakes', () => getStartupEarthquakes())
+  ipcMain.handle('datasets:earthquakes', (_event, refresh) => (refresh === true ? refreshEarthquakes() : getStartupEarthquakes()))
   ipcMain.handle('datasets:provinces', () => loadProvinceGeometry())
   ipcMain.handle('tiles:get', (_event, key: TileKey) => readTile(key))
   ipcMain.handle('tiles:put', (_event, entry: TileCacheEntry) => writeTile(entry))

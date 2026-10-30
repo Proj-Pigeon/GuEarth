@@ -733,18 +733,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
     return `${event.place}发生 M${event.magnitude} 地震，震源深度约 ${event.depthKm} 千米。${boundaryNote}地震是地壳应力积累超过岩层强度后快速释放能量并以地震波传播的结果，全球地震大多分布于板块边界及其附近。`
   }
 
-  async function addEarthquakeEntities(dataSource: Cesium.CustomDataSource): Promise<void> {
-    let feed: EarthquakeFeed
-    try {
-      feed = await window.guEarth.datasets.getEarthquakes()
-    } catch {
-      if (sources.get('plate-tectonics') === dataSource) {
-        failureStore.reportFailure({ scope: 'dataset', message: '近期地震数据获取失败，本次仅显示板块边界与火山', detail: '在线数据在启动时获取，请检查网络后重新启动', retryable: false })
-      }
-      return
-    }
-    if (sources.get('plate-tectonics') !== dataSource) return
-    failureStore.clearFailure('dataset')
+  function renderEarthquakeFeed(dataSource: Cesium.CustomDataSource, feed: EarthquakeFeed): void {
     buildEntities(dataSource, () => {
       for (const entity of [...dataSource.entities.values]) {
         if (entity.id.startsWith('earthquake-')) dataSource.entities.remove(entity)
@@ -771,6 +760,25 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
       }
     })
     viewer.value?.scene.requestRender()
+  }
+
+  async function loadEarthquakeEntities(dataSource: Cesium.CustomDataSource, refresh = false): Promise<void> {
+    let feed: EarthquakeFeed
+    try {
+      feed = await window.guEarth.datasets.getEarthquakes(refresh)
+    } catch {
+      if (sources.get('plate-tectonics') === dataSource) {
+        failureStore.reportFailure({ scope: 'dataset', message: '近期地震数据获取失败，本次仅显示板块边界与火山', detail: '在线地震数据获取失败，请检查网络后点击重试', retryable: true })
+      }
+      return
+    }
+    if (sources.get('plate-tectonics') !== dataSource) return
+    failureStore.clearFailure('dataset')
+    renderEarthquakeFeed(dataSource, feed)
+  }
+
+  function addEarthquakeEntities(dataSource: Cesium.CustomDataSource): void {
+    void loadEarthquakeEntities(dataSource)
   }
 
   function buildPlateTectonics(dataSource: Cesium.CustomDataSource): void {
@@ -1685,6 +1693,14 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
       return
     }
     rebuildSeaLevelRise()
+  })
+  failureStore.registerRetry('dataset', async () => {
+    const source = sources.get('plate-tectonics')
+    if (!source) {
+      failureStore.clearFailure('dataset')
+      return
+    }
+    await loadEarthquakeEntities(source, true)
   })
   watch(() => Math.round(store.month * 4) / 4, refreshPressureBeltGeometry)
   function requestRender(): void {

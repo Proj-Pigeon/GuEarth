@@ -9,6 +9,7 @@ import { readJson, writeJson } from './jsonStore'
 
 let startupData: Promise<OnlineDataSnapshot> | null = null
 let dataPath = ''
+let earthquakeRequest: Promise<EarthquakeFeed> | null = null
 let typhoonRequest: Promise<OnlineDataSnapshot> | null = null
 let typhoonController: AbortController | null = null
 let onChange: (snapshot: OnlineDataSnapshot) => void = () => {}
@@ -91,4 +92,19 @@ export async function getStartupEarthquakes(): Promise<EarthquakeFeed> {
   const data = await getOnlineData()
   if (!data.earthquakes) throw new Error(data.earthquakeError)
   return data.earthquakes
+}
+
+export function refreshEarthquakes(): Promise<EarthquakeFeed> {
+  if (earthquakeRequest) return earthquakeRequest
+  const request = loadEarthquakeFeed().then((earthquakes) => {
+    publish({ earthquakes, earthquakeError: earthquakes.stale ? 'USGS 本次刷新失败，显示缓存地震数据' : '' })
+    return earthquakes
+  }).catch((error: unknown) => {
+    publish({ earthquakeError: 'USGS 地震数据获取失败，请检查网络后重试' })
+    throw error instanceof Error ? error : new Error('USGS 地震数据获取失败，请检查网络后重试')
+  }).finally(() => {
+    if (earthquakeRequest === request) earthquakeRequest = null
+  })
+  earthquakeRequest = request
+  return request
 }

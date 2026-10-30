@@ -208,6 +208,7 @@ function typhoonCachePath(apiHost) {
 }
 
 function startupFixture({ configured = true, quakeFails = false, weatherFails = false, cached = null, deferWeather = false, earthquakeResponse, readCache } = {}) {
+  let failQuake = quakeFails
   let earthquakes = 0
   let currentCredentials = configured ? credentials : null
   const requests = []
@@ -219,7 +220,7 @@ function startupFixture({ configured = true, quakeFails = false, weatherFails = 
     crypto: require('node:crypto'), path: require('node:path'),
     './datasets': { loadEarthquakeFeed: async () => {
       earthquakes++
-      if (quakeFails) throw new Error('offline')
+      if (failQuake) throw new Error('offline')
       return earthquakeResponse ?? { fetchedAt: 100, events: [] }
     } },
     './laboratory': { getQWeatherCredentials: () => currentCredentials },
@@ -243,6 +244,7 @@ function startupFixture({ configured = true, quakeFails = false, weatherFails = 
     api, reads, writes, requests, feed,
     counts: () => ({ earthquakes, typhoons: requests.length }),
     setCredentials: (value) => { currentCredentials = value },
+    setQuakeFails: (value) => { failQuake = value },
     waitForRequest: (index = 0) => requests[index] ? Promise.resolve(requests[index]) : (requestWaiters[index] ??= deferred()).promise
   }
 }
@@ -272,6 +274,33 @@ test('unconfigured startup skips QWeather even with cache, and quake failures do
   assert.ok(partial.typhoons)
   assert.equal(partial.earthquakes, null)
   await assert.rejects(failed.api.getStartupEarthquakes())
+})
+
+test('earthquake refresh retries the live feed and updates the snapshot', async () => {
+  const fixture = startupFixture({ quakeFails: true })
+  const initial = await fixture.api.startOnlineData('/test')
+  assert.equal(initial.earthquakes, null)
+  await assert.rejects(fixture.api.getStartupEarthquakes())
+  fixture.setQuakeFails(false)
+  const refreshed = await fixture.api.refreshEarthquakes()
+  assert.equal(refreshed.fetchedAt, 100)
+  const data = await fixture.api.getOnlineData()
+  assert.equal(data.earthquakes, refreshed)
+  assert.equal(data.earthquakeError, '')
+  assert.equal(await fixture.api.getStartupEarthquakes(), refreshed)
+  assert.deepEqual(fixture.counts(), { earthquakes: 2, typhoons: 1 })
+})
+
+test('earthquake refresh requests are deduplicated and keep the failure state on error', async () => {
+  const fixture = startupFixture({ quakeFails: true })
+  await fixture.api.startOnlineData('/test')
+  const first = fixture.api.refreshEarthquakes()
+  assert.equal(fixture.api.refreshEarthquakes(), first)
+  await assert.rejects(first)
+  const failed = await fixture.api.getOnlineData()
+  assert.equal(failed.earthquakes, null)
+  assert.equal(failed.earthquakeError, 'USGS 地震数据获取失败，请检查网络后重试')
+  assert.deepEqual(fixture.counts(), { earthquakes: 2, typhoons: 1 })
 })
 
 test('failed typhoon refresh exposes cache age and error without overwriting cache', async () => {

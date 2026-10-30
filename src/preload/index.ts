@@ -512,7 +512,7 @@ const api = {
       ipcRenderer.on('datasets:online-data-changed', wrapped)
       return () => ipcRenderer.removeListener('datasets:online-data-changed', wrapped)
     },
-    getEarthquakes: (): Promise<EarthquakeFeed> => ipcRenderer.invoke('datasets:earthquakes'),
+    getEarthquakes: (refresh = false): Promise<EarthquakeFeed> => ipcRenderer.invoke('datasets:earthquakes', refresh),
     getProvinces: (): Promise<ProvinceGeoDocument> => ipcRenderer.invoke('datasets:provinces')
   },
   updater: {

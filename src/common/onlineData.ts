@@ -50,6 +50,13 @@ export interface OnlineDataSnapshot {
   typhoonStatus: 'unconfigured' | 'pending' | 'loading' | 'ready' | 'error'
 }
 
+export function validateQWeatherApiKey(value: unknown): string {
+  if (typeof value !== 'string' || !/^[\x21-\x7e]{1,512}$/.test(value.trim())) {
+    throw new Error('API Key 仅支持可见 ASCII 字符，长度 1-512，且不能包含空格或换行')
+  }
+  return value.trim()
+}
+
 export function normalizeQWeatherHost(value: unknown): string {
   if (typeof value !== 'string') throw new Error('请输入和风天气 API Host')
   const host = value.trim().replace(/^https:\/\//i, '').replace(/\/$/, '').toLowerCase()

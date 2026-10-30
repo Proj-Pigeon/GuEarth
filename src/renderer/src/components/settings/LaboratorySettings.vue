@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { Empty, message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { useOnlineDataStore } from '@renderer/stores/onlineData'
-import { normalizeQWeatherHost, type LaboratoryProvider, type LaboratoryProviderInput } from '../../../../common/onlineData'
+import { normalizeQWeatherHost, validateQWeatherApiKey, type LaboratoryProvider, type LaboratoryProviderInput } from '../../../../common/onlineData'
 
 const props = defineProps<{ active: boolean }>()
 const emit = defineEmits<{ busyChange: [busy: boolean] }>()
@@ -69,7 +69,18 @@ function closeDialogs(): void {
 async function saveProvider(): Promise<void> {
   if (busy.value || !editorOpen.value || (!editing.value && provider.value)) return
   hostError.value = ''
-  keyError.value = keyRequired.value && !draft.apiKey.trim() ? '请输入 API Key' : ''
+  keyError.value = ''
+  const rawKey = draft.apiKey.trim()
+  let apiKey = ''
+  if (!rawKey) {
+    keyError.value = keyRequired.value ? '请输入 API Key' : ''
+  } else {
+    try {
+      apiKey = validateQWeatherApiKey(rawKey)
+    } catch (error) {
+      keyError.value = error instanceof Error ? error.message : '请输入有效的 API Key'
+    }
+  }
   let apiHost = ''
   try {
     apiHost = normalizeQWeatherHost(draft.apiHost)
@@ -78,7 +89,7 @@ async function saveProvider(): Promise<void> {
   }
   if (hostError.value || keyError.value) return
   const input: LaboratoryProviderInput = { category: draft.category, provider: draft.provider, apiHost }
-  if (draft.apiKey.trim()) input.apiKey = draft.apiKey.trim()
+  if (apiKey) input.apiKey = apiKey
   operation.value = 'save'
   operationError.value = ''
   try {
