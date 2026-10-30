@@ -16,6 +16,8 @@ import { nearestBoundary, plateBoundaries, plateBoundaryKindName } from '@render
 import { volcanoes } from '@renderer/thematic/volcanoes'
 import { temperatureZoneBands, temperatureZoneLines } from '@renderer/thematic/temperatureZones'
 import { typhoonIntensityStyles, typhoonTracks } from '@renderer/thematic/typhoonTracks'
+import { buildLiveTyphoons } from '@renderer/thematic/liveTyphoons'
+import { useOnlineDataStore } from '@renderer/stores/onlineData'
 import { ensoAnomalyColor, ensoPhaseMeta } from '@renderer/thematic/ensoPhases'
 import { subsolarPointDeg } from '@renderer/thematic/solarMath'
 import { densityColor, densityOf, fanMigrationEndpoints, huLineEndpoints, huLineFacts, huLinePath, migrationFacts, migrationFlows, provincePopulation, provinceSummary, smoothMigrationPath } from '@renderer/thematic/populationCensus'
@@ -315,6 +317,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   const transportStore = useTransportStore()
   const failureStore = useFailureStore()
   const globeStore = useGlobeStore()
+  const onlineData = useOnlineDataStore()
   const autoFocus = options?.autoFocus !== false
   const sources = new Map<ThematicLayerId, Cesium.CustomDataSource>()
   const coriolisProgress = ref(0)
@@ -735,7 +738,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
       feed = await window.guEarth.datasets.getEarthquakes()
     } catch {
       if (sources.get('plate-tectonics') === dataSource) {
-        failureStore.reportFailure({ scope: 'dataset', message: '近期地震数据获取失败，本次仅显示板块边界与火山', detail: '网络恢复后点击重试即可补上地震点', retryable: true })
+        failureStore.reportFailure({ scope: 'dataset', message: '近期地震数据获取失败，本次仅显示板块边界与火山', detail: '在线数据在启动时获取，请检查网络后重新启动', retryable: false })
       }
       return
     }
@@ -933,6 +936,11 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   }
 
   function buildTyphoon(dataSource: Cesium.CustomDataSource): void {
+    const snapshot = onlineData.snapshot
+    if (snapshot?.typhoonConfigured !== false && onlineData.typhoonMode === 'live') {
+      if (snapshot?.typhoons) buildLiveTyphoons(dataSource, snapshot.typhoons, Boolean(snapshot.typhoonError))
+      return
+    }
     dataSource.entities.add({
       properties: new Cesium.PropertyBag({
         name: '台风（热带气旋）结构锚点',
@@ -1649,6 +1657,16 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   }
 
   watch(() => store.overlays, syncOverlays, { deep: true })
+  watch([() => onlineData.snapshot, () => onlineData.typhoonMode], () => {
+    const current = viewer.value
+    const source = sources.get('typhoon')
+    if (!current || current.isDestroyed() || !source) return
+    buildEntities(source, () => {
+      source.entities.removeAll()
+      buildTyphoon(source)
+    })
+    current.scene.requestRender()
+  })
   watch(() => store.ensoPhase, () => {
     const current = viewer.value
     const source = sources.get('enso')
@@ -1658,14 +1676,6 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
       buildEnso(source)
     })
     current.scene.requestRender()
-  })
-  failureStore.registerRetry('dataset', async () => {
-    const dataSource = sources.get('plate-tectonics')
-    if (!dataSource) {
-      failureStore.clearFailure('dataset')
-      return
-    }
-    await addEarthquakeEntities(dataSource)
   })
   failureStore.registerRetry('sea-level-terrain', async () => {
     if (!sources.get('sea-level-rise')) {

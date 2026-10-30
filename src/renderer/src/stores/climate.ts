@@ -26,7 +26,7 @@ export const thematicLayerCatalog: ThematicLayerMeta[] = [
   { id: 'coriolis-demo', name: '地转偏向力演示', description: '水平运动物体的偏转轨迹（北右南左）' },
   { id: 'plate-tectonics', name: '板块运动与地震火山', description: '三大类板块边界、典型火山与近期地震（可点击查看成因）' },
   { id: 'temperature-zones', name: '五带与直射点回归', description: '五带划分与回归线、极圈界线，直射点标记随日期时刻移动' },
-  { id: 'typhoon', name: '台风（热带气旋）', description: '台风眼、眼墙与螺旋雨带结构，叠加历史真实台风路径（可点击查看）' },
+  { id: 'typhoon', name: '台风（热带气旋）', description: '西北太平洋台风实况与预报快照，可切换内置历史教学案例（在线数据需配置）' },
   { id: 'enso', name: 'ENSO（厄尔尼诺与拉尼娜）', description: '赤道太平洋海温距平三相位着色与沃克环流示意（可点击查看影响）' },
   { id: 'province-population', name: '省级人口密度', description: '第七次人口普查分省人口密度分级设色（可点击查看各省数据）' },
   { id: 'hu-line', name: '胡焕庸线', description: '黑河—腾冲线与东西两侧人口对比' },

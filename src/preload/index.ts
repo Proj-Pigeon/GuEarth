@@ -4,6 +4,7 @@ import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiSta
 import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
 import type { TileMirrorMode } from '../common/tileMirror'
 import type { EnsoPhase } from '../common/thematicState'
+import type { LaboratoryProvider, LaboratoryProviderInput, OnlineDataSnapshot } from '../common/onlineData'
 
 export interface ProviderCredentialStatus {
   configured: boolean
@@ -279,6 +280,7 @@ export interface EarthquakeEvent {
 export interface EarthquakeFeed {
   fetchedAt: number
   events: EarthquakeEvent[]
+  stale?: boolean
 }
 
 export interface ProvinceFeature {
@@ -497,7 +499,13 @@ const api = {
     search: (keyword: string, provider?: PlaceSearchProvider): Promise<PlaceSearchResult> => ipcRenderer.invoke('places:search', keyword, provider),
     poiStatistics: (request: PoiStatisticsRequest): Promise<PoiStatisticsResult> => ipcRenderer.invoke('places:poi-statistics', request)
   },
+  laboratory: {
+    listProviders: (): Promise<LaboratoryProvider[]> => ipcRenderer.invoke('laboratory:list-providers'),
+    saveProvider: (input: LaboratoryProviderInput): Promise<LaboratoryProvider[]> => ipcRenderer.invoke('laboratory:save-provider', input),
+    removeProvider: (provider: 'qweather'): Promise<LaboratoryProvider[]> => ipcRenderer.invoke('laboratory:remove-provider', provider)
+  },
   datasets: {
+    getOnlineData: (): Promise<OnlineDataSnapshot> => ipcRenderer.invoke('datasets:online-data'),
     getEarthquakes: (): Promise<EarthquakeFeed> => ipcRenderer.invoke('datasets:earthquakes'),
     getProvinces: (): Promise<ProvinceGeoDocument> => ipcRenderer.invoke('datasets:provinces')
   },

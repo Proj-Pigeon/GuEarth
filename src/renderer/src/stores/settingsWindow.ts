@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
-export type SettingsSection = 'account' | 'general' | 'map' | 'ai' | 'about'
+export type SettingsSection = 'account' | 'general' | 'map' | 'ai' | 'laboratory' | 'about'
 
 export const useSettingsWindowStore = defineStore('settingsWindow', () => {
   const isOpen = ref(false)

@@ -44,7 +44,9 @@ import { registerAiIpcHandlers } from './ai/agent'
 import { poiStatistics, searchPlaces } from './ai/amap'
 import { searchBaiduPlaces } from './ai/baidu'
 import { beginPlacesRequest } from './ai/searchThrottle'
-import { initDatasets, loadEarthquakeFeed, loadProvinceGeometry } from './datasets'
+import { initDatasets, loadProvinceGeometry } from './datasets'
+import { getOnlineData, getStartupEarthquakes, startOnlineData } from './onlineData'
+import { listLaboratoryProviders, removeLaboratoryProvider, saveLaboratoryProvider } from './laboratory'
 import { initUpdater } from './updater'
 import { initAccount } from './account'
 
@@ -999,7 +1001,11 @@ function registerIpcHandlers(): void {
       maxSamples: numberArg(request.maxSamples)
     })
   })
-  ipcMain.handle('datasets:earthquakes', () => loadEarthquakeFeed())
+  ipcMain.handle('laboratory:list-providers', () => listLaboratoryProviders())
+  ipcMain.handle('laboratory:save-provider', (_event, input) => saveLaboratoryProvider(input))
+  ipcMain.handle('laboratory:remove-provider', (_event, provider) => removeLaboratoryProvider(provider))
+  ipcMain.handle('datasets:online-data', () => getOnlineData())
+  ipcMain.handle('datasets:earthquakes', () => getStartupEarthquakes())
   ipcMain.handle('datasets:provinces', () => loadProvinceGeometry())
   ipcMain.handle('tiles:get', (_event, key: TileKey) => readTile(key))
   ipcMain.handle('tiles:put', (_event, entry: TileCacheEntry) => writeTile(entry))
@@ -1635,6 +1641,7 @@ app.whenReady().then(async () => {
     await clearMirrorProviderTileCaches()
   }
   await applyNetworkProxy()
+  void startOnlineData(userDataPath)
   const loaded = await Promise.all([
     readAnnotations(),
     readScenes(),
