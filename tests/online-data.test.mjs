@@ -35,9 +35,12 @@ function weather(respond, globals) {
 
 const ok = (data) => Response.json({ code: '200', ...data })
 
-test('QWeather hosts accept only official HTTPS origins without paths, credentials or ports', () => {
+test('QWeather hosts accept official domains and nested subdomains without paths, credentials or ports', () => {
   assert.equal(shared.normalizeQWeatherHost(' HTTPS://Test.qweatherapi.com/ '), 'test.qweatherapi.com')
-  for (const value of ['http://test.qweatherapi.com', 'test.qweatherapi.com.evil.test', 'qweatherapi.com', '127.0.0.1', 'user@test.qweatherapi.com', 'test.qweatherapi.com:443', 'test.qweatherapi.com/v7', 'test.qweatherapi.com?key=abc', 'test.qweatherapi.com#fragment', 'test.qweatherapi.com\\evil', 'a.b.qweatherapi.com', null]) {
+  assert.equal(shared.normalizeQWeatherHost(' HTTPS://Test.Yun.qweatherapi.com/ '), 'test.yun.qweatherapi.com')
+  assert.equal(shared.normalizeQWeatherHost('a.b.qweatherapi.com'), 'a.b.qweatherapi.com')
+  assert.equal(shared.normalizeQWeatherHost('qweatherapi.com'), 'qweatherapi.com')
+  for (const value of ['http://test.qweatherapi.com', 'test.qweatherapi.com.evil.test', 'evilqweatherapi.com', '127.0.0.1', 'user@test.qweatherapi.com', 'test.qweatherapi.com:443', 'test.qweatherapi.com/v7', 'test.qweatherapi.com?key=abc', 'test.qweatherapi.com#fragment', 'test.qweatherapi.com\\evil', 'test..qweatherapi.com', '-test.qweatherapi.com', 'test-.qweatherapi.com', `${'a'.repeat(64)}.qweatherapi.com`, `${'a.'.repeat(120)}qweatherapi.com`, null]) {
     assert.throws(() => shared.normalizeQWeatherHost(value))
   }
 })
