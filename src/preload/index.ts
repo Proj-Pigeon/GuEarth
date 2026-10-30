@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
 import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
 import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, TileMirrorMode } from '../common/tileMirror'
+import type { TouchInteractionMode } from '../common/touchInteraction'
 import type { EnsoPhase } from '../common/thematicState'
 import type { LaboratoryProvider, LaboratoryProviderInput, OnlineDataSnapshot } from '../common/onlineData'
 
@@ -20,6 +21,7 @@ export interface GuEarthSettings {
   tileMirrorMode: TileMirrorMode
   tileMirrorSource: MirrorEndpointPreference
   mirrorConsentPrompted: boolean
+  touchInteractionMode: TouchInteractionMode
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -39,6 +41,7 @@ export interface GuEarthSettingsPatch {
   tileMirrorMode?: TileMirrorMode
   tileMirrorSource?: MirrorEndpointPreference
   mirrorConsentPrompted?: boolean
+  touchInteractionMode?: TouchInteractionMode
   networkProxy?: string
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'

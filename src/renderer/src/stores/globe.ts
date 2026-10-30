@@ -11,6 +11,7 @@ import {
   type MirrorEndpointProbeResult,
   type TileMirrorMode
 } from '../../../common/tileMirror'
+import { normalizeTouchInteractionMode, resolveTouchInteractionActive, type TouchEnvironment, type TouchInteractionMode } from '../../../common/touchInteraction'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
 import type { GuEarthSettingsPatch, TileMirrorStatus } from '../../../preload'
 import { useFailureStore } from './failure'
@@ -143,6 +144,7 @@ export const useGlobeStore = defineStore('globe', () => {
   const mirrorConsentReason = ref<MirrorConsentReason>('china')
   const mirrorPolicyOpen = ref(false)
   const mirrorPolicyActiveId = ref<MirrorPolicyId>('agreement')
+  const touchInteractionMode = ref<TouchInteractionMode>('auto')
   const mirroredProviders = ref<string[]>([])
   const mirrorFallenBackProviders = ref<string[]>([])
   const networkProxy = ref('')
@@ -159,6 +161,32 @@ export const useGlobeStore = defineStore('globe', () => {
   const sceneMode = ref<SceneMode>('3D')
   const levelViewActive = ref(false)
 
+  const coarsePointerQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(pointer: coarse)') : undefined
+
+  function detectTouchEnvironment(): TouchEnvironment {
+    if (typeof window === 'undefined') return { coarsePointer: false, maxTouchPoints: 0 }
+    const coarsePointer = Boolean(coarsePointerQuery?.matches)
+    return { coarsePointer, maxTouchPoints: typeof navigator !== 'undefined' ? navigator.maxTouchPoints ?? 0 : 0 }
+  }
+
+  function handleEnvironmentPointer(event: PointerEvent): void {
+    if (event.pointerType !== 'touch') return
+    if (touchEnvironment.value.maxTouchPoints === 0) {
+      touchEnvironment.value = { ...touchEnvironment.value, maxTouchPoints: Math.max(navigator.maxTouchPoints, 1) }
+    }
+  }
+
+  function refreshTouchEnvironment(): void {
+    const next = detectTouchEnvironment()
+    if (next.coarsePointer === touchEnvironment.value.coarsePointer && next.maxTouchPoints === touchEnvironment.value.maxTouchPoints) return
+    touchEnvironment.value = next
+  }
+
+  const touchEnvironment = ref<TouchEnvironment>(detectTouchEnvironment())
+  const touchInteractionActive = computed(() => resolveTouchInteractionActive(touchInteractionMode.value, touchEnvironment.value))
+  coarsePointerQuery?.addEventListener?.('change', refreshTouchEnvironment)
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('pointerdown', handleEnvironmentPointer)
+
   async function hydrateSettings(): Promise<void> {
     if (!apiAvailable()) return
     try {
@@ -173,6 +201,7 @@ export const useGlobeStore = defineStore('globe', () => {
       tileMirrorMode.value = settings.mirrorConsentPrompted === true && normalizeTileMirrorMode(settings.tileMirrorMode) === 'on' ? 'on' : 'off'
       tileMirrorSource.value = normalizeMirrorEndpointPreference(settings.tileMirrorSource)
       if (tileMirrorSource.value !== 'auto') activeMirrorEndpoint.value = tileMirrorSource.value
+      touchInteractionMode.value = normalizeTouchInteractionMode(settings.touchInteractionMode)
       networkProxy.value = settings.networkProxy ?? ''
       providerStyles.value = Object.fromEntries(providerCatalog.map((provider) => [provider.id, styleFor(provider.id, settings.providerStyles?.[provider.id] ?? provider.defaultStyleId)]))
       providerCredentials.value = settings.providerCredentials
@@ -203,6 +232,7 @@ export const useGlobeStore = defineStore('globe', () => {
       terrainExaggeration: terrainExaggeration.value,
       terrainLighting: terrainLighting.value,
       tileCacheEnabled: tileCacheEnabled.value,
+      touchInteractionMode: touchInteractionMode.value,
       networkProxy: networkProxy.value,
       providerStyles: { ...providerStyles.value },
       sceneMode: sceneMode.value
@@ -400,6 +430,12 @@ export const useGlobeStore = defineStore('globe', () => {
   function closeMirrorPolicy(): void {
     mirrorPolicyOpen.value = false
   }
+  function setTouchInteractionMode(value: unknown): void {
+    const mode = normalizeTouchInteractionMode(value)
+    if (mode === touchInteractionMode.value) return
+    touchInteractionMode.value = mode
+    void persistSettings()
+  }
   function setMirroredProviders(providerIds: string[]): void { mirroredProviders.value = [...providerIds] }
   function setMirrorFallenBackProviders(providerIds: string[]): void { mirrorFallenBackProviders.value = [...providerIds] }
   function isMirrorActive(providerId: string): boolean { return mirroredProviders.value.includes(providerId) }
@@ -410,10 +446,10 @@ export const useGlobeStore = defineStore('globe', () => {
 
   return {
     layers, selectedLayerId, providerStyles, terrainProviderId, terrainExaggeration, terrainLighting, tileCacheEnabled, tileMirrorMode, tileMirrorSource, activeMirrorEndpoint, mirrorProbingEndpoints, mirrorEndpointProbes, mirrorConsentPrompted, settingsHydrated,
-    mirrorConsentOpen, mirrorConsentReason, mirrorPolicyOpen, mirrorPolicyActiveId, mirroredProviders, mirrorFallenBackProviders, networkProxy,
+    mirrorConsentOpen, mirrorConsentReason, mirrorPolicyOpen, mirrorPolicyActiveId, mirroredProviders, mirrorFallenBackProviders, networkProxy, touchInteractionMode, touchInteractionActive,
     providerCredentials, isLayerPanelOpen, isGlobeReady, globeLoadTimedOut, globeLoadStage, activeTerrainId, globeError, terrainError, camera, sceneMode, levelViewActive, hydrateSettings,
     setLayerPanelOpen, setGlobeReady, setGlobeLoadTimedOut, setGlobeLoadStage, setActiveTerrainId, setGlobeError, setTerrainError, setCameraReadout, selectBasemap, setLayerOpacity,
     setProviderStyle, setTerrainProvider, setTerrainExaggeration, setTerrainLighting, setTileCacheEnabled, setTileMirrorMode, setTileMirrorSource, applyTileMirrorStatus, openMirrorConsent, closeMirrorConsent, acceptMirrorConsent, declineMirrorConsent,
-    openMirrorPolicy, closeMirrorPolicy, setMirroredProviders, setMirrorFallenBackProviders, isMirrorActive, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
+    openMirrorPolicy, closeMirrorPolicy, setMirroredProviders, setMirrorFallenBackProviders, isMirrorActive, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive, setTouchInteractionMode
   }
 })
