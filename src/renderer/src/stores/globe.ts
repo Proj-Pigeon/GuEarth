@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { normalizeTileMirrorMode, type TileMirrorMode } from '../../../common/tileMirror'
+import { normalizeTouchInteractionMode, resolveTouchInteractionActive, type TouchEnvironment, type TouchInteractionMode } from '../../../common/touchInteraction'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
 import { useFailureStore } from './failure'
 
@@ -116,6 +117,7 @@ export const useGlobeStore = defineStore('globe', () => {
   const terrainLighting = ref(false)
   const tileCacheEnabled = ref(true)
   const tileMirrorMode = ref<TileMirrorMode>('auto')
+  const touchInteractionMode = ref<TouchInteractionMode>('auto')
   const mirroredProviders = ref<string[]>([])
   const networkProxy = ref('')
   const providerCredentials = ref<Record<string, { configured: boolean; updatedAt: number | null }>>({})
@@ -131,6 +133,32 @@ export const useGlobeStore = defineStore('globe', () => {
   const sceneMode = ref<SceneMode>('3D')
   const levelViewActive = ref(false)
 
+  const coarsePointerQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(pointer: coarse)') : undefined
+
+  function detectTouchEnvironment(): TouchEnvironment {
+    if (typeof window === 'undefined') return { coarsePointer: false, maxTouchPoints: 0 }
+    const coarsePointer = Boolean(coarsePointerQuery?.matches)
+    return { coarsePointer, maxTouchPoints: typeof navigator !== 'undefined' ? navigator.maxTouchPoints ?? 0 : 0 }
+  }
+
+  function handleEnvironmentPointer(event: PointerEvent): void {
+    if (event.pointerType !== 'touch') return
+    if (touchEnvironment.value.maxTouchPoints === 0) {
+      touchEnvironment.value = { ...touchEnvironment.value, maxTouchPoints: Math.max(navigator.maxTouchPoints, 1) }
+    }
+  }
+
+  function refreshTouchEnvironment(): void {
+    const next = detectTouchEnvironment()
+    if (next.coarsePointer === touchEnvironment.value.coarsePointer && next.maxTouchPoints === touchEnvironment.value.maxTouchPoints) return
+    touchEnvironment.value = next
+  }
+
+  const touchEnvironment = ref<TouchEnvironment>(detectTouchEnvironment())
+  const touchInteractionActive = computed(() => resolveTouchInteractionActive(touchInteractionMode.value, touchEnvironment.value))
+  coarsePointerQuery?.addEventListener?.('change', refreshTouchEnvironment)
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('pointerdown', handleEnvironmentPointer)
+
   async function hydrateSettings(): Promise<void> {
     if (!apiAvailable()) return
     try {
@@ -141,6 +169,7 @@ export const useGlobeStore = defineStore('globe', () => {
       terrainLighting.value = settings.terrainLighting
       tileCacheEnabled.value = settings.tileCacheEnabled
       tileMirrorMode.value = normalizeTileMirrorMode(settings.tileMirrorMode)
+      touchInteractionMode.value = normalizeTouchInteractionMode(settings.touchInteractionMode)
       networkProxy.value = settings.networkProxy ?? ''
       providerStyles.value = Object.fromEntries(providerCatalog.map((provider) => [provider.id, styleFor(provider.id, settings.providerStyles?.[provider.id] ?? provider.defaultStyleId)]))
       providerCredentials.value = settings.providerCredentials
@@ -160,6 +189,7 @@ export const useGlobeStore = defineStore('globe', () => {
       terrainLighting: terrainLighting.value,
       tileCacheEnabled: tileCacheEnabled.value,
       tileMirrorMode: tileMirrorMode.value,
+      touchInteractionMode: touchInteractionMode.value,
       networkProxy: networkProxy.value,
       providerStyles: { ...providerStyles.value },
       sceneMode: sceneMode.value
@@ -211,6 +241,12 @@ export const useGlobeStore = defineStore('globe', () => {
     tileMirrorMode.value = mode
     void persistSettings()
   }
+  function setTouchInteractionMode(value: unknown): void {
+    const mode = normalizeTouchInteractionMode(value)
+    if (mode === touchInteractionMode.value) return
+    touchInteractionMode.value = mode
+    void persistSettings()
+  }
   function setMirroredProviders(providerIds: string[]): void { mirroredProviders.value = [...providerIds] }
   function isMirrorActive(providerId: string): boolean { return mirroredProviders.value.includes(providerId) }
   function setNetworkProxy(value: string): void { networkProxy.value = value; void persistSettings() }
@@ -219,9 +255,9 @@ export const useGlobeStore = defineStore('globe', () => {
   function setLevelViewActive(value: boolean): void { levelViewActive.value = value }
 
   return {
-    layers, selectedLayerId, providerStyles, terrainProviderId, terrainExaggeration, terrainLighting, tileCacheEnabled, tileMirrorMode, mirroredProviders, networkProxy,
+    layers, selectedLayerId, providerStyles, terrainProviderId, terrainExaggeration, terrainLighting, tileCacheEnabled, tileMirrorMode, touchInteractionMode, touchInteractionActive, mirroredProviders, networkProxy,
     providerCredentials, isLayerPanelOpen, isGlobeReady, globeLoadTimedOut, globeLoadStage, activeTerrainId, globeError, terrainError, camera, sceneMode, levelViewActive, hydrateSettings,
     setLayerPanelOpen, setGlobeReady, setGlobeLoadTimedOut, setGlobeLoadStage, setActiveTerrainId, setGlobeError, setTerrainError, setCameraReadout, selectBasemap, setLayerOpacity,
-    setProviderStyle, setTerrainProvider, setTerrainExaggeration, setTerrainLighting, setTileCacheEnabled, setTileMirrorMode, setMirroredProviders, isMirrorActive, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
+    setProviderStyle, setTerrainProvider, setTerrainExaggeration, setTerrainLighting, setTileCacheEnabled, setTileMirrorMode, setTouchInteractionMode, setMirroredProviders, isMirrorActive, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
   }
 })

@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
 import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
 import type { TileMirrorMode } from '../common/tileMirror'
+import type { TouchInteractionMode } from '../common/touchInteraction'
 import type { EnsoPhase } from '../common/thematicState'
 
 export interface ProviderCredentialStatus {
@@ -17,6 +18,7 @@ export interface GuEarthSettings {
   terrainLighting: boolean
   tileCacheEnabled: boolean
   tileMirrorMode: TileMirrorMode
+  touchInteractionMode: TouchInteractionMode
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -31,6 +33,7 @@ export interface GuEarthSettingsPatch {
   terrainLighting?: boolean
   tileCacheEnabled?: boolean
   tileMirrorMode?: TileMirrorMode
+  touchInteractionMode?: TouchInteractionMode
   networkProxy?: string
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'

@@ -1,0 +1,44 @@
+.globe canvas {
+  touch-action: none;
+}
+
+.app.touch-ui button,
+.app.touch-ui .toolbar,
+.app.touch-ui .toolbar-group,
+.app.touch-ui .toolbar-floating,
+.app.touch-ui .settings-nav,
+.app.touch-ui .ant-select-selector,
+.app.touch-ui .ant-radio-button-wrapper,
+.app.touch-ui .ant-switch,
+.app.touch-ui .ant-tag {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app.touch-ui button,
+.app.touch-ui a {
+  touch-action: manipulation;
+}
+
+.app.touch-ui .toolbar-group {
+  gap: 12px;
+  padding: 10px;
+}
+
+.app.touch-ui .toolbar-tools {
+  gap: 12px;
+}
+
+.app.touch-ui .toolbar-btn {
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+}
+
+.app.touch-ui .toolbar-circle {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  font-size: 20px;
+}

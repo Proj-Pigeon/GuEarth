@@ -46,6 +46,7 @@ import CameraStatus from '@renderer/components/CameraStatus.vue'
 import LayerPanel from '@renderer/components/LayerPanel.vue'
 import AnnotationPanel from '@renderer/components/AnnotationPanel.vue'
 import DrawingEditToolbar from '@renderer/components/DrawingEditToolbar.vue'
+import DrawingTouchBar from '@renderer/components/DrawingTouchBar.vue'
 import InlineTextEditor from '@renderer/components/InlineTextEditor.vue'
 import PlaceSearchBox from '@renderer/components/PlaceSearchBox.vue'
 import WindParticles from '@renderer/components/WindParticles.vue'
@@ -113,7 +114,7 @@ const settingsWindow = useSettingsWindowStore()
 
 const globeContainer = ref<HTMLDivElement>()
 const { viewer, switchBasemap, setLayerOpacity, flyTo, flyToPlace, toggleLevelView, setTerrain, setTerrainExaggeration, setTerrainLighting } = useCesiumViewer(globeContainer)
-const { flyToShape } = useDrawing(viewer)
+const { flyToShape, draftCount, finishDraft, undoDraftPoint, cancelActiveTool } = useDrawing(viewer)
 const { comparison: timezoneComparison, closeTimezoneCompare } = useTimezoneCompare(viewer)
 const climateStore = useClimateStore()
 const solarStore = useSolarStore()
@@ -180,11 +181,18 @@ watch(nightBasemapActive, (active) => {
 })
 const drawHint = computed(() => {
   if (!activeTool.value) return ''
-  if (activeTool.value === 'timezone') return '单击选取两个地点对比地方时 · Esc 退出'
-  if (activeTool.value === 'text') return '在地球上单击放置文本框 · Esc 退出'
-  if (activeTool.value === 'arrow') return '依次单击箭头起点和终点 · Esc 取消'
-  return activeTool.value === 'point' ? '在地球上单击以放置点' : '单击加点 · 双击或右键完成 · Esc 取消'
+  const touch = store.touchInteractionActive
+  if (activeTool.value === 'timezone') return touch ? '点按选取两个地点对比地方时 · 用下方按钮退出' : '单击选取两个地点对比地方时 · Esc 退出'
+  if (activeTool.value === 'text') return touch ? '在地球上点按放置文本框 · 用下方按钮取消' : '在地球上单击放置文本框 · Esc 退出'
+  if (activeTool.value === 'arrow') return touch ? '点按箭头起点和终点' : '依次单击箭头起点和终点 · Esc 取消'
+  if (activeTool.value === 'point') return touch ? '在地球上点按以放置点' : '在地球上单击以放置点'
+  return touch ? '点按加点 · 用下方按钮撤销或完成' : '单击加点 · 双击或右键完成 · Esc 取消'
 })
+
+function handleGlobeContextMenu(event: MouseEvent): void {
+  if (!store.touchInteractionActive) return
+  event.preventDefault()
+}
 
 aiStore.registerTool({
   label: '视角飞行',
@@ -1229,9 +1237,9 @@ function deleteSelectedShape(): void {
 </script>
 
 <template>
-  <a-config-provider :locale="zhCN">
-    <div class="app">
-      <div ref="globeContainer" class="globe" :class="{ drawing: activeTool }"></div>
+  <a-config-provider :locale="zhCN" :component-size="store.touchInteractionActive ? 'large' : 'middle'">
+    <div class="app" :class="{ 'touch-ui': store.touchInteractionActive }">
+      <div ref="globeContainer" class="globe" :class="{ drawing: activeTool }" @contextmenu="handleGlobeContextMenu"></div>
       <InlineTextEditor
         :viewer="viewer"
         :shape="selectedShape?.kind === 'text' ? selectedShape : null"
@@ -1280,6 +1288,14 @@ function deleteSelectedShape(): void {
         :fonts="systemFonts"
         @change="updateSelectedShape"
         @remove="deleteSelectedShape"
+      />
+      <DrawingTouchBar
+        v-if="store.touchInteractionActive"
+        :active-tool="activeTool"
+        :draft-count="draftCount"
+        @cancel="cancelActiveTool"
+        @undo="undoDraftPoint"
+        @finish="finishDraft"
       />
       <TeachingLab :open="isLabOpen" @close="isLabOpen = false" />
       <PlaceSearchBox @select="flyToPlace" />

@@ -8,6 +8,7 @@ import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 import { serveTileResponse } from '../common/tileProtocol'
 import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
 import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
+import { isTouchInteractionMode, normalizeTouchInteractionMode, type TouchInteractionMode } from '../common/touchInteraction'
 import { ENSO_PHASE_SET, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS, type EnsoPhase } from '../common/thematicState'
 
 attachConsoleLogTee('main')
@@ -54,6 +55,7 @@ interface PersistedSettings {
   terrainLighting: boolean
   tileCacheEnabled: boolean
   tileMirrorMode: TileMirrorMode
+  touchInteractionMode: TouchInteractionMode
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -69,6 +71,7 @@ const defaultSettings: PersistedSettings = {
   terrainLighting: false,
   tileCacheEnabled: true,
   tileMirrorMode: 'auto',
+  touchInteractionMode: 'auto',
   networkProxy: '',
   providerStyles: {
     osm: 'standard',
@@ -154,6 +157,7 @@ async function readSettings(): Promise<PersistedSettings> {
       terrainLighting: parsed.terrainLighting === true,
       tileCacheEnabled: parsed.tileCacheEnabled !== false,
       tileMirrorMode: normalizeTileMirrorMode(parsed.tileMirrorMode, parsed.tileMirrorEnabled),
+      touchInteractionMode: normalizeTouchInteractionMode(parsed.touchInteractionMode),
       networkProxy: normalizeNetworkProxy(parsed.networkProxy),
       providerStyles: normalizedStyles,
       providerCredentials,
@@ -894,6 +898,10 @@ function registerIpcHandlers(): void {
         tileMirrorModeChanged = patch.tileMirrorMode !== nextSettings.tileMirrorMode
         tileMirrorModeNow = patch.tileMirrorMode
         nextSettings.tileMirrorMode = patch.tileMirrorMode
+      }
+      if (patch.touchInteractionMode !== undefined) {
+        if (!isTouchInteractionMode(patch.touchInteractionMode)) throw new Error('无效的触摸操作设置')
+        nextSettings.touchInteractionMode = patch.touchInteractionMode
       }
       if (patch.networkProxy !== undefined) {
         if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')
