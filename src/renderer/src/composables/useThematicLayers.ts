@@ -318,6 +318,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   const failureStore = useFailureStore()
   const globeStore = useGlobeStore()
   const onlineData = useOnlineDataStore()
+  void onlineData.load()
   const autoFocus = options?.autoFocus !== false
   const sources = new Map<ThematicLayerId, Cesium.CustomDataSource>()
   const coriolisProgress = ref(0)
@@ -938,6 +939,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   function buildTyphoon(dataSource: Cesium.CustomDataSource): void {
     const snapshot = onlineData.snapshot
     if (snapshot?.typhoonConfigured !== false && onlineData.typhoonMode === 'live') {
+      if (snapshot?.typhoonStatus === 'pending') void onlineData.ensureTyphoons()
       if (snapshot?.typhoons) buildLiveTyphoons(dataSource, snapshot.typhoons, Boolean(snapshot.typhoonError))
       return
     }

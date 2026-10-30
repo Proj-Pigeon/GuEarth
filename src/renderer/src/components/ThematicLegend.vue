@@ -108,8 +108,8 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
       </template>
       <template v-else>
         <p class="legend-copy">范围：西北太平洋（NP）</p>
-        <div v-if="onlineData.loading" class="legend-item" role="status">
-          <a-spin size="small" /><span>正在加载启动快照…</span>
+        <div v-if="onlineData.loading || onlineData.typhoonLoading" class="legend-item" role="status">
+          <a-spin size="small" /><span>正在获取台风数据…</span>
         </div>
         <a-alert
           v-if="onlineData.snapshot?.typhoonError"
@@ -119,7 +119,7 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
           :description="onlineData.snapshot.typhoonError"
         />
         <a-alert
-          v-else-if="!onlineData.loading && !typhoonFeed"
+          v-else-if="!onlineData.loading && !onlineData.typhoonLoading && !typhoonFeed"
           type="error"
           show-icon
           message="台风数据不可用，无可用缓存"
@@ -145,7 +145,8 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
           <p class="legend-copy">来源：和风天气 QWeather<span v-if="typhoonFeed.sources.length">；{{ typhoonFeed.sources.join('；') }}</span></p>
           <p class="legend-copy">许可：{{ typhoonFeed.license.join('；') || '接口未提供' }}</p>
         </template>
-        <p class="legend-copy">仅启动时更新，切换模式不联网。获取失败可检查设置，下次启动重试。</p>
+        <a-button v-if="onlineData.snapshot?.typhoonStatus === 'error'" @click="onlineData.ensureTyphoons(true)">重试获取</a-button>
+        <p class="legend-copy">启动时预取数据；新增或修改配置后首次使用时获取，之后切换模式复用快照。获取失败可直接重试。</p>
       </template>
       <a-button @click="settingsWindow.open('laboratory')">实验室数据设置</a-button>
     </div>

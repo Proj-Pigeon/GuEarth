@@ -71,10 +71,10 @@ function apiError(code: string): Error {
   return new Error(`和风天气：${reason[code] ?? `服务异常（${/^\d{3}$/.test(code) ? code : '未知状态'}）`}`)
 }
 
-export async function fetchTyphoonFeed(credentials: QWeatherCredentials): Promise<TyphoonFeed> {
+export async function fetchTyphoonFeed(credentials: QWeatherCredentials, cancellation?: AbortSignal): Promise<TyphoonFeed> {
   const host = normalizeQWeatherHost(credentials.apiHost)
   const controller = new AbortController()
-  const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(20000)])
+  const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(20000), ...(cancellation ? [cancellation] : [])])
   const sources = new Set<string>()
   const license = new Set<string>()
   async function request(endpoint: string, params: Record<string, string>): Promise<Record<string, unknown>> {

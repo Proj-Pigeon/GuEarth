@@ -506,6 +506,12 @@ const api = {
   },
   datasets: {
     getOnlineData: (): Promise<OnlineDataSnapshot> => ipcRenderer.invoke('datasets:online-data'),
+    ensureTyphoons: (retry = false): Promise<OnlineDataSnapshot> => ipcRenderer.invoke('datasets:ensure-typhoons', retry),
+    onOnlineData: (listener: (snapshot: OnlineDataSnapshot) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: OnlineDataSnapshot): void => listener(payload)
+      ipcRenderer.on('datasets:online-data-changed', wrapped)
+      return () => ipcRenderer.removeListener('datasets:online-data-changed', wrapped)
+    },
     getEarthquakes: (): Promise<EarthquakeFeed> => ipcRenderer.invoke('datasets:earthquakes'),
     getProvinces: (): Promise<ProvinceGeoDocument> => ipcRenderer.invoke('datasets:provinces')
   },

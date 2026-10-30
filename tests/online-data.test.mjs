@@ -142,6 +142,38 @@ test('authentication and transport failures are sanitized and abort outstanding 
   await assert.rejects(failed.fetchTyphoonFeed(credentials), (error) => !error.message.includes(credentials.apiKey))
 })
 
+for (const endpoint of ['storm-list', 'storm-track']) {
+  test(`QWeather forwards external cancellation to outstanding ${endpoint} requests`, async () => {
+    const controller = new AbortController()
+    const started = deferred()
+    const api = weather((url, { signal }) => {
+      if (!url.pathname.endsWith(endpoint)) return ok({ storm: [storm] })
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        started.resolve()
+      })
+    })
+    const fetching = api.fetchTyphoonFeed(credentials, controller.signal)
+    const rejected = assert.rejects(fetching, (error) => !error.message.includes(credentials.apiKey))
+    await started.promise
+    const requestCount = endpoint === 'storm-list' ? 2 : 3
+    assert.equal(api.requests.length, requestCount)
+    assert.ok(api.requests.every((request) => request.signal instanceof AbortSignal && !request.signal.aborted))
+    controller.abort(new Error('provider changed'))
+    assert.ok(api.requests.every((request) => request.signal.aborted && request.signal.reason === controller.signal.reason))
+    await rejected
+    assert.equal(api.requests.length, requestCount)
+  })
+}
+
+test('QWeather skips all network requests when the external signal is already aborted', async () => {
+  const controller = new AbortController()
+  controller.abort()
+  const api = weather(() => assert.fail('aborted requests must not reach net.fetch'))
+  await assert.rejects(api.fetchTyphoonFeed(credentials, controller.signal), { name: 'AbortError' })
+  assert.deepEqual(api.requests, [])
+})
+
 test('one overall deadline bounds startup instead of multiplying timeout per storm', async () => {
   const controller = new AbortController()
   const durations = []
@@ -155,19 +187,64 @@ test('one overall deadline bounds startup instead of multiplying timeout per sto
   assert.deepEqual(durations, [20000])
 })
 
-function startupFixture({ configured = true, quakeFails = false, weatherFails = false, cached = null } = {}) {
+function deferred() {
+  let resolve
+  let reject
+  const promise = new Promise((resolvePromise, rejectPromise) => { resolve = resolvePromise; reject = rejectPromise })
+  return { promise, resolve, reject }
+}
+
+function typhoonFeed(fetchedAt = 100, id = storm.id) {
+  const observation = { time: new Date(now.pubTime).toISOString(), latitude: 18.5, longitude: 130.2, type: 'STS', pressure: 980, windSpeed: 30 }
+  return {
+    fetchedAt, sources: ['test source'], license: ['test license'],
+    storms: [{ id, name: storm.name, active: true, now: observation, track: [observation], forecast: [], forecastError: '' }]
+  }
+}
+
+function typhoonCachePath(apiHost) {
+  const hostId = require('node:crypto').createHash('sha256').update(apiHost).digest('hex').slice(0, 16)
+  return require('node:path').join('/test', `typhoons-${hostId}.json`)
+}
+
+function startupFixture({ configured = true, quakeFails = false, weatherFails = false, cached = null, deferWeather = false, earthquakeResponse, readCache } = {}) {
   let earthquakes = 0
-  let typhoons = 0
+  let currentCredentials = configured ? credentials : null
+  const requests = []
+  const requestWaiters = []
+  const reads = []
   const writes = []
-  const feed = { fetchedAt: 100, storms: [], sources: [], license: [] }
+  const feed = typhoonFeed()
   const api = load('../src/main/onlineData.ts', {
     crypto: require('node:crypto'), path: require('node:path'),
-    './datasets': { loadEarthquakeFeed: async () => { earthquakes++; if (quakeFails) throw new Error('offline'); return { fetchedAt: 100, events: [] } } },
-    './laboratory': { getQWeatherCredentials: () => configured ? credentials : null },
-    './qweather': { fetchTyphoonFeed: async () => { typhoons++; if (weatherFails) throw new Error('offline'); return feed }, parseCachedTyphoons: (value) => value },
-    './jsonStore': { readJson: async () => cached, writeJson: async (path, value) => writes.push({ path, value }) }
+    './datasets': { loadEarthquakeFeed: async () => {
+      earthquakes++
+      if (quakeFails) throw new Error('offline')
+      return earthquakeResponse ?? { fetchedAt: 100, events: [] }
+    } },
+    './laboratory': { getQWeatherCredentials: () => currentCredentials },
+    './qweather': {
+      fetchTyphoonFeed: async (value, signal) => {
+        const request = { credentials: { ...value }, signal, ...(deferWeather ? deferred() : {}) }
+        requests.push(request)
+        requestWaiters[requests.length - 1]?.resolve(request)
+        if (deferWeather) return request.promise
+        if (weatherFails) throw new Error('offline')
+        return feed
+      },
+      parseCachedTyphoons: (value) => value
+    },
+    './jsonStore': {
+      readJson: async (path) => { reads.push(path); return readCache ? readCache(path) : cached },
+      writeJson: async (path, value) => { writes.push({ path, value }) }
+    }
   })
-  return { api, writes, counts: () => ({ earthquakes, typhoons }) }
+  return {
+    api, reads, writes, requests, feed,
+    counts: () => ({ earthquakes, typhoons: requests.length }),
+    setCredentials: (value) => { currentCredentials = value },
+    waitForRequest: (index = 0) => requests[index] ? Promise.resolve(requests[index]) : (requestWaiters[index] ??= deferred()).promise
+  }
 }
 
 test('startup is deduplicated, getters are network-free, and a new process refreshes again', async () => {
@@ -202,8 +279,371 @@ test('failed typhoon refresh exposes cache age and error without overwriting cac
   const fixture = startupFixture({ weatherFails: true, cached })
   const data = await fixture.api.startOnlineData('/test')
   assert.equal(data.typhoons, cached)
+  assert.equal(data.typhoons.fetchedAt, 1)
+  assert.equal(data.typhoonStatus, 'error')
+  assert.equal(data.typhoonConfigured, true)
   assert.equal(data.typhoonError, 'offline')
+  assert.equal(await fixture.api.ensureTyphoons(), data)
+  assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 1 })
   assert.deepEqual(fixture.writes, [])
+})
+
+test('adding QWeather after startup stays network-free until ensure and deduplicates concurrent consumers', async () => {
+  const fixture = startupFixture({ configured: false, deferWeather: true })
+  const { api } = fixture
+  const startup = api.startOnlineData('/test')
+  const initial = await startup
+  const earthquakes = await api.getStartupEarthquakes()
+  assert.equal(initial.typhoonStatus, 'unconfigured')
+  fixture.setCredentials(credentials)
+  api.invalidateTyphoons(true)
+  const pending = await api.getOnlineData()
+  assert.equal(pending.typhoonStatus, 'pending')
+  assert.equal(pending.typhoonConfigured, true)
+  assert.equal(pending.typhoons, null)
+  assert.equal(pending.typhoonError, '')
+  assert.ok(pending.revision > initial.revision)
+  for (let read = 0; read < 3; read++) {
+    assert.equal(await api.getOnlineData(), pending)
+    assert.equal(await api.getStartupEarthquakes(), earthquakes)
+    assert.equal(api.startOnlineData('/test'), startup)
+  }
+  assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 0 })
+  assert.deepEqual(fixture.reads, [])
+  const first = api.ensureTyphoons()
+  for (let consumer = 0; consumer < 3; consumer++) {
+    assert.equal(api.ensureTyphoons(), first)
+    assert.equal(api.ensureTyphoons(true), first)
+  }
+  const request = await fixture.waitForRequest()
+  assert.deepEqual(request.credentials, credentials)
+  const loading = await api.getOnlineData()
+  assert.equal(loading.typhoonStatus, 'loading')
+  assert.equal(loading.typhoons, null)
+  assert.equal(await api.getStartupEarthquakes(), earthquakes)
+  request.resolve(fixture.feed)
+  const live = await first
+  assert.equal(live.typhoonStatus, 'ready')
+  assert.equal(live.typhoons, fixture.feed)
+  assert.equal(live.typhoons.storms[0].id, storm.id)
+  assert.equal(live.typhoonError, '')
+  assert.equal(live.earthquakes, earthquakes)
+  for (let consumer = 0; consumer < 3; consumer++) {
+    assert.equal(await api.ensureTyphoons(), live)
+    assert.equal(await api.ensureTyphoons(true), live)
+    assert.equal(await api.getOnlineData(), live)
+  }
+  assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 1 })
+  assert.deepEqual(fixture.writes, [{ path: typhoonCachePath(credentials.apiHost), value: fixture.feed }])
+})
+
+test('editing the host or only the key clears prior state and uses the latest credentials without refetching earthquakes', async () => {
+  const cached = typhoonFeed(1)
+  const fixture = startupFixture({ deferWeather: true, cached })
+  const { api } = fixture
+  const startup = api.startOnlineData('/test')
+  const initialRequest = await fixture.waitForRequest()
+  initialRequest.reject(new Error('offline'))
+  const initial = await startup
+  assert.equal(initial.typhoonStatus, 'error')
+  assert.equal(initial.typhoonError, 'offline')
+  assert.equal(initial.typhoons, cached)
+  const edits = [
+    { apiHost: 'updated.qweatherapi.com', apiKey: 'updated-key-not-a-secret' },
+    { apiHost: 'updated.qweatherapi.com', apiKey: 'rotated-key-not-a-secret' }
+  ]
+  for (const [index, nextCredentials] of edits.entries()) {
+    fixture.setCredentials(nextCredentials)
+    api.invalidateTyphoons(true)
+    const pending = await api.getOnlineData()
+    assert.equal(pending.typhoonStatus, 'pending')
+    assert.equal(pending.typhoons, null)
+    assert.equal(pending.typhoonError, '')
+    assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: index + 1 })
+    const fetching = api.ensureTyphoons()
+    const request = await fixture.waitForRequest(index + 1)
+    assert.deepEqual(request.credentials, nextCredentials)
+    assert.equal(request.signal.aborted, false)
+    const feed = typhoonFeed(200 + index, `NP_260${index + 2}`)
+    request.resolve(feed)
+    const updated = await fetching
+    assert.equal(updated.typhoonStatus, 'ready')
+    assert.equal(updated.typhoons, feed)
+    assert.equal(updated.earthquakes, initial.earthquakes)
+    assert.equal(api.startOnlineData('/test'), startup)
+    assert.equal(await api.getOnlineData(), updated)
+    assert.deepEqual(fixture.writes.at(-1), { path: typhoonCachePath(nextCredentials.apiHost), value: feed })
+  }
+  assert.deepEqual(fixture.requests.map((request) => request.credentials), [credentials, ...edits])
+  assert.deepEqual(fixture.reads, [credentials, ...edits].map((value) => typhoonCachePath(value.apiHost)))
+  assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 3 })
+})
+
+for (const weatherFails of [false, true]) {
+  test(`removing QWeather immediately clears ${weatherFails ? 'cached data and errors' : 'live data'} without fetching`, async () => {
+    const fixture = startupFixture({ weatherFails, cached: typhoonFeed(1) })
+    const { api } = fixture
+    const notifications = []
+    const initial = await api.startOnlineData('/test', (snapshot) => notifications.push(snapshot))
+    assert.ok(initial.typhoons)
+    assert.equal(initial.typhoonStatus, weatherFails ? 'error' : 'ready')
+    const writes = fixture.writes.slice()
+    const reads = fixture.reads.slice()
+    const previousNotifications = notifications.length
+    fixture.setCredentials(null)
+    api.invalidateTyphoons(false)
+    assert.equal(notifications.length, previousNotifications + 1)
+    const removed = notifications.at(-1)
+    assert.equal(removed.typhoonStatus, 'unconfigured')
+    assert.equal(removed.typhoonConfigured, false)
+    assert.equal(removed.typhoons, null)
+    assert.equal(removed.typhoonError, '')
+    assert.ok(removed.revision > initial.revision)
+    for (let read = 0; read < 3; read++) {
+      assert.equal(await api.getOnlineData(), removed)
+      assert.equal(await api.ensureTyphoons(), removed)
+      assert.equal(await api.ensureTyphoons(true), removed)
+      assert.equal(await api.getStartupEarthquakes(), initial.earthquakes)
+    }
+    assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 1 })
+    assert.deepEqual(fixture.reads, reads)
+    assert.deepEqual(fixture.writes, writes)
+    assert.equal(notifications.length, previousNotifications + 1)
+  })
+}
+
+for (const outcome of ['resolve', 'reject']) {
+  for (const oldSettlesFirst of [true, false]) {
+    test(`an edited provider ignores an old ${outcome} ${oldSettlesFirst ? 'before' : 'after'} the replacement completes`, async () => {
+      const fixture = startupFixture({ configured: false, deferWeather: true, cached: typhoonFeed(1) })
+      const { api } = fixture
+      const notifications = []
+      await api.startOnlineData('/test', (snapshot) => notifications.push(snapshot))
+      fixture.setCredentials(credentials)
+      api.invalidateTyphoons(true)
+      const oldFetching = api.ensureTyphoons()
+      const oldRequest = await fixture.waitForRequest()
+      const replacementCredentials = { apiHost: 'replacement.qweatherapi.com', apiKey: 'replacement-key-not-a-secret' }
+      fixture.setCredentials(replacementCredentials)
+      api.invalidateTyphoons(true)
+      assert.equal(oldRequest.signal.aborted, true)
+      const replacementFetching = api.ensureTyphoons()
+      const replacementRequest = await fixture.waitForRequest(1)
+      assert.deepEqual(replacementRequest.credentials, replacementCredentials)
+      const replacementFeed = typhoonFeed(300, 'NP_2603')
+      if (!oldSettlesFirst) {
+        replacementRequest.resolve(replacementFeed)
+        await replacementFetching
+      }
+      const beforeStaleResult = await api.getOnlineData()
+      const previousNotifications = notifications.length
+      const previousWrites = fixture.writes.slice()
+      oldRequest[outcome](outcome === 'resolve' ? typhoonFeed(200, 'NP_2602') : new Error('late failure from old provider'))
+      assert.equal(await oldFetching, beforeStaleResult)
+      assert.equal(await api.getOnlineData(), beforeStaleResult)
+      assert.equal(notifications.length, previousNotifications)
+      assert.deepEqual(fixture.writes, previousWrites)
+      if (oldSettlesFirst) {
+        assert.equal(beforeStaleResult.typhoonStatus, 'loading')
+        assert.equal(replacementRequest.signal.aborted, false)
+        assert.equal(api.ensureTyphoons(), replacementFetching)
+        assert.equal(api.ensureTyphoons(true), replacementFetching)
+        replacementRequest.resolve(replacementFeed)
+        await replacementFetching
+      }
+      const live = await api.getOnlineData()
+      assert.equal(live.typhoonStatus, 'ready')
+      assert.equal(live.typhoons, replacementFeed)
+      assert.equal(live.typhoonError, '')
+      assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 2 })
+      assert.deepEqual(fixture.writes, [{ path: typhoonCachePath(replacementCredentials.apiHost), value: replacementFeed }])
+    })
+  }
+
+  test(`removing QWeather aborts an in-flight request and ignores its late ${outcome}`, async () => {
+    const fixture = startupFixture({ configured: false, deferWeather: true, cached: typhoonFeed(1) })
+    const { api } = fixture
+    const notifications = []
+    await api.startOnlineData('/test', (snapshot) => notifications.push(snapshot))
+    fixture.setCredentials(credentials)
+    api.invalidateTyphoons(true)
+    const fetching = api.ensureTyphoons()
+    const request = await fixture.waitForRequest()
+    fixture.setCredentials(null)
+    api.invalidateTyphoons(false)
+    const removed = await api.getOnlineData()
+    const previousNotifications = notifications.length
+    assert.equal(request.signal.aborted, true)
+    assert.equal(removed.typhoonStatus, 'unconfigured')
+    assert.equal(removed.typhoons, null)
+    assert.equal(removed.typhoonError, '')
+    assert.equal(await api.ensureTyphoons(true), removed)
+    request[outcome](outcome === 'resolve' ? fixture.feed : new Error('late failure after removal'))
+    assert.equal(await fetching, removed)
+    assert.equal(await api.getOnlineData(), removed)
+    assert.equal(notifications.length, previousNotifications)
+    assert.deepEqual(fixture.writes, [])
+    assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 1 })
+  })
+}
+
+test('failed requests keep marked cache until an explicit deduplicated retry succeeds', async () => {
+  const cached = typhoonFeed(1)
+  const fixture = startupFixture({ cached, deferWeather: true })
+  const { api } = fixture
+  const startup = api.startOnlineData('/test')
+  const failedRequest = await fixture.waitForRequest()
+  failedRequest.reject(new Error('offline'))
+  const failed = await startup
+  assert.equal(failed.typhoonStatus, 'error')
+  assert.equal(failed.typhoonConfigured, true)
+  assert.equal(failed.typhoons, cached)
+  assert.equal(failed.typhoons.fetchedAt, 1)
+  assert.equal(failed.typhoonError, 'offline')
+  for (let read = 0; read < 3; read++) {
+    assert.equal(await api.ensureTyphoons(), failed)
+    assert.equal(await api.ensureTyphoons(false), failed)
+    assert.equal(await api.getOnlineData(), failed)
+    assert.equal(await api.getStartupEarthquakes(), failed.earthquakes)
+  }
+  assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 1 })
+  assert.deepEqual(fixture.writes, [])
+  const retry = api.ensureTyphoons(true)
+  assert.equal(api.ensureTyphoons(true), retry)
+  assert.equal(api.ensureTyphoons(), retry)
+  const retryRequest = await fixture.waitForRequest(1)
+  const loading = await api.getOnlineData()
+  assert.equal(loading.typhoonStatus, 'loading')
+  assert.equal(loading.typhoonError, 'offline')
+  assert.equal(loading.typhoons, cached)
+  assert.equal(loading.earthquakes, failed.earthquakes)
+  retryRequest.resolve(fixture.feed)
+  const recovered = await retry
+  assert.equal(recovered.typhoonStatus, 'ready')
+  assert.equal(recovered.typhoonError, '')
+  assert.equal(recovered.typhoons, fixture.feed)
+  assert.equal(await api.ensureTyphoons(true), recovered)
+  assert.equal(await api.getStartupEarthquakes(), failed.earthquakes)
+  assert.equal(api.startOnlineData('/test'), startup)
+  assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 2 })
+  assert.deepEqual(fixture.writes, [{ path: typhoonCachePath(credentials.apiHost), value: fixture.feed }])
+})
+
+test('invalidation while startup reads the cache prevents fetching or restoring the removed provider', async () => {
+  const cacheRead = deferred()
+  const fixture = startupFixture({ readCache: () => cacheRead.promise })
+  const { api } = fixture
+  const notifications = []
+  const startup = api.startOnlineData('/test', (snapshot) => notifications.push(snapshot))
+  assert.equal(fixture.reads.length, 1)
+  fixture.setCredentials(null)
+  api.invalidateTyphoons(false)
+  assert.equal(notifications.at(-1).typhoonStatus, 'unconfigured')
+  cacheRead.resolve(typhoonFeed(1))
+  const settled = await startup
+  assert.equal(settled.typhoonStatus, 'unconfigured')
+  assert.equal(settled.typhoonConfigured, false)
+  assert.equal(settled.typhoons, null)
+  assert.equal(settled.typhoonError, '')
+  assert.ok(settled.earthquakes)
+  assert.equal(await api.getOnlineData(), settled)
+  assert.deepEqual(fixture.writes, [])
+  assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 0 })
+})
+
+test('an edit during unfinished startup remains pending after the old request and earthquake prefetch settle', async () => {
+  const quake = deferred()
+  const fixture = startupFixture({ deferWeather: true, earthquakeResponse: quake.promise })
+  const { api } = fixture
+  const notifications = []
+  const startup = api.startOnlineData('/test', (snapshot) => notifications.push(snapshot))
+  const oldRequest = await fixture.waitForRequest()
+  const nextCredentials = { apiHost: 'startup-edit.qweatherapi.com', apiKey: 'startup-edit-key-not-a-secret' }
+  fixture.setCredentials(nextCredentials)
+  api.invalidateTyphoons(true)
+  const invalidated = notifications.at(-1)
+  assert.equal(oldRequest.signal.aborted, true)
+  assert.equal(invalidated.typhoonStatus, 'pending')
+  oldRequest.resolve(typhoonFeed(1))
+  const earthquakes = { fetchedAt: 200, events: [] }
+  quake.resolve(earthquakes)
+  const pending = await startup
+  assert.equal(pending.typhoonStatus, 'pending')
+  assert.equal(pending.typhoonConfigured, true)
+  assert.equal(pending.typhoons, null)
+  assert.equal(pending.typhoonError, '')
+  assert.equal(pending.earthquakes, earthquakes)
+  assert.ok(pending.revision > invalidated.revision)
+  assert.equal(await api.getOnlineData(), pending)
+  assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 1 })
+  assert.deepEqual(fixture.writes, [])
+  const fetching = api.ensureTyphoons()
+  const request = await fixture.waitForRequest(1)
+  assert.deepEqual(request.credentials, nextCredentials)
+  request.resolve(fixture.feed)
+  const live = await fetching
+  assert.equal(live.typhoonStatus, 'ready')
+  assert.equal(live.typhoons, fixture.feed)
+  assert.equal(live.earthquakes, earthquakes)
+  assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 2 })
+  assert.deepEqual(fixture.writes, [{ path: typhoonCachePath(nextCredentials.apiHost), value: fixture.feed }])
+})
+
+test('snapshot listeners receive increasing revisions and all status changes without credentials or read notifications', async () => {
+  const fixture = startupFixture({ configured: false, deferWeather: true })
+  const { api } = fixture
+  const notifications = []
+  const listener = (snapshot) => notifications.push({ snapshot, serialized: JSON.stringify(snapshot) })
+  const initial = await api.startOnlineData('/test', listener)
+  assert.equal(notifications.at(-1).snapshot, initial)
+  const previousNotifications = notifications.length
+  fixture.setCredentials(credentials)
+  api.invalidateTyphoons(true)
+  assert.equal(notifications.length, previousNotifications + 1)
+  assert.equal(notifications.at(-1).snapshot.typhoonStatus, 'pending')
+  const fetching = api.ensureTyphoons()
+  assert.equal(notifications.at(-1).snapshot.typhoonStatus, 'loading')
+  const request = await fixture.waitForRequest()
+  request.reject(new Error('offline'))
+  const failed = await fetching
+  assert.equal(notifications.at(-1).snapshot, failed)
+  assert.equal(failed.typhoonStatus, 'error')
+  assert.equal(failed.typhoons, null)
+  assert.equal(failed.typhoonError, 'offline')
+  const failedNotifications = notifications.length
+  assert.equal(await api.ensureTyphoons(), failed)
+  assert.equal(await api.getOnlineData(), failed)
+  await api.getStartupEarthquakes()
+  assert.equal(notifications.length, failedNotifications)
+  const retry = api.ensureTyphoons(true)
+  assert.equal(notifications.at(-1).snapshot.typhoonStatus, 'loading')
+  const retryRequest = await fixture.waitForRequest(1)
+  retryRequest.resolve(fixture.feed)
+  const live = await retry
+  assert.equal(notifications.at(-1).snapshot, live)
+  assert.equal(live.typhoonStatus, 'ready')
+  const editedCredentials = { apiHost: 'listener.qweatherapi.com', apiKey: 'listener-key-not-a-secret' }
+  fixture.setCredentials(editedCredentials)
+  api.invalidateTyphoons(true)
+  const edited = notifications.at(-1).snapshot
+  assert.equal(edited.typhoonStatus, 'pending')
+  assert.equal(edited.typhoons, null)
+  fixture.setCredentials(null)
+  api.invalidateTyphoons(false)
+  const removed = notifications.at(-1).snapshot
+  assert.equal(removed.typhoonStatus, 'unconfigured')
+  assert.equal(await api.getOnlineData(), removed)
+  let revision = 0
+  for (const { snapshot, serialized } of notifications) {
+    assert.ok(Number.isInteger(snapshot.revision) && snapshot.revision > revision)
+    revision = snapshot.revision
+    assert.equal(JSON.stringify(snapshot), serialized)
+    assert.deepEqual(Object.keys(snapshot).sort(), ['revision', 'earthquakes', 'earthquakeError', 'typhoons', 'typhoonError', 'typhoonConfigured', 'typhoonStatus'].sort())
+    assert.equal(serialized.includes(credentials.apiKey), false)
+    assert.equal(serialized.includes(editedCredentials.apiKey), false)
+  }
+  assert.deepEqual(new Set(notifications.map(({ snapshot }) => snapshot.typhoonStatus)), new Set(['unconfigured', 'pending', 'loading', 'ready', 'error']))
+  assert.deepEqual(fixture.counts(), { earthquakes: 1, typhoons: 2 })
 })
 
 test('earthquakes always refresh at startup even when cache is younger than six hours', async () => {

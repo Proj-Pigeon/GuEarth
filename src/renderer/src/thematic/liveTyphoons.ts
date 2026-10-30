@@ -43,7 +43,7 @@ function pointProperties(storm: LiveStorm, point: StormPoint, kind: '实况' | '
   return new Cesium.PropertyBag({
     name: `${storm.name}（${storm.id}）·${kind}`,
     layerId: 'typhoon',
-    summary: `${kind}时间：${formatOnlineTime(point.time)}。${publication}强度：${intensityStyle(point.type).name}（${point.type || 'unknown'}）。风速：${wind}；中心气压：${pressure}。经纬度：${point.longitude}°，${point.latitude}°。状态：${storm.active ? '活跃' : '已结束'}。来源：${source}。抓取时间：${formatOnlineTime(feed.fetchedAt)}。数据状态：${cached ? '更新失败，使用缓存快照' : '本次启动获取的快照'}。${storm.forecastError ? `预报获取异常：${storm.forecastError}` : ''}`,
+    summary: `${kind}时间：${formatOnlineTime(point.time)}。${publication}强度：${intensityStyle(point.type).name}（${point.type || 'unknown'}）。风速：${wind}；中心气压：${pressure}。经纬度：${point.longitude}°，${point.latitude}°。状态：${storm.active ? '活跃' : '已结束'}。来源：${source}。抓取时间：${formatOnlineTime(feed.fetchedAt)}。数据状态：${cached ? '更新失败，使用缓存快照' : '最新获取的快照'}。${storm.forecastError ? `预报获取异常：${storm.forecastError}` : ''}`,
     time: point.time,
     type: point.type,
     windSpeed: point.windSpeed,

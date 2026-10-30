@@ -26,7 +26,7 @@ const keyRequired = computed(() => !editing.value || !provider.value?.configured
 const draft = reactive({ category: 'weather' as const, provider: 'qweather' as const, apiHost: '', apiKey: '' })
 const hostError = ref('')
 const keyError = ref('')
-const restartNotice = '当前启动的数据保持不变，配置将在下次启动时生效'
+const dataNotice = '配置保存后立即生效，在首次使用对应功能时获取数据，无需重启'
 const actionsDisabled = computed(() => busy.value || editorOpen.value || removeOpen.value)
 
 function clearDraft(): void {
@@ -85,7 +85,7 @@ async function saveProvider(): Promise<void> {
     providers.value = await window.guEarth.laboratory.saveProvider(input)
     editorOpen.value = false
     clearDraft()
-    message.success('提供商配置已保存，下次启动时生效')
+    message.success('提供商配置已保存，使用时自动获取数据')
   } catch {
     operationError.value = '保存失败，请检查配置及系统安全存储后重试。'
   } finally {
@@ -107,7 +107,7 @@ async function removeProvider(): Promise<void> {
     providers.value = await window.guEarth.laboratory.removeProvider('qweather')
     removeOpen.value = false
     clearDraft()
-    message.success('提供商配置已移除，下次启动时生效')
+    message.success('提供商配置已移除')
   } catch {
     operationError.value = '移除失败，配置尚未确认移除，请重试。'
   } finally {
@@ -127,7 +127,7 @@ onBeforeUnmount(() => { clearDraft(); emit('busyChange', false) })
   <section class="settings-section" aria-label="实验室设置">
     <h3 class="section-title">实验室</h3>
     <p class="section-desc">体验咕咕地球最新试验性功能</p>
-    <a-alert class="notice" type="info" show-icon :message="restartNotice" />
+    <a-alert class="notice" type="info" show-icon :message="dataNotice" />
     <section class="settings-block" aria-label="数据源">
       <h4 class="block-heading">数据源</h4>
       <p class="data-description">管理外部数据提供商，已配置的数据源将在应用启动时自动更新。</p>
@@ -186,12 +186,11 @@ onBeforeUnmount(() => { clearDraft(); emit('busyChange', false) })
         </a-form-item>
       </a-form>
       <a-alert v-if="operationError" class="form-error" type="error" show-icon :message="operationError" />
-      <a-alert type="info" show-icon :message="restartNotice" />
+      <a-alert type="info" show-icon :message="dataNotice" />
     </a-modal>
     <a-modal :open="removeOpen" title="移除和风天气提供商？" :width="480" :ok-text="operationError ? '重试移除' : '移除'" cancel-text="取消" :confirm-loading="operation === 'remove'" :ok-button-props="{ danger: true, disabled: busy }" :cancel-button-props="{ disabled: busy }" :closable="!busy" :keyboard="!busy" :mask-closable="false" @ok="removeProvider" @cancel="closeDialogs">
-      <p>将移除该提供商配置及其 API Key。</p>
+      <p>将移除该提供商配置及其 API Key，并立即停止使用其在线数据。</p>
       <a-alert v-if="operationError" class="form-error" type="error" show-icon :message="operationError" />
-      <a-alert type="info" show-icon :message="restartNotice" />
     </a-modal>
   </section>
 </template>

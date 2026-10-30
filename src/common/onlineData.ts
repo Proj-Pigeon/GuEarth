@@ -41,11 +41,13 @@ export interface TyphoonFeed {
 }
 
 export interface OnlineDataSnapshot {
+  revision: number
   earthquakes: EarthquakeFeed | null
   earthquakeError: string
   typhoons: TyphoonFeed | null
   typhoonError: string
   typhoonConfigured: boolean
+  typhoonStatus: 'unconfigured' | 'pending' | 'loading' | 'ready' | 'error'
 }
 
 export function normalizeQWeatherHost(value: unknown): string {

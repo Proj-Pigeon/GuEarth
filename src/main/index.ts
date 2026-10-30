@@ -45,7 +45,7 @@ import { poiStatistics, searchPlaces } from './ai/amap'
 import { searchBaiduPlaces } from './ai/baidu'
 import { beginPlacesRequest } from './ai/searchThrottle'
 import { initDatasets, loadProvinceGeometry } from './datasets'
-import { getOnlineData, getStartupEarthquakes, startOnlineData } from './onlineData'
+import { ensureTyphoons, getOnlineData, getStartupEarthquakes, invalidateTyphoons, startOnlineData } from './onlineData'
 import { listLaboratoryProviders, removeLaboratoryProvider, saveLaboratoryProvider } from './laboratory'
 import { initUpdater } from './updater'
 import { initAccount } from './account'
@@ -1002,9 +1002,18 @@ function registerIpcHandlers(): void {
     })
   })
   ipcMain.handle('laboratory:list-providers', () => listLaboratoryProviders())
-  ipcMain.handle('laboratory:save-provider', (_event, input) => saveLaboratoryProvider(input))
-  ipcMain.handle('laboratory:remove-provider', (_event, provider) => removeLaboratoryProvider(provider))
+  ipcMain.handle('laboratory:save-provider', (_event, input) => {
+    const providers = saveLaboratoryProvider(input)
+    invalidateTyphoons(true)
+    return providers
+  })
+  ipcMain.handle('laboratory:remove-provider', (_event, provider) => {
+    const providers = removeLaboratoryProvider(provider)
+    invalidateTyphoons(false)
+    return providers
+  })
   ipcMain.handle('datasets:online-data', () => getOnlineData())
+  ipcMain.handle('datasets:ensure-typhoons', (_event, retry) => ensureTyphoons(retry === true))
   ipcMain.handle('datasets:earthquakes', () => getStartupEarthquakes())
   ipcMain.handle('datasets:provinces', () => loadProvinceGeometry())
   ipcMain.handle('tiles:get', (_event, key: TileKey) => readTile(key))
@@ -1641,7 +1650,11 @@ app.whenReady().then(async () => {
     await clearMirrorProviderTileCaches()
   }
   await applyNetworkProxy()
-  void startOnlineData(userDataPath)
+  void startOnlineData(userDataPath, (snapshot) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('datasets:online-data-changed', snapshot)
+    }
+  })
   const loaded = await Promise.all([
     readAnnotations(),
     readScenes(),

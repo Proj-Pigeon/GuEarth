@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url'
 import { compileScript, parse } from '@vue/compiler-sfc'
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 import { createRenderer, h, nextTick, reactive, shallowRef } from 'vue'
-import { createPinia, setActivePinia } from 'pinia'
+import { createPinia, disposePinia, setActivePinia } from 'pinia'
 import { DataSourceCollection } from 'cesium'
 
 registerHooks({
@@ -32,6 +32,7 @@ registerHooks({
 const { default: StreamingMarkdown } = await import('../src/renderer/src/components/StreamingMarkdown.vue')
 const { useThematicLayers } = await import('../src/renderer/src/composables/useThematicLayers.ts')
 const { useClimateStore } = await import('../src/renderer/src/stores/climate.ts')
+const { useOnlineDataStore } = await import('../src/renderer/src/stores/onlineData.ts')
 
 const renderer = createRenderer({
   createElement: (tag) => ({ tag, children: [] }),
@@ -87,7 +88,11 @@ test('thematic sources clean up across viewer changes, delayed additions and unm
   globalThis.cancelAnimationFrame = () => {}
   globalThis.document = document
   const pendingFeeds = []
-  globalThis.window = { guEarth: { datasets: { getEarthquakes: () => new Promise((resolve) => pendingFeeds.push(resolve)) } } }
+  globalThis.window = { guEarth: { datasets: {
+    getEarthquakes: () => new Promise((resolve) => pendingFeeds.push(resolve)),
+    getOnlineData: async () => ({ revision: 1, earthquakes: null, earthquakeError: '', typhoons: null, typhoonError: '', typhoonConfigured: false, typhoonStatus: 'unconfigured' }),
+    onOnlineData: () => () => {}
+  } } }
   t.after(() => { globalThis.document = originalDocument; globalThis.window = originalWindow; globalThis.cancelAnimationFrame = originalCancel })
   setActivePinia(createPinia())
   const store = useClimateStore()
@@ -119,4 +124,76 @@ test('thematic sources clean up across viewer changes, delayed additions and unm
   assert.equal(second.dataSources.length, 1)
   app.unmount()
   assert.equal(second.dataSources.length, 0)
+})
+
+test('typhoon layers fetch newly configured data on demand and ignore obsolete IPC replies', async (t) => {
+  const originalDocument = globalThis.document
+  const originalWindow = globalThis.window
+  const originalCancel = globalThis.cancelAnimationFrame
+  globalThis.document = { hidden: false, addEventListener() {}, removeEventListener() {} }
+  globalThis.cancelAnimationFrame = () => {}
+  const initial = { revision: 1, earthquakes: null, earthquakeError: '', typhoons: null, typhoonError: '', typhoonConfigured: false, typhoonStatus: 'unconfigured' }
+  let notify
+  let resolveInitial
+  let unsubscribed = false
+  const requests = []
+  globalThis.window = { guEarth: { datasets: {
+    getOnlineData: () => new Promise((resolve) => { resolveInitial = resolve }),
+    onOnlineData: (listener) => { notify = listener; return () => { unsubscribed = true } },
+    ensureTyphoons: () => new Promise((resolve) => requests.push(resolve))
+  } } }
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const climate = useClimateStore()
+  const online = useOnlineDataStore()
+  const current = { isDestroyed: () => false, scene: { requestRender() {} }, camera: { flyTo() {} }, dataSources: new DataSourceCollection() }
+  const app = renderer.createApp({ setup() { useThematicLayers(shallowRef(current)); return () => h('div') } })
+  t.after(() => {
+    app.unmount()
+    disposePinia(pinia)
+    globalThis.document = originalDocument
+    globalThis.window = originalWindow
+    globalThis.cancelAnimationFrame = originalCancel
+    assert.equal(unsubscribed, true)
+  })
+  app.mount({ children: [] })
+  const pending = { ...initial, revision: 2, typhoonConfigured: true, typhoonStatus: 'pending' }
+  notify(pending)
+  resolveInitial(initial)
+  await online.load()
+  assert.equal(online.snapshot, pending)
+  assert.equal(requests.length, 0)
+  climate.setOverlay('typhoon', true)
+  await nextTick()
+  await nextTick()
+  assert.equal(requests.length, 1)
+  const loading = { ...pending, revision: 3, typhoonStatus: 'loading' }
+  notify(loading)
+  const point = { time: '2026-10-30T00:00:00Z', longitude: 129, latitude: 20, type: 'TY', pressure: 970, windSpeed: 35 }
+  const feed = { fetchedAt: 100, sources: [], license: [], storms: [{ id: 'NP_TEST', name: 'test', active: true, now: point, track: [], forecast: [], forecastError: '' }] }
+  const live = { ...pending, revision: 4, typhoonStatus: 'ready', typhoons: feed }
+  notify(live)
+  requests[0](loading)
+  await nextTick()
+  await nextTick()
+  assert.equal(online.snapshot, live)
+  const source = current.dataSources.getByName('typhoon')[0]
+  assert.equal(source.entities.values.filter((entity) => entity.label).length, 1)
+  online.setTyphoonMode('history')
+  await nextTick()
+  online.setTyphoonMode('live')
+  await nextTick()
+  assert.equal(requests.length, 1)
+  notify({ ...pending, revision: 5 })
+  await nextTick()
+  await nextTick()
+  assert.equal(requests.length, 2)
+  const removed = { ...initial, revision: 7 }
+  notify(removed)
+  requests[1]({ ...live, revision: 6 })
+  await nextTick()
+  await nextTick()
+  assert.equal(online.snapshot, removed)
+  assert.equal(source.entities.values.some((entity) => entity.properties?.cached), false)
+  assert.equal(requests.length, 2)
 })
