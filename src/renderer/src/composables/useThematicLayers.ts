@@ -773,7 +773,11 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
       return
     }
     if (sources.get('plate-tectonics') !== dataSource) return
-    failureStore.clearFailure('dataset')
+    if (feed.stale) {
+      failureStore.reportFailure({ scope: 'dataset', message: '地震数据刷新失败，当前显示缓存数据', detail: '在线地震数据获取失败，请检查网络后点击重试，重试成功后将更新为最新数据', retryable: true })
+    } else {
+      failureStore.clearFailure('dataset')
+    }
     renderEarthquakeFeed(dataSource, feed)
   }
 

@@ -170,6 +170,52 @@ test('earthquake failures stay retryable and retry refreshes the feed', async (t
   assert.equal(source.entities.values.filter((entity) => entity.id.startsWith('earthquake-')).length, 1)
 })
 
+test('stale earthquake cache keeps a retryable failure until a fresh feed arrives', async (t) => {
+  const originalDocument = globalThis.document
+  const originalWindow = globalThis.window
+  const originalCancel = globalThis.cancelAnimationFrame
+  globalThis.document = { hidden: false, addEventListener() {}, removeEventListener() {} }
+  globalThis.cancelAnimationFrame = () => {}
+  const refreshRequests = []
+  globalThis.window = { guEarth: { datasets: {
+    getEarthquakes: (refresh = false) => {
+      refreshRequests.push(refresh)
+      if (!refresh) {
+        return Promise.resolve({ fetchedAt: 1, stale: true, events: [{ longitude: 120, latitude: 30, magnitude: 5, depthKm: 10, place: 'cached', time: 1 }] })
+      }
+      return Promise.resolve({ fetchedAt: 2, events: [{ longitude: 121, latitude: 31, magnitude: 6, depthKm: 10, place: 'fresh', time: 2 }] })
+    },
+    getOnlineData: async () => ({ revision: 1, earthquakes: null, earthquakeError: '', typhoons: null, typhoonError: '', typhoonConfigured: false, typhoonStatus: 'unconfigured' }),
+    onOnlineData: () => () => {}
+  } } }
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const store = useClimateStore()
+  const failure = useFailureStore()
+  store.setOverlay('plate-tectonics', true)
+  const current = { isDestroyed: () => false, scene: { requestRender() {} }, camera: { flyTo() {} }, dataSources: new DataSourceCollection() }
+  const app = renderer.createApp({ setup() { useThematicLayers(shallowRef(current)); return () => h('div') } })
+  t.after(() => {
+    app.unmount()
+    disposePinia(pinia)
+    globalThis.document = originalDocument
+    globalThis.window = originalWindow
+    globalThis.cancelAnimationFrame = originalCancel
+  })
+  app.mount({ children: [] })
+  await nextTick()
+  await nextTick()
+  assert.equal(failure.notices.dataset?.retryable, true)
+  assert.match(failure.notices.dataset?.message ?? '', /缓存/)
+  const source = current.dataSources.getByName('plate-tectonics')[0]
+  assert.equal(source.entities.values.filter((entity) => entity.id.startsWith('earthquake-')).length, 1)
+  await failure.retry('dataset')
+  await nextTick()
+  assert.deepEqual(refreshRequests, [false, true])
+  assert.equal(failure.notices.dataset, undefined)
+  assert.equal(source.entities.values.filter((entity) => entity.id.startsWith('earthquake-')).length, 1)
+})
+
 test('typhoon layers fetch newly configured data on demand and ignore obsolete IPC replies', async (t) => {
   const originalDocument = globalThis.document
   const originalWindow = globalThis.window
