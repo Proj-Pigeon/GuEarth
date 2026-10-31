@@ -1,12 +1,12 @@
-import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { net } from 'electron'
 import type { EarthquakeFeed, ProvinceFeature, ProvinceGeoDocument } from '../preload'
 import { gcj02ToWgs84 } from './geo/gcj02'
+import { writeJson } from './jsonStore'
 import provincesAssetPath from '../../resources/geo/china-provinces.geojson?asset'
 
 const EARTHQUAKE_FEED_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_month.geojson'
-const CACHE_TTL_MS = 6 * 3600 * 1000
 const FETCH_TIMEOUT_MS = 15000
 
 let earthquakesPath = ''
@@ -42,7 +42,7 @@ function readCachedFeed(): EarthquakeFeed | null {
 }
 
 function parseFeed(json: unknown): EarthquakeFeed['events'] {
-  if (!isRecord(json) || !Array.isArray(json.features)) return []
+  if (!isRecord(json) || !Array.isArray(json.features)) throw new Error('USGS response is invalid')
   const events: EarthquakeFeed['events'] = []
   for (const feature of json.features) {
     if (!isRecord(feature)) continue
@@ -76,15 +76,16 @@ async function fetchFeed(): Promise<EarthquakeFeed['events']> {
 
 export async function loadEarthquakeFeed(): Promise<EarthquakeFeed> {
   const cached = readCachedFeed()
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) return cached
+  let feed: EarthquakeFeed
   try {
-    const feed: EarthquakeFeed = { fetchedAt: Date.now(), events: await fetchFeed() }
-    writeFileSync(earthquakesPath, JSON.stringify(feed), 'utf8')
-    return feed
-  } catch (error) {
-    if (cached) return cached
-    throw error instanceof Error ? error : new Error('USGS request failed')
+    const events = await fetchFeed()
+    feed = { fetchedAt: Date.now(), events }
+  } catch {
+    if (cached) return { ...cached, stale: true }
+    throw new Error('USGS 地震数据获取失败，请检查网络后重新启动')
   }
+  await writeJson(earthquakesPath, feed).catch(() => undefined)
+  return feed
 }
 
 function toLatLngPair(value: unknown): [number, number] | null {

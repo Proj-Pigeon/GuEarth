@@ -16,6 +16,8 @@ import { nearestBoundary, plateBoundaries, plateBoundaryKindName } from '@render
 import { volcanoes } from '@renderer/thematic/volcanoes'
 import { temperatureZoneBands, temperatureZoneLines } from '@renderer/thematic/temperatureZones'
 import { typhoonIntensityStyles, typhoonTracks } from '@renderer/thematic/typhoonTracks'
+import { buildLiveTyphoons } from '@renderer/thematic/liveTyphoons'
+import { useOnlineDataStore } from '@renderer/stores/onlineData'
 import { ensoAnomalyColor, ensoPhaseMeta } from '@renderer/thematic/ensoPhases'
 import { subsolarPointDeg } from '@renderer/thematic/solarMath'
 import { densityColor, densityOf, fanMigrationEndpoints, huLineEndpoints, huLineFacts, huLinePath, migrationFacts, migrationFlows, provincePopulation, provinceSummary, smoothMigrationPath } from '@renderer/thematic/populationCensus'
@@ -315,6 +317,8 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   const transportStore = useTransportStore()
   const failureStore = useFailureStore()
   const globeStore = useGlobeStore()
+  const onlineData = useOnlineDataStore()
+  void onlineData.load()
   const autoFocus = options?.autoFocus !== false
   const sources = new Map<ThematicLayerId, Cesium.CustomDataSource>()
   const coriolisProgress = ref(0)
@@ -729,18 +733,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
     return `${event.place}发生 M${event.magnitude} 地震，震源深度约 ${event.depthKm} 千米。${boundaryNote}地震是地壳应力积累超过岩层强度后快速释放能量并以地震波传播的结果，全球地震大多分布于板块边界及其附近。`
   }
 
-  async function addEarthquakeEntities(dataSource: Cesium.CustomDataSource): Promise<void> {
-    let feed: EarthquakeFeed
-    try {
-      feed = await window.guEarth.datasets.getEarthquakes()
-    } catch {
-      if (sources.get('plate-tectonics') === dataSource) {
-        failureStore.reportFailure({ scope: 'dataset', message: '近期地震数据获取失败，本次仅显示板块边界与火山', detail: '网络恢复后点击重试即可补上地震点', retryable: true })
-      }
-      return
-    }
-    if (sources.get('plate-tectonics') !== dataSource) return
-    failureStore.clearFailure('dataset')
+  function renderEarthquakeFeed(dataSource: Cesium.CustomDataSource, feed: EarthquakeFeed): void {
     buildEntities(dataSource, () => {
       for (const entity of [...dataSource.entities.values]) {
         if (entity.id.startsWith('earthquake-')) dataSource.entities.remove(entity)
@@ -767,6 +760,29 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
       }
     })
     viewer.value?.scene.requestRender()
+  }
+
+  async function loadEarthquakeEntities(dataSource: Cesium.CustomDataSource, refresh = false): Promise<void> {
+    let feed: EarthquakeFeed
+    try {
+      feed = await window.guEarth.datasets.getEarthquakes(refresh)
+    } catch {
+      if (sources.get('plate-tectonics') === dataSource) {
+        failureStore.reportFailure({ scope: 'dataset', message: '近期地震数据获取失败，本次仅显示板块边界与火山', detail: '在线地震数据获取失败，请检查网络后点击重试', retryable: true })
+      }
+      return
+    }
+    if (sources.get('plate-tectonics') !== dataSource) return
+    if (feed.stale) {
+      failureStore.reportFailure({ scope: 'dataset', message: '地震数据刷新失败，当前显示缓存数据', detail: '在线地震数据获取失败，请检查网络后点击重试，重试成功后将更新为最新数据', retryable: true })
+    } else {
+      failureStore.clearFailure('dataset')
+    }
+    renderEarthquakeFeed(dataSource, feed)
+  }
+
+  function addEarthquakeEntities(dataSource: Cesium.CustomDataSource): void {
+    void loadEarthquakeEntities(dataSource)
   }
 
   function buildPlateTectonics(dataSource: Cesium.CustomDataSource): void {
@@ -933,6 +949,12 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   }
 
   function buildTyphoon(dataSource: Cesium.CustomDataSource): void {
+    const snapshot = onlineData.snapshot
+    if (snapshot?.typhoonConfigured !== false && onlineData.typhoonMode === 'live') {
+      if (snapshot?.typhoonStatus === 'pending') void onlineData.ensureTyphoons()
+      if (snapshot?.typhoons) buildLiveTyphoons(dataSource, snapshot.typhoons, Boolean(snapshot.typhoonError))
+      return
+    }
     dataSource.entities.add({
       properties: new Cesium.PropertyBag({
         name: '台风（热带气旋）结构锚点',
@@ -1649,6 +1671,16 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   }
 
   watch(() => store.overlays, syncOverlays, { deep: true })
+  watch([() => onlineData.snapshot, () => onlineData.typhoonMode], () => {
+    const current = viewer.value
+    const source = sources.get('typhoon')
+    if (!current || current.isDestroyed() || !source) return
+    buildEntities(source, () => {
+      source.entities.removeAll()
+      buildTyphoon(source)
+    })
+    current.scene.requestRender()
+  })
   watch(() => store.ensoPhase, () => {
     const current = viewer.value
     const source = sources.get('enso')
@@ -1659,20 +1691,20 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
     })
     current.scene.requestRender()
   })
-  failureStore.registerRetry('dataset', async () => {
-    const dataSource = sources.get('plate-tectonics')
-    if (!dataSource) {
-      failureStore.clearFailure('dataset')
-      return
-    }
-    await addEarthquakeEntities(dataSource)
-  })
   failureStore.registerRetry('sea-level-terrain', async () => {
     if (!sources.get('sea-level-rise')) {
       failureStore.clearFailure('sea-level-terrain')
       return
     }
     rebuildSeaLevelRise()
+  })
+  failureStore.registerRetry('dataset', async () => {
+    const source = sources.get('plate-tectonics')
+    if (!source) {
+      failureStore.clearFailure('dataset')
+      return
+    }
+    await loadEarthquakeEntities(source, true)
   })
   watch(() => Math.round(store.month * 4) / 4, refreshPressureBeltGeometry)
   function requestRender(): void {

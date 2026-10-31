@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { ControlOutlined, GlobalOutlined, InfoCircleOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { ref } from 'vue'
+import { ControlOutlined, ExperimentOutlined, GlobalOutlined, InfoCircleOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { useSettingsWindowStore, type SettingsSection } from '@renderer/stores/settingsWindow'
 import AccountSettings from './settings/AccountSettings.vue'
 import GeneralSettings from './settings/GeneralSettings.vue'
 import MapSettings from './settings/MapSettings.vue'
 import AiSettingsSection from './settings/AiSettingsSection.vue'
+import LaboratorySettings from './settings/LaboratorySettings.vue'
 import AboutSettings from './settings/AboutSettings.vue'
 
 const emit = defineEmits<{ restartGuide: [] }>()
 const settingsWindow = useSettingsWindowStore()
+const laboratoryBusy = ref(false)
 
 interface NavItem {
   id: SettingsSection
@@ -31,7 +34,13 @@ const navGroups: NavGroup[] = [
     ]
   },
   { caption: 'EOQ 助手', items: [{ id: 'ai', label: 'AI', icon: RobotOutlined }] },
-  { caption: '系统', items: [{ id: 'about', label: '关于', icon: InfoCircleOutlined }] }
+  {
+    caption: '系统',
+    items: [
+      { id: 'laboratory', label: '实验室', icon: ExperimentOutlined },
+      { id: 'about', label: '关于', icon: InfoCircleOutlined }
+    ]
+  }
 ]
 </script>
 
@@ -42,9 +51,12 @@ const navGroups: NavGroup[] = [
     :width="960"
     centered
     :footer="null"
+    :closable="!laboratoryBusy"
+    :mask-closable="!laboratoryBusy"
+    :keyboard="!laboratoryBusy"
     wrap-class-name="settings-modal"
     :body-style="{ padding: '0', display: 'flex', overflow: 'hidden', height: 'min(680px, calc(100vh - 120px))' }"
-    @cancel="settingsWindow.close()"
+    @cancel="!laboratoryBusy && settingsWindow.close()"
   >
     <template v-if="settingsWindow.isOpen">
       <nav class="settings-nav" aria-label="设置分区">
@@ -56,6 +68,7 @@ const navGroups: NavGroup[] = [
             type="button"
             :class="['nav-item', { selected: settingsWindow.activeSection === item.id }]"
             :aria-current="settingsWindow.activeSection === item.id ? 'true' : undefined"
+            :disabled="laboratoryBusy"
             @click="settingsWindow.setActiveSection(item.id)"
           >
             <component :is="item.icon" class="nav-item-icon" aria-hidden="true" />
@@ -68,6 +81,7 @@ const navGroups: NavGroup[] = [
         <GeneralSettings v-show="settingsWindow.activeSection === 'general'" @restart-guide="emit('restartGuide')" />
         <MapSettings v-show="settingsWindow.activeSection === 'map'" />
         <AiSettingsSection v-show="settingsWindow.activeSection === 'ai'" :active="settingsWindow.activeSection === 'ai'" />
+        <LaboratorySettings v-show="settingsWindow.activeSection === 'laboratory'" :active="settingsWindow.activeSection === 'laboratory'" @busy-change="laboratoryBusy = $event" />
         <AboutSettings v-show="settingsWindow.activeSection === 'about'" />
       </div>
     </template>
@@ -135,6 +149,13 @@ const navGroups: NavGroup[] = [
 .nav-item.selected:hover {
   background: #1677ff;
   color: #ffffff;
+}
+
+.nav-item:disabled,
+.nav-item:disabled:hover {
+  background: transparent;
+  color: rgba(0, 0, 0, 0.25);
+  cursor: not-allowed;
 }
 
 .nav-item:focus-visible {

@@ -12,6 +12,7 @@ import { useDrawingStore, type DrawnShape, type DrawTool } from '@renderer/store
 import { useAiStore } from '@renderer/stores/ai'
 import { useUpdaterStore } from '@renderer/stores/updater'
 import { useAccountStore } from '@renderer/stores/account'
+import { useOnlineDataStore } from '@renderer/stores/onlineData'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import { useScenesStore } from '@renderer/stores/scenes'
 import { thematicLayerCatalog, useClimateStore } from '@renderer/stores/climate'
@@ -134,6 +135,7 @@ const { activeTool, shapes, entries, selectedShapeId, saveError } = storeToRefs(
 const aiStore = useAiStore()
 const updaterStore = useUpdaterStore()
 const accountStore = useAccountStore()
+const onlineData = useOnlineDataStore()
 const failureStore = useFailureStore()
 const scenesStore = useScenesStore()
 const isScenesPanelOpen = ref(false)
@@ -147,9 +149,9 @@ const isAnnotationPanelOpen = ref(false)
 const systemFonts = ref(['Arial', 'Segoe UI', 'Microsoft YaHei'])
 const selectedShape = computed(() => shapes.value.find((shape) => shape.id === selectedShapeId.value) ?? null)
 const levelSwitcherVisible = computed(() => isGlobeReady.value && camera.value.height < 5000000)
-const showGlobeLoading = computed(() => !isGlobeReady.value)
-const globeLoadingText = computed(() => globeError.value ? '地图尚未显示，请检查网络或重试' : globeLoadTimedOut.value ? '地图加载较慢，请检查网络' : '正在加载地图…')
-const globeLoadingRetryable = computed(() => globeLoadTimedOut.value || Boolean(globeError.value))
+const showGlobeLoading = computed(() => !isGlobeReady.value || onlineData.loading)
+const globeLoadingText = computed(() => onlineData.loading ? '正在拉取在线数据…' : globeError.value ? '地图尚未显示，请检查网络或重试' : globeLoadTimedOut.value ? '地图加载较慢，请检查网络' : '正在加载地图…')
+const globeLoadingRetryable = computed(() => !onlineData.loading && (globeLoadTimedOut.value || Boolean(globeError.value)))
 const isLabOpen = ref(false)
 const nightBasemapActive = computed(() => hidesThematicLayers(store.selectedLayerId))
 const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || environmentStore.panel !== null || decisionStore.panel !== null || zonationStore.panel !== null || activeTool.value === 'timezone')
@@ -1063,6 +1065,7 @@ aiStore.registerTool({
 })
 
 onMounted(async () => {
+  void onlineData.load()
   void updaterStore.hydrate()
   void scenesStore.hydrate()
   void accountStore.hydrate()
@@ -1239,8 +1242,9 @@ function deleteSelectedShape(): void {
       />
       <div v-if="showGlobeLoading" class="globe-loading">
         <a-spin :spinning="!globeLoadTimedOut && !globeError" size="small" />
-        <span class="globe-loading-text">{{ globeLoadingText }}</span>
-        <span v-if="globeLoadStage" class="globe-loading-stage">{{ globeLoadStage }}</span>
+        <span class="globe-loading-text" role="status">{{ globeLoadingText }}</span>
+        <span v-if="onlineData.loading" class="globe-loading-stage">正在预取地震及已配置的台风数据，完成后使用本次启动的数据</span>
+        <span v-else-if="globeLoadStage" class="globe-loading-stage">{{ globeLoadStage }}</span>
         <span v-if="globeLoadingRetryable" class="globe-loading-stage">影像源持续无法加载时，可在「设置 → 地图」将高德镜像瓦片源切换为「开启」</span>
         <a-button v-if="globeLoadingRetryable" type="text" size="small" @click="handleRetry"><ReloadOutlined />重试</a-button>
       </div>
@@ -1248,7 +1252,7 @@ function deleteSelectedShape(): void {
       <CrashDialog />
       <WindParticles v-if="thematicOverlays['wind-particles']" :viewer="viewer" />
       <FrontalCyclone v-if="thematicOverlays['frontal-cyclone']" :viewer="viewer" />
-      <TyphoonOverlay v-if="thematicOverlays['typhoon']" :viewer="viewer" />
+      <TyphoonOverlay v-if="thematicOverlays['typhoon'] && (onlineData.snapshot?.typhoonConfigured === false || onlineData.typhoonMode === 'history')" :viewer="viewer" />
       <WalkerCirculationOverlay v-if="thematicOverlays['enso']" :viewer="viewer" :phase="climateStore.ensoPhase" />
       <HuLineOverlay v-if="thematicOverlays['hu-line']" :viewer="viewer" />
       <template v-if="!scenesStore.isPresenting">
@@ -1315,7 +1319,7 @@ function deleteSelectedShape(): void {
       <CameraStatus :camera="camera" />
       <EoqAssistant />
       <SettingsModal @restart-guide="handleRestartGuide" />
-      <FirstUseGuide ref="firstUseGuide" :ready="isGlobeReady" @step-change="handleSetupGuideStepChange" />
+      <FirstUseGuide ref="firstUseGuide" :ready="isGlobeReady && !onlineData.loading" @step-change="handleSetupGuideStepChange" />
       <UpdateDialog />
       <AnnotationPanel
         :open="isAnnotationPanelOpen"
