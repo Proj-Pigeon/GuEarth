@@ -1,54 +1,43 @@
 <h1 align="center"><img src="build/icon.png" alt="GuEarth logo" width="40" height="40" /> 咕咕地球 GuEarth</h1>
 
 <p align="center">
-  一颗装进课堂的数字地球，让学生把地理"转"起来看
+  “下一代由 AI 赋能的三维地球，为中国校园教学场景设计”
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-0.1.15%20early-f4f4f5?style=flat-square&labelColor=18181b" alt="0.1.15 early">
+  <img src="https://img.shields.io/badge/status-0.1.16%20early-f4f4f5?style=flat-square&labelColor=18181b" alt="0.1.16 early">
   <img src="https://img.shields.io/badge/platform-Windows%20x64-f4f4f5?style=flat-square&labelColor=18181b" alt="Windows x64">
   <img src="https://img.shields.io/badge/license-Apache--2.0-f4f4f5?style=flat-square&labelColor=18181b" alt="Apache-2.0">
 </p>
 
-GuEarth 是一个仍在早期开发中的桌面数字地球，面向地理教学。它把真实影像和地形装进一个本地运行的 3D 地球，配合教学工具、主题模块和 AI 助手，让晨昏线、气压带、河流地貌这些"讲不动的"内容动起来。
+## 特性
 
-## 你可以用 GuEarth 做什么
+- 🌍 **多数据源 3D 地球** : 得益于互联网上各类开放数据，通过结合多源数据，我们可渲染出高精度的数字地球；
+- 🤖 **EOQ 智能助手** : 自研 Agent Harness 框架，通过内置工具/知识库和互联网工具，让 AI 帮你做帮你说；
+- 🧪 **地理实验室** : 通过内置的地理实验室，深度结合中国高中地理课程课本要求，通过实时数据实现地理数据可视化和分析；
+- 🖼️ **教学场景** : 通过内置的教学场景工具，无论是人类还是 AI，都可以快速创建微课内容，助力 AI 教育赋能；
+- 🎨 **丰富的标注工具** : 软件内置点线面、文本、箭头等地图标记工具，支持文件夹保存整理、AI 帮记等功能。
 
-### 把地球当作讲台
+## 安装与使用
 
-- 在本地流畅浏览 3D 地球，自由切换 OSM、Mapbox、ArcGIS 等多种影像底图，并按需叠加地形；境外影像源加载不顺时自动回退到高德镜像底图（本地完成 GCJ-02 坐标纠偏），镜像也可在设置里选择自动、常开或关闭；
-- 输入地名即可定位飞行，也可以直接对地球拾取查询高程；
-- 瓦片缓存在本机，讲过的区域下一次加载更快。
+咕咕地球目前支持在 `Windows x64` 和 `macOS(Apple Silicon)` 平台运行，`Linux` 和 国产操作系统 平台理论上支持运行，但兼容性未经测试。
 
-### 上课时随手标注、随手量
+在 [GitHub Release](https://github.com/Proj-Pigeon/GuEarth/releases) 页面中可以下载最新的安装包。您也可以前往[官网](https://www.project-pigeon.com/docs#%E4%B8%8B%E8%BD%BD)获取以往版本的国内网盘下载链接/直链。
 
-- 在地球上画点、线、面，量距离、量面积，写文字标注，重启后都还在；
-- 内置配套人教版的主题模块：自然地理（选择性必修一）——地球运动（晨昏线、太阳视运动、黄赤交角）、大气（气压带风带、热力环流、锋面气旋、台风）、地貌（板块边界、河流地貌、喀斯特等实景飞行）、海洋（厄尔尼诺与拉尼娜、水循环、洋流与潮汐）；
-- 人文地理（必修二）——人口分布与迁移（省级人口 choropleth、胡焕庸线、迁移流动弧线）、城市与聚落（城市等级、功能分区、中心地 POI 验证、全球夜光底图）、工农业区位（商品粮基地、工业基地、产业转移）、交通运输（高铁网 2008–2025 逐年生长时间轴）、环境与发展（海平面上升沿海淹没模拟）；
-- 区位决策沙盘：真实选址案例 + 因素权重调节 + AI 按高考评分结构点评，配套苏格拉底追问式 AI 引导；
-- 配套图表和剖面面板——昼长、正午太阳高度、海陆温度盐度剖面、人口年龄结构、高铁里程增长、真实地形高程剖面——随讲随看。
+## 文档
 
-### 让 AI 助手陪你讲
+您可以在 **鸽巢计划官网** 查阅相关文档：
 
-- EOQ 智能体随聊天操作地球：飞行定位、查询地形、叠加图层、讲解地貌，都能由模型直接驱动；
-- 也能问人文地理：查人口与普查数据、用真实 POI 统计验证城市等级与中心地理论、结合区位条件分析工农业主导因素；还可以开启苏格拉底模式，一步步引导而不是直接给答案；
-- 输入 `/` 呼出快捷命令，一句话开新对话、找回历史、压缩超长对话；发错的问题可以悬停修改重发，AI 的回答也能一键重新生成；
-- 演示时直接吩咐 AI：打开晨昏线、热力环流等教学面板，切换道路 / 卫星 / 地形底图，调整地形起伏，全程动口不动手；
-- 支持DeepSeek、Qwen 等 OpenAI 兼容的模型服务，配置好 API Key 就能用；
-- 模型的回答边生成边显示，讲到哪飞到哪；联网搜索的来源以紧凑列表呈现，回答可一键复制或重新生成。
+- [软件介绍](https://www.project-pigeon.com/docs/what-is-guearth)
+- [配置供应商](https://www.project-pigeon.com/docs/configuration)
 
-### 把课录成视频
+## Star History
 
-- 让 AI 把一段讲解排成 3–8 幕微课，后台自动渲染成 1080p / 30 帧的 MP4，窗口被遮挡也不影响画质；
-- 录制前预热各幕画面、选择底图精细度，当前底图、专题图层、海平面情景、高铁年份与旁白字幕都会进入成片。
+[![Star History Chart](https://api.star-history.com/chart?repos=proj-pigeon/guearth&type=date&legend=bottom-right)](https://www.star-history.com/?repos=proj-pigeon%2Fguearth&type=date&legend=bottom-right)
 
-## 本地优先
+## 支持
 
-- 咕咕地球不提供同步或云服务器；标注、设置和 AI 配置都保存在当前电脑上；
-- 设置里可以选择用鸽巢通行证登录，登录凭据加密保存在本机，仅用于账户登录，不登录也能使用全部功能；
-- **地图影像、地形与地名数据来自你配置的地图服务提供商，聊天内容会发送到你配置的模型服务提供商**，这些数据由相应供应商处理；
-- 应用发生错误或崩溃时，错误日志（含堆栈信息）会通过 Sentry 上传，用于定位和修复问题；除此之外，咕咕地球不会上传你的任何使用数据。
+鸽巢计划是一个为爱发电的学生组织，咕咕地球本体为开源项目，无任何收入来源，无闭园计划。**如果本项目对您的学习、教授有所帮助，欢迎通过以下渠道支持该项目的开发。**
 
-## 开源许可
-
-本项目基于 [Apache-2.0](LICENSE) 许可证开源。
+- [GitHub Sponsor](https://github.com/sponsors/Nexaorion) (Nexaorion名义代收)
+- [面包多](https://mbd.pub/o/bread/YZaWk59rag==)

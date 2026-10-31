@@ -1,6 +1,6 @@
 {
   "name": "guearth",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "private": true,
   "license": "Apache-2.0",
   "main": "./out/main/index.js",
