@@ -36,8 +36,10 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 - The bundled FFmpeg is a sha256-pinned LGPLv3 build (KarinJS/FFmpeg-Builds v8.1.3):
   `win32-x64-lgpl` (`resources/bin/ffmpeg.exe`), plus `linux-x64-lgpl` and `linux-arm64-lgpl`
   (`resources/bin/<arch>/ffmpeg` for packaging, and `resources/bin/ffmpeg` for the host dev
-  tree). `npm run fetch:ffmpeg` provisions the host build; `npm run build:linux` fetches both
-  Linux architectures (`npm run build:win` still fetches the Windows build). Recording encodes
+  tree). `npm run fetch:ffmpeg` provisions that host build on Windows and Linux only; there is
+  no macOS binary, and macOS recording uses the separate WebCodecs encoder in
+  `src/main/offscreenMac.ts`. `npm run build:linux` fetches both Linux architectures
+  (`npm run build:win` still fetches the Windows build). Recording on Windows and Linux encodes
   with built-in `libopenh264` (`-c:v libopenh264 -profile:v high -b:v 2M`). Do not reintroduce
   `@ffmpeg-installer` — a GPLv3 x264 build that also shipped an npm token in its package.
 
@@ -93,7 +95,7 @@ Teaching modules (人教版高中地理 mapping; thematic layers live in `src/re
 ```bash
 npm run dev        # electron-vite dev server + app
 npm run build      # production build
-npm run fetch:ffmpeg   # pinned LGPL FFmpeg for the host OS into resources/bin
+npm run fetch:ffmpeg   # pinned LGPL FFmpeg for Windows or Linux into resources/bin
 npm run build:linux    # AppImage + deb for Linux x64 and arm64
 npm run typecheck  # tsc (node) + vue-tsc (web)
 npm test           # node:test unit tests (tests/*.test.mjs), run by CI

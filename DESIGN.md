@@ -291,7 +291,8 @@ System font stack, 14px base, weights 400 and 600 only. No italics, no thin weig
 
 ```
 fontFamily.base = -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-                  'Noto Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif
+                  'Noto Sans', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC',
+                  'Noto Sans SC', 'WenQuanYi Micro Hei', sans-serif
 fontFamily.mono = 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace
 ```
 

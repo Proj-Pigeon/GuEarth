@@ -92,6 +92,12 @@ import FailureBanner from '@renderer/components/FailureBanner.vue'
 import CrashDialog from '@renderer/components/CrashDialog.vue'
 import FirstUseGuide from '@renderer/components/FirstUseGuide.vue'
 
+const antdTheme = {
+  token: {
+    fontFamily: "-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', sans-serif"
+  }
+}
+
 const store = useGlobeStore()
 const {
   isLayerPanelOpen,
@@ -1232,7 +1238,7 @@ function deleteSelectedShape(): void {
 </script>
 
 <template>
-  <a-config-provider :locale="zhCN">
+  <a-config-provider :locale="zhCN" :theme="antdTheme">
     <div class="app">
       <div ref="globeContainer" class="globe" :class="{ drawing: activeTool }"></div>
       <InlineTextEditor

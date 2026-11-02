@@ -4,7 +4,7 @@
   "private": true,
   "description": "面向地理教学的三维数字地球",
   "homepage": "https://github.com/Proj-Pigeon/GuEarth",
-  "desktopName": "io.github.hikaruqwq.guearth.desktop",
+  "desktopName": "io.project.pigeon.guearth.desktop",
   "license": "Apache-2.0",
   "main": "./out/main/index.js",
   "scripts": {
