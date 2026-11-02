@@ -32,7 +32,7 @@ export const diagramColors = {
   moon: '#595959'
 } as const
 
-export const diagramFont = "'Microsoft YaHei', 'PingFang SC', sans-serif"
+export const diagramFont = "'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', sans-serif"
 
 export const diagramFontSize = {
   label: 11,

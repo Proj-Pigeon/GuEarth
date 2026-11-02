@@ -14,9 +14,12 @@ import {
   assertArchiveSource,
   defaultBinaryPath,
   fetchFfmpeg,
+  FFMPEG_BUILDS,
+  hostFfmpegBuild,
   isApprovedArchiveRedirectUrl,
   isApprovedArchiveUrl,
   matchesPinnedArchivePath,
+  packagedBinaryPath,
   sha256Text,
   verifyFile,
   verifyFfmpegBinary
@@ -38,10 +41,16 @@ function restoreEnv(key, value) {
 }
 
 test('the pinned ffmpeg build hashes and sizes are well formed', () => {
-  assert.match(FFMPEG_BUILD.archiveSha256, /^[0-9a-f]{64}$/)
-  assert.match(FFMPEG_BUILD.binarySha256, /^[0-9a-f]{64}$/)
-  assert.ok(FFMPEG_BUILD.archiveBytes > 100 * 1024 * 1024)
-  assert.ok(FFMPEG_BUILD.binaryBytes > 100 * 1024 * 1024)
+  for (const build of Object.values(FFMPEG_BUILDS)) {
+    assert.match(build.archiveSha256, /^[0-9a-f]{64}$/, build.archiveName)
+    assert.match(build.binarySha256, /^[0-9a-f]{64}$/, build.archiveName)
+    assert.ok(build.archiveBytes > 100 * 1024 * 1024, build.archiveName)
+    assert.ok(build.binaryBytes > 100 * 1024 * 1024, build.archiveName)
+    assert.equal(build.version, '8.1.3')
+  }
+  assert.equal(FFMPEG_BUILDS['linux-x64'].binaryName, 'ffmpeg')
+  assert.equal(FFMPEG_BUILDS['linux-arm64'].binaryName, 'ffmpeg')
+  assert.equal(FFMPEG_BUILD.binaryName, 'ffmpeg.exe')
   assert.equal(sha256Text('abc'), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
 })
 
@@ -50,7 +59,7 @@ test('ffmpeg fetch prefers the configured override then the pinned mirrors', () 
   assert.equal(pinned.length, 2)
   assert.match(pinned[0], /^https:\/\/registry\.npmmirror\.com\//)
   assert.match(pinned[1], /^https:\/\/github\.com\/KarinJS\/FFmpeg-Builds\//)
-  for (const url of pinned) assert.ok(url.endsWith(`v8.1.3/${FFMPEG_BUILD.archiveName}`))
+  for (const url of pinned) assert.ok(url.endsWith(`v8.1.3/${hostFfmpegBuild().archiveName}`))
   const override = `https://github.com/KarinJS/FFmpeg-Builds/releases/download/v8.1.3/${FFMPEG_BUILD.archiveName}`
   const overridden = archiveSources(override)
   assert.equal(overridden[0], override)
@@ -205,7 +214,12 @@ test('binary verification reports matching and mismatching payloads', async () =
 })
 
 test('the encoder target lives in resources/bin and missing binaries are reported', async () => {
-  assert.equal(defaultBinaryPath(repoRoot), join(repoRoot, 'resources', 'bin', 'ffmpeg.exe'))
+  const hostName = process.platform === 'linux' ? 'ffmpeg' : 'ffmpeg.exe'
+  assert.equal(defaultBinaryPath(repoRoot), join(repoRoot, 'resources', 'bin', hostName))
+  assert.equal(defaultBinaryPath(repoRoot, 'win32', 'x64'), join(repoRoot, 'resources', 'bin', 'ffmpeg.exe'))
+  assert.equal(packagedBinaryPath(repoRoot, 'linux', 'x64'), join(repoRoot, 'resources', 'bin', 'x64', 'ffmpeg'))
+  assert.equal(packagedBinaryPath(repoRoot, 'linux', 'arm64'), join(repoRoot, 'resources', 'bin', 'arm64', 'ffmpeg'))
+  assert.equal(packagedBinaryPath(repoRoot, 'win32', 'x64'), join(repoRoot, 'resources', 'bin', 'ffmpeg.exe'))
   const missing = await verifyFfmpegBinary(join(repoRoot, 'resources', 'bin', 'missing-ffmpeg.exe'))
   assert.equal(missing.ok, false)
   assert.match(missing.reason, /不存在/)
@@ -218,8 +232,17 @@ test('the provisioned binary matches the pinned digest when present', async (t) 
   assert.equal(result.ok, true, result.reason)
 })
 
+test('linux lgpl archives stay on the pinned allowlist', () => {
+  for (const key of ['linux-x64', 'linux-arm64', 'win32-x64']) {
+    const build = FFMPEG_BUILDS[key]
+    const url = `https://github.com/KarinJS/FFmpeg-Builds/releases/download/v${build.version}/${build.archiveName}`
+    assert.equal(matchesPinnedArchivePath(url), true, url)
+    assert.equal(archiveSources(url)[0], url)
+  }
+})
+
 test('the offline FFMPEG_FETCH_FILE branch bypasses the network source allowlist', async (t) => {
-  if (process.platform !== 'win32') return t.skip('内置编码器仅在 Windows 上获取')
+  if (process.platform !== 'win32' && process.platform !== 'linux') return t.skip('内置编码器仅在 Windows 与 Linux 上获取')
   const sandbox = await mkdtemp(join(tmpdir(), 'guearth-ffmpeg-offline-'))
   const previousFile = process.env.FFMPEG_FETCH_FILE
   const previousUrl = process.env.FFMPEG_FETCH_URL

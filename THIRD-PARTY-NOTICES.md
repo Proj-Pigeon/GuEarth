@@ -5,12 +5,14 @@
 
 本文件列出的「对应源码获取渠道」用于满足相应开源许可证（尤其是 LGPLv3）的源码提供要求。
 
-- 组件：FFmpeg（`ffmpeg.exe`，Windows x64，版本 n8.1.3）
+- 组件：FFmpeg（版本 n8.1.3）
+  - 文件：`ffmpeg.exe`（Windows x64）、`ffmpeg`（Linux x64）、`ffmpeg`（Linux arm64）
   - 许可证：GNU Lesser General Public License v3.0 or later（LGPL-3.0-or-later）
   - 许可证文本：`licenses/LGPL-3.0.txt`（附 `licenses/GPL-3.0.txt`；LGPLv3 以整体引用方式并入 GPLv3 条款）
   - 来源：基于 [KarinJS/FFmpeg-Builds](https://github.com/KarinJS/FFmpeg-Builds/tree/v8.1.3)（标签 v8.1.3）的
-    `win32-x64-lgpl` 构建产物；该仓库是 [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) 的
-    二次开发分支，使用 FFmpeg 官方源码构建，本项目未作任何修改。
+    `win32-x64-lgpl`、`linux-x64-lgpl` 与 `linux-arm64-lgpl` 构建产物；该仓库是
+    [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) 的二次开发分支，使用 FFmpeg 官方源码构建，
+    本项目未作任何修改。上述构建均启用 libopenh264，并禁用 libx264 / libx265。
   - 使用方式：作为独立可执行程序以单独进程调用，不构成对 FFmpeg 的修改或再链接。
   - 对应源码获取渠道：
     - FFmpeg 源码（标签 n8.1.3）：https://github.com/FFmpeg/FFmpeg/tree/n8.1.3

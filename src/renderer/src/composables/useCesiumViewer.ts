@@ -1168,7 +1168,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       },
       label: {
         text: place.name,
-        font: '14px -apple-system, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif',
+        font: '14px -apple-system, "Segoe UI", Roboto, "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif',
         fillColor: Cesium.Color.WHITE,
         outlineColor: Cesium.Color.BLACK,
         outlineWidth: 3,

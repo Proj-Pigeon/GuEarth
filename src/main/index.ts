@@ -846,7 +846,9 @@ const macRecordingHost: OffscreenMacSessionHost = {
 
 function registerIpcHandlers(): void {
   ipcMain.handle('system:fonts', (): string[] => {
-    const families = new Set(['Arial', 'Segoe UI', 'Microsoft YaHei'])
+    const families = new Set(process.platform === 'linux'
+      ? ['Arial', 'Noto Sans', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', 'DejaVu Sans']
+      : ['Arial', 'Segoe UI', 'Microsoft YaHei'])
     const registryKeys = [
       'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts',
       'HKCU\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts'

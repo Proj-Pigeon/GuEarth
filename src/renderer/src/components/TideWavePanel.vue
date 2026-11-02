@@ -176,7 +176,7 @@ const tideFacts = computed(() =>
 
 .svg-label {
   font-size: 11px;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', sans-serif;
 }
 
 .svg-stroked {

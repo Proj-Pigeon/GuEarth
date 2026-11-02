@@ -92,6 +92,12 @@ import FailureBanner from '@renderer/components/FailureBanner.vue'
 import CrashDialog from '@renderer/components/CrashDialog.vue'
 import FirstUseGuide from '@renderer/components/FirstUseGuide.vue'
 
+const antdTheme = {
+  token: {
+    fontFamily: "-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', sans-serif"
+  }
+}
+
 const store = useGlobeStore()
 const {
   isLayerPanelOpen,
@@ -146,7 +152,7 @@ const recordingDirectoryDialogBusy = ref(false)
 const recordingDirectoryDialogError = ref('')
 let recordingDirectoryResolver: ((selected: boolean) => void) | null = null
 const isAnnotationPanelOpen = ref(false)
-const systemFonts = ref(['Arial', 'Segoe UI', 'Microsoft YaHei'])
+const systemFonts = ref(['Arial', 'Segoe UI', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei'])
 const selectedShape = computed(() => shapes.value.find((shape) => shape.id === selectedShapeId.value) ?? null)
 const levelSwitcherVisible = computed(() => isGlobeReady.value && camera.value.height < 5000000)
 const webglNotice = computed(() => failureStore.notices.webgl)
@@ -1075,7 +1081,7 @@ onMounted(async () => {
     const existingFonts = shapes.value.map((shape) => shape.fontFamily)
     systemFonts.value = [...new Set([...installedFonts, ...existingFonts])].sort((first, second) => first.localeCompare(second))
   } catch {
-    systemFonts.value = ['Arial', 'Segoe UI', 'Microsoft YaHei']
+    systemFonts.value = ['Arial', 'Segoe UI', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei']
   }
 })
 
@@ -1233,7 +1239,7 @@ function deleteSelectedShape(): void {
 </script>
 
 <template>
-  <a-config-provider :locale="zhCN">
+  <a-config-provider :locale="zhCN" :theme="antdTheme">
     <div class="app">
       <div ref="globeContainer" class="globe" :class="{ drawing: activeTool }"></div>
       <InlineTextEditor
