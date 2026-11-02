@@ -149,9 +149,10 @@ const isAnnotationPanelOpen = ref(false)
 const systemFonts = ref(['Arial', 'Segoe UI', 'Microsoft YaHei'])
 const selectedShape = computed(() => shapes.value.find((shape) => shape.id === selectedShapeId.value) ?? null)
 const levelSwitcherVisible = computed(() => isGlobeReady.value && camera.value.height < 5000000)
-const showGlobeLoading = computed(() => !isGlobeReady.value || onlineData.loading)
-const globeLoadingText = computed(() => onlineData.loading ? '正在拉取在线数据…' : globeError.value ? '地图尚未显示，请检查网络或重试' : globeLoadTimedOut.value ? '地图加载较慢，请检查网络' : '正在加载地图…')
-const globeLoadingRetryable = computed(() => !onlineData.loading && (globeLoadTimedOut.value || Boolean(globeError.value)))
+const webglNotice = computed(() => failureStore.notices.webgl)
+const showGlobeLoading = computed(() => !isGlobeReady.value || onlineData.loading || Boolean(webglNotice.value))
+const globeLoadingText = computed(() => webglNotice.value ? webglNotice.value.message : onlineData.loading ? '正在拉取在线数据…' : globeError.value ? '地图尚未显示，请检查网络或重试' : globeLoadTimedOut.value ? '地图加载较慢，请检查网络' : '正在加载地图…')
+const globeLoadingRetryable = computed(() => Boolean(webglNotice.value) || (!onlineData.loading && (globeLoadTimedOut.value || Boolean(globeError.value))))
 const isLabOpen = ref(false)
 const nightBasemapActive = computed(() => hidesThematicLayers(store.selectedLayerId))
 const labActive = computed(() => climateStore.hasActiveOverlay || solarStore.active || solarStore.motionPanel !== null || atmosphereStore.panel !== null || hydrologyStore.panel !== null || landformStore.panel !== null || populationStore.panel !== null || transportStore.panel !== null || environmentStore.panel !== null || decisionStore.panel !== null || zonationStore.panel !== null || activeTool.value === 'timezone')
@@ -1241,11 +1242,12 @@ function deleteSelectedShape(): void {
         @update="(annotation) => updateSelectedShape({ annotation })"
       />
       <div v-if="showGlobeLoading" class="globe-loading">
-        <a-spin :spinning="!globeLoadTimedOut && !globeError" size="small" />
+        <a-spin :spinning="!globeLoadTimedOut && !globeError && !webglNotice" size="small" />
         <span class="globe-loading-text" role="status">{{ globeLoadingText }}</span>
-        <span v-if="onlineData.loading" class="globe-loading-stage">正在预取地震及已配置的台风数据，完成后使用本次启动的数据</span>
+        <span v-if="webglNotice?.detail" class="globe-loading-stage globe-loading-hint">{{ webglNotice.detail }}</span>
+        <span v-else-if="onlineData.loading" class="globe-loading-stage">正在预取地震及已配置的台风数据，完成后使用本次启动的数据</span>
         <span v-else-if="globeLoadStage" class="globe-loading-stage">{{ globeLoadStage }}</span>
-        <span v-if="globeLoadingRetryable" class="globe-loading-stage">影像源持续无法加载时，可在「设置 → 地图」将高德镜像瓦片源切换为「开启」</span>
+        <span v-if="globeLoadingRetryable && !webglNotice" class="globe-loading-stage">影像源持续无法加载时，可在「设置 → 地图」将高德镜像瓦片源切换为「开启」</span>
         <a-button v-if="globeLoadingRetryable" type="text" size="small" @click="handleRetry"><ReloadOutlined />重试</a-button>
       </div>
       <FailureBanner />
@@ -1413,6 +1415,7 @@ function deleteSelectedShape(): void {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
   padding: 16px 20px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(5, 5, 5, 0.06);
@@ -1432,6 +1435,11 @@ function deleteSelectedShape(): void {
   font-size: 12px;
   line-height: 20px;
   white-space: nowrap;
+}
+
+.globe-loading-hint {
+  white-space: normal;
+  text-align: center;
 }
 
 .draw-hint {
