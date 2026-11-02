@@ -169,7 +169,7 @@ const SUBURB_HOUSES: Array<[number, number]> = [[30, 6], [46, 8], [248, 7], [268
           <path d="M0,0 L7,3.5 L0,7 Z" fill="rgba(0,0,0,0.55)" />
         </marker>
       </defs>
-      <g font-size="11" font-family='"Microsoft YaHei", "PingFang SC", sans-serif'>
+      <g font-size="11" font-family='"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif'>
         <text v-for="(arrow, index) in sceneConfig.arrows.filter((item) => item.label && item.labelAt)" :key="`l-${index}`" :x="arrow.labelAt![0]" :y="arrow.labelAt![1]" text-anchor="middle" :fill="arrow.color" font-weight="600">{{ arrow.label }}</text>
         <text v-for="(place, index) in sceneConfig.placeLabels" :key="`p-${index}`" :x="place.at[0]" :y="place.at[1]" text-anchor="middle" fill="rgba(0,0,0,0.65)">{{ place.text }}</text>
       </g>

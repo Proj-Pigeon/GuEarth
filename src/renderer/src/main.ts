@@ -8,6 +8,7 @@ import 'ant-design-vue/dist/reset.css'
 import App from './App.vue'
 import './assets/main.css'
 import { attachConsoleLogTee, logger } from '../../common/logger'
+import { surfaceFailureAlreadyShown } from '../../common/globeSurface'
 import { requestErrorRejectionLabel } from '../../common/resourceFailure'
 import { installGlobalErrorListeners, notifyCrashMessage } from './lib/crashReporter'
 
@@ -20,7 +21,7 @@ Sentry.init({
   beforeSend(event) {
     event.extra = { ...event.extra, rendererLogs: logger.dump(80) }
     const level = event.level ?? (event.exception ? 'error' : 'info')
-    if (level === 'error' || level === 'fatal') {
+    if ((level === 'error' || level === 'fatal') && !surfaceFailureAlreadyShown(event.extra)) {
       const exception = event.exception?.values?.at(-1)
       notifyCrashMessage([exception?.type, exception?.value ?? event.message].filter(Boolean).join(': '))
     }

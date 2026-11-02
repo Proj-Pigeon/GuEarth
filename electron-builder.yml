@@ -7,6 +7,7 @@ files:
   - out/**
   - package.json
   - resources/**
+  - '!resources/bin/**'
   - '!node_modules/**'
 asarUnpack:
   - out/renderer/cesium/**
@@ -30,6 +31,34 @@ win:
   extraResources:
     - from: resources/bin/ffmpeg.exe
       to: bin/ffmpeg.exe
+linux:
+  executableName: guearth
+  icon: icon.png
+  category: Education
+  syncDesktopName: true
+  synopsis: 面向地理教学的三维数字地球
+  description: 咕咕地球（GuEarth）是面向中国校园地理教学的三维数字地球，包含地形、专题图层与教学工具。
+  maintainer: Project Pigeon <https://github.com/Proj-Pigeon/GuEarth>
+  artifactName: ${name}-${version}-${arch}.${ext}
+  desktop:
+    entry:
+      "Name[zh_CN]": 咕咕地球
+      "Comment[zh_CN]": 面向地理教学的三维数字地球
+      Keywords: geography;education;globe;地理;教学
+  target:
+    - target: AppImage
+      arch:
+        - x64
+        - arm64
+    - target: deb
+      arch:
+        - x64
+        - arm64
+  extraResources:
+    - from: resources/bin/${arch}/ffmpeg
+      to: bin/ffmpeg
+deb:
+  packageCategory: education
 nsis:
   artifactName: ${name}-${version}-${arch}-setup.${ext}
   license: license.txt

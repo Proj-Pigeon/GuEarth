@@ -204,7 +204,7 @@ const notes = [
 
 .stage-label {
   font-size: 11px;
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', sans-serif;
   font-weight: 600;
   paint-order: stroke;
   stroke: rgba(255, 255, 255, 0.92);

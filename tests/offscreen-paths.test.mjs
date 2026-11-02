@@ -75,10 +75,12 @@ test('the stale sweep resolves every candidate through the shared path guard', (
 
 test('offscreen recording rejects unsupported platforms with a clear error', () => {
   assert.doesNotThrow(() => assertOffscreenRecordingSupported('win32'))
-  for (const platform of ['darwin', 'linux', 'freebsd']) {
+  assert.doesNotThrow(() => assertOffscreenRecordingSupported('linux'))
+  for (const platform of ['darwin', 'freebsd']) {
     assert.throws(() => assertOffscreenRecordingSupported(platform), (error) => {
       assert.ok(error instanceof Error)
       assert.ok(error.message.includes('Windows x64'))
+      assert.ok(error.message.includes('Linux'))
       assert.ok(error.message.includes(platform))
       return true
     })
@@ -103,6 +105,12 @@ test('a packaged build never tells end users to run a developer command', () => 
 test('a development build still points the developer at the fetch command', () => {
   assert.throws(() => resolveFfmpegBinary(join(recordingsRoot, 'absent-app'), '', false, 'win32'), (error) => {
     assert.ok(error.message.includes('npm run fetch:ffmpeg'))
+    return true
+  })
+  assert.throws(() => resolveFfmpegBinary(join(recordingsRoot, 'absent-app'), '', false, 'linux'), (error) => {
+    assert.ok(error.message.includes('npm run fetch:ffmpeg'))
+    assert.ok(error.message.includes(join(recordingsRoot, 'absent-app', 'resources', 'bin', 'ffmpeg')))
+    assert.equal(error.message.includes('ffmpeg.exe'), false)
     return true
   })
 })

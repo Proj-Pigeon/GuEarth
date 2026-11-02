@@ -151,7 +151,7 @@ function drawOverlay(): void {
   overlayContext.clearRect(0, 0, width, height)
   if (currentTitle) {
     const size = Math.max(18, Math.round(height * 0.026))
-    overlayContext.font = `600 ${size}px "Microsoft YaHei", "PingFang SC", sans-serif`
+    overlayContext.font = `600 ${size}px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif`
     overlayContext.textBaseline = 'top'
     overlayContext.textAlign = 'left'
     overlayContext.lineWidth = Math.max(3, size * 0.16)
@@ -162,7 +162,7 @@ function drawOverlay(): void {
   }
   if (!currentNarration) return
   const size = Math.max(22, Math.round(height * 0.036))
-  overlayContext.font = `600 ${size}px "Microsoft YaHei", "PingFang SC", sans-serif`
+  overlayContext.font = `600 ${size}px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif`
   overlayContext.textBaseline = 'bottom'
   overlayContext.textAlign = 'center'
   const lines = wrapText(overlayContext, currentNarration, width * 0.82)
