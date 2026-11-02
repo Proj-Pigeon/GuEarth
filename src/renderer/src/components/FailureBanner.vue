@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { CloseOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { useFailureStore, type FailureNotice } from '@renderer/stores/failure'
 
 const store = useFailureStore()
+const bannerNotices = computed(() => store.active.filter((notice) => notice.scope !== 'webgl'))
 
 watch(
   () => store.degradations.length,
@@ -20,9 +21,9 @@ function alertType(notice: FailureNotice): 'error' | 'warning' {
 </script>
 
 <template>
-  <div v-if="store.active.length" class="failure-banner">
+  <div v-if="bannerNotices.length" class="failure-banner">
     <a-alert
-      v-for="notice in store.active"
+      v-for="notice in bannerNotices"
       :key="notice.scope"
       :type="alertType(notice)"
       show-icon
