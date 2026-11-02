@@ -29,8 +29,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: check
     runs-on: blacksmith-8vcpu-windows-2025
-    permissions:
-      contents: write
+    outputs:
+      bumped: ${{ steps.version.outputs.bumped }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,18 +73,86 @@ jobs:
           name: guearth-${{ steps.version.outputs.version }}-win-x64
           path: dist/*.exe
           if-no-files-found: error
-      - name: Create GitHub release
+
+  linux:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect version bump
+        id: version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
         if: steps.version.outputs.bumped == 'true'
-        shell: bash
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        if: steps.version.outputs.bumped == 'true'
+        run: npm ci
+      - name: Install packaging tools
+        if: steps.version.outputs.bumped == 'true'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fakeroot xz-utils libfuse2t64
+      - name: Cache electron and electron-builder downloads
+        if: steps.version.outputs.bumped == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: linux-electron-${{ hashFiles('package-lock.json') }}
+      - name: Package Linux build
+        if: steps.version.outputs.bumped == 'true'
+        run: npm run build:linux
+      - name: Upload build artifact
+        if: steps.version.outputs.bumped == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: guearth-${{ steps.version.outputs.version }}-linux
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.windows.outputs.bumped == 'true'
+    needs: [windows, linux]
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          version="${{ needs.windows.outputs.version }}"
           notes_args=(--generate-notes)
-          if [ -f "changelogs/v${{ steps.version.outputs.version }}.md" ]; then
-            notes_args=(--notes-file "changelogs/v${{ steps.version.outputs.version }}.md")
+          if [ -f "changelogs/v${version}.md" ]; then
+            notes_args=(--notes-file "changelogs/v${version}.md")
           fi
-          gh release create "v${{ steps.version.outputs.version }}" \
+          shopt -s nullglob
+          assets=(dist/*.exe dist/*.AppImage dist/*.deb)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "no release assets found" >&2
+            exit 1
+          fi
+          gh release create "v${version}" \
             --target "$GITHUB_SHA" \
-            --title "GuEarth v${{ steps.version.outputs.version }}" \
+            --title "GuEarth v${version}" \
             "${notes_args[@]}" \
-            dist/*.exe
+            "${assets[@]}"

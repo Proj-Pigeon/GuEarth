@@ -93,7 +93,7 @@ export function buildLiveTyphoons(dataSource: Cesium.CustomDataSource, feed: Typ
         },
         label: center ? {
           text: `${storm.name}${storm.active ? '' : '（已结束）'}\n发布 ${formatOnlineTime(point.time)}${cached ? '\n缓存快照' : ''}`,
-          font: '600 12px "Microsoft YaHei", "PingFang SC", sans-serif',
+          font: '600 12px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif',
           fillColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.88)'),
           showBackground: true,
           backgroundColor: Cesium.Color.WHITE,

@@ -146,7 +146,7 @@ const recordingDirectoryDialogBusy = ref(false)
 const recordingDirectoryDialogError = ref('')
 let recordingDirectoryResolver: ((selected: boolean) => void) | null = null
 const isAnnotationPanelOpen = ref(false)
-const systemFonts = ref(['Arial', 'Segoe UI', 'Microsoft YaHei'])
+const systemFonts = ref(['Arial', 'Segoe UI', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei'])
 const selectedShape = computed(() => shapes.value.find((shape) => shape.id === selectedShapeId.value) ?? null)
 const levelSwitcherVisible = computed(() => isGlobeReady.value && camera.value.height < 5000000)
 const showGlobeLoading = computed(() => !isGlobeReady.value || onlineData.loading)
@@ -1074,7 +1074,7 @@ onMounted(async () => {
     const existingFonts = shapes.value.map((shape) => shape.fontFamily)
     systemFonts.value = [...new Set([...installedFonts, ...existingFonts])].sort((first, second) => first.localeCompare(second))
   } catch {
-    systemFonts.value = ['Arial', 'Segoe UI', 'Microsoft YaHei']
+    systemFonts.value = ['Arial', 'Segoe UI', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei']
   }
 })
 

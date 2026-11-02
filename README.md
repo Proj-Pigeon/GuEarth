@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/status-0.1.16%20early-f4f4f5?style=flat-square&labelColor=18181b" alt="0.1.16 early">
-  <img src="https://img.shields.io/badge/platform-Windows%20x64-f4f4f5?style=flat-square&labelColor=18181b" alt="Windows x64">
+  <img src="https://img.shields.io/badge/platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-f4f4f5?style=flat-square&labelColor=18181b" alt="Windows, macOS, Linux">
   <img src="https://img.shields.io/badge/license-Apache--2.0-f4f4f5?style=flat-square&labelColor=18181b" alt="Apache-2.0">
 </p>
 
@@ -20,9 +20,46 @@
 
 ## 安装与使用
 
-咕咕地球目前支持在 `Windows x64` 和 `macOS(Apple Silicon)` 平台运行，`Linux` 和 国产操作系统 平台理论上支持运行，但兼容性未经测试。
+咕咕地球支持 `Windows x64`、`macOS（Apple Silicon）` 和 `Linux x86_64 / arm64`。
 
 在 [GitHub Release](https://github.com/Proj-Pigeon/GuEarth/releases) 页面中可以下载最新的安装包。您也可以前往[官网](https://www.project-pigeon.com/docs#%E4%B8%8B%E8%BD%BD)获取以往版本的国内网盘下载链接/直链。
+
+| 平台 | 安装包 |
+| --- | --- |
+| Windows x64 | `guearth-<版本>-x64-setup.exe` |
+| macOS Apple Silicon | `guearth-<版本>-arm64.dmg` |
+| Linux x86_64 | `guearth-<版本>-x86_64.AppImage`、`guearth-<版本>-amd64.deb` |
+| Linux arm64 | `guearth-<版本>-arm64.AppImage`、`guearth-<版本>-arm64.deb` |
+
+### Linux
+
+安装包带有 Education 分类的桌面项和图标。deb 包名是 `guearth`，安装后可从应用菜单启动，或直接运行 `guearth`。需要 glibc 2.28 及以上（Ubuntu 20.04、Debian 10 及更新的发行版）。
+
+```bash
+sudo apt install ./guearth-<版本>-amd64.deb
+```
+
+AppImage 不需要安装：
+
+```bash
+chmod +x guearth-<版本>-x86_64.AppImage
+./guearth-<版本>-x86_64.AppImage
+```
+
+中文界面建议安装思源黑体 / Noto CJK：`sudo apt install fonts-noto-cjk`。保存地图供应商密钥需要系统密钥环（GNOME Keyring 或 KWallet，依赖 `libsecret`）。自动更新目前仅 Windows 安装包提供。
+
+### 从源码运行与打包
+
+```bash
+npm ci
+npm run dev            # 开发模式，Linux / Windows / macOS 均可
+npm run fetch:ffmpeg   # 当前平台的 LGPL FFmpeg（教学录制）
+npm run build:linux    # Linux x64 与 arm64 的 AppImage 和 deb
+npm run build:win
+npm run build:mac
+```
+
+`build:linux` 会下载固定版本的 Linux FFmpeg（KarinJS/FFmpeg-Builds v8.1.3，LGPL，libopenh264），再调用 electron-builder。无法访问 GitHub 时，可按仓库 `AGENTS.md` 设置 Electron 与 electron-builder 的 npmmirror 镜像。
 
 ## 文档
 

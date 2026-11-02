@@ -288,7 +288,7 @@ onUnmounted(() => {
 .peak-label {
   font-size: 10px;
   fill: rgba(0, 0, 0, 0.45);
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', sans-serif;
 }
 
 .slope-label {
