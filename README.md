@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-0.1.16%20early-f4f4f5?style=flat-square&labelColor=18181b" alt="0.1.16 early">
+  <img src="https://img.shields.io/badge/status-0.1.17%20early-f4f4f5?style=flat-square&labelColor=18181b" alt="0.1.17 early">
   <img src="https://img.shields.io/badge/platform-Windows%20x64-f4f4f5?style=flat-square&labelColor=18181b" alt="Windows x64">
   <img src="https://img.shields.io/badge/license-Apache--2.0-f4f4f5?style=flat-square&labelColor=18181b" alt="Apache-2.0">
 </p>
