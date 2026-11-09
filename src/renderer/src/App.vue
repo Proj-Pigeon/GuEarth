@@ -10,7 +10,7 @@ import { basemapCategories, providerCatalog, terrainCatalog, useGlobeStore } fro
 import { useFailureStore } from '@renderer/stores/failure'
 import { useDrawingStore, type DrawnShape, type DrawTool } from '@renderer/stores/drawing'
 import { useAiStore } from '@renderer/stores/ai'
-import { useUpdaterStore } from '@renderer/stores/updater'
+import { updateInstallContent, useUpdaterStore } from '@renderer/stores/updater'
 import { useAccountStore } from '@renderer/stores/account'
 import { useOnlineDataStore } from '@renderer/stores/onlineData'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
@@ -1156,7 +1156,7 @@ function handleUpdateClick(): void {
   if (updaterStore.status === 'ready') {
     Modal.confirm({
       title: `重启并安装新版本 v${updaterStore.version}？`,
-      content: '应用将退出并启动安装程序，完成后可重新打开咕咕地球。',
+      content: updateInstallContent(updaterStore.packageKind),
       okText: '重启安装',
       cancelText: '稍后',
       onOk: () => updaterStore.installNow()

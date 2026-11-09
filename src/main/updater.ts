@@ -1,10 +1,22 @@
 import { app, BrowserWindow, ipcMain, net } from 'electron'
 import { spawn } from 'child_process'
 import { createHash } from 'crypto'
-import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, type WriteStream } from 'fs'
+import { createWriteStream, existsSync, mkdirSync, readdirSync, realpathSync, renameSync, rmSync, statSync, type WriteStream } from 'fs'
 import { join } from 'path'
 import { logger } from '../common/logger'
 import type { UpdateCheckOutcome, UpdateState, UpdaterEvent } from '../preload'
+import {
+  assetNameFromUrl,
+  assetNameMatchesFeed,
+  debInstallPlan,
+  installAppImageFile,
+  isDebInstallLocation,
+  isPathInsideDirectory,
+  resolveUpdateTarget,
+  updateFeedPath,
+  type UpdateRuntime,
+  type UpdateTarget
+} from './updateChannel'
 import { compareVersions, extractAssetDigest, hashFile, isRecord, parseSha256, releaseTagCandidates } from './updateIntegrity'
 
 const DEFAULT_UPDATE_BASE_URL = 'https://guearth-updater.isla.fan'
@@ -24,21 +36,77 @@ let installerPath = ''
 let receivedBytes = 0
 let totalBytes = 0
 let expectedSha256 = ''
+let activeTarget: UpdateTarget | null = null
+let assetFileName = ''
+let installing = false
+
+function debInstallDetected(): boolean {
+  const candidates = [process.execPath, process.resourcesPath].filter((value): value is string => Boolean(value))
+  const resolved: string[] = []
+  for (const candidate of candidates) {
+    resolved.push(candidate)
+    try {
+      const real = realpathSync(candidate)
+      if (real !== candidate) resolved.push(real)
+    } catch {
+      void 0
+    }
+  }
+  return isDebInstallLocation(resolved)
+}
+
+function updateRuntime(): UpdateRuntime {
+  return {
+    platform: process.platform,
+    arch: process.arch,
+    appImagePath: process.env['APPIMAGE'],
+    debInstalled: debInstallDetected(),
+    packageKindOverride: process.env['GUEARTH_UPDATE_PACKAGE'],
+    allowPackageKindOverride: process.env['GUEARTH_UPDATE_URL'] !== undefined
+  }
+}
+
+function currentTarget(): UpdateTarget | null {
+  return resolveUpdateTarget(updateRuntime())
+}
 
 function updateCheckEnabled(): boolean {
-  return process.platform === 'win32' && (app.isPackaged || process.env['GUEARTH_UPDATE_URL'] !== undefined)
+  return (app.isPackaged || process.env['GUEARTH_UPDATE_URL'] !== undefined) && currentTarget() !== null
 }
 
 function updateBaseUrl(): string {
   return process.env['GUEARTH_UPDATE_URL'] ?? DEFAULT_UPDATE_BASE_URL
 }
 
-function installerPathFor(targetVersion: string): string {
-  return join(downloadsDir, `guearth-${targetVersion}-setup.exe`)
+function installerPathFor(target: UpdateTarget, targetVersion: string): string {
+  if (target.kind === 'nsis') return join(downloadsDir, `guearth-${targetVersion}-setup.exe`)
+  if (target.kind === 'appimage') return join(downloadsDir, `guearth-${targetVersion}-${target.arch}.AppImage`)
+  return join(downloadsDir, `guearth-${targetVersion}-${target.arch}.deb`)
+}
+
+function findExecutable(name: string): string | null {
+  for (const dir of (process.env['PATH'] ?? '').split(':')) {
+    if (!dir) continue
+    const candidate = join(dir, name)
+    try {
+      if (statSync(candidate).isFile()) return candidate
+    } catch {
+      void 0
+    }
+  }
+  return null
 }
 
 function snapshot(): UpdateState {
-  return { status, currentVersion: app.getVersion(), version, received: receivedBytes, total: totalBytes }
+  return {
+    status,
+    currentVersion: app.getVersion(),
+    version,
+    received: receivedBytes,
+    total: totalBytes,
+    notes,
+    packageKind: activeTarget?.kind ?? ''
+  }
 }
 
 function emit(event: UpdaterEvent): void {
@@ -83,8 +151,10 @@ async function resolveDigestFromGitHub(rawName: unknown, version: string, downlo
 
 async function checkForUpdate(): Promise<UpdateCheckOutcome> {
   if (status === 'downloading' || status === 'ready') return 'available'
+  const target = currentTarget()
+  if (!target) return 'disabled'
   try {
-    const response = await net.fetch(`${updateBaseUrl()}/update/win32/${app.getVersion()}`, { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) })
+    const response = await net.fetch(updateFeedPath(updateBaseUrl(), target.feedPlatform, app.getVersion()), { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) })
     if (response.status === 204) return 'latest'
     if (!response.ok) return 'failed'
     const payload: unknown = await response.json()
@@ -94,6 +164,11 @@ async function checkForUpdate(): Promise<UpdateCheckOutcome> {
     if (!VERSION_PATTERN.test(remoteVersion)) return 'failed'
     if (compareVersions(remoteVersion, app.getVersion()) <= 0) return 'latest'
     if (!/^https?:\/\/\S+$/i.test(url)) return 'failed'
+    const assetName = assetNameFromUrl(url)
+    if (!assetName || !assetNameMatchesFeed(assetName, target.feedPlatform)) {
+      logger.warn('updater', '更新包与当前安装平台不匹配，已忽略该更新', { feedPlatform: target.feedPlatform, assetName: assetName ?? '' })
+      return 'failed'
+    }
     const sha256 = parseSha256(payload.sha256) ?? (await resolveDigestFromGitHub(payload.name, remoteVersion, url))
     if (!sha256) {
       logger.warn('updater', '更新源清单与 GitHub 发布资产均未提供有效 sha256，已忽略该更新', { version: remoteVersion })
@@ -103,8 +178,11 @@ async function checkForUpdate(): Promise<UpdateCheckOutcome> {
     notes = typeof payload.notes === 'string' ? payload.notes.slice(0, 2000) : ''
     downloadUrl = url
     expectedSha256 = sha256
+    activeTarget = target
+    assetFileName = assetName
     status = 'available'
-    emit({ type: 'available', version, notes })
+    emit({ type: 'available', version, notes, packageKind: target.kind })
+    logger.info('updater', '发现可用更新', { version, feedPlatform: target.feedPlatform, assetName })
     return 'available'
   } catch (error) {
     logger.warn('updater', '检查更新失败', error instanceof Error ? error.message : String(error))
@@ -129,13 +207,14 @@ async function cachedInstallerIsTrustworthy(path: string): Promise<boolean> {
 }
 
 async function downloadUpdate(): Promise<void> {
-  if (status !== 'available' || !downloadUrl) throw new Error('当前没有可用更新')
+  const target = activeTarget
+  if (status !== 'available' || !downloadUrl || !target) throw new Error('当前没有可用更新')
   status = 'downloading'
-  const finalPath = installerPathFor(version)
+  const finalPath = installerPathFor(target, version)
   if (existsSync(finalPath) && (await cachedInstallerIsTrustworthy(finalPath))) {
     installerPath = finalPath
     status = 'ready'
-    emit({ type: 'downloaded', version })
+    emit({ type: 'downloaded', version, packageKind: target.kind })
     return
   }
   const tempPath = `${finalPath}.tmp`
@@ -190,7 +269,7 @@ async function downloadUpdate(): Promise<void> {
     installerPath = finalPath
     status = 'ready'
     emit({ type: 'progress', received: receivedBytes, total: receivedBytes })
-    emit({ type: 'downloaded', version })
+    emit({ type: 'downloaded', version, packageKind: target.kind })
     cleanupStaleInstallers(finalPath)
   } catch (error) {
     if (stream && !streamClosed) {
@@ -212,27 +291,95 @@ async function downloadUpdate(): Promise<void> {
   }
 }
 
-async function installUpdate(): Promise<void> {
-  if (status !== 'ready' || !installerPath || !existsSync(installerPath)) throw new Error('更新尚未下载完成')
-  if (!(await cachedInstallerIsTrustworthy(installerPath))) {
-    rmSync(installerPath, { force: true })
-    status = 'available'
-    logger.error('updater', '安装前校验失败，已丢弃安装包', installerPath)
-    emit({ type: 'error', message: '安装包校验失败，已清除缓存，请重新下载更新' })
-    throw new Error('安装包校验失败，请重新下载更新')
-  }
+function runCommand(command: string, args: string[]): Promise<number> {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(command, args, { stdio: 'ignore', env: process.env })
+    child.once('error', reject)
+    child.once('exit', (code, signal) => {
+      if (signal) {
+        reject(new Error(`安装进程被信号 ${signal} 终止`))
+        return
+      }
+      resolvePromise(code ?? 1)
+    })
+  })
+}
+
+function installWindows(filePath: string): void {
   try {
-    const installer = spawn(installerPath, [], { detached: true, stdio: 'ignore' })
+    const installer = spawn(filePath, [], { detached: true, stdio: 'ignore' })
     installer.once('error', () => void 0)
     installer.unref()
   } catch {
-    logger.error('updater', '安装程序启动失败', installerPath)
-    rmSync(installerPath, { force: true })
+    logger.error('updater', '安装程序启动失败', filePath)
+    rmSync(filePath, { force: true })
     status = 'available'
     emit({ type: 'error', message: '安装程序启动失败，已清除安装包，请重新下载更新' })
     return
   }
   setTimeout(() => app.quit(), INSTALL_QUIT_DELAY_MS)
+}
+
+function relaunch(binary: string, extraEnv?: Record<string, string>): void {
+  app.releaseSingleInstanceLock()
+  const child = spawn(binary, [], {
+    detached: true,
+    stdio: 'ignore',
+    env: extraEnv ? { ...process.env, ...extraEnv } : process.env
+  })
+  child.once('error', () => void 0)
+  child.unref()
+  setTimeout(() => app.quit(), INSTALL_QUIT_DELAY_MS)
+}
+
+async function installDebPackage(filePath: string): Promise<void> {
+  const uid = typeof process.getuid === 'function' ? process.getuid() : -1
+  const plan = debInstallPlan(filePath, uid, findExecutable('dpkg'), findExecutable('pkexec'))
+  if (!plan) throw new Error('未找到 dpkg 或 pkexec，无法安装 deb 更新')
+  const code = await runCommand(plan.command, plan.args)
+  if (code === 0) return
+  if (code === 126 || code === 127) throw new Error('系统授权未完成，更新未安装')
+  throw new Error(`deb 安装失败（退出码 ${code}）`)
+}
+
+async function installUpdate(): Promise<void> {
+  if (installing) return
+  const target = activeTarget
+  const filePath = installerPath
+  if (status !== 'ready' || !filePath || !target || !existsSync(filePath)) throw new Error('更新尚未下载完成')
+  if (!isPathInsideDirectory(filePath, downloadsDir)) throw new Error('更新包路径无效')
+  installing = true
+  try {
+    if (!(await cachedInstallerIsTrustworthy(filePath))) {
+      rmSync(filePath, { force: true })
+      status = 'available'
+      logger.error('updater', '安装前校验失败，已丢弃安装包', filePath)
+      emit({ type: 'error', message: '安装包校验失败，已清除缓存，请重新下载更新' })
+      throw new Error('安装包校验失败，请重新下载更新')
+    }
+    if (target.kind === 'nsis') {
+      installWindows(filePath)
+      return
+    }
+    if (!assetNameMatchesFeed(assetFileName, target.feedPlatform)) throw new Error('更新包与当前平台不匹配')
+    if (target.kind === 'appimage') {
+      const appImagePath = process.env['APPIMAGE']
+      if (!appImagePath) throw new Error('当前不是 AppImage 运行环境，无法替换安装文件')
+      const destination = installAppImageFile(filePath, appImagePath, assetFileName)
+      relaunch(destination, { APPIMAGE: destination, APPIMAGE_SILENT_INSTALL: 'true' })
+      return
+    }
+    await installDebPackage(filePath)
+    relaunch(process.execPath)
+  } catch (error) {
+    if (target.kind !== 'nsis') {
+      const reason = error instanceof Error ? error.message : String(error)
+      logger.error('updater', '安装更新失败', reason)
+    }
+    throw error
+  } finally {
+    installing = false
+  }
 }
 
 export function initUpdater(userDataUpdatesPath: string): void {
@@ -241,7 +388,7 @@ export function initUpdater(userDataUpdatesPath: string): void {
   ipcMain.handle('updater:download', () => {
     if (status === 'downloading') throw new Error('更新正在下载中')
     if (status === 'ready') return
-    if (status !== 'available' || !downloadUrl) throw new Error('当前没有可用更新')
+    if (status !== 'available' || !downloadUrl || !activeTarget) throw new Error('当前没有可用更新')
     void downloadUpdate()
   })
   ipcMain.handle('updater:install', () => installUpdate())

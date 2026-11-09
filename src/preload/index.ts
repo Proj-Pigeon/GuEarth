@@ -392,12 +392,16 @@ export interface OffscreenRecordingProgress {
   timedOut?: boolean
 }
 
+export type UpdatePackageKind = 'nsis' | 'appimage' | 'deb'
+
 export interface UpdateState {
   status: 'idle' | 'available' | 'downloading' | 'ready'
   currentVersion: string
   version: string
   received: number
   total: number
+  notes: string
+  packageKind: UpdatePackageKind | ''
 }
 
 export type UpdateCheckOutcome = 'available' | 'latest' | 'failed' | 'disabled'
@@ -405,9 +409,9 @@ export type UpdateCheckOutcome = 'available' | 'latest' | 'failed' | 'disabled'
 export type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState }
 
 export type UpdaterEvent =
-  | { type: 'available'; version: string; notes: string }
+  | { type: 'available'; version: string; notes: string; packageKind: UpdatePackageKind }
   | { type: 'progress'; received: number; total: number }
-  | { type: 'downloaded'; version: string }
+  | { type: 'downloaded'; version: string; packageKind: UpdatePackageKind }
   | { type: 'error'; message: string }
 
 const api = {

@@ -2,8 +2,10 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { message } from 'ant-design-vue'
 import type { UpdateCheckOutcome, UpdateState, UpdaterEvent } from '../../../preload'
+import { updateReadyHint } from './updateCopy'
 
 export type UpdateStatus = UpdateState['status']
+export { updateInstallContent } from './updateCopy'
 
 let bound = false
 let prompted = false
@@ -18,6 +20,7 @@ export const useUpdaterStore = defineStore('updater', () => {
   const currentVersion = ref('')
   const version = ref('')
   const notes = ref('')
+  const packageKind = ref<UpdateState['packageKind']>('')
   const received = ref(0)
   const total = ref(0)
   const promptVisible = ref(false)
@@ -28,6 +31,7 @@ export const useUpdaterStore = defineStore('updater', () => {
     if (event.type === 'available') {
       version.value = event.version
       notes.value = event.notes
+      packageKind.value = event.packageKind
       status.value = 'available'
       if (!prompted) {
         prompted = true
@@ -40,8 +44,9 @@ export const useUpdaterStore = defineStore('updater', () => {
     } else if (event.type === 'downloaded') {
       status.value = 'ready'
       version.value = event.version
+      packageKind.value = event.packageKind
       if (total.value > 0) received.value = total.value
-      message.success(`新版本 v${event.version} 已下载完成，可点击底部的下载按钮重启安装`, 8)
+      message.success(`新版本 v${event.version} 已下载完成，${updateReadyHint(event.packageKind)}`, 8)
     } else if (event.type === 'error') {
       status.value = version.value ? 'available' : 'idle'
       message.error(event.message, 6)
@@ -56,6 +61,8 @@ export const useUpdaterStore = defineStore('updater', () => {
       const state = await window.guEarth.updater.getState()
       currentVersion.value = state.currentVersion
       if (state.version) version.value = state.version
+      if (state.notes) notes.value = state.notes
+      packageKind.value = state.packageKind
       received.value = state.received
       total.value = state.total
       if (state.status === 'available' && !prompted) {
@@ -111,5 +118,5 @@ export const useUpdaterStore = defineStore('updater', () => {
     }
   }
 
-  return { status, currentVersion, version, notes, received, total, percent, promptVisible, checking, hydrate, remindLater, startDownload, installNow, checkNow }
+  return { status, currentVersion, version, notes, packageKind, received, total, percent, promptVisible, checking, hydrate, remindLater, startDownload, installNow, checkNow }
 })
