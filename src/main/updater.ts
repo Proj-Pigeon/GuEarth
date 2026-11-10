@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, net } from 'electron'
 import { spawn } from 'child_process'
 import { createHash } from 'crypto'
-import { createWriteStream, existsSync, mkdirSync, readdirSync, realpathSync, renameSync, rmSync, statSync, type WriteStream } from 'fs'
+import { createWriteStream, existsSync, mkdirSync, readdirSync, realpathSync, renameSync, rmSync, type WriteStream } from 'fs'
 import { join } from 'path'
 import { logger } from '../common/logger'
 import type { UpdateCheckOutcome, UpdateState, UpdaterEvent } from '../preload'
@@ -9,6 +9,7 @@ import {
   assetNameFromUrl,
   assetNameMatchesFeed,
   debInstallPlan,
+  findTrustedExecutable,
   installAppImageFile,
   isDebInstallLocation,
   isPathInsideDirectory,
@@ -82,19 +83,6 @@ function installerPathFor(target: UpdateTarget, targetVersion: string): string {
   if (target.kind === 'nsis') return join(downloadsDir, `guearth-${targetVersion}-setup.exe`)
   if (target.kind === 'appimage') return join(downloadsDir, `guearth-${targetVersion}-${target.arch}.AppImage`)
   return join(downloadsDir, `guearth-${targetVersion}-${target.arch}.deb`)
-}
-
-function findExecutable(name: string): string | null {
-  for (const dir of (process.env['PATH'] ?? '').split(':')) {
-    if (!dir) continue
-    const candidate = join(dir, name)
-    try {
-      if (statSync(candidate).isFile()) return candidate
-    } catch {
-      void 0
-    }
-  }
-  return null
 }
 
 function snapshot(): UpdateState {
@@ -334,7 +322,7 @@ function relaunch(binary: string, extraEnv?: Record<string, string>): void {
 
 async function installDebPackage(filePath: string): Promise<void> {
   const uid = typeof process.getuid === 'function' ? process.getuid() : -1
-  const plan = debInstallPlan(filePath, uid, findExecutable('dpkg'), findExecutable('pkexec'))
+  const plan = debInstallPlan(filePath, uid, findTrustedExecutable('dpkg'), findTrustedExecutable('pkexec'))
   if (!plan) throw new Error('未找到 dpkg 或 pkexec，无法安装 deb 更新')
   const code = await runCommand(plan.command, plan.args)
   if (code === 0) return

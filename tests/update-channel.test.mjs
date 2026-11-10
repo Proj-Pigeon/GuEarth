@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { test } from 'node:test'
 import { updateInstallContent, updateReadyHint } from '../src/renderer/src/stores/updateCopy.ts'
 import {
@@ -13,6 +13,7 @@ import {
   assetNameMatchesFeed,
   canonicalHazelPlatform,
   debInstallPlan,
+  findTrustedExecutable,
   hazelPlatformForAssetName,
   installAppImageFile,
   isPathInsideDirectory,
@@ -150,7 +151,9 @@ test('installer paths must stay inside the updates directory', () => {
   assert.equal(isPathInsideDirectory('/tmp/guearth-updates', '/tmp/guearth-updates'), false)
 })
 
-test('AppImage destination keeps a custom filename and otherwise adopts the release name', () => {
+const skipAppImageOnWindows = process.platform === 'win32' ? 'AppImage paths and permissions are POSIX-only' : false
+
+test('AppImage destination keeps a custom filename and otherwise adopts the release name', { skip: skipAppImageOnWindows }, () => {
   assert.equal(
     appImageInstallDestination('/home/teacher/GuEarth.AppImage', RELEASE_ASSETS.appImageX64),
     '/home/teacher/GuEarth.AppImage'
@@ -177,7 +180,7 @@ function withTempDir(run) {
   }
 }
 
-test('installing an AppImage replaces a versioned file with the release asset', () => {
+test('installing an AppImage replaces a versioned file with the release asset', { skip: skipAppImageOnWindows }, () => {
   withTempDir((dir) => {
     const current = join(dir, 'guearth-0.1.16-x86_64.AppImage')
     const installerDir = join(dir, 'download')
@@ -195,7 +198,7 @@ test('installing an AppImage replaces a versioned file with the release asset', 
   })
 })
 
-test('installing an AppImage overwrites a custom filename in place', () => {
+test('installing an AppImage overwrites a custom filename in place', { skip: skipAppImageOnWindows }, () => {
   withTempDir((dir) => {
     const current = join(dir, 'GuEarth.AppImage')
     const installer = join(dir, 'download.bin')
@@ -209,7 +212,7 @@ test('installing an AppImage overwrites a custom filename in place', () => {
   })
 })
 
-test('a rejected AppImage path leaves the current file untouched', () => {
+test('a rejected AppImage path leaves the current file untouched', { skip: skipAppImageOnWindows }, () => {
   withTempDir((dir) => {
     const current = join(dir, 'guearth-0.1.16-x86_64.AppImage')
     const installer = join(dir, 'download.bin')
@@ -245,4 +248,57 @@ test('deb install plans use pkexec argv and skip elevation for root', () => {
   assert.equal(debInstallPlan(file, 1000, null, '/usr/bin/pkexec'), null)
   assert.equal(debInstallPlan('relative.deb', 0, '/usr/bin/dpkg', null), null)
   assert.equal(debInstallPlan(file, 0, 'dpkg', null), null)
+  assert.equal(debInstallPlan(file, 0, '/tmp/dpkg', null), null)
+  assert.equal(debInstallPlan(file, 0, '/usr/local/bin/dpkg', null), null)
+  assert.equal(debInstallPlan(file, 0, '/usr/bin/../tmp/dpkg', null), null)
+  assert.equal(debInstallPlan(file, 1000, '/usr/bin/dpkg', '/tmp/pkexec'), null)
+  assert.equal(debInstallPlan(file, 1000, '/usr/bin/dpkg', '/usr/bin/dpkg'), null)
+  assert.deepEqual(debInstallPlan(file, 0, '/sbin/dpkg', null), {
+    command: '/sbin/dpkg',
+    args: ['-i', file]
+  })
+})
+
+test('deb tools resolve only from trusted directories', () => {
+  const dpkg = findTrustedExecutable('dpkg')
+  const pkexec = findTrustedExecutable('pkexec')
+  assert.equal(dpkg === null || /^\/(?:usr\/s?bin|s?bin)\/dpkg$/.test(dpkg), true)
+  assert.equal(pkexec === null || /^\/(?:usr\/s?bin|s?bin)\/pkexec$/.test(pkexec), true)
+  withTempDir((dir) => {
+    const trusted = join(dir, 'bin')
+    const outside = join(dir, 'outside')
+    mkdirSync(trusted)
+    mkdirSync(outside)
+    const tool = join(trusted, 'dpkg')
+    const evil = join(outside, 'dpkg')
+    writeFileSync(tool, 'real')
+    writeFileSync(evil, 'evil')
+    assert.equal(findTrustedExecutable('dpkg', [trusted]), realpathSync(tool))
+    assert.equal(findTrustedExecutable('dpkg', [outside]), realpathSync(evil))
+    assert.equal(findTrustedExecutable('../dpkg', [trusted]), null)
+    assert.equal(findTrustedExecutable('dpkg/../../bin/sh', [trusted]), null)
+    assert.notEqual(findTrustedExecutable('dpkg'), realpathSync(tool))
+    const planted = join(dir, 'planted')
+    mkdirSync(planted)
+    writeFileSync(join(planted, 'dpkg'), 'planted')
+    writeFileSync(join(planted, 'pkexec'), 'planted')
+    const previousPath = process.env.PATH
+    process.env.PATH = `${planted}${delimiter}${previousPath ?? ''}`
+    try {
+      const resolvedDpkg = findTrustedExecutable('dpkg')
+      const resolvedPkexec = findTrustedExecutable('pkexec')
+      assert.equal(resolvedDpkg === null || !resolvedDpkg.startsWith(planted), true)
+      assert.equal(resolvedPkexec === null || !resolvedPkexec.startsWith(planted), true)
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH
+      else process.env.PATH = previousPath
+    }
+    try {
+      symlinkSync(evil, join(trusted, 'pkexec'))
+    } catch (error) {
+      if (process.platform === 'win32') return
+      throw error
+    }
+    assert.equal(findTrustedExecutable('pkexec', [trusted]), null)
+  })
 })

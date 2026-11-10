@@ -1,9 +1,11 @@
-import { chmodSync, copyFileSync, linkSync, renameSync, rmSync } from 'fs'
+import { chmodSync, copyFileSync, linkSync, lstatSync, realpathSync, renameSync, rmSync } from 'fs'
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'path'
 
 const SAFE_ASSET_NAME = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/
 const VERSIONED_FILE_NAME = /\d+\.\d+\.\d+/
 const ABSOLUTE_PATH = /^\/[^\0]*$/
+const TRUSTED_EXECUTABLE_DIRS = ['/usr/bin', '/usr/sbin', '/bin', '/sbin']
+const TRUSTED_DEB_TOOLS = new Set(['dpkg', 'pkexec'])
 const HAZEL_EXTENSIONS = new Set(['exe', 'dmg', 'rpm', 'deb', 'AppImage'])
 
 const HAZEL_ALIAS_GROUPS: Record<string, readonly string[]> = {
@@ -179,10 +181,41 @@ export function installAppImageFile(installerPath: string, currentAppImage: stri
   return destination
 }
 
+function isTrustedDebTool(filePath: string | null, name: string): filePath is string {
+  if (!filePath || !ABSOLUTE_PATH.test(filePath)) return false
+  return basename(filePath) === name && TRUSTED_EXECUTABLE_DIRS.includes(dirname(filePath))
+}
+
+export function findTrustedExecutable(name: string, directories: readonly string[] = TRUSTED_EXECUTABLE_DIRS): string | null {
+  if (!TRUSTED_DEB_TOOLS.has(name)) return null
+  const seen = new Set<string>()
+  for (const dir of directories) {
+    if (!isAbsolute(dir) || dir.includes('\0')) continue
+    let root: string
+    try {
+      root = realpathSync(dir)
+    } catch {
+      continue
+    }
+    if (seen.has(root)) continue
+    seen.add(root)
+    const candidate = join(root, name)
+    try {
+      if (!lstatSync(candidate).isFile()) continue
+      const real = realpathSync(candidate)
+      if (dirname(real) !== root || basename(real) !== name) continue
+      return real
+    } catch {
+      void 0
+    }
+  }
+  return null
+}
+
 export function debInstallPlan(installerPath: string, uid: number, dpkgPath: string | null, pkexecPath: string | null): CommandPlan | null {
   if (!ABSOLUTE_PATH.test(installerPath)) return null
-  if (!dpkgPath || !ABSOLUTE_PATH.test(dpkgPath)) return null
+  if (!isTrustedDebTool(dpkgPath, 'dpkg')) return null
   if (uid === 0) return { command: dpkgPath, args: ['-i', installerPath] }
-  if (!pkexecPath || !ABSOLUTE_PATH.test(pkexecPath)) return null
+  if (!isTrustedDebTool(pkexecPath, 'pkexec')) return null
   return { command: pkexecPath, args: ['--disable-internal-agent', dpkgPath, '-i', installerPath] }
 }
