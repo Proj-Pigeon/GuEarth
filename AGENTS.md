@@ -120,17 +120,23 @@ npm test           # node:test unit tests (tests/*.test.mjs), run by CI
   backslash-separated segments.
 - Verify UI changes by running `npm run dev` and exercising the feature; report explicitly if a
   change could not be visually verified.
-- **Updater contract**: the update manifest at `GET {base}/update/win32/{currentVersion}` may ship
-  a `sha256` field (lowercase hex) for the installer it advertises. The stock hazel deployment
-  (`guearth-updater.isla.fan`) does not, so the client resolves the digest itself from the GitHub
-  releases API (`asset.digest` of the asset the manifest `url` points at — computed by GitHub at
-  upload time). When neither source yields a valid lowercase-hex digest the update is ignored
-  (fail closed). The client re-verifies cached and about-to-launch installers and ignores
-  non-upgrade versions. Ops note: the hazel deployment still points at the pre-transfer slug
-  `HikaruQwQ/GuEarth` and only works through GitHub's transfer redirect — a replacement update
-  source must take over the `guearth-updater.isla.fan` domain. Do not add a self-deployed
-  update-server implementation to this repository; client-side digest resolution makes one
-  unnecessary.
+- **Updater contract**: packaged Windows x64 and the Linux packages this repo ships (AppImage and
+  deb, x64 and arm64) check `GET {base}/update/{platform}/{currentVersion}` on the hazel server
+  (`https://guearth-updater.isla.fan`, override with `GUEARTH_UPDATE_URL`). `{platform}` is hazel's
+  alias for that package: `win32`, `appimage`, `appimage_arm64`, `deb`, or `deb_arm64`. The manifest
+  may ship a `sha256` field (lowercase hex). The stock hazel deployment does not, so the client
+  resolves the digest itself from the GitHub releases API (`asset.digest` of the asset the manifest
+  `url` points at — computed by GitHub at upload time). The asset filename must classify as that
+  same hazel platform, so an arm64 client cannot install the x64 file an unsuffixed route would
+  return. When the digest is missing, the filename does not match, or the remote version is not an
+  upgrade, the update is ignored (fail closed). The client re-verifies cached and about-to-launch
+  installers. Windows launches the NSIS installer; an AppImage replaces the running file and
+  relaunches; a deb install runs `pkexec dpkg -i` (or `dpkg -i` as root) and relaunches. Dev builds
+  can opt in with `GUEARTH_UPDATE_URL` and, on Linux, `GUEARTH_UPDATE_PACKAGE=appimage|deb`. Ops
+  note: the hazel deployment still points at the pre-transfer slug `HikaruQwQ/GuEarth` and only
+  works through GitHub's transfer redirect — a replacement update source must take over the
+  `guearth-updater.isla.fan` domain. Do not add a self-deployed update-server implementation to
+  this repository; client-side digest resolution makes one unnecessary.
 - **Distribution compliance**: never bundle GPL components. Keep FFmpeg on the pinned LGPL
   build; license texts and source offers ship from `resources/licenses/` + `THIRD-PARTY-NOTICES.md`;
   the NSIS license page summarizes them from `build/license.txt` (UTF-8 with BOM).
