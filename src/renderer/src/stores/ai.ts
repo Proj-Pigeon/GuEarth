@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { AiChatEvent, AiChatTurn, AiContextCompressionResult, AiContextEntry, AiContextStats, AiSearchReference, AiSettings, AiToolDefinition, StoredAiCompression, StoredAiConversation, StoredAiConversationSummary, StoredAiMessage, StoredAiPart } from '../../../preload'
 import { defaultAiSettings } from '../../../shared/aiSettings'
+import { ipcErrorMessage } from '../lib/ipcError'
 
 export interface ToolStep {
   callId: string
@@ -107,10 +108,6 @@ function emptyContextStats(contextWindow = 128_000): AiContextStats {
 function formatContextTokens(tokens: number): string {
   if (tokens < 1_000) return `${Math.max(0.1, tokens / 1_000).toFixed(1)}k`
   return `${(tokens / 1_000).toFixed(tokens >= 10_000 ? 0 : 1)}k`
-}
-
-function stripIpcErrorPrefix(message: string): string {
-  return message.replace(/^Error invoking remote method '[^']+':?\s*(Error:\s*)?/i, '')
 }
 
 function reportsFailure(result: unknown): boolean {
@@ -562,7 +559,7 @@ export const useAiStore = defineStore('ai', () => {
       const assistant = currentAssistant()
       if (assistant && assistant.status === 'streaming') {
         assistant.status = 'error'
-        assistant.error = stripIpcErrorPrefix(error instanceof Error ? error.message : 'AI 请求失败')
+        assistant.error = ipcErrorMessage(error, 'AI 请求失败')
       }
       clearIdleWatchdog()
       isStreaming.value = false

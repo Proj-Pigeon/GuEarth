@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { message } from 'ant-design-vue'
-import { DeleteOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons-vue'
-import type { AiModelConfig, AiProviderConfig, AiSearchProviderConfig, AiSettings, AiThinkingLevel, ProviderCredentialStatus } from '../../../../preload'
+import { message, Modal } from 'ant-design-vue'
+import { BulbOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, SaveOutlined, SearchOutlined, SettingOutlined, SyncOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
+import type { AiModelConfig, AiModelImportRow, AiProviderConfig, AiSearchProviderConfig, AiSettings, AiThinkingLevel, ProviderCredentialStatus } from '../../../../preload'
 import { useAiStore } from '@renderer/stores/ai'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
+import { ipcErrorMessage } from '@renderer/lib/ipcError'
 import SearchProviderSettings from '../SearchProviderSettings.vue'
 import MemorySettings from '../MemorySettings.vue'
 
@@ -32,12 +33,44 @@ const activeSearchProviderId = ref('')
 const socraticBusy = ref(false)
 const settingsReading = ref(true)
 const settingsReadFailed = ref(false)
+const importOpen = ref(false)
+const importLoading = ref(false)
+const importConfirmLoading = ref(false)
+const importRows = ref<Array<AiModelImportRow & { key: string; selected: boolean }>>([])
+const importProviderId = ref('')
+const importMatching = ref(false)
+const modelGroupCompat = ref(false)
+let importRequestToken = 0
+const modelEditorOpen = ref(false)
+const modelEditorKey = ref('')
+const modelEditorTitle = ref('模型详情')
+const modelSearch = ref('')
+const modelPage = ref(1)
+const testingModelKey = ref('')
+const modelDraft = reactive<AiModelConfig>({
+  id: '',
+  label: '',
+  contextWindow: 128000,
+  streaming: true,
+  vision: false,
+  thinking: false,
+  thinkingLevel: 'medium',
+  enabled: true
+})
 
 const baseUrlPlaceholder = computed(() => (selectedProvider.value?.protocol ?? 'openai') === 'anthropic'
   ? 'https://api.anthropic.com'
   : 'https://api.deepseek.com 或 https://api.openai.com')
 
 const selectedProvider = computed(() => draftProviders.value.find((provider) => provider.id === selectedProviderId.value))
+const modelPageSize = 10
+const filteredModels = computed(() => {
+  const query = modelSearch.value.trim().toLowerCase()
+  const models = selectedProvider.value?.models ?? []
+  if (!query) return models
+  return models.filter((model) => model.label.toLowerCase().includes(query) || model.id.toLowerCase().includes(query))
+})
+const pagedModels = computed(() => filteredModels.value.slice((modelPage.value - 1) * modelPageSize, modelPage.value * modelPageSize))
 
 const settingsLocked = computed(() => settingsReading.value || settingsReadFailed.value)
 
@@ -46,6 +79,10 @@ const thinkingLevelOptions: { value: AiThinkingLevel; label: string }[] = [
   { value: 'medium', label: '中' },
   { value: 'high', label: '高' }
 ]
+
+function thinkingLevelLabel(level: AiThinkingLevel): string {
+  return thinkingLevelOptions.find((option) => option.value === level)?.label ?? '中'
+}
 
 function makeKey(): string {
   return Math.random().toString(36).slice(2, 10)
@@ -99,6 +136,18 @@ onMounted(async () => {
 
 watch(selectedProviderId, () => {
   apiKeyDraft.value = ''
+  modelSearch.value = ''
+  modelPage.value = 1
+  modelEditorOpen.value = false
+})
+
+watch(modelSearch, () => {
+  modelPage.value = 1
+})
+
+watch(filteredModels, () => {
+  const lastPage = Math.max(1, Math.ceil(filteredModels.value.length / modelPageSize))
+  if (modelPage.value > lastPage) modelPage.value = lastPage
 })
 
 function addProvider(): void {
@@ -116,30 +165,338 @@ function addProvider(): void {
 }
 
 function removeProvider(providerId: string): void {
-  draftProviders.value = draftProviders.value.filter((provider) => provider.id !== providerId)
-  if (selectedProviderId.value === providerId) selectedProviderId.value = draftProviders.value[0]?.id ?? ''
-  if (activeChoice.value.startsWith(`${providerId}:`)) activeChoice.value = ''
+  const provider = draftProviders.value.find((item) => item.id === providerId)
+  if (!provider) return
+  Modal.confirm({
+    title: '删除供应商？',
+    content: provider.models.length ? `将同时删除其下的 ${provider.models.length} 个模型。` : '该供应商将从列表中移除。',
+    okText: '删除',
+    cancelText: '取消',
+    okType: 'danger',
+    onOk: () => {
+      draftProviders.value = draftProviders.value.filter((item) => item.id !== providerId)
+      if (selectedProviderId.value === providerId) selectedProviderId.value = draftProviders.value[0]?.id ?? ''
+      if (activeChoice.value.startsWith(`${providerId}:`)) activeChoice.value = ''
+      modelEditorOpen.value = false
+    }
+  })
 }
 
 function addModel(): void {
   const provider = selectedProvider.value
   if (!provider) return
-  provider.models.push({
-    key: makeKey(),
+  modelEditorKey.value = ''
+  modelEditorTitle.value = '添加模型'
+  Object.assign(modelDraft, {
     id: '',
     label: '',
     contextWindow: 128000,
     streaming: true,
     vision: false,
     thinking: false,
-    thinkingLevel: 'medium'
+    thinkingLevel: 'medium',
+    enabled: true
   })
+  modelEditorOpen.value = true
+}
+
+function editModel(model: ModelDraft): void {
+  modelEditorKey.value = model.key
+  modelEditorTitle.value = '模型详情'
+  Object.assign(modelDraft, {
+    id: model.id,
+    label: model.label,
+    contextWindow: model.contextWindow,
+    streaming: model.streaming,
+    vision: model.vision,
+    thinking: model.thinking,
+    thinkingLevel: model.thinkingLevel,
+    enabled: model.enabled
+  })
+  modelEditorOpen.value = true
+}
+
+function saveModel(): void {
+  const provider = selectedProvider.value
+  if (!provider) return
+  const id = modelDraft.id.trim()
+  if (!id) {
+    message.warning('请填写模型代号')
+    return
+  }
+  if (provider.models.some((model) => model.key !== modelEditorKey.value && model.id.trim() === id)) {
+    message.warning('模型代号已存在')
+    return
+  }
+  if (!Number.isFinite(modelDraft.contextWindow) || modelDraft.contextWindow < 4096) {
+    message.warning('上下文窗口不能小于 4096')
+    return
+  }
+  const next = {
+    id,
+    label: modelDraft.label.trim() || id,
+    contextWindow: modelDraft.contextWindow,
+    streaming: modelDraft.streaming,
+    vision: modelDraft.vision,
+    thinking: modelDraft.thinking,
+    thinkingLevel: modelDraft.thinkingLevel,
+    enabled: modelDraft.enabled
+  }
+  if (modelEditorKey.value) {
+    const model = provider.models.find((item) => item.key === modelEditorKey.value)
+    if (!model) return
+    const previousId = model.id
+    Object.assign(model, next)
+    if (activeChoice.value === `${provider.id}:${previousId}` && previousId !== id) {
+      activeChoice.value = `${provider.id}:${id}`
+    }
+  } else {
+    if (provider.models.length >= 256) {
+      message.warning('最多保存 256 个模型')
+      return
+    }
+    provider.models.push({ key: makeKey(), ...next })
+  }
+  modelEditorOpen.value = false
+  message.success('模型已保存')
 }
 
 function removeModel(modelKey: string): void {
   const provider = selectedProvider.value
   if (!provider) return
-  provider.models = provider.models.filter((model) => model.key !== modelKey)
+  const model = provider.models.find((item) => item.key === modelKey)
+  if (!model) return
+  Modal.confirm({
+    title: '删除模型？',
+    content: `将删除“${model.label || model.id}”。`,
+    okText: '删除',
+    cancelText: '取消',
+    okType: 'danger',
+    onOk: () => {
+      provider.models = provider.models.filter((item) => item.key !== modelKey)
+      if (activeChoice.value === `${provider.id}:${model.id}`) activeChoice.value = ''
+      if (modelEditorKey.value === modelKey) modelEditorOpen.value = false
+    }
+  })
+}
+
+function toggleModel(model: ModelDraft, value: string | number | boolean): void {
+  model.enabled = value === true
+  const provider = selectedProvider.value
+  if (!model.enabled && provider && activeChoice.value === `${provider.id}:${model.id}`) activeChoice.value = ''
+}
+
+async function testModel(model: ModelDraft): Promise<void> {
+  const provider = selectedProvider.value
+  if (!provider || testingModelKey.value) return
+  if (!provider.baseUrl.trim()) {
+    message.warning('请先填写接口地址')
+    return
+  }
+  if (!credentialStatuses.value[provider.id]?.configured) {
+    message.warning('请先保存 API Key')
+    return
+  }
+  testingModelKey.value = model.key
+  try {
+    const result = await window.guEarth.ai.testModel({
+      id: provider.id,
+      name: provider.name,
+      protocol: provider.protocol,
+      baseUrl: provider.baseUrl,
+      modelId: model.id
+    })
+    message.success(`响应正常，${result.latencyMs} ms`)
+  } catch (error) {
+    message.error(ipcErrorMessage(error, '响应测试失败'))
+  } finally {
+    testingModelKey.value = ''
+  }
+}
+
+function modelRowProps(model: ModelDraft): Record<string, unknown> {
+  return {
+    tabindex: 0,
+    'aria-label': `${model.label || model.id}，打开设置`,
+    style: { cursor: 'pointer' },
+    onClick: () => editModel(model),
+    onKeydown: (event: KeyboardEvent) => {
+      if (event.target !== event.currentTarget) return
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        editModel(model)
+      }
+    }
+  }
+}
+
+const importProvider = computed(() => draftProviders.value.find((provider) => provider.id === importProviderId.value))
+const importFailedCount = computed(() => importRows.value.filter((row) => !row.matched).length)
+const importMatchedCount = computed(() => importRows.value.filter((row) => row.matched).length)
+const importSelectedCount = computed(() => importRows.value.filter((row) => row.selected).length)
+
+function canImport(provider: ProviderDraft | undefined): boolean {
+  return Boolean(provider && provider.baseUrl.trim() && credentialStatuses.value[provider.id]?.configured && !settingsLocked.value)
+}
+
+function applyImportRows(rows: AiModelImportRow[]): void {
+  importRows.value = rows
+    .sort((a, b) => Number(a.matched) - Number(b.matched) || a.id.localeCompare(b.id))
+    .map((row) => ({ ...row, key: makeKey(), selected: row.matched && !row.existing }))
+}
+
+function invalidateImportSession(): void {
+  importRequestToken += 1
+  importLoading.value = false
+  importMatching.value = false
+}
+
+function cancelImport(): void {
+  importOpen.value = false
+  invalidateImportSession()
+}
+
+watch(importOpen, (open) => {
+  if (!open) invalidateImportSession()
+}, { flush: 'sync' })
+
+async function openImport(): Promise<void> {
+  const provider = selectedProvider.value
+  if (!provider) return
+  if (!provider.baseUrl.trim()) {
+    message.warning('请先填写接口地址')
+    return
+  }
+  if (!credentialStatuses.value[provider.id]?.configured) {
+    message.warning('请先保存 API Key')
+    return
+  }
+  const token = ++importRequestToken
+  importProviderId.value = provider.id
+  importRows.value = []
+  importOpen.value = true
+  importLoading.value = true
+  importMatching.value = false
+  try {
+    const result = await window.guEarth.ai.importModels({
+      id: provider.id,
+      name: provider.name,
+      protocol: provider.protocol,
+      baseUrl: provider.baseUrl,
+      models: provider.models.map(({ key: _key, ...model }) => model),
+      modelGroupCompat: modelGroupCompat.value
+    })
+    if (token !== importRequestToken || !importOpen.value) return
+    applyImportRows(result.models)
+    message.success(`已获取 ${result.models.length} 个模型`)
+  } catch (error) {
+    if (token !== importRequestToken) return
+    importOpen.value = false
+    message.error(ipcErrorMessage(error, '模型导入失败'))
+  } finally {
+    if (token === importRequestToken) importLoading.value = false
+  }
+}
+
+async function refreshImportMatches(next = modelGroupCompat.value): Promise<void> {
+  const provider = importProvider.value
+  if (!provider || importLoading.value || importMatching.value) return
+  const previous = modelGroupCompat.value
+  modelGroupCompat.value = next
+  if (!importRows.value.length) return
+  const token = ++importRequestToken
+  importMatching.value = true
+  try {
+    const result = await window.guEarth.ai.importModels({
+      id: provider.id,
+      name: provider.name,
+      protocol: provider.protocol,
+      baseUrl: provider.baseUrl,
+      models: provider.models.map(({ key: _key, ...model }) => model),
+      ids: importRows.value.map((row) => row.id),
+      modelGroupCompat: next
+    })
+    if (token !== importRequestToken || !importOpen.value) return
+    applyImportRows(result.models)
+  } catch (error) {
+    if (token !== importRequestToken) return
+    modelGroupCompat.value = previous
+    message.error(ipcErrorMessage(error, '模型匹配失败'))
+  } finally {
+    if (token === importRequestToken) importMatching.value = false
+  }
+}
+
+function updateImportRow(row: AiModelImportRow & { key: string; selected: boolean }): void {
+  row.matched = Boolean(row.id.trim() && row.contextWindow >= 4096)
+  if (row.matched) row.failureReason = undefined
+}
+
+function deleteImportRow(key: string): void {
+  importRows.value = importRows.value.filter((row) => row.key !== key)
+}
+
+function confirmImport(): void {
+  const provider = importProvider.value
+  if (!provider) return
+  const invalid = importRows.value.find((row) => row.selected && (!row.id.trim() || row.contextWindow < 4096))
+  if (invalid) {
+    message.warning('请先修正选中的模型')
+    return
+  }
+  const ids = new Set(provider.models.map((model) => model.id.trim()))
+  const seenSelected = new Set<string>()
+  for (const row of importRows.value) {
+    if (!row.selected) continue
+    const id = row.id.trim()
+    if (seenSelected.has(id)) {
+      message.warning(`选中的模型中存在重复 ID：${id}`)
+      return
+    }
+    seenSelected.add(id)
+  }
+  const rows: Array<AiModelImportRow & { key: string; selected: boolean }> = []
+  for (const row of importRows.value) {
+    if (!row.selected) continue
+    const id = row.id.trim()
+    if (ids.has(id)) continue
+    ids.add(id)
+    rows.push(row)
+  }
+  if (!rows.length) {
+    message.info('没有可加入的模型')
+    return
+  }
+  if (provider.models.length + rows.length > 256) {
+    message.warning(`最多保存 256 个模型，还可加入 ${Math.max(0, 256 - provider.models.length)} 个`)
+    return
+  }
+  Modal.confirm({
+    title: '确认导入模型？',
+    content: `将加入 ${rows.length} 个模型，已有模型不会覆盖。`,
+    okText: '确认导入',
+    cancelText: '取消',
+    onOk: async () => {
+      importConfirmLoading.value = true
+      try {
+        provider.models.push(...rows.map((row) => ({
+          key: makeKey(),
+          id: row.id.trim(),
+          label: row.label.trim() || row.id.trim(),
+          contextWindow: row.contextWindow,
+          streaming: row.streaming,
+          vision: row.vision,
+          thinking: row.thinking,
+          thinkingLevel: row.thinkingLevel,
+          enabled: true
+        })))
+        importOpen.value = false
+        message.success(`已加入 ${rows.length} 个模型`)
+      } finally {
+        importConfirmLoading.value = false
+      }
+    }
+  })
 }
 
 async function saveApiKey(): Promise<void> {
@@ -221,7 +578,8 @@ async function handleSave(): Promise<void> {
           streaming: model.streaming,
           vision: model.vision,
           thinking: model.thinking,
-          thinkingLevel: model.thinkingLevel
+          thinkingLevel: model.thinkingLevel,
+          enabled: model.enabled
         }))
     })),
     activeProviderId,
@@ -263,8 +621,8 @@ async function handleSave(): Promise<void> {
         placeholder="选择供应商与模型"
         allow-clear
       >
-        <a-select-opt-group v-for="provider in draftProviders" :key="provider.id" :label="provider.name">
-          <a-select-option v-for="model in provider.models" :key="`${provider.id}:${model.id}`" :value="`${provider.id}:${model.id}`">
+        <a-select-opt-group v-for="provider in draftProviders.filter((item) => item.models.some((model) => model.enabled))" :key="provider.id" :label="provider.name">
+          <a-select-option v-for="model in provider.models.filter((item) => item.enabled)" :key="`${provider.id}:${model.id}`" :value="`${provider.id}:${model.id}`">
             {{ model.label || model.id }}
           </a-select-option>
         </a-select-opt-group>
@@ -314,41 +672,67 @@ async function handleSave(): Promise<void> {
           </div>
 
           <div class="models-heading">
-            <span>模型列表（{{ selectedProvider.models.length }}）</span>
-            <a-button size="small" type="dashed" @click="addModel"><PlusOutlined />添加模型</a-button>
+            <span>模型（{{ selectedProvider.models.length }}）</span>
           </div>
-          <div v-if="selectedProvider.models.length === 0" class="models-empty">尚未添加模型，点击“添加模型”开始。</div>
-          <div v-for="model in selectedProvider.models" :key="model.key" class="model-card">
-            <div class="model-row">
-              <a-input v-model:value="model.id" placeholder="模型 ID，如 deepseek-chat / qwen3-max / claude-sonnet-4-5" class="model-id-input" />
-              <a-input v-model:value="model.label" placeholder="显示名（可选）" class="model-label-input" />
-              <a-button type="text" danger aria-label="删除模型" @click="removeModel(model.key)"><DeleteOutlined /></a-button>
+          <div class="models-toolbar">
+            <a-input v-model:value="modelSearch" class="model-search" placeholder="搜索模型" allow-clear>
+              <template #prefix><SearchOutlined /></template>
+            </a-input>
+            <div class="models-actions">
+              <a-button :disabled="!canImport(selectedProvider)" :loading="importLoading && importProviderId === selectedProvider.id" @click="openImport"><SyncOutlined v-if="!(importLoading && importProviderId === selectedProvider.id)" />刷新模型</a-button>
+              <a-button @click="addModel"><PlusOutlined />添加模型</a-button>
             </div>
-            <div class="model-row model-row-secondary">
-              <span class="model-field">
-                <label>上下文窗口</label>
-                <a-input-number v-model:value="model.contextWindow" :min="4096" :max="2000000" :step="32000" :formatter="(value: number) => `${value}`" />
-              </span>
-              <span class="model-field">
-                <label>流式传输</label>
-                <a-switch v-model:checked="model.streaming" size="small" />
-              </span>
-              <span class="model-field">
-                <a-tooltip title="开启后允许向该模型发送地球截图等图片内容；模型不支持图像输入时请保持关闭，截图将以文字描述视角代替">
-                  <label class="vision-label">视觉</label>
+          </div>
+          <div v-if="selectedProvider.models.length === 0" class="models-empty">尚未添加模型。</div>
+          <div v-else-if="filteredModels.length === 0" class="models-empty">没有匹配的模型。</div>
+          <div v-else class="model-list">
+            <div
+              v-for="model in pagedModels"
+              :key="model.key"
+              :class="['model-list-row', { disabled: !model.enabled }]"
+              v-bind="modelRowProps(model)"
+            >
+              <div class="model-text">
+                <div class="model-name">{{ model.label || model.id }}</div>
+                <div v-if="model.label && model.label !== model.id" class="model-code">{{ model.id }}</div>
+              </div>
+              <div class="model-actions" @click.stop>
+                <a-tooltip :title="model.enabled ? '停用' : '启用'">
+                  <a-switch
+                    :checked="model.enabled"
+                    size="small"
+                    :aria-label="model.enabled ? '停用模型' : '启用模型'"
+                    @change="(value: string | number | boolean) => toggleModel(model, value)"
+                  />
                 </a-tooltip>
-                <a-switch v-model:checked="model.vision" size="small" />
-              </span>
-              <span class="model-field">
-                <label>思考</label>
-                <a-switch v-model:checked="model.thinking" size="small" />
-              </span>
-              <span class="model-field">
-                <label>思考等级</label>
-                <a-select v-model:value="model.thinkingLevel" :disabled="!model.thinking" size="small" class="level-select" :options="thinkingLevelOptions" />
-              </span>
+                <a-tooltip title="响应测试">
+                  <a-button
+                    type="text"
+                    :loading="testingModelKey === model.key"
+                    :disabled="Boolean(testingModelKey) && testingModelKey !== model.key"
+                    aria-label="响应测试"
+                    @click="testModel(model)"
+                  ><ThunderboltOutlined v-if="testingModelKey !== model.key" /></a-button>
+                </a-tooltip>
+                <a-tooltip title="设置">
+                  <a-button type="text" aria-label="模型设置" @click="editModel(model)"><SettingOutlined /></a-button>
+                </a-tooltip>
+                <a-tooltip title="删除">
+                  <a-button type="text" danger aria-label="删除模型" @click="removeModel(model.key)"><DeleteOutlined /></a-button>
+                </a-tooltip>
+              </div>
             </div>
           </div>
+          <a-pagination
+            v-if="filteredModels.length > modelPageSize"
+            v-model:current="modelPage"
+            class="model-pagination"
+            size="small"
+            :total="filteredModels.length"
+            :page-size="modelPageSize"
+            :show-size-changer="false"
+            show-less-items
+          />
 
           <div class="provider-danger">
             <a-button danger type="text" @click="removeProvider(selectedProvider.id)">删除该供应商</a-button>
@@ -357,6 +741,132 @@ async function handleSave(): Promise<void> {
         <div v-else class="provider-editor provider-editor-empty">先在左侧添加一个供应商。</div>
       </div>
     </section>
+
+    <a-modal
+      v-model:open="modelEditorOpen"
+      :title="modelEditorTitle"
+      width="560px"
+      ok-text="保存"
+      cancel-text="取消"
+      @ok="saveModel"
+    >
+      <div class="model-editor">
+        <div class="field-row">
+          <label class="field-label">模型代号</label>
+          <a-input v-model:value="modelDraft.id" placeholder="如 deepseek-chat" />
+        </div>
+        <div class="field-row">
+          <label class="field-label">名称</label>
+          <a-input v-model:value="modelDraft.label" placeholder="可选" />
+        </div>
+        <div class="field-row">
+          <label class="field-label">上下文窗口</label>
+          <a-input-number v-model:value="modelDraft.contextWindow" class="model-context-input" :min="4096" :max="2000000" :step="32000" />
+        </div>
+        <div class="model-switches">
+          <span class="model-field">
+            <label>流式传输</label>
+            <a-switch v-model:checked="modelDraft.streaming" size="small" />
+          </span>
+          <span class="model-field">
+            <a-tooltip title="允许向模型发送截图等图片">
+              <label class="vision-label">视觉</label>
+            </a-tooltip>
+            <a-switch v-model:checked="modelDraft.vision" size="small" />
+          </span>
+          <span class="model-field">
+            <label>思考</label>
+            <a-switch v-model:checked="modelDraft.thinking" size="small" />
+          </span>
+          <span class="model-field">
+            <label>思考等级</label>
+            <a-select v-model:value="modelDraft.thinkingLevel" :disabled="!modelDraft.thinking" size="small" class="level-select" :options="thinkingLevelOptions" />
+          </span>
+        </div>
+      </div>
+    </a-modal>
+
+    <a-modal
+      v-model:open="importOpen"
+      title="导入模型"
+      width="960px"
+      :confirm-loading="importConfirmLoading"
+      :ok-button-props="{ disabled: importLoading || importMatching }"
+      ok-text="确认导入"
+      cancel-text="取消"
+      @ok="confirmImport"
+      @cancel="cancelImport"
+    >
+      <div class="import-summary">
+        <a-alert
+          type="info"
+          show-icon
+          :message="importMatching ? '正在重新匹配…' : `匹配成功 ${importMatchedCount} 个，匹配失败 ${importFailedCount} 个`"
+        />
+        <a-tooltip title="按“/”后的模型名匹配元数据">
+          <span class="import-option">
+            <span>模型组兼容</span>
+            <a-switch
+              :checked="modelGroupCompat"
+              size="small"
+              :loading="importMatching"
+              :disabled="importLoading || importMatching"
+              aria-label="模型组兼容"
+              @change="(value: string | number | boolean) => refreshImportMatches(value === true)"
+            />
+            <a-button type="link" size="small" :disabled="importLoading || importMatching" @click="refreshImportMatches()">重新匹配</a-button>
+          </span>
+        </a-tooltip>
+      </div>
+      <a-table
+        class="import-table"
+        row-key="key"
+        :data-source="importRows"
+        :loading="importLoading || importMatching"
+        :pagination="{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showQuickJumper: true, showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} / ${total}` }"
+        :row-class-name="(row: AiModelImportRow & { key: string; selected: boolean }) => row.matched ? '' : 'import-row-failed'"
+      >
+        <a-table-column key="selected" title="导入" :width="64">
+          <template #default="{ record }">
+            <a-checkbox v-model:checked="record.selected" :disabled="record.existing" />
+          </template>
+        </a-table-column>
+        <a-table-column key="id" title="模型 ID" :width="220">
+          <template #default="{ record }">
+            <a-input v-model:value="record.id" size="small" @change="updateImportRow(record)" />
+          </template>
+        </a-table-column>
+        <a-table-column key="label" title="名称" :width="180">
+          <template #default="{ record }">
+            <a-input v-model:value="record.label" size="small" />
+          </template>
+        </a-table-column>
+        <a-table-column key="contextWindow" title="上下文" :width="120">
+          <template #default="{ record }">
+            <a-input-number v-model:value="record.contextWindow" size="small" :min="4096" :max="2000000" @change="updateImportRow(record)" />
+          </template>
+        </a-table-column>
+        <a-table-column key="capabilities" title="能力">
+          <template #default="{ record }">
+            <span class="import-capabilities">
+              <a-tooltip v-if="record.vision" title="支持视觉输入">
+                <EyeOutlined aria-label="支持视觉输入" />
+              </a-tooltip>
+              <a-tooltip v-if="record.thinking" :title="`支持思考，等级：${thinkingLevelLabel(record.thinkingLevel)}`">
+                <BulbOutlined aria-label="支持思考" />
+              </a-tooltip>
+            </span>
+            <span v-if="record.existing" class="import-note">已有</span>
+            <span v-if="!record.matched" class="import-failure">{{ record.failureReason || '需检查' }}</span>
+          </template>
+        </a-table-column>
+        <a-table-column key="actions" title="" :width="52">
+          <template #default="{ record }">
+            <a-button type="text" danger aria-label="删除导入项" @click="deleteImportRow(record.key)"><DeleteOutlined /></a-button>
+          </template>
+        </a-table-column>
+      </a-table>
+    </a-modal>
 
     <section class="settings-block">
       <div class="block-heading">搜索供应商</div>
@@ -413,19 +923,39 @@ async function handleSave(): Promise<void> {
 .field-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .field-label{width:64px;flex-shrink:0;color:rgba(0,0,0,0.65);font-size:13px}
 .key-row{display:flex;flex:1;gap:8px}
-.models-heading{display:flex;align-items:center;justify-content:space-between;color:rgba(0,0,0,0.65);font-size:12px;margin:4px 0 8px}
+.models-heading{color:rgba(0,0,0,0.65);font-size:12px;margin:4px 0 8px}
+.models-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.model-search{flex:1;min-width:0}
+.models-actions{display:flex;flex-shrink:0;gap:8px}
 .models-empty{color:rgba(0,0,0,0.45);font-size:13px;padding:8px 0}
-.model-card{border:1px solid rgba(5,5,5,0.06);border-radius:8px;padding:12px;margin-bottom:8px}
-.model-row{display:flex;align-items:center;gap:8px}
-.model-row-secondary{margin-top:8px;gap:12px 16px;flex-wrap:wrap}
-.model-id-input{flex:1.4}
-.model-label-input{flex:1}
+.model-list{border-top:1px solid rgba(5,5,5,0.06)}
+.model-list-row{display:flex;align-items:center;gap:16px;padding:10px 4px;border-bottom:1px solid rgba(5,5,5,0.06);cursor:pointer;transition:background-color 0.1s ease-out}
+.model-list-row:hover{background:rgba(0,0,0,0.02)}
+.model-list-row:focus-visible{outline:2px solid #1677ff;outline-offset:-2px}
+.model-text{flex:1;min-width:0}
+.model-name{overflow:hidden;color:rgba(0,0,0,.88);font-size:14px;line-height:22px;text-overflow:ellipsis;white-space:nowrap}
+.model-code{margin-top:2px;overflow:hidden;color:rgba(0,0,0,.45);font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:12px;line-height:20px;text-overflow:ellipsis;white-space:nowrap}
+.model-list-row.disabled .model-name{color:rgba(0,0,0,.45)}
+.model-actions{display:flex;flex-shrink:0;align-items:center;gap:4px}
+.model-actions :deep(.ant-btn){width:32px;height:32px;padding:0}
+.model-pagination{display:flex;justify-content:flex-end;margin-top:12px}
 .model-field{display:flex;align-items:center;gap:8px}
 .model-field>label{color:rgba(0,0,0,0.65);font-size:12px;white-space:nowrap}
 .vision-label{cursor:help;text-decoration:underline dotted rgba(0,0,0,.35);text-underline-offset:3px}
-.model-field :deep(.ant-input-number){width:104px}
+.model-switches{display:flex;flex-wrap:wrap;gap:12px 16px;padding-top:4px}
+.model-context-input{width:100%}
+.model-editor .field-row{margin-bottom:16px}
+.model-editor .field-label{width:80px}
 .level-select{width:76px}
 .provider-danger{margin-top:8px;display:flex;justify-content:flex-end}
+.import-summary{display:flex;align-items:flex-start;gap:16px}
+.import-summary :deep(.ant-alert){flex:1;min-width:0}
+.import-option{display:inline-flex;flex-shrink:0;align-items:center;gap:8px;padding-top:6px;color:rgba(0,0,0,.65);font-size:12px}
+.import-table{margin-top:16px}
+.import-row-failed>td{background:rgba(255,77,79,.06)!important}
+.import-failure{margin-left:8px;color:#cf1322}
+.import-note{margin-left:8px;color:rgba(0,0,0,.45)}
+.import-capabilities{display:inline-flex;align-items:center;gap:8px;color:rgba(0,0,0,.65)}
 .teaching-toggle{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .teaching-toggle-text{flex:1}
 .teaching-toggle-title{color:rgba(0,0,0,0.88);font-size:14px;line-height:22px}
