@@ -811,9 +811,9 @@ async function executeTool(sender: WebContents, sessionId: string, name: string,
   if (name === 'web_search') args.query = typeof args.query === 'string' ? args.query.trim().slice(0, 500) : ''
   const callId = `${name}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`
   emit(sender, { sessionId, type: 'tool-start', callId, name, args })
-  const guard = flightGuard ? evaluateFlightToolGuard(flightGuard, name, args) : { allow: true, dispatchArgs: args }
   let outcome: ToolOutcome
   try {
+    const guard = flightGuard ? evaluateFlightToolGuard(flightGuard, name, args) : { allow: true, dispatchArgs: args }
     if (!guard.allow) {
       outcome = { ok: false, content: JSON.stringify({ error: guard.error ?? '禁止执行该飞行操作' }) }
     } else if (name === 'retrieve_knowledge') {

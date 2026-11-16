@@ -237,8 +237,9 @@ aiStore.registerTool({
     if (parsed.error || !parsed.stops.length) return { error: parsed.error ?? '坐标无效，需要 WGS-84 经纬度' }
     if (flightMode === 'queue') {
       const { added, total } = flightStopsStore.appendTurnStops(turnToken, parsed.stops)
+      if (!added.length) return { error: `「${parsed.stops[0].name}」未加入待查看列表：列表已满或地点重复（共 ${total} 个）` }
       const current = flightStopsStore.currentStop
-      const addedName = added[0]?.name ?? parsed.stops[0].name
+      const addedName = added[0].name
       return {
         status: 'queued',
         addedName,

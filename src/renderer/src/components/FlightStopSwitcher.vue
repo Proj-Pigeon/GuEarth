@@ -30,7 +30,7 @@ function handleSelect({ key }: { key: string | number }): void {
 
 function handleClose(): void {
   menuOpen.value = false
-  store.clear()
+  store.dismiss()
 }
 </script>
 

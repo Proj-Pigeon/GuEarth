@@ -55,13 +55,17 @@ export const useFlightStopsStore = defineStore('flightStops', () => {
     if (!stops.value.length) return { error: '当前没有可切换的飞行地点列表' }
     const targetIndex = clampStopIndex(index, stops.value.length)
     const target = plainStop(stops.value[targetIndex])
+    const previousIndex = activeIndex.value
     activeIndex.value = targetIndex
     const seq = ++switchSeq
     isNavigating.value = true
     try {
       const actualHeight = await flyFn(target.longitude, target.latitude, target.height)
       if (seq !== switchSeq) return { error: '切换已取消' }
-      if (actualHeight === undefined) return { error: '飞行已取消' }
+      if (actualHeight === undefined) {
+        activeIndex.value = previousIndex
+        return { error: '飞行已取消' }
+      }
       return { stop: target, actualHeight }
     } finally {
       if (seq === switchSeq) isNavigating.value = false
@@ -103,6 +107,14 @@ export const useFlightStopsStore = defineStore('flightStops', () => {
     isNavigating.value = false
   }
 
+  function dismiss(): void {
+    switchSeq += 1
+    const anchor = currentStop.value
+    stops.value = anchor ? [anchor] : []
+    activeIndex.value = 0
+    isNavigating.value = false
+  }
+
   return {
     stops,
     activeIndex,
@@ -119,6 +131,7 @@ export const useFlightStopsStore = defineStore('flightStops', () => {
     switchByRequest,
     prev,
     next,
-    clear
+    clear,
+    dismiss
   }
 })

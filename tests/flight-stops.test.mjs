@@ -159,3 +159,121 @@ test('turn flight guard blocks consecutive camera moves and unrequested stop swi
     assert.equal(hasExplicitStopSwitchIntent(prompt), false)
   }
 })
+
+test('hasExplicitStopSwitchIntent rejects negated and non-flight switch requests', () => {
+  for (const prompt of [
+    '不要切换地点，继续解释这里的成因',
+    '别切换到下一个',
+    '不用飞到那里',
+    '先不切换，继续讲这里',
+    '不要再切换了',
+    '不要只看第一个',
+    'don’t switch to the next stop',
+    '切换到夜景图层',
+    '切换到底图模式',
+    '跳转到第三章'
+  ]) {
+    assert.equal(hasExplicitStopSwitchIntent(prompt), false, prompt)
+    const guard = createTurnFlightGuard('s1:neg', prompt)
+    assert.equal(evaluateFlightToolGuard(guard, 'switch_flight_stop', { action: 'next' }).allow, false, prompt)
+  }
+  for (const prompt of ['先解释这里，然后切换到下一个', '不要切换图层，带我看下一个地点']) {
+    assert.equal(hasExplicitStopSwitchIntent(prompt), true, prompt)
+  }
+})
+
+test('parseFlyToArgs rejects non-coordinate values instead of coercing them', () => {
+  const invalidArgs = [
+    { longitude: null, latitude: null },
+    { longitude: '', latitude: '' },
+    { longitude: '   ', latitude: 25.27 },
+    { longitude: true, latitude: false },
+    { longitude: [], latitude: [] },
+    { longitude: ['110.29'], latitude: ['25.27'] },
+    { longitude: { toString: null }, latitude: 25.27 },
+    { longitude: 'abc', latitude: 25.27 },
+    { longitude: 110.29 }
+  ]
+  for (const args of invalidArgs) {
+    const parsed = parseFlyToArgs(args)
+    assert.equal(parsed.stops.length, 0)
+    assert.match(parsed.error ?? '', /坐标无效/)
+  }
+
+  const hostile = evaluateFlightToolGuard(createTurnFlightGuard('s1:hostile', '带我去看看'), 'fly_to', { longitude: { toString: null }, latitude: 25.27 })
+  assert.equal(hostile.allow, true)
+  assert.equal(hostile.dispatchArgs.__turnToken, undefined)
+
+  const numericStrings = parseFlyToArgs({ name: '数字字符串', longitude: '110.29', latitude: ' 25.27 ', height: '15000' })
+  assert.equal(numericStrings.error, undefined)
+  assert.equal(numericStrings.stops[0].longitude, 110.29)
+  assert.equal(numericStrings.stops[0].latitude, 25.27)
+  assert.equal(numericStrings.stops[0].height, 15000)
+
+  assert.match(parseFlyToArgs({ longitude: 110.29, latitude: 25.27, height: true }).error ?? '', /高度无效/)
+  assert.match(parseFlyToArgs({ locations: [{ name: '坏点', longitude: null, latitude: null }] }).error ?? '', /坐标无效/)
+})
+
+test('dismissing the switcher keeps the camera anchor and same-turn queue appends', () => {
+  setActivePinia(createPinia())
+  const store = useFlightStopsStore()
+  store.beginTurnStops('turn-d', [
+    { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12000 },
+    { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15000 }
+  ])
+  store.activeIndex = 1
+  store.dismiss()
+  assert.equal(store.visible, false)
+  assert.equal(store.turnToken, 'turn-d')
+  assert.equal(store.activeIndex, 0)
+  assert.equal(store.currentStop?.name, '桂林峰林')
+
+  const queued = store.appendTurnStops('turn-d', [
+    { id: '2', name: '兴文石海', longitude: 105.08, latitude: 28.18, height: 14000 }
+  ])
+  assert.equal(queued.added.length, 1)
+  assert.equal(queued.added[0].name, '兴文石海')
+  assert.equal(queued.total, 2)
+  assert.equal(store.activeIndex, 0)
+  assert.equal(store.currentStop?.name, '桂林峰林')
+  assert.equal(store.visible, true)
+
+  const duplicate = store.appendTurnStops('turn-d', [
+    { id: '3', name: '重复点', longitude: 110.29001, latitude: 25.27001, height: 15000 }
+  ])
+  assert.equal(duplicate.added.length, 0)
+  assert.equal(duplicate.total, 2)
+
+  store.clear()
+  assert.equal(store.turnToken, '')
+  assert.equal(store.total, 0)
+})
+
+test('goTo restores the previous index on cancelled flights but not on superseded switches', async () => {
+  setActivePinia(createPinia())
+  const store = useFlightStopsStore()
+  store.beginTurnStops('turn-f', [
+    { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12000 },
+    { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15000 }
+  ])
+
+  const cancelled = await store.next(async () => undefined)
+  assert.match(cancelled.error ?? '', /飞行已取消/)
+  assert.equal(store.activeIndex, 0)
+  assert.equal(store.isNavigating, false)
+
+  const succeeded = await store.next(async (_longitude, _latitude, height) => height)
+  assert.equal(succeeded.stop?.name, '桂林峰林')
+  assert.equal(store.activeIndex, 1)
+
+  let releaseFirst
+  const firstPending = new Promise((resolve) => { releaseFirst = resolve })
+  const firstAttempt = store.goTo(0, () => firstPending)
+  const secondAttempt = await store.goTo(1, async (_longitude, _latitude, height) => height)
+  assert.equal(secondAttempt.stop?.name, '桂林峰林')
+  releaseFirst(undefined)
+  const firstResult = await firstAttempt
+  assert.match(firstResult.error ?? '', /切换已取消/)
+  assert.equal(store.activeIndex, 1)
+  assert.equal(store.isNavigating, false)
+})
