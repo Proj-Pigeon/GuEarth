@@ -40,6 +40,7 @@ const importRows = ref<Array<AiModelImportRow & { key: string; selected: boolean
 const importProviderId = ref('')
 const importMatching = ref(false)
 const modelGroupCompat = ref(false)
+let importRequestToken = 0
 const modelEditorOpen = ref(false)
 const modelEditorKey = ref('')
 const modelEditorTitle = ref('模型详情')
@@ -344,6 +345,21 @@ function applyImportRows(rows: AiModelImportRow[]): void {
     .map((row) => ({ ...row, key: makeKey(), selected: row.matched && !row.existing }))
 }
 
+function invalidateImportSession(): void {
+  importRequestToken += 1
+  importLoading.value = false
+  importMatching.value = false
+}
+
+function cancelImport(): void {
+  importOpen.value = false
+  invalidateImportSession()
+}
+
+watch(importOpen, (open) => {
+  if (!open) invalidateImportSession()
+}, { flush: 'sync' })
+
 async function openImport(): Promise<void> {
   const provider = selectedProvider.value
   if (!provider) return
@@ -355,10 +371,12 @@ async function openImport(): Promise<void> {
     message.warning('请先保存 API Key')
     return
   }
+  const token = ++importRequestToken
   importProviderId.value = provider.id
   importRows.value = []
   importOpen.value = true
   importLoading.value = true
+  importMatching.value = false
   try {
     const result = await window.guEarth.ai.importModels({
       id: provider.id,
@@ -368,23 +386,25 @@ async function openImport(): Promise<void> {
       models: provider.models.map(({ key: _key, ...model }) => model),
       modelGroupCompat: modelGroupCompat.value
     })
-    if (importProviderId.value !== provider.id) return
+    if (token !== importRequestToken || !importOpen.value) return
     applyImportRows(result.models)
     message.success(`已获取 ${result.models.length} 个模型`)
   } catch (error) {
+    if (token !== importRequestToken) return
     importOpen.value = false
     message.error(ipcErrorMessage(error, '模型导入失败'))
   } finally {
-    importLoading.value = false
+    if (token === importRequestToken) importLoading.value = false
   }
 }
 
 async function refreshImportMatches(next = modelGroupCompat.value): Promise<void> {
   const provider = importProvider.value
-  if (!provider || importMatching.value) return
+  if (!provider || importLoading.value || importMatching.value) return
   const previous = modelGroupCompat.value
   modelGroupCompat.value = next
   if (!importRows.value.length) return
+  const token = ++importRequestToken
   importMatching.value = true
   try {
     const result = await window.guEarth.ai.importModels({
@@ -396,13 +416,14 @@ async function refreshImportMatches(next = modelGroupCompat.value): Promise<void
       ids: importRows.value.map((row) => row.id),
       modelGroupCompat: next
     })
-    if (importProviderId.value !== provider.id) return
+    if (token !== importRequestToken || !importOpen.value) return
     applyImportRows(result.models)
   } catch (error) {
+    if (token !== importRequestToken) return
     modelGroupCompat.value = previous
     message.error(ipcErrorMessage(error, '模型匹配失败'))
   } finally {
-    importMatching.value = false
+    if (token === importRequestToken) importMatching.value = false
   }
 }
 
@@ -423,8 +444,25 @@ function confirmImport(): void {
     message.warning('请先修正选中的模型')
     return
   }
-  const ids = new Set(provider.models.map((model) => model.id))
-  const rows = importRows.value.filter((row) => row.selected && !ids.has(row.id.trim()))
+  const ids = new Set(provider.models.map((model) => model.id.trim()))
+  const seenSelected = new Set<string>()
+  for (const row of importRows.value) {
+    if (!row.selected) continue
+    const id = row.id.trim()
+    if (seenSelected.has(id)) {
+      message.warning(`选中的模型中存在重复 ID：${id}`)
+      return
+    }
+    seenSelected.add(id)
+  }
+  const rows: Array<AiModelImportRow & { key: string; selected: boolean }> = []
+  for (const row of importRows.value) {
+    if (!row.selected) continue
+    const id = row.id.trim()
+    if (ids.has(id)) continue
+    ids.add(id)
+    rows.push(row)
+  }
   if (!rows.length) {
     message.info('没有可加入的模型')
     return
@@ -757,6 +795,7 @@ async function handleSave(): Promise<void> {
       ok-text="确认导入"
       cancel-text="取消"
       @ok="confirmImport"
+      @cancel="cancelImport"
     >
       <div class="import-summary">
         <a-alert

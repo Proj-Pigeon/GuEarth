@@ -5,6 +5,12 @@ import { compileFunction } from 'node:vm'
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 import { test } from 'node:test'
 
+const responseReaderSource = readFileSync(new URL('../src/main/ai/responseReader.ts', import.meta.url), 'utf8')
+const responseReaderOutput = transpileModule(responseReaderSource, {
+  compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 }
+}).outputText
+const responseReaderApi = compileFunction(`${responseReaderOutput}\nreturn exports`, ['exports'])({})
+
 const source = readFileSync(new URL('../src/main/ai/modelImporter.ts', import.meta.url), 'utf8')
 const { outputText } = transpileModule(source, {
   compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 }
@@ -15,7 +21,8 @@ function loadImporter(respond, key = 'secret-key') {
   const requests = []
   const dependencies = new Map([
     ['electron', { net: { fetch: async (url, options) => { requests.push({ url, options }); return respond(url, options) } } }],
-    ['../keyVault', { readProviderKey: () => key }]
+    ['../keyVault', { readProviderKey: () => key }],
+    ['./responseReader', responseReaderApi]
   ])
   const load = compileFunction(`${outputText}\nreturn { importModels: exports.importModels, modelImporterInternals: exports.modelImporterInternals }`, ['require', 'exports'])
   const api = load((id) => {
@@ -221,4 +228,50 @@ test('import errors do not include the provider key', async () => {
     assert.doesNotMatch(error.message, /secret-key/)
     return true
   })
+})
+
+test('Anthropic import rejects stalled pagination cursors and page overflow', async () => {
+  const stalled = loadImporter((url) => {
+    if (url.includes('after_id=cursor-1')) return response({ data: [{ id: 'm2' }], has_more: true, last_id: 'cursor-1' })
+    return response({ data: [{ id: 'm1' }], has_more: true, last_id: 'cursor-1' })
+  })
+  await assert.rejects(stalled.importModels(request({ protocol: 'anthropic', baseUrl: 'https://api.anthropic.com' })), {
+    message: 'Anthropic 模型列表分页游标未推进'
+  })
+
+  let page = 0
+  const overflow = loadImporter(() => {
+    page += 1
+    return response({ data: [{ id: `m-${page}` }], has_more: true, last_id: `cursor-${page}` })
+  })
+  await assert.rejects(overflow.importModels(request({ protocol: 'anthropic', baseUrl: 'https://api.anthropic.com' })), {
+    message: 'Anthropic 模型列表页数超出上限'
+  })
+})
+
+test('oversized provider model responses abort while reading the stream', async () => {
+  let pulls = 0
+  let canceled = false
+  let aborted = false
+  const importer = loadImporter((_url, options) => {
+    options.signal.addEventListener('abort', () => { aborted = true })
+    const stream = new ReadableStream({
+      pull(controller) {
+        pulls += 1
+        if (pulls >= 50) {
+          controller.close()
+          return
+        }
+        controller.enqueue(new Uint8Array(8 * 1024 * 1024 + 1))
+      },
+      cancel() {
+        canceled = true
+      }
+    })
+    return new Response(stream, { status: 200 })
+  })
+  await assert.rejects(importer.importModels(request()), { message: '模型列表响应过大' })
+  assert.ok(pulls < 10)
+  assert.equal(canceled, true)
+  assert.equal(aborted, true)
 })

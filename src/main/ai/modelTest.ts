@@ -1,9 +1,10 @@
 import { net } from 'electron'
 import type { AiModelTestRequest, AiModelTestResult, AiProtocol } from '../../preload'
 import { readProviderKey } from '../keyVault'
+import { readResponseText, ResponseTooLargeError } from './responseReader'
 
 const TEST_TIMEOUT_MS = 30_000
-const MAX_RESPONSE_CHARS = 64 * 1024
+const MAX_RESPONSE_BYTES = 64 * 1024
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -15,15 +16,35 @@ function endpoint(baseUrl: string, protocol: AiProtocol): string {
   return `${base}${protocol === 'anthropic' ? '/messages' : '/chat/completions'}`
 }
 
+function extractPayloadError(payload: Record<string, unknown>): { message: string; code: string } | null {
+  const raw = payload.error
+  if (typeof raw === 'string' && raw.trim()) return { message: raw, code: '' }
+  if (isRecord(raw)) {
+    const message = typeof raw.message === 'string' ? raw.message : ''
+    const code = typeof raw.code === 'string' ? raw.code : typeof raw.type === 'string' ? raw.type : ''
+    if (message || code || Object.keys(raw).length > 0) return { message, code }
+  }
+  if (payload.type === 'error') {
+    const message = typeof payload.message === 'string' ? payload.message : ''
+    return { message, code: 'error' }
+  }
+  if (!Array.isArray(payload.choices) && !Array.isArray(payload.content) && typeof payload.message === 'string' && payload.message.trim()) {
+    return { message: payload.message, code: '' }
+  }
+  return null
+}
+
 function failureMessage(status: number, text: string, apiKey: string): string {
   let message = ''
   let code = ''
   try {
     const payload: unknown = JSON.parse(text)
-    if (isRecord(payload) && isRecord(payload.error)) {
-      if (typeof payload.error.message === 'string') message = payload.error.message
-      if (typeof payload.error.code === 'string') code = payload.error.code
-      else if (typeof payload.error.type === 'string') code = payload.error.type
+    if (isRecord(payload)) {
+      const extracted = extractPayloadError(payload)
+      if (extracted) {
+        message = extracted.message
+        code = extracted.code
+      }
     }
   } catch {
     message = text
@@ -61,7 +82,11 @@ export async function testModel(value: unknown): Promise<AiModelTestResult> {
     ? { model: request.modelId, max_tokens: 16, messages: [{ role: 'user', content: 'ping' }] }
     : { model: request.modelId, messages: [{ role: 'user', content: 'ping' }] }
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TEST_TIMEOUT_MS)
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, TEST_TIMEOUT_MS)
   const startedAt = Date.now()
   try {
     const response = await net.fetch(endpoint(request.baseUrl, request.protocol), {
@@ -70,13 +95,19 @@ export async function testModel(value: unknown): Promise<AiModelTestResult> {
       body: JSON.stringify(body),
       signal: controller.signal
     })
-    const text = (await response.text()).slice(0, MAX_RESPONSE_CHARS)
+    const text = await readResponseText(response, {
+      maxBytes: MAX_RESPONSE_BYTES,
+      controller,
+      tooLargeMessage: '响应内容过大'
+    })
     if (!response.ok) throw new Error(failureMessage(response.status, text, apiKey))
     const payload: unknown = JSON.parse(text)
     if (!isRecord(payload)) throw new Error('响应格式错误')
+    if (extractPayloadError(payload)) throw new Error(failureMessage(response.status, text, apiKey))
     return { latencyMs: Date.now() - startedAt }
   } catch (error) {
-    if (controller.signal.aborted) throw new Error('响应超时')
+    if (error instanceof ResponseTooLargeError) throw error
+    if (timedOut || controller.signal.aborted) throw new Error('响应超时')
     if (error instanceof SyntaxError) throw new Error('响应格式错误')
     throw error instanceof Error ? error : new Error('响应测试失败')
   } finally {

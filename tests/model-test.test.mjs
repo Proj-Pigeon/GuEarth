@@ -4,6 +4,12 @@ import { compileFunction } from 'node:vm'
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 import { test } from 'node:test'
 
+const responseReaderSource = readFileSync(new URL('../src/main/ai/responseReader.ts', import.meta.url), 'utf8')
+const responseReaderOutput = transpileModule(responseReaderSource, {
+  compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 }
+}).outputText
+const responseReaderApi = compileFunction(`${responseReaderOutput}\nreturn exports`, ['exports'])({})
+
 const source = readFileSync(new URL('../src/main/ai/modelTest.ts', import.meta.url), 'utf8')
 const { outputText } = transpileModule(source, {
   compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 }
@@ -13,7 +19,8 @@ function loadTester(respond, key = 'secret-key') {
   const requests = []
   const dependencies = new Map([
     ['electron', { net: { fetch: async (url, options) => { requests.push({ url, options }); return respond(url, options) } } }],
-    ['../keyVault', { readProviderKey: () => key }]
+    ['../keyVault', { readProviderKey: () => key }],
+    ['./responseReader', responseReaderApi]
   ])
   const load = compileFunction(`${outputText}\nreturn { testModel: exports.testModel }`, ['require', 'exports'])
   const api = load((id) => {
@@ -74,4 +81,50 @@ test('unknown failures keep the status and redact the API key', async () => {
     assert.match(error.message, /\[redacted\]/)
     return true
   })
+})
+
+test('HTTP 200 error payloads are treated as failures with redaction and truncation', async () => {
+  const tester = loadTester(() => Response.json({
+    error: { message: 'model not found' }
+  }, { status: 200 }))
+  await assert.rejects(tester.testModel(request()), { message: '模型不存在' })
+
+  const longDetail = `bad secret-key ${'x'.repeat(240)}`
+  const longTester = loadTester(() => Response.json({
+    error: { message: longDetail }
+  }, { status: 200 }))
+  await assert.rejects(longTester.testModel(request()), (error) => {
+    assert.match(error.message, /^响应失败（HTTP 200）：/)
+    assert.doesNotMatch(error.message, /secret-key/)
+    assert.match(error.message, /\[redacted\]/)
+    assert.ok(error.message.length <= '响应失败（HTTP 200）：'.length + 160)
+    return true
+  })
+})
+
+test('oversized streaming responses abort immediately while reading', async () => {
+  let pulls = 0
+  let canceled = false
+  let aborted = false
+  const tester = loadTester((_url, options) => {
+    options.signal.addEventListener('abort', () => { aborted = true })
+    const stream = new ReadableStream({
+      pull(controller) {
+        pulls += 1
+        if (pulls >= 50) {
+          controller.close()
+          return
+        }
+        controller.enqueue(new Uint8Array(32 * 1024 + 1))
+      },
+      cancel() {
+        canceled = true
+      }
+    })
+    return new Response(stream, { status: 200 })
+  })
+  await assert.rejects(tester.testModel(request()), { message: '响应内容过大' })
+  assert.ok(pulls < 10)
+  assert.equal(canceled, true)
+  assert.equal(aborted, true)
 })

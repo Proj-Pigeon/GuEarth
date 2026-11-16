@@ -7,6 +7,7 @@ import type {
   AiProviderConfig
 } from '../../preload'
 import { readProviderKey } from '../keyVault'
+import { readResponseText, ResponseTooLargeError } from './responseReader'
 
 const MODELS_DEV_URL = 'https://models.dev/api.json'
 const REQUEST_TIMEOUT_MS = 20_000
@@ -63,15 +64,23 @@ function endpoint(baseUrl: string, protocol: AiProtocol): string {
 
 async function fetchText(url: string, init: RequestInit): Promise<string> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, REQUEST_TIMEOUT_MS)
   try {
     const response = await net.fetch(url, { ...init, signal: controller.signal })
-    const body = await response.text()
-    if (new TextEncoder().encode(body).byteLength > MAX_RESPONSE_BYTES) throw new Error('模型列表响应过大')
+    const body = await readResponseText(response, {
+      maxBytes: MAX_RESPONSE_BYTES,
+      controller,
+      tooLargeMessage: '模型列表响应过大'
+    })
     if (!response.ok) throw new Error(`模型列表请求失败（HTTP ${response.status}）`)
     return body
   } catch (error) {
-    if (controller.signal.aborted) throw new Error('模型列表请求超时')
+    if (error instanceof ResponseTooLargeError) throw error
+    if (timedOut || controller.signal.aborted) throw new Error('模型列表请求超时')
     throw error instanceof Error ? error : new Error('模型列表请求失败')
   } finally {
     clearTimeout(timer)
@@ -112,6 +121,7 @@ async function fetchProviderIds(provider: AiProviderConfig, apiKey: string): Pro
   if (provider.protocol === 'openai') return modelIds(parseJson(await fetchText(url, { headers })))
   const ids: string[] = []
   const seen = new Set<string>()
+  const seenCursors = new Set<string>()
   let next = url
   for (let page = 0; page < MAX_ANTHROPIC_PAGES && next; page += 1) {
     const payload = parseJson(await fetchText(next, { headers }))
@@ -121,8 +131,11 @@ async function fetchProviderIds(provider: AiProviderConfig, apiKey: string): Pro
         ids.push(id)
       }
     }
-    if (payload.has_more !== true) break
+    if (payload.has_more !== true) return ids
     if (typeof payload.last_id !== 'string' || !payload.last_id) throw new Error('Anthropic 模型列表缺少下一页游标')
+    if (seenCursors.has(payload.last_id)) throw new Error('Anthropic 模型列表分页游标未推进')
+    seenCursors.add(payload.last_id)
+    if (page + 1 >= MAX_ANTHROPIC_PAGES) throw new Error('Anthropic 模型列表页数超出上限')
     const pageUrl = new URL(url)
     pageUrl.searchParams.set('limit', '1000')
     pageUrl.searchParams.set('after_id', payload.last_id)
