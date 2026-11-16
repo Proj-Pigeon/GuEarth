@@ -89,6 +89,7 @@ test('useFlightStopsStore starts at first stop, queues same-turn additions, and 
   assert.equal(store.canPrev, false)
   assert.equal(store.canNext, true)
   assert.equal(flights.length, 0)
+  assert.deepEqual(structuredClone({ queued, current: store.currentStop }), { queued, current: store.currentStop })
 
   const prevAtStart = await store.prev(flyFn)
   assert.match(prevAtStart.error ?? '', /第一个地点/)

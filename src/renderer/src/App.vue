@@ -244,7 +244,7 @@ aiStore.registerTool({
         addedName,
         activeIndex: flightStopsStore.activeIndex + 1,
         total,
-        current,
+        current: current ? { ...current } : null,
         message: `已将「${addedName}」加入待查看地点列表（共 ${total} 个），当前视角保持在第 1 个地点「${current?.name ?? ''}」，除非用户明确要求否则不要切换`
       }
     }
