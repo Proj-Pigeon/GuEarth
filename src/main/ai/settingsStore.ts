@@ -5,6 +5,7 @@ import { defaultAiSettings, defaultSearchProviders } from '../../shared/aiSettin
 const thinkingLevels: AiThinkingLevel[] = ['low', 'medium', 'high']
 const protocols: AiProtocol[] = ['openai', 'anthropic']
 const idPattern = /^[a-z0-9][a-z0-9_-]{0,63}$/i
+const maxModelsPerProvider = 256
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -26,7 +27,8 @@ function normalizeModel(value: unknown): AiModelConfig | null {
     streaming: value.streaming !== false,
     vision: value.vision === true,
     thinking: value.thinking === true,
-    thinkingLevel
+    thinkingLevel,
+    enabled: value.enabled !== false
   }
 }
 
@@ -39,7 +41,7 @@ function normalizeProvider(value: unknown): AiProviderConfig | null {
   let baseUrl = typeof value.baseUrl === 'string' ? value.baseUrl.trim() : ''
   if (!baseUrl) baseUrl = protocol === 'anthropic' ? 'https://api.anthropic.com' : ''
   baseUrl = baseUrl.replace(/\/+$/, '').slice(0, 500)
-  const models = Array.isArray(value.models) ? value.models.map(normalizeModel).filter((model): model is AiModelConfig => model !== null).slice(0, 32) : []
+  const models = Array.isArray(value.models) ? value.models.map(normalizeModel).filter((model): model is AiModelConfig => model !== null).slice(0, maxModelsPerProvider) : []
   return { id, name, protocol, baseUrl, models }
 }
 
@@ -52,9 +54,9 @@ export function normalizeAiSettings(value: unknown): AiSettings {
     ? source.activeProviderId as string
     : ''
   const activeProvider = providers.find((provider) => provider.id === activeProviderId) ?? providers[0]
-  const activeModelId = activeProvider?.models.some((model) => model.id === source.activeModelId)
-    ? source.activeModelId as string
-    : activeProvider?.models[0]?.id ?? ''
+  const activeModel = activeProvider?.models.find((model) => model.id === source.activeModelId && model.enabled)
+    ?? activeProvider?.models.find((model) => model.enabled)
+  const activeModelId = activeModel?.id ?? ''
   const seenSearchIds = new Set<string>()
   const searchProviders = Array.isArray(source.searchProviders)
     ? source.searchProviders.flatMap((value): AiSearchProviderConfig[] => {

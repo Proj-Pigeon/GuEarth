@@ -31,9 +31,11 @@ const isResizingDrawer = ref(false)
 
 const drawerMaxWidth = computed(() => Math.max(0, Math.floor(viewportWidth.value / 3)))
 const drawerMinWidth = computed(() => Math.min(320, drawerMaxWidth.value))
-const modelProviders = computed(() => settings.value.providers.filter((provider) => provider.models.length > 0))
+const modelProviders = computed(() => settings.value.providers
+  .map((provider) => ({ ...provider, models: provider.models.filter((model) => model.enabled) }))
+  .filter((provider) => provider.models.length > 0))
 const activeProvider = computed(() => settings.value.providers.find((provider) => provider.id === settings.value.activeProviderId))
-const activeModel = computed(() => activeProvider.value?.models.find((model) => model.id === settings.value.activeModelId))
+const activeModel = computed(() => activeProvider.value?.models.find((model) => model.id === settings.value.activeModelId && model.enabled))
 const activeModelLabel = computed(() => activeModel.value?.label || activeModel.value?.id || '选择模型')
 
 interface AgentCommand {
@@ -707,7 +709,7 @@ watch(currentConversationId, () => {
                 <span class="model-menu-item"><span class="model-menu-name">{{ model.label || model.id }}</span><span v-if="model.label && model.label !== model.id" class="model-menu-id">{{ model.id }}</span></span>
               </a-menu-item>
             </a-menu-item-group>
-            <a-menu-item v-if="modelProviders.length === 0" key="model-empty" disabled>请先在设置中添加模型</a-menu-item>
+            <a-menu-item v-if="modelProviders.length === 0" key="model-empty" disabled>请先在设置中添加或启用模型</a-menu-item>
           </a-menu>
         </template>
       </a-dropdown>

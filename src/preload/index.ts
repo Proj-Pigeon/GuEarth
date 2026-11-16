@@ -109,6 +109,7 @@ export interface AiModelConfig {
   vision: boolean
   thinking: boolean
   thinkingLevel: AiThinkingLevel
+  enabled: boolean
 }
 
 export interface AiProviderConfig {
@@ -117,6 +118,39 @@ export interface AiProviderConfig {
   protocol: AiProtocol
   baseUrl: string
   models: AiModelConfig[]
+}
+
+export interface AiModelImportRequest {
+  id: string
+  name: string
+  protocol: AiProtocol
+  baseUrl: string
+  models: AiModelConfig[]
+  ids?: string[]
+  modelGroupCompat?: boolean
+}
+
+export interface AiModelImportRow extends AiModelConfig {
+  matched: boolean
+  failureReason?: string
+  existing: boolean
+}
+
+export interface AiModelImportResult {
+  models: AiModelImportRow[]
+  source: string
+}
+
+export interface AiModelTestRequest {
+  id: string
+  name: string
+  protocol: AiProtocol
+  baseUrl: string
+  modelId: string
+}
+
+export interface AiModelTestResult {
+  latencyMs: number
 }
 
 export interface AiSearchProviderConfig {
@@ -529,6 +563,8 @@ const api = {
   ai: {
     getSettings: (): Promise<AiSettings> => ipcRenderer.invoke('ai:get-settings'),
     updateSettings: (settings: AiSettings): Promise<AiSettings> => ipcRenderer.invoke('ai:update-settings', settings),
+    importModels: (request: AiModelImportRequest): Promise<AiModelImportResult> => ipcRenderer.invoke('ai:import-models', request),
+    testModel: (request: AiModelTestRequest): Promise<AiModelTestResult> => ipcRenderer.invoke('ai:test-model', request),
     chat: (sessionId: string, turns: AiChatTurn[], tools: AiToolDefinition[]): Promise<void> => ipcRenderer.invoke('ai:chat', sessionId, turns, tools),
     getContextStats: (entries: AiContextEntry[]): Promise<AiContextStats> => ipcRenderer.invoke('ai:context-stats', entries),
     compressContext: (entries: AiContextEntry[]): Promise<AiContextCompressionResult> => ipcRenderer.invoke('ai:compress-context', entries),

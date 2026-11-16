@@ -17,6 +17,8 @@ import { poiStatistics, searchPlaces } from './amap'
 import { analyzeLocation } from './locationAnalysis'
 import { searchWeb } from './search'
 import { retrieveKnowledge } from './knowledge'
+import { importModels } from './modelImporter'
+import { testModel } from './modelTest'
 import type { AiChatHistoryStore } from './chatHistoryStore'
 import type { AiSettingsStore } from './settingsStore'
 import type { AiMemoryStore } from './memoryStore'
@@ -1128,6 +1130,8 @@ function validateChatRequest(sessionId: unknown, turns: unknown, tools: unknown)
 export function registerAiIpcHandlers(settingsStore: AiSettingsStore, chatHistoryStore: AiChatHistoryStore, memoryStore: AiMemoryStore): void {
   ipcMain.handle('ai:get-settings', () => settingsStore.snapshot())
   ipcMain.handle('ai:update-settings', (_event, value: unknown) => settingsStore.update(value))
+  ipcMain.handle('ai:import-models', (_event, value: unknown) => importModels(value))
+  ipcMain.handle('ai:test-model', (_event, value: unknown) => testModel(value))
   ipcMain.handle('ai:history-list', () => chatHistoryStore.list())
   ipcMain.handle('ai:history-get', (_event, id: unknown) => typeof id === 'string' ? chatHistoryStore.get(id) : null)
   ipcMain.handle('ai:history-save', (_event, value: unknown) => chatHistoryStore.save(value))

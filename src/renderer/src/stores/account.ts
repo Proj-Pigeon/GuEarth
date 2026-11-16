@@ -2,13 +2,9 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { AccountPhase, AccountProfile, AccountState } from '../../../preload'
 import { accountPhaseLabel } from '../../../common/passport'
+import { ipcErrorMessage } from '../lib/ipcError'
 
 let bound = false
-
-function stripIpcErrorPrefix(value: unknown): string {
-  if (value instanceof Error) return value.message.replace(/^Error invoking remote method '[^']+':?\s*(Error:\s*)?/i, '')
-  return '未知错误'
-}
 
 export const useAccountStore = defineStore('account', () => {
   const phase = ref<AccountPhase>('signed-out')
@@ -67,7 +63,7 @@ export const useAccountStore = defineStore('account', () => {
     try {
       applyState(await task())
     } catch (caught) {
-      error.value = stripIpcErrorPrefix(caught)
+      error.value = ipcErrorMessage(caught)
     } finally {
       busy.value = false
     }
@@ -84,7 +80,7 @@ export const useAccountStore = defineStore('account', () => {
     try {
       applyState(await window.guEarth.account.cancelLogin())
     } catch (caught) {
-      error.value = stripIpcErrorPrefix(caught)
+      error.value = ipcErrorMessage(caught)
     } finally {
       canceling.value = false
     }

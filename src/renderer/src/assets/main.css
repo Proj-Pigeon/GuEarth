@@ -24,3 +24,9 @@ body,
     'WenQuanYi Micro Hei',
     sans-serif;
 }
+
+.ant-message .ant-message-notice-content {
+  max-width: min(420px, calc(100vw - 32px));
+  white-space: normal;
+  word-break: break-word;
+}
