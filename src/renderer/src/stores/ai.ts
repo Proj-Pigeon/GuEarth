@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import type { AiChatEvent, AiChatTurn, AiContextCompressionResult, AiContextEntry, AiContextStats, AiSearchReference, AiSettings, AiToolDefinition, StoredAiCompression, StoredAiConversation, StoredAiConversationSummary, StoredAiMessage, StoredAiPart } from '../../../preload'
 import { defaultAiSettings } from '../../../shared/aiSettings'
 import { ipcErrorMessage } from '../lib/ipcError'
+import { useFlightStopsStore } from './flightStops'
 
 export interface ToolStep {
   callId: string
@@ -638,6 +639,7 @@ export const useAiStore = defineStore('ai', () => {
     resetContextCompression()
     contextStats.value = emptyContextStats(contextStats.value.contextWindow)
     setContextNotice('', 'idle')
+    useFlightStopsStore().clear()
   }
 
   async function openConversation(id: string): Promise<void> {
@@ -649,6 +651,7 @@ export const useAiStore = defineStore('ai', () => {
       currentConversationId.value = id
       messages.value = conversation.messages as ChatMessage[]
       restoreConversationCompression(conversation)
+      useFlightStopsStore().clear()
       void refreshContextStats()
     } catch (error) {
       console.warn('[ai] 会话读取失败', error)
@@ -663,6 +666,7 @@ export const useAiStore = defineStore('ai', () => {
       messages.value = []
       resetContextCompression()
       contextStats.value = emptyContextStats(contextStats.value.contextWindow)
+      useFlightStopsStore().clear()
     }
     if (!window.guEarth?.ai) return
     try {

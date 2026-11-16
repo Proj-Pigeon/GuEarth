@@ -10,6 +10,8 @@ import { basemapCategories, providerCatalog, terrainCatalog, useGlobeStore } fro
 import { useFailureStore } from '@renderer/stores/failure'
 import { useDrawingStore, type DrawnShape, type DrawTool } from '@renderer/stores/drawing'
 import { useAiStore } from '@renderer/stores/ai'
+import { useFlightStopsStore } from '@renderer/stores/flightStops'
+import { parseFlyToArgs } from '../../common/flightStops'
 import { updateInstallContent, useUpdaterStore } from '@renderer/stores/updater'
 import { useAccountStore } from '@renderer/stores/account'
 import { useOnlineDataStore } from '@renderer/stores/onlineData'
@@ -43,6 +45,7 @@ import { functionalZoneCities, functionalZoneCityById } from '@renderer/thematic
 import { clearTransectOverlay, flyTransect } from '@renderer/composables/useTransectFlight'
 import { nearestBoundary, plateBoundaryKindName } from '@renderer/thematic/plateBoundaries'
 import GlobeToolbar from '@renderer/components/GlobeToolbar.vue'
+import FlightStopSwitcher from '@renderer/components/FlightStopSwitcher.vue'
 import CameraStatus from '@renderer/components/CameraStatus.vue'
 import LayerPanel from '@renderer/components/LayerPanel.vue'
 import AnnotationPanel from '@renderer/components/AnnotationPanel.vue'
@@ -139,6 +142,7 @@ registerPopulationTools()
 const drawingStore = useDrawingStore()
 const { activeTool, shapes, entries, selectedShapeId, saveError } = storeToRefs(drawingStore)
 const aiStore = useAiStore()
+const flightStopsStore = useFlightStopsStore()
 const updaterStore = useUpdaterStore()
 const accountStore = useAccountStore()
 const onlineData = useOnlineDataStore()
@@ -199,26 +203,114 @@ aiStore.registerTool({
   label: '视角飞行',
   definition: {
     name: 'fly_to',
-    description: '将地球视角飞行到指定 WGS-84 经纬度坐标处，用于向用户展示地点或地貌。',
+    description: '将地球视角飞往指定 WGS-84 经纬度，或通过 locations 一次创建多个待查看地点。展示多个地点时，请优先传入 locations 数组（默认视角停留在第 1 个地点，用户可通过底部切换器自行查看其余地点）。',
     parameters: {
       type: 'object',
       properties: {
-        longitude: { type: 'number', description: '经度（WGS-84，-180 到 180）' },
-        latitude: { type: 'number', description: '纬度（WGS-84，-90 到 90）' },
-        height: { type: 'number', description: '视点高度（米），省略时为 60000' }
-      },
-      required: ['longitude', 'latitude']
+        name: { type: 'string', description: '可选，地点名称，用于底部切换器显示' },
+        longitude: { type: 'number', description: '单个地点的经度（WGS-84，-180 到 180）' },
+        latitude: { type: 'number', description: '单个地点的纬度（WGS-84，-90 到 90）' },
+        height: { type: 'number', description: '视点高度（米），省略时为 60000' },
+        note: { type: 'string', description: '可选，简短地貌或地理特征说明' },
+        locations: {
+          type: 'array',
+          description: '一次创建多个待查看地点（2-12 个）。系统只飞往第 1 个地点并停留在 1/N，其余加入底部切换器。',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: '地点名称' },
+              longitude: { type: 'number', description: '经度（WGS-84，-180 到 180）' },
+              latitude: { type: 'number', description: '纬度（WGS-84，-90 到 90）' },
+              height: { type: 'number', description: '视点高度（米），省略时为 60000' },
+              note: { type: 'string', description: '可选，简短地理特征说明' }
+            },
+            required: ['name', 'longitude', 'latitude']
+          }
+        }
+      }
     }
   },
   execute: async (args) => {
-    const longitude = Number(args.longitude)
-    const latitude = Number(args.latitude)
-    const height = args.height === undefined ? 60000 : Number(args.height)
-    if (!Number.isFinite(longitude) || !Number.isFinite(latitude) || longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) return { error: '坐标无效，需要 WGS-84 经纬度' }
-    if (!Number.isFinite(height) || height <= 0 || height > 20000000) return { error: '视点高度无效' }
-    const actualHeight = await flyTo(longitude, latitude, height)
-    if (actualHeight === undefined) return { error: '飞行已取消' }
-    return { status: 'ok', message: `视角已飞往 ${longitude.toFixed(4)}, ${latitude.toFixed(4)}`, longitude, latitude, height: actualHeight }
+    const turnToken = typeof args.__turnToken === 'string' ? args.__turnToken : ''
+    const flightMode = args.__flightMode === 'queue' ? 'queue' : 'initial'
+    const parsed = parseFlyToArgs(args, flightMode === 'queue' ? flightStopsStore.total : 0)
+    if (parsed.error || !parsed.stops.length) return { error: parsed.error ?? '坐标无效，需要 WGS-84 经纬度' }
+    if (flightMode === 'queue') {
+      const { added, total } = flightStopsStore.appendTurnStops(turnToken, parsed.stops)
+      const current = flightStopsStore.currentStop
+      const addedName = added[0]?.name ?? parsed.stops[0].name
+      return {
+        status: 'queued',
+        addedName,
+        activeIndex: flightStopsStore.activeIndex + 1,
+        total,
+        current,
+        message: `已将「${addedName}」加入待查看地点列表（共 ${total} 个），当前视角保持在第 1 个地点「${current?.name ?? ''}」，除非用户明确要求否则不要切换`
+      }
+    }
+    const first = flightStopsStore.beginTurnStops(turnToken, parsed.stops)
+    if (!first) return { error: '没有有效飞行地点' }
+    const actualHeight = await flyTo(first.longitude, first.latitude, first.height)
+    if (actualHeight === undefined) {
+      flightStopsStore.clear()
+      return { error: '飞行已取消' }
+    }
+    if (flightStopsStore.total > 1) {
+      return {
+        status: 'ok',
+        activeIndex: 1,
+        total: flightStopsStore.total,
+        current: { ...first, height: actualHeight },
+        stops: flightStopsStore.stops.map((stop, index) => ({
+          index: index + 1,
+          name: stop.name,
+          longitude: stop.longitude,
+          latitude: stop.latitude,
+          height: stop.height
+        })),
+        message: `已创建 ${flightStopsStore.total} 个飞行地点，当前视角停留在第 1 个地点「${first.name}」；底部已显示切换器，除非用户在聊天中明确要求否则不要切换地点`
+      }
+    }
+    return {
+      status: 'ok',
+      message: `视角已飞往 ${typeof args.name === 'string' && args.name.trim() ? `「${args.name.trim()}」` : `${first.longitude.toFixed(4)}, ${first.latitude.toFixed(4)}`}`,
+      longitude: first.longitude,
+      latitude: first.latitude,
+      height: actualHeight
+    }
+  }
+})
+
+aiStore.registerTool({
+  label: '切换飞行地点',
+  definition: {
+    name: 'switch_flight_stop',
+    description: '切换到当前已创建的飞行地点列表中的其他地点。仅当用户在最新聊天消息中明确要求切换（如“下一个”“上一个”“第3个”“飞到某地”）时才可调用；禁止在创建地点后主动调用。',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['next', 'prev', 'goto'],
+          description: '切换方式：next（下一个）、prev（上一个）、goto（跳转到指定序号或名称）'
+        },
+        index: { type: 'number', description: '目标地点序号（从 1 开始，action 为 goto 时可用）' },
+        name: { type: 'string', description: '目标地点名称（action 为 goto 时可用）' }
+      }
+    }
+  },
+  execute: async (args) => {
+    const outcome = await flightStopsStore.switchByRequest({ action: args.action, index: args.index, name: args.name }, flyTo)
+    if (outcome.error || !outcome.stop || outcome.index === undefined) {
+      return { error: outcome.error ?? '切换飞行地点失败' }
+    }
+    return {
+      status: 'ok',
+      activeIndex: outcome.index + 1,
+      total: outcome.total,
+      current: { ...outcome.stop, height: outcome.actualHeight ?? outcome.stop.height },
+      message: `已切换到 ${outcome.index + 1}/${outcome.total}「${outcome.stop.name}」`
+    }
   }
 })
 
@@ -260,7 +352,7 @@ aiStore.registerTool({
   label: '名山高峰查找',
   definition: {
     name: 'find_peaks',
-    description: '在指定经纬度附近查找内置名山高峰名录（含海拔、方位与距离），用于回答“这附近有什么山”“最高的山峰是哪座”等问题。结果按海拔从高到低排序，可配合 fly_to 逐一展示。',
+    description: '在指定经纬度附近查找内置名山高峰名录（含海拔、方位与距离），用于回答“这附近有什么山”“最高的山峰是哪座”等问题。结果按海拔从高到低排序，可用 fly_to 的 locations 批量创建待查看地点并停留在第 1 座讲解。',
     parameters: {
       type: 'object',
       properties: {
@@ -297,7 +389,7 @@ aiStore.registerTool({
       radiusKm,
       peaks: found.slice(0, 8),
       totalMatches: found.length,
-      message: `附近共收录 ${found.length} 座名山高峰，已按海拔从高到低列出前 ${Math.min(8, found.length)} 座；可用 fly_to 逐一展示，讲解山地垂直带谱时可配合 open_panel 打开 zonation 面板`
+      message: `附近共收录 ${found.length} 座名山高峰，已按海拔从高到低列出前 ${Math.min(8, found.length)} 座；需要展示多个山峰时用 fly_to 的 locations 一次创建地点列表（视角停留在第 1 座），讲解山地垂直带谱时可配合 open_panel 打开 zonation 面板`
     }
   }
 })
@@ -1286,6 +1378,7 @@ function deleteSelectedShape(): void {
         @update-click="handleUpdateClick"
         @open-settings="handleOpenSettings"
       />
+      <FlightStopSwitcher :fly-to="flyTo" />
       <DrawingEditToolbar
         v-if="selectedShape && !activeTool"
         :shape="selectedShape"
