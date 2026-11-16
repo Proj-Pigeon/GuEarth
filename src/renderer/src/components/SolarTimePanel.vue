@@ -7,10 +7,12 @@ import type * as Cesium from 'cesium'
 import { useVisibleAnimation } from '@renderer/composables/useVisibleAnimation'
 import { useSolarStore } from '@renderer/stores/solar'
 import { useClimateStore } from '@renderer/stores/climate'
+import { useFlightStopsStore } from '@renderer/stores/flightStops'
 import SolarChartPanel from '@renderer/components/SolarChartPanel.vue'
 
 const store = useSolarStore()
 const climateStore = useClimateStore()
+const flightStopsStore = useFlightStopsStore()
 const props = defineProps<{ viewer?: Cesium.Viewer }>()
 const { hour, isPlaying, isAnnualPlaying } = storeToRefs(store)
 const chartOpen = ref(false)
@@ -40,7 +42,7 @@ watch([() => store.date, hour, () => store.active], () => {
 </script>
 
 <template>
-  <div v-if="store.active" class="solar-panel" :class="{ stacked: climateStore.hasActiveOverlay }" role="group" aria-label="太阳光照时间轴">
+  <div v-if="store.active" class="solar-panel" :class="{ stacked: climateStore.hasActiveOverlay, 'flight-stacked': flightStopsStore.visible }" role="group" aria-label="太阳光照时间轴">
     <a-button
       :type="isPlaying ? 'primary' : 'default'"
       shape="circle"
@@ -126,6 +128,14 @@ watch([() => store.date, hour, () => store.active], () => {
   bottom: 160px;
 }
 
+.solar-panel.flight-stacked {
+  bottom: 140px;
+}
+
+.solar-panel.stacked.flight-stacked {
+  bottom: 212px;
+}
+
 @media (max-width: 1320px) {
   .solar-panel {
     bottom: 160px;
@@ -133,6 +143,14 @@ watch([() => store.date, hour, () => store.active], () => {
 
   .solar-panel.stacked {
     bottom: 240px;
+  }
+
+  .solar-panel.flight-stacked {
+    bottom: 212px;
+  }
+
+  .solar-panel.stacked.flight-stacked {
+    bottom: 292px;
   }
 }
 

@@ -2,6 +2,9 @@
 import { computed } from 'vue'
 import { DeleteOutlined } from '@ant-design/icons-vue'
 import type { DrawnShape } from '@renderer/stores/drawing'
+import { useFlightStopsStore } from '@renderer/stores/flightStops'
+
+const flightStopsStore = useFlightStopsStore()
 
 const props = defineProps<{
   shape: DrawnShape
@@ -29,7 +32,7 @@ function updateAnnotation(event: Event): void {
 </script>
 
 <template>
-  <div class="drawing-edit-toolbar" role="toolbar" aria-label="绘图样式">
+  <div class="drawing-edit-toolbar" :class="{ stacked: flightStopsStore.visible }" role="toolbar" aria-label="绘图样式">
     <a-input
       v-if="shape.kind !== 'text'"
       :value="shape.annotation"
@@ -95,6 +98,10 @@ function updateAnnotation(event: Event): void {
   border: 1px solid rgba(5, 5, 5, 0.06);
   border-radius: 8px;
   transform: translateX(-50%);
+}
+
+.drawing-edit-toolbar.stacked {
+  bottom: 136px;
 }
 
 .style-control {

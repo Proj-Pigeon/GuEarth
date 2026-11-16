@@ -5,8 +5,10 @@ import { CaretRightOutlined, PauseOutlined } from '@ant-design/icons-vue'
 import type * as Cesium from 'cesium'
 import { useVisibleAnimation } from '@renderer/composables/useVisibleAnimation'
 import { useClimateStore } from '@renderer/stores/climate'
+import { useFlightStopsStore } from '@renderer/stores/flightStops'
 
 const store = useClimateStore()
+const flightStopsStore = useFlightStopsStore()
 const props = defineProps<{ viewer?: Cesium.Viewer }>()
 const { month, isPlaying } = storeToRefs(store)
 
@@ -33,7 +35,7 @@ watch(month, () => {
 </script>
 
 <template>
-  <div v-if="store.hasSeasonalOverlay" class="month-timeline" role="group" aria-label="月份时间轴">
+  <div v-if="store.hasSeasonalOverlay" class="month-timeline" :class="{ stacked: flightStopsStore.visible }" role="group" aria-label="月份时间轴">
     <a-button
       :type="isPlaying ? 'primary' : 'default'"
       shape="circle"
@@ -76,6 +78,10 @@ watch(month, () => {
   border: 1px solid rgba(5, 5, 5, 0.06);
   border-radius: 8px;
   box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+}
+
+.month-timeline.stacked {
+  bottom: 132px;
 }
 
 @media (max-width: 1320px) {
