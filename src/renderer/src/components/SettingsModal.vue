@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ControlOutlined, ExperimentOutlined, GlobalOutlined, InfoCircleOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { useSettingsWindowStore, type SettingsSection } from '@renderer/stores/settingsWindow'
 import AccountSettings from './settings/AccountSettings.vue'
@@ -9,9 +9,17 @@ import AiSettingsSection from './settings/AiSettingsSection.vue'
 import LaboratorySettings from './settings/LaboratorySettings.vue'
 import AboutSettings from './settings/AboutSettings.vue'
 
+type PendingAction = { kind: 'navigate'; section: SettingsSection } | { kind: 'close' }
+
 const emit = defineEmits<{ restartGuide: [] }>()
 const settingsWindow = useSettingsWindowStore()
 const laboratoryBusy = ref(false)
+const aiSection = ref<InstanceType<typeof AiSettingsSection> | null>(null)
+const confirmOpen = ref(false)
+const confirmSaving = ref(false)
+const pendingAction = ref<PendingAction | null>(null)
+
+const settingsInteractive = computed(() => !laboratoryBusy.value && !confirmOpen.value)
 
 interface NavItem {
   id: SettingsSection
@@ -42,6 +50,58 @@ const navGroups: NavGroup[] = [
     ]
   }
 ]
+
+function hasUnsavedAiChanges(): boolean {
+  return aiSection.value?.isDirty() ?? false
+}
+
+function runPendingAction(action: PendingAction | null): void {
+  if (!action) return
+  if (action.kind === 'navigate') settingsWindow.setActiveSection(action.section)
+  else settingsWindow.close()
+}
+
+function requestNavigate(section: SettingsSection): void {
+  if (!settingsInteractive.value || section === settingsWindow.activeSection) return
+  if (settingsWindow.activeSection === 'ai' && hasUnsavedAiChanges()) {
+    pendingAction.value = { kind: 'navigate', section }
+    confirmOpen.value = true
+    return
+  }
+  settingsWindow.setActiveSection(section)
+}
+
+function requestClose(): void {
+  if (!settingsInteractive.value) return
+  if (hasUnsavedAiChanges()) {
+    pendingAction.value = { kind: 'close' }
+    confirmOpen.value = true
+    return
+  }
+  settingsWindow.close()
+}
+
+function handleConfirmIgnore(): void {
+  aiSection.value?.discardDrafts()
+  const action = pendingAction.value
+  pendingAction.value = null
+  confirmOpen.value = false
+  runPendingAction(action)
+}
+
+async function handleConfirmSave(): Promise<void> {
+  if (confirmSaving.value) return
+  confirmSaving.value = true
+  try {
+    const saved = await (aiSection.value?.saveDrafts() ?? Promise.resolve(false))
+    const action = pendingAction.value
+    pendingAction.value = null
+    confirmOpen.value = false
+    if (saved) runPendingAction(action)
+  } finally {
+    confirmSaving.value = false
+  }
+}
 </script>
 
 <template>
@@ -52,11 +112,11 @@ const navGroups: NavGroup[] = [
     centered
     :footer="null"
     :closable="!laboratoryBusy"
-    :mask-closable="!laboratoryBusy"
-    :keyboard="!laboratoryBusy"
+    :mask-closable="settingsInteractive"
+    :keyboard="settingsInteractive"
     wrap-class-name="settings-modal"
     :body-style="{ padding: '0', display: 'flex', overflow: 'hidden', height: 'min(680px, calc(100vh - 120px))' }"
-    @cancel="!laboratoryBusy && settingsWindow.close()"
+    @cancel="requestClose"
   >
     <template v-if="settingsWindow.isOpen">
       <nav class="settings-nav" aria-label="设置分区">
@@ -69,7 +129,7 @@ const navGroups: NavGroup[] = [
             :class="['nav-item', { selected: settingsWindow.activeSection === item.id }]"
             :aria-current="settingsWindow.activeSection === item.id ? 'true' : undefined"
             :disabled="laboratoryBusy"
-            @click="settingsWindow.setActiveSection(item.id)"
+            @click="requestNavigate(item.id)"
           >
             <component :is="item.icon" class="nav-item-icon" aria-hidden="true" />
             <span>{{ item.label }}</span>
@@ -80,11 +140,32 @@ const navGroups: NavGroup[] = [
         <AccountSettings v-show="settingsWindow.activeSection === 'account'" />
         <GeneralSettings v-show="settingsWindow.activeSection === 'general'" @restart-guide="emit('restartGuide')" />
         <MapSettings v-show="settingsWindow.activeSection === 'map'" />
-        <AiSettingsSection v-show="settingsWindow.activeSection === 'ai'" :active="settingsWindow.activeSection === 'ai'" />
+        <AiSettingsSection
+          ref="aiSection"
+          v-show="settingsWindow.activeSection === 'ai'"
+          :active="settingsWindow.activeSection === 'ai'"
+          @request-close="requestClose"
+        />
         <LaboratorySettings v-show="settingsWindow.activeSection === 'laboratory'" :active="settingsWindow.activeSection === 'laboratory'" @busy-change="laboratoryBusy = $event" />
         <AboutSettings v-show="settingsWindow.activeSection === 'about'" />
       </div>
     </template>
+  </a-modal>
+
+  <a-modal
+    v-model:open="confirmOpen"
+    title="AI 设置尚未保存"
+    :width="420"
+    ok-text="保存设置"
+    cancel-text="忽略"
+    :confirm-loading="confirmSaving"
+    :closable="false"
+    :mask-closable="false"
+    :keyboard="false"
+    @ok="handleConfirmSave"
+    @cancel="handleConfirmIgnore"
+  >
+    <p class="unsaved-confirm-text">供应商、模型与默认模型的修改还没有保存，离开后这些修改将会丢失。</p>
   </a-modal>
 </template>
 
@@ -171,5 +252,12 @@ const navGroups: NavGroup[] = [
   flex: 1;
   min-width: 0;
   height: 100%;
+}
+
+.unsaved-confirm-text {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 14px;
+  line-height: 22px;
 }
 </style>

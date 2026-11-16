@@ -6,6 +6,7 @@ import type { AiModelConfig, AiModelImportRow, AiProviderConfig, AiSearchProvide
 import { useAiStore } from '@renderer/stores/ai'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import { ipcErrorMessage } from '@renderer/lib/ipcError'
+import { isAiDraftDirty, type AiPersistedState } from '@renderer/lib/aiSettingsDraft'
 import SearchProviderSettings from '../SearchProviderSettings.vue'
 import MemorySettings from '../MemorySettings.vue'
 
@@ -19,6 +20,7 @@ interface ModelDraft extends AiModelConfig {
 }
 
 const props = defineProps<{ active: boolean }>()
+const emit = defineEmits<{ requestClose: [] }>()
 
 const store = useAiStore()
 const settingsWindow = useSettingsWindowStore()
@@ -74,6 +76,24 @@ const pagedModels = computed(() => filteredModels.value.slice((modelPage.value -
 
 const settingsLocked = computed(() => settingsReading.value || settingsReadFailed.value)
 
+const persistedState = computed<AiPersistedState>(() => ({
+  providers: store.settings.providers,
+  activeProviderId: store.settings.activeProviderId,
+  activeModelId: store.settings.activeModelId,
+  searchProviders: store.settings.searchProviders,
+  activeSearchProviderId: store.settings.activeSearchProviderId
+}))
+
+const dirty = computed(() => {
+  if (settingsReading.value || settingsReadFailed.value) return false
+  return isAiDraftDirty({
+    providers: draftProviders.value,
+    activeChoice: activeChoice.value,
+    searchProviders: draftSearchProviders.value,
+    activeSearchProviderId: activeSearchProviderId.value
+  }, persistedState.value)
+})
+
 const thinkingLevelOptions: { value: AiThinkingLevel; label: string }[] = [
   { value: 'low', label: '低' },
   { value: 'medium', label: '中' },
@@ -112,19 +132,25 @@ async function refreshCredentialStatuses(): Promise<void> {
   credentialStatuses.value = Object.fromEntries(entries)
 }
 
+function syncDraftsFromStore(): void {
+  draftProviders.value = store.settings.providers.map(toProviderDraft)
+  draftSearchProviders.value = store.settings.searchProviders.map((provider) => ({ ...provider }))
+  activeSearchProviderId.value = store.settings.activeSearchProviderId
+  activeChoice.value = store.settings.activeProviderId && store.settings.activeModelId
+    ? `${store.settings.activeProviderId}:${store.settings.activeModelId}`
+    : ''
+  if (!draftProviders.value.some((provider) => provider.id === selectedProviderId.value)) {
+    selectedProviderId.value = store.settings.activeProviderId || draftProviders.value[0]?.id || ''
+  }
+}
+
 onMounted(async () => {
   try {
     apiKeyDraft.value = ''
     await store.hydrate()
     settingsReadFailed.value = !store.hydrated
     if (settingsReadFailed.value) return
-    draftProviders.value = store.settings.providers.map(toProviderDraft)
-    draftSearchProviders.value = store.settings.searchProviders.map((provider) => ({ ...provider }))
-    activeSearchProviderId.value = store.settings.activeSearchProviderId
-    activeChoice.value = store.settings.activeProviderId && store.settings.activeModelId
-      ? `${store.settings.activeProviderId}:${store.settings.activeModelId}`
-      : ''
-    selectedProviderId.value = store.settings.activeProviderId || draftProviders.value[0]?.id || ''
+    syncDraftsFromStore()
     apiKeyDraft.value = ''
     void refreshCredentialStatuses()
   } catch {
@@ -548,16 +574,16 @@ function validate(): string {
   return ''
 }
 
-async function handleSave(): Promise<void> {
-  if (settingsReading.value) return
+async function saveDrafts(): Promise<boolean> {
+  if (settingsReading.value) return false
   if (settingsReadFailed.value) {
     message.error('AI 设置读取失败，无法保存')
-    return
+    return false
   }
   const problem = validate()
   if (problem) {
     message.warning(problem)
-    return
+    return false
   }
   const choice = typeof activeChoice.value === 'string' ? activeChoice.value : ''
   const separatorIndex = choice.indexOf(':')
@@ -592,17 +618,33 @@ async function handleSave(): Promise<void> {
   }
   try {
     await store.saveSettings(next)
+    syncDraftsFromStore()
     message.success('AI 设置已保存')
-    settingsWindow.close()
+    return true
   } catch {
     message.error('设置保存失败')
+    return false
   }
 }
+
+function discardDrafts(): void {
+  syncDraftsFromStore()
+}
+
+async function handleSave(): Promise<void> {
+  const saved = await saveDrafts()
+  if (saved) settingsWindow.close()
+}
+
+defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
 </script>
 
 <template>
   <section class="settings-section" aria-label="AI 设置">
-    <h3 class="section-title">AI</h3>
+    <div class="section-heading">
+      <h3 class="section-title">AI</h3>
+      <a-tag v-if="dirty" color="warning" class="unsaved-tag">未保存</a-tag>
+    </div>
 
     <a-alert
       v-if="settingsReadFailed"
@@ -896,7 +938,7 @@ async function handleSave(): Promise<void> {
     </section>
 
     <div class="ai-footer">
-      <a-button @click="settingsWindow.close()">取消</a-button>
+      <a-button @click="emit('requestClose')">取消</a-button>
       <a-button type="primary" :disabled="settingsLocked" @click="handleSave">保存设置</a-button>
     </div>
   </section>
@@ -905,6 +947,8 @@ async function handleSave(): Promise<void> {
 <style scoped>
 .settings-section{height:100%;overflow-y:auto;padding:24px;box-sizing:border-box}
 .section-title{margin:0;color:rgba(0,0,0,0.88);font-size:20px;font-weight:600;line-height:28px}
+.section-heading{display:flex;align-items:center;gap:8px}
+.unsaved-tag{margin-inline-end:0}
 .section-desc{margin:4px 0 0;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
 .settings-block{padding:16px 0;margin-top:16px;border-bottom:1px solid rgba(5,5,5,0.06)}
 .settings-block:last-of-type{border-bottom:none}
