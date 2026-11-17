@@ -10,11 +10,17 @@ import { readProviderKey } from '../keyVault'
 import { readResponseText, ResponseTooLargeError } from './responseReader'
 
 const MODELS_DEV_URL = 'https://models.dev/api.json'
+const MODELS_DEV_MIRROR_URL = 'https://earth.proxy.nexaorion.cn/modelsdev'
 const REQUEST_TIMEOUT_MS = 20_000
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 const MAX_PROVIDER_MODELS = 2_000
 const MAX_ANTHROPIC_PAGES = 100
 const modelsDevCache: { expiresAt: number; value: Record<string, unknown> | null } = { expiresAt: 0, value: null }
+let modelsDevMirrorEnabled = false
+
+export function setModelsDevMirrorEnabled(enabled: boolean): void {
+  modelsDevMirrorEnabled = enabled
+}
 
 interface ProviderMetadata {
   id: string
@@ -146,7 +152,16 @@ async function fetchProviderIds(provider: AiProviderConfig, apiKey: string): Pro
 
 async function modelsDev(): Promise<Record<string, unknown>> {
   if (modelsDevCache.value && modelsDevCache.expiresAt > Date.now()) return modelsDevCache.value
-  const payload = parseJson(await fetchText(MODELS_DEV_URL, {}))
+  let payload: Record<string, unknown>
+  if (modelsDevMirrorEnabled) {
+    try {
+      payload = parseJson(await fetchText(MODELS_DEV_MIRROR_URL, {}))
+    } catch {
+      payload = parseJson(await fetchText(MODELS_DEV_URL, {}))
+    }
+  } else {
+    payload = parseJson(await fetchText(MODELS_DEV_URL, {}))
+  }
   modelsDevCache.value = payload
   modelsDevCache.expiresAt = Date.now() + 10 * 60_000
   return payload
@@ -364,4 +379,4 @@ export async function importModels(value: unknown): Promise<AiModelImportResult>
   return { models: rows, source: MODELS_DEV_URL }
 }
 
-export const modelImporterInternals = { endpoint, effortLevel, providersFromCatalog, matchMetadata, metadataFor, toRow }
+export const modelImporterInternals = { endpoint, effortLevel, providersFromCatalog, matchMetadata, metadataFor, toRow, setModelsDevMirrorEnabled }

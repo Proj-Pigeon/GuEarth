@@ -12,6 +12,7 @@ import { useDrawingStore, type DrawnShape, type DrawTool } from '@renderer/store
 import { useAiStore } from '@renderer/stores/ai'
 import { useFlightStopsStore } from '@renderer/stores/flightStops'
 import { parseFlyToArgs } from '../../common/flightStops'
+import { isLikelyMainlandChinaEnv } from '../../common/tileMirror'
 import { updateInstallContent, useUpdaterStore } from '@renderer/stores/updater'
 import { useAccountStore } from '@renderer/stores/account'
 import { useOnlineDataStore } from '@renderer/stores/onlineData'
@@ -94,6 +95,8 @@ import UpdateDialog from '@renderer/components/UpdateDialog.vue'
 import FailureBanner from '@renderer/components/FailureBanner.vue'
 import CrashDialog from '@renderer/components/CrashDialog.vue'
 import FirstUseGuide from '@renderer/components/FirstUseGuide.vue'
+import MirrorConsentModal from '@renderer/components/MirrorConsentModal.vue'
+import MirrorPolicyModal from '@renderer/components/MirrorPolicyModal.vue'
 
 const antdTheme = {
   token: {
@@ -116,7 +119,10 @@ const {
   levelViewActive,
   terrainProviderId,
   terrainExaggeration,
-  terrainLighting
+  terrainLighting,
+  settingsHydrated,
+  mirrorConsentPrompted,
+  mirrorConsentOpen
 } =
   storeToRefs(store)
 const settingsWindow = useSettingsWindowStore()
@@ -1164,6 +1170,56 @@ aiStore.registerTool({
   }
 })
 
+let startupMirrorSlowTimer: number | undefined
+
+function clearStartupMirrorSlowTimer(): void {
+  if (startupMirrorSlowTimer !== undefined) {
+    window.clearTimeout(startupMirrorSlowTimer)
+    startupMirrorSlowTimer = undefined
+  }
+}
+
+watch(
+  [settingsHydrated, mirrorConsentPrompted, isGlobeReady, globeLoadTimedOut, globeError, terrainError],
+  ([hydrated, prompted, ready, timedOut, basemapErr, terrainErr]) => {
+    if (!hydrated) return
+    if (prompted || mirrorConsentOpen.value) {
+      clearStartupMirrorSlowTimer()
+      return
+    }
+    const timeZone = (() => {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone
+      } catch {
+        return ''
+      }
+    })()
+    if (isLikelyMainlandChinaEnv(navigator.language, timeZone)) {
+      clearStartupMirrorSlowTimer()
+      store.openMirrorConsent('china')
+      return
+    }
+    if (timedOut || Boolean(basemapErr) || Boolean(terrainErr)) {
+      clearStartupMirrorSlowTimer()
+      store.openMirrorConsent('slow')
+      return
+    }
+    if (ready) {
+      clearStartupMirrorSlowTimer()
+      return
+    }
+    if (startupMirrorSlowTimer === undefined) {
+      startupMirrorSlowTimer = window.setTimeout(() => {
+        startupMirrorSlowTimer = undefined
+        if (!store.mirrorConsentPrompted && !store.mirrorConsentOpen && !store.isGlobeReady) {
+          store.openMirrorConsent('slow')
+        }
+      }, 8000)
+    }
+  },
+  { immediate: true }
+)
+
 onMounted(async () => {
   void onlineData.load()
   void updaterStore.hydrate()
@@ -1420,8 +1476,10 @@ function deleteSelectedShape(): void {
       <CameraStatus :camera="camera" />
       <EoqAssistant />
       <SettingsModal @restart-guide="handleRestartGuide" />
-      <FirstUseGuide ref="firstUseGuide" :ready="isGlobeReady && !onlineData.loading" @step-change="handleSetupGuideStepChange" />
+      <FirstUseGuide ref="firstUseGuide" :ready="isGlobeReady && !onlineData.loading && !mirrorConsentOpen" @step-change="handleSetupGuideStepChange" />
       <UpdateDialog />
+      <MirrorConsentModal />
+      <MirrorPolicyModal />
       <AnnotationPanel
         :open="isAnnotationPanelOpen"
         :shapes="shapes"

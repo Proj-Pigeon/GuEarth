@@ -275,3 +275,35 @@ test('oversized provider model responses abort while reading the stream', async 
   assert.equal(canceled, true)
   assert.equal(aborted, true)
 })
+
+test('models.dev catalog uses EdgeOne mirror when enabled and falls back to origin on failure', async () => {
+  const urls = []
+  let mirrorFail = false
+  const importer = loadImporter((url) => {
+    urls.push(url)
+    if (url === 'https://earth.proxy.nexaorion.cn/modelsdev') {
+      if (mirrorFail) return response({}, 502)
+      return response(catalog)
+    }
+    if (url === 'https://models.dev/api.json') return response(catalog)
+    return response({ data: [{ id: 'gpt-5-mini' }] })
+  })
+  importer.modelImporterInternals.setModelsDevMirrorEnabled(true)
+  const first = await importer.importModels(request({ ids: ['gpt-5-mini'] }))
+  assert.equal(first.models[0].matched, true)
+  assert.deepEqual(urls, ['https://earth.proxy.nexaorion.cn/modelsdev'])
+
+  const fallbackUrls = []
+  mirrorFail = true
+  const fallbackImporter = loadImporter((url) => {
+    fallbackUrls.push(url)
+    if (url === 'https://earth.proxy.nexaorion.cn/modelsdev') return response({}, 502)
+    if (url === 'https://models.dev/api.json') return response(catalog)
+    return response({ data: [{ id: 'gpt-5-mini' }] })
+  })
+  fallbackImporter.modelImporterInternals.setModelsDevMirrorEnabled(true)
+  const second = await fallbackImporter.importModels(request({ ids: ['gpt-5-mini'] }))
+  assert.equal(second.models[0].matched, true)
+  assert.deepEqual(fallbackUrls, ['https://earth.proxy.nexaorion.cn/modelsdev', 'https://models.dev/api.json'])
+})
+

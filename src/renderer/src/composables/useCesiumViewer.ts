@@ -6,7 +6,7 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { captureError, captureWarning } from '@renderer/lib/crashReporter'
 import { advanceBufferGap, backingStoreSize, BUFFER_MISSING_REPORT_MS, classifyRenderFault, contextOptionsForAttempt, decideRenderFrame, glRendererName, isWebGlInitializationError, nudgedCanvasSize, RENDER_HALTED_DETAIL, RENDER_HALTED_MESSAGE, shouldStopRenderLoop, shouldUseSoftwareMsaaWorkaround, surfaceFailureCopy, WEBGL_CONTEXT_ATTEMPTS, WEBGL_RETRY_STAGE, WEBGL_UNAVAILABLE_DETAIL, WEBGL_UNAVAILABLE_MESSAGE, webGlRetryDelayMs, type BufferGapState, type GlRendererSource, type SurfaceFrameKind, type SurfaceSize, type WebGlContextAttempt } from '../../../common/globeSurface'
 import { logger, stringifyLogValue } from '../../../common/logger'
-import { isMirrorSatelliteProvider, mirrorEligibleProviders, withinMirrorSatelliteDetail } from '../../../common/tileMirror'
+import { mirrorEligibleProviders } from '../../../common/tileMirror'
 import type { PlaceSuggestion, TileMirrorStatus } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
@@ -35,7 +35,6 @@ const providerName = (id: string): string => layerRegistry[id]?.meta.name ?? id
 const GLOBE_LOAD_TIMEOUT_MS = 20_000
 const TILE_RECOVERY_GRACE_MS = 3_000
 const TERRAIN_RESOLVE_BUDGET_MS = 4_000
-const MIRROR_OVERSEAS_MIN_CAMERA_HEIGHT_M = 150_000
 
 type LayerLoadResult =
   | { ok: true }
@@ -85,7 +84,6 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   let selectedPlaceMarker: Cesium.Entity | undefined
   let polarCaps: Cesium.Primitive | undefined
   let mirrorListenerDisposer: (() => void) | undefined
-  let mirrorOverseasNoticeShown = false
   let lastMirrorRouteSignature: string | undefined
   let bootstrapGeneration = 0
   let renderLoopGeneration = 0
@@ -823,7 +821,6 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     mirrorListenerDisposer = undefined
     if (!currentViewer || currentViewer.isDestroyed()) return
     currentViewer.camera.moveEnd.removeEventListener(updateCameraState)
-    currentViewer.camera.moveEnd.removeEventListener(clampMirrorOverseasZoom)
     currentViewer.scene.preUpdate.removeEventListener(updatePolarCapsVisibility)
     currentViewer.scene.preUpdate.removeEventListener(updateDepthTestDistance)
     currentViewer.scene.preUpdate.removeEventListener(updateCollectionDepthTestDistances)
@@ -896,7 +893,6 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       attachHorizonTracking(currentViewer)
       currentViewer.scene.renderError.addEventListener(handleSceneRenderError)
       currentViewer.camera.moveEnd.addEventListener(updateCameraState)
-      currentViewer.camera.moveEnd.addEventListener(clampMirrorOverseasZoom)
       mirrorListenerDisposer = window.guEarth.tiles.onMirrorStatus(applyMirrorStatus)
       void window.guEarth.tiles.getMirrorStatus().then((status) => {
         if (runId !== bootstrapGeneration || !viewer.value || viewer.value.isDestroyed()) return
@@ -1053,31 +1049,11 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     store.setMirroredProviders(status.mirroredProviders)
     const signature = mirrorRouteSignature(status.mirroredProviders)
     if (lastMirrorRouteSignature !== undefined && lastMirrorRouteSignature !== signature) {
-      mirrorOverseasNoticeShown = false
       reloadMirrorBasemapLayers()
+      if (store.terrainProviderId === 'arcgis-terrain') void retryTerrain()
     }
     lastMirrorRouteSignature = signature
     if (status.notice) failureStore.reportDegrade(status.notice)
-  }
-
-  function clampMirrorOverseasZoom(): void {
-    const currentViewer = viewer.value
-    if (!currentViewer || currentViewer.isDestroyed()) return
-    if (!store.isMirrorActive(activeBasemapId) || !isMirrorSatelliteProvider(activeBasemapId)) return
-    const camera = currentViewer.camera
-    const cartographic = camera.positionCartographic
-    if (cartographic.height >= MIRROR_OVERSEAS_MIN_CAMERA_HEIGHT_M) return
-    const longitude = Cesium.Math.toDegrees(cartographic.longitude)
-    const latitude = Cesium.Math.toDegrees(cartographic.latitude)
-    if (withinMirrorSatelliteDetail(longitude, latitude)) return
-    camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, MIRROR_OVERSEAS_MIN_CAMERA_HEIGHT_M),
-      orientation: { heading: camera.heading, pitch: camera.pitch, roll: camera.roll }
-    })
-    if (!mirrorOverseasNoticeShown) {
-      mirrorOverseasNoticeShown = true
-      failureStore.reportDegrade('海外区域卫星影像层级有限，已抬升视角')
-    }
   }
 
   function applyTerrainRendering(): void {

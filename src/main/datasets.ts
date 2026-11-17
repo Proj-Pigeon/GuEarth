@@ -7,10 +7,16 @@ import { writeJson } from './jsonStore'
 import provincesAssetPath from '../../resources/geo/china-provinces.geojson?asset'
 
 const EARTHQUAKE_FEED_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_month.geojson'
+const EARTHQUAKE_MIRROR_URL = 'https://earth.proxy.nexaorion.cn/datasets/earthquakes'
 const FETCH_TIMEOUT_MS = 15000
 
 let earthquakesPath = ''
+let datasetMirrorEnabled = false
 let provinceGeometry: ProvinceGeoDocument | null = null
+
+export function setDatasetMirrorEnabled(enabled: boolean): void {
+  datasetMirrorEnabled = enabled
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -65,13 +71,24 @@ function parseFeed(json: unknown): EarthquakeFeed['events'] {
   return events.sort((a, b) => a.time - b.time)
 }
 
-async function fetchFeed(): Promise<EarthquakeFeed['events']> {
-  const response = await net.fetch(EARTHQUAKE_FEED_URL, {
+async function fetchFeedFromUrl(url: string): Promise<EarthquakeFeed['events']> {
+  const response = await net.fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) GuEarth/0.1' },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
   })
   if (!response.ok) throw new Error(`USGS request failed: ${response.status}`)
   return parseFeed(await response.json())
+}
+
+async function fetchFeed(): Promise<EarthquakeFeed['events']> {
+  if (datasetMirrorEnabled) {
+    try {
+      return await fetchFeedFromUrl(EARTHQUAKE_MIRROR_URL)
+    } catch {
+      return fetchFeedFromUrl(EARTHQUAKE_FEED_URL)
+    }
+  }
+  return fetchFeedFromUrl(EARTHQUAKE_FEED_URL)
 }
 
 export async function loadEarthquakeFeed(): Promise<EarthquakeFeed> {

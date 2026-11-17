@@ -5,29 +5,19 @@ import { message } from 'ant-design-vue'
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons-vue'
 import { credentialOnlyProviders, providerCatalog, useGlobeStore } from '@renderer/stores/globe'
 import { networkProxyMode, normalizeNetworkProxy, type NetworkProxyMode } from '../../../../common/networkProxy'
-import { normalizeTileMirrorMode, tileMirrorModes, type TileMirrorMode } from '../../../../common/tileMirror'
 
 const globeStore = useGlobeStore()
 const { networkProxy, tileCacheEnabled, tileMirrorMode, mirroredProviders, providerCredentials } = storeToRefs(globeStore)
 
-const tileMirrorModeLabels: Record<TileMirrorMode, string> = {
-  auto: '自动',
-  on: '开启',
-  off: '关闭'
-}
+const tileMirrorEnabled = computed(() => tileMirrorMode.value === 'on')
+const tileMirrorRouteActive = computed(() => tileMirrorEnabled.value || mirroredProviders.value.length > 0)
 
-const tileMirrorModeDescriptions: Record<TileMirrorMode, string> = {
-  auto: '海外地图受限时自动使用国内加速线路',
-  on: '优先使用国内加速线路',
-  off: '始终直连原地图服务'
-}
-
-const tileMirrorModeOptions = tileMirrorModes.map((mode) => ({ value: mode, label: tileMirrorModeLabels[mode] }))
-const tileMirrorModeDescription = computed(() => tileMirrorModeDescriptions[tileMirrorMode.value])
-const tileMirrorRouteActive = computed(() => mirroredProviders.value.length > 0)
-
-function handleTileMirrorModeChange(value: unknown): void {
-  globeStore.setTileMirrorMode(normalizeTileMirrorMode(value))
+function handleTileMirrorSwitchChange(checked: string | number | boolean): void {
+  if (checked === true) {
+    globeStore.openMirrorConsent('settings')
+    return
+  }
+  globeStore.setTileMirrorMode('off')
 }
 
 const keyProviders = computed(() => [...providerCatalog, ...credentialOnlyProviders].filter((provider) => provider.requiresKey))
@@ -198,19 +188,19 @@ async function testProxy(): Promise<void> {
       <div class="setting-row">
         <div class="setting-copy">
           <div class="setting-title-row">
-            <span class="setting-title">国内地图加速</span>
-            <a-tag v-if="tileMirrorMode !== 'off'" :color="tileMirrorRouteActive ? 'blue' : undefined">
-              {{ tileMirrorRouteActive ? '已启用加速' : '直连原服务' }}
+            <span class="setting-title">海外资源镜像服务</span>
+            <a-tag :color="tileMirrorRouteActive ? 'blue' : undefined">
+              {{ tileMirrorRouteActive ? '已启用镜像' : '直连原服务' }}
             </a-tag>
           </div>
-          <p class="setting-desc">{{ tileMirrorModeDescription }}</p>
+          <p class="setting-desc">
+            由咕咕地球携手奈索星联团队提供加速服务，加速海外底图、3D 地形与教学数据加载。启用即表示同意<button type="button" class="policy-inline-link" @click="globeStore.openMirrorPolicy('agreement')">《咕咕地球镜像服务使用协议》</button>与<button type="button" class="policy-inline-link" @click="globeStore.openMirrorPolicy('acceptable-use')">《可接受使用政策》</button>。
+          </p>
         </div>
-        <a-select
-          class="mirror-mode-select"
-          :value="tileMirrorMode"
-          :options="tileMirrorModeOptions"
-          aria-label="国内地图加速"
-          @change="handleTileMirrorModeChange"
+        <a-switch
+          :checked="tileMirrorEnabled"
+          aria-label="海外资源镜像服务"
+          @change="handleTileMirrorSwitchChange"
         />
       </div>
     </section>
@@ -233,7 +223,8 @@ async function testProxy(): Promise<void> {
 .setting-title-row{display:flex;align-items:center;gap:8px}
 .setting-title{color:rgba(0,0,0,0.88);font-size:14px;line-height:22px}
 .setting-desc{margin:4px 0 0;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
-.mirror-mode-select{width:104px;flex:none}
+.policy-inline-link{padding:0;border:none;background:transparent;color:#1677ff;font-size:inherit;font-family:inherit;line-height:inherit;cursor:pointer}
+.policy-inline-link:hover{color:#4096ff}
 .proxy-mode-group{display:flex;width:100%;max-width:420px}
 .proxy-mode-group :deep(.ant-radio-button-wrapper){flex:1;text-align:center}
 .proxy-input{margin-top:8px;max-width:420px}
