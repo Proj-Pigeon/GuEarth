@@ -80,6 +80,32 @@ export function renderMarkdown(text: string): VNodeChild[] {
   return renderTokens(markdown.parse(text, {}))
 }
 
+function hasRenderableNodes(nodes: VNodeChild[]): boolean {
+  for (const child of nodes) {
+    if (typeof child === 'string') {
+      if (child.trim().length > 0) return true
+    } else if (Array.isArray(child)) {
+      if (hasRenderableNodes(child)) return true
+    } else if (child !== null && child !== undefined && typeof child !== 'boolean') {
+      return true
+    }
+  }
+  return false
+}
+
+export function tryRenderMarkdown(
+  text: string,
+  render: (input: string) => VNodeChild[] = renderMarkdown
+): VNodeChild[] | null {
+  if (!text.trim()) return null
+  try {
+    const nodes = render(text)
+    return hasRenderableNodes(nodes) ? nodes : null
+  } catch {
+    return null
+  }
+}
+
 const streamingTokenPattern = /(\s+|[\u3400-\u9fff\uf900-\ufaff]|[^\s\p{P}\p{S}\u3400-\u9fff\uf900-\ufaff]+(?:[._'-][^\s\p{P}\p{S}\u3400-\u9fff\uf900-\ufaff]+)*|[\p{P}\p{S}])/gu
 const wordPattern = /[\p{L}\p{N}]/u
 const nonStreamingTags = new Set(['pre', 'code'])
