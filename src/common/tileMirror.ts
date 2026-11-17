@@ -1,10 +1,32 @@
-export type MirrorTileKind = 'vector' | 'satellite'
+export type MirrorTileKind = 'vector' | 'satellite' | 'night'
+
+export const EDGEONE_MIRROR_BASE_URL = 'https://earth.proxy.nexaorion.cn'
+export const EDGEONE_ARCGIS_TERRAIN_URL = `${EDGEONE_MIRROR_BASE_URL}/arcgis`
+export const EDGEONE_EARTHQUAKES_URL = `${EDGEONE_MIRROR_BASE_URL}/datasets/earthquakes`
+export const EDGEONE_MODELS_DEV_URL = `${EDGEONE_MIRROR_BASE_URL}/modelsdev`
 
 export const mirrorEligibleProviders: Record<string, MirrorTileKind> = {
   osm: 'vector',
   'esri-imagery': 'satellite',
-  opentopomap: 'vector'
+  opentopomap: 'vector',
+  'viirs-night': 'night'
 }
+
+const mirrorMaxZoomByProvider: Record<string, number> = {
+  osm: 19,
+  'esri-imagery': 23,
+  opentopomap: 17,
+  'viirs-night': 8
+}
+
+const mainlandChinaTimeZones = new Set([
+  'Asia/Shanghai',
+  'Asia/Chongqing',
+  'Asia/Harbin',
+  'Asia/Urumqi',
+  'Asia/Kashgar',
+  'PRC'
+])
 
 const mirrorSatelliteDetailBounds = { west: 73.5, east: 135, south: 18, north: 53.6 }
 
@@ -15,6 +37,46 @@ export function isMirrorSatelliteProvider(providerId: string): boolean {
 export function withinMirrorSatelliteDetail(longitude: number, latitude: number): boolean {
   return longitude >= mirrorSatelliteDetailBounds.west && longitude <= mirrorSatelliteDetailBounds.east
     && latitude >= mirrorSatelliteDetailBounds.south && latitude <= mirrorSatelliteDetailBounds.north
+}
+
+export function isValidTileCoordinate(level: number, x: number, y: number, maxLevel: number): boolean {
+  if (!Number.isInteger(level) || !Number.isInteger(x) || !Number.isInteger(y)) return false
+  if (level < 0 || level > maxLevel || x < 0 || y < 0) return false
+  const span = 2 ** level
+  return x < span && y < span
+}
+
+export function edgeOneTileMirrorUrl(
+  providerId: string,
+  level: number,
+  x: number,
+  y: number,
+  granuleDate?: string
+): string | undefined {
+  const maxLevel = mirrorMaxZoomByProvider[providerId]
+  if (maxLevel === undefined || !isValidTileCoordinate(level, x, y, maxLevel)) return undefined
+  if (providerId === 'osm') return `${EDGEONE_MIRROR_BASE_URL}/tiles/osm/${level}/${x}/${y}.png`
+  if (providerId === 'esri-imagery') return `${EDGEONE_MIRROR_BASE_URL}/tiles/esri/${level}/${y}/${x}`
+  if (providerId === 'opentopomap') return `${EDGEONE_MIRROR_BASE_URL}/tiles/opentopo/${level}/${x}/${y}.png`
+  if (providerId === 'viirs-night') {
+    if (typeof granuleDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(granuleDate)) return undefined
+    return `${EDGEONE_MIRROR_BASE_URL}/tiles/viirs/${granuleDate}/${level}/${y}/${x}.jpeg`
+  }
+  return undefined
+}
+
+export function isLikelyMainlandChinaEnv(locale?: string, timeZone?: string): boolean {
+  const normalizedLocale = typeof locale === 'string' ? locale.trim().toLowerCase().replaceAll('_', '-') : ''
+  if (
+    normalizedLocale === 'zh-cn'
+    || normalizedLocale.startsWith('zh-cn-')
+    || normalizedLocale === 'zh-hans'
+    || normalizedLocale.startsWith('zh-hans-cn')
+  ) {
+    return true
+  }
+  const normalizedZone = typeof timeZone === 'string' ? timeZone.trim() : ''
+  return mainlandChinaTimeZones.has(normalizedZone)
 }
 
 export type TileMirrorMode = 'auto' | 'on' | 'off'
@@ -38,6 +100,21 @@ export function normalizeTileMirrorMode(value: unknown, legacyEnabled?: unknown)
   return legacyEnabled === true ? 'on' : 'auto'
 }
 
+export function resolveStoredTileMirrorSettings(
+  value: unknown,
+  legacyEnabled: unknown,
+  consentPrompted: unknown
+): { tileMirrorMode: TileMirrorMode; mirrorConsentPrompted: boolean } {
+  if (consentPrompted !== true) {
+    return { tileMirrorMode: 'off', mirrorConsentPrompted: false }
+  }
+  const normalized = normalizeTileMirrorMode(value, legacyEnabled)
+  return {
+    tileMirrorMode: normalized === 'on' ? 'on' : 'off',
+    mirrorConsentPrompted: true
+  }
+}
+
 export function hasLegacyTileMirrorSetting(value: unknown, legacyEnabled: unknown): boolean {
   return !isTileMirrorMode(value) && typeof legacyEnabled === 'boolean'
 }
@@ -51,7 +128,7 @@ export function originProbeReachable(status: number): boolean {
 }
 
 export class TileMirrorRouter {
-  private mode: TileMirrorMode = 'auto'
+  private mode: TileMirrorMode = 'off'
   private readonly reachability = new Map<string, OriginReachability>()
   private readonly originFailures = new Map<string, number>()
   private readonly originFallbacks = new Set<string>()

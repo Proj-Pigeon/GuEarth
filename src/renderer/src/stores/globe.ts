@@ -1,8 +1,11 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import type { MirrorPolicyId } from '../../../common/mirrorPolicies'
 import { normalizeTileMirrorMode, type TileMirrorMode } from '../../../common/tileMirror'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
 import { useFailureStore } from './failure'
+
+export type MirrorConsentReason = 'china' | 'slow' | 'settings'
 
 export type LayerKind = 'basemap' | 'overlay'
 export type ProviderRegion = 'global' | 'china'
@@ -115,7 +118,14 @@ export const useGlobeStore = defineStore('globe', () => {
   const terrainExaggeration = ref(2)
   const terrainLighting = ref(false)
   const tileCacheEnabled = ref(true)
-  const tileMirrorMode = ref<TileMirrorMode>('auto')
+  const tileMirrorMode = ref<TileMirrorMode>('off')
+  const mirrorConsentPrompted = ref(true)
+  let mirrorConsentKnown = false
+  const settingsHydrated = ref(false)
+  const mirrorConsentOpen = ref(false)
+  const mirrorConsentReason = ref<MirrorConsentReason>('china')
+  const mirrorPolicyOpen = ref(false)
+  const mirrorPolicyActiveId = ref<MirrorPolicyId>('agreement')
   const mirroredProviders = ref<string[]>([])
   const networkProxy = ref('')
   const providerCredentials = ref<Record<string, { configured: boolean; updatedAt: number | null }>>({})
@@ -140,13 +150,18 @@ export const useGlobeStore = defineStore('globe', () => {
       terrainExaggeration.value = Math.min(5, Math.max(1, settings.terrainExaggeration))
       terrainLighting.value = settings.terrainLighting
       tileCacheEnabled.value = settings.tileCacheEnabled
-      tileMirrorMode.value = normalizeTileMirrorMode(settings.tileMirrorMode)
+      mirrorConsentPrompted.value = settings.mirrorConsentPrompted === true
+      mirrorConsentKnown = true
+      tileMirrorMode.value = settings.mirrorConsentPrompted === true && normalizeTileMirrorMode(settings.tileMirrorMode) === 'on' ? 'on' : 'off'
       networkProxy.value = settings.networkProxy ?? ''
       providerStyles.value = Object.fromEntries(providerCatalog.map((provider) => [provider.id, styleFor(provider.id, settings.providerStyles?.[provider.id] ?? provider.defaultStyleId)]))
       providerCredentials.value = settings.providerCredentials
       sceneMode.value = settings.sceneMode ?? '3D'
+      settingsHydrated.value = true
       failureStore.clearFailure('settings')
     } catch {
+      mirrorConsentKnown = false
+      settingsHydrated.value = true
       failureStore.reportFailure({ scope: 'settings', message: '设置读取失败，已使用默认设置', retryable: true })
     }
   }
@@ -160,6 +175,7 @@ export const useGlobeStore = defineStore('globe', () => {
       terrainLighting: terrainLighting.value,
       tileCacheEnabled: tileCacheEnabled.value,
       tileMirrorMode: tileMirrorMode.value,
+      ...(mirrorConsentKnown ? { mirrorConsentPrompted: mirrorConsentPrompted.value } : {}),
       networkProxy: networkProxy.value,
       providerStyles: { ...providerStyles.value },
       sceneMode: sceneMode.value
@@ -211,6 +227,35 @@ export const useGlobeStore = defineStore('globe', () => {
     tileMirrorMode.value = mode
     void persistSettings()
   }
+  function openMirrorConsent(reason: MirrorConsentReason): void {
+    mirrorConsentReason.value = reason
+    mirrorConsentOpen.value = true
+  }
+  function closeMirrorConsent(): void {
+    mirrorConsentOpen.value = false
+  }
+  function acceptMirrorConsent(): void {
+    mirrorConsentKnown = true
+    mirrorConsentPrompted.value = true
+    tileMirrorMode.value = 'on'
+    mirrorConsentOpen.value = false
+    void persistSettings()
+  }
+  function declineMirrorConsent(): void {
+    const wasUnprompted = !mirrorConsentPrompted.value
+    mirrorConsentKnown = true
+    mirrorConsentPrompted.value = true
+    if (mirrorConsentReason.value !== 'settings') tileMirrorMode.value = 'off'
+    mirrorConsentOpen.value = false
+    if (wasUnprompted || mirrorConsentReason.value !== 'settings') void persistSettings()
+  }
+  function openMirrorPolicy(policyId: MirrorPolicyId = 'agreement'): void {
+    mirrorPolicyActiveId.value = policyId
+    mirrorPolicyOpen.value = true
+  }
+  function closeMirrorPolicy(): void {
+    mirrorPolicyOpen.value = false
+  }
   function setMirroredProviders(providerIds: string[]): void { mirroredProviders.value = [...providerIds] }
   function isMirrorActive(providerId: string): boolean { return mirroredProviders.value.includes(providerId) }
   function setNetworkProxy(value: string): void { networkProxy.value = value; void persistSettings() }
@@ -219,9 +264,11 @@ export const useGlobeStore = defineStore('globe', () => {
   function setLevelViewActive(value: boolean): void { levelViewActive.value = value }
 
   return {
-    layers, selectedLayerId, providerStyles, terrainProviderId, terrainExaggeration, terrainLighting, tileCacheEnabled, tileMirrorMode, mirroredProviders, networkProxy,
+    layers, selectedLayerId, providerStyles, terrainProviderId, terrainExaggeration, terrainLighting, tileCacheEnabled, tileMirrorMode, mirrorConsentPrompted, settingsHydrated,
+    mirrorConsentOpen, mirrorConsentReason, mirrorPolicyOpen, mirrorPolicyActiveId, mirroredProviders, networkProxy,
     providerCredentials, isLayerPanelOpen, isGlobeReady, globeLoadTimedOut, globeLoadStage, activeTerrainId, globeError, terrainError, camera, sceneMode, levelViewActive, hydrateSettings,
     setLayerPanelOpen, setGlobeReady, setGlobeLoadTimedOut, setGlobeLoadStage, setActiveTerrainId, setGlobeError, setTerrainError, setCameraReadout, selectBasemap, setLayerOpacity,
-    setProviderStyle, setTerrainProvider, setTerrainExaggeration, setTerrainLighting, setTileCacheEnabled, setTileMirrorMode, setMirroredProviders, isMirrorActive, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
+    setProviderStyle, setTerrainProvider, setTerrainExaggeration, setTerrainLighting, setTileCacheEnabled, setTileMirrorMode, openMirrorConsent, closeMirrorConsent, acceptMirrorConsent, declineMirrorConsent,
+    openMirrorPolicy, closeMirrorPolicy, setMirroredProviders, isMirrorActive, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
   }
 })

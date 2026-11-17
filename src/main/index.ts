@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/electron/main'
 import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, screen, session } from 'electron'
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
-import { hasLegacyTileMirrorSetting, isTileMirrorMode, mirrorCacheStyleId, mirrorEligibleProviders, normalizeTileMirrorMode, originProbeReachable, TileMirrorRouter } from '../common/tileMirror'
+import { edgeOneTileMirrorUrl, hasLegacyTileMirrorSetting, isTileMirrorMode, mirrorCacheStyleId, mirrorEligibleProviders, originProbeReachable, resolveStoredTileMirrorSettings, TileMirrorRouter } from '../common/tileMirror'
 import type { MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 import { serveTileResponse } from '../common/tileProtocol'
@@ -35,8 +35,6 @@ import { offscreenCaptureSize, offscreenConcatPlaylist, offscreenFrameDurations,
 import { deliverMacOffscreenVideo, deliverMacOffscreenVideoComplete, encodeMacOffscreenRecording, noteMacOffscreenFrameAck, type OffscreenMacSessionHost } from './offscreenMac'
 import { assertEncryptionAvailable, assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
 import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
-import { tileWgs84ShiftPixels, warpTileToWgs84 } from './tileWarp'
-import type { WarpSourceTile } from './tileWarp'
 import { AiSettingsStore } from './ai/settingsStore'
 import { AiChatHistoryStore } from './ai/chatHistoryStore'
 import { AiMemoryStore } from './ai/memoryStore'
@@ -44,7 +42,8 @@ import { registerAiIpcHandlers } from './ai/agent'
 import { poiStatistics, searchPlaces } from './ai/amap'
 import { searchBaiduPlaces } from './ai/baidu'
 import { beginPlacesRequest } from './ai/searchThrottle'
-import { initDatasets, loadProvinceGeometry } from './datasets'
+import { setModelsDevMirrorEnabled } from './ai/modelImporter'
+import { initDatasets, loadProvinceGeometry, setDatasetMirrorEnabled } from './datasets'
 import { ensureTyphoons, getOnlineData, getStartupEarthquakes, invalidateTyphoons, refreshEarthquakes, startOnlineData } from './onlineData'
 import { listLaboratoryProviders, removeLaboratoryProvider, saveLaboratoryProvider } from './laboratory'
 import { initUpdater } from './updater'
@@ -57,6 +56,7 @@ interface PersistedSettings {
   terrainLighting: boolean
   tileCacheEnabled: boolean
   tileMirrorMode: TileMirrorMode
+  mirrorConsentPrompted: boolean
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -71,7 +71,8 @@ const defaultSettings: PersistedSettings = {
   terrainExaggeration: 2,
   terrainLighting: false,
   tileCacheEnabled: true,
-  tileMirrorMode: 'auto',
+  tileMirrorMode: 'off',
+  mirrorConsentPrompted: false,
   networkProxy: '',
   providerStyles: {
     osm: 'standard',
@@ -149,6 +150,7 @@ async function readSettings(): Promise<PersistedSettings> {
     const legacyTerrain = parsed.terrainExaggeration === undefined
     const storedTerrainProviderId = typeof parsed.selectedTerrainProviderId === 'string' ? parsed.selectedTerrainProviderId : defaultSettings.selectedTerrainProviderId
     const terrainProviderId = storedTerrainProviderId === 'mapbox-terrain' ? 'cesium-world-terrain' : storedTerrainProviderId
+    const resolvedMirror = resolveStoredTileMirrorSettings(parsed.tileMirrorMode, parsed.tileMirrorEnabled, parsed.mirrorConsentPrompted)
     tileCacheNamespaceStale = hasLegacyTileMirrorSetting(parsed.tileMirrorMode, parsed.tileMirrorEnabled)
     return {
       selectedImageryProviderId: typeof parsed.selectedImageryProviderId === 'string' ? parsed.selectedImageryProviderId : defaultSettings.selectedImageryProviderId,
@@ -156,7 +158,8 @@ async function readSettings(): Promise<PersistedSettings> {
       terrainExaggeration: typeof parsed.terrainExaggeration === 'number' && Number.isFinite(parsed.terrainExaggeration) ? Math.min(5, Math.max(1, parsed.terrainExaggeration)) : defaultSettings.terrainExaggeration,
       terrainLighting: parsed.terrainLighting === true,
       tileCacheEnabled: parsed.tileCacheEnabled !== false,
-      tileMirrorMode: normalizeTileMirrorMode(parsed.tileMirrorMode, parsed.tileMirrorEnabled),
+      tileMirrorMode: resolvedMirror.tileMirrorMode,
+      mirrorConsentPrompted: resolvedMirror.mirrorConsentPrompted,
       networkProxy: normalizeNetworkProxy(parsed.networkProxy),
       providerStyles: normalizedStyles,
       providerCredentials,
@@ -351,16 +354,6 @@ const TILE_FETCH_HEADERS = {
   'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
 }
 
-const AMAP_FALLBACK_MAX_LEVEL = 18
-const amapFallbackSubdomains = ['01', '02', '03', '04']
-
-function amapFallbackTileUrl(kind: 'vector' | 'satellite', level: number, x: number, y: number): string | undefined {
-  if (level > AMAP_FALLBACK_MAX_LEVEL) return undefined
-  const subdomain = amapFallbackSubdomains[((x + y) % amapFallbackSubdomains.length + amapFallbackSubdomains.length) % amapFallbackSubdomains.length]
-  if (kind === 'satellite') return `https://webst${subdomain}.is.autonavi.com/appmaptile?style=6&x=${x}&y=${y}&z=${level}`
-  return `https://webrd${subdomain}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x=${x}&y=${y}&z=${level}`
-}
-
 async function fetchTileWithRetry(url: string): Promise<Response> {
   let lastError: unknown
   for (let attempt = 0; attempt < TILE_FETCH_ATTEMPTS; attempt++) {
@@ -495,83 +488,30 @@ function startMirrorProbeTimer(): void {
   mirrorProbeTimer.unref()
 }
 
-type AmapSourceOutcome = { tile: WarpSourceTile } | { failure: 'coverage' | 'network' }
+type MirrorTileOutcome = { response: Response } | { failure: 'coverage' | 'network' }
 
-const amapSourceTileInFlight = new Map<string, Promise<AmapSourceOutcome>>()
-
-function fetchAmapSourceTile(kind: MirrorTileKind, level: number, x: number, y: number): Promise<AmapSourceOutcome> {
-  const mapKey = `${kind}/${level}/${x}/${y}`
-  const inFlight = amapSourceTileInFlight.get(mapKey)
-  if (inFlight) return inFlight
-  const request = loadAmapSourceTile(kind, level, x, y).finally(() => {
-    amapSourceTileInFlight.delete(mapKey)
-  })
-  amapSourceTileInFlight.set(mapKey, request)
-  return request
-}
-
-async function loadAmapSourceTile(kind: MirrorTileKind, level: number, x: number, y: number): Promise<AmapSourceOutcome> {
-  const key: TileKey = { providerId: `amap-${kind}`, styleId: 'raw', level, x, y }
-  const cached = await cachedTileResponse(key, false)
-  if (cached) {
-    try {
-      return { tile: { buffer: await cached.arrayBuffer(), contentType: cached.headers.get('content-type') ?? 'image/png' } }
-    } catch {
-      return { failure: 'network' }
-    }
-  }
-  const url = amapFallbackTileUrl(kind, level, x, y)
+async function edgeOneMirrorTileResponse(providerId: string, key: TileKey, granuleDate: string): Promise<MirrorTileOutcome> {
+  const url = edgeOneTileMirrorUrl(providerId, key.level, key.x, key.y, granuleDate)
   if (!url) return { failure: 'coverage' }
   try {
     const response = await fetchTileWithRetry(url)
-    if (!response.ok) return { failure: 'network' }
-    const buffer = await response.arrayBuffer()
-    const contentType = response.headers.get('content-type') ?? 'image/png'
-    if (settings.tileCacheEnabled) void writeTile({ ...key, data: buffer, contentType, expiresAt: Date.now() + TILE_TTL_MS })
-    return { tile: { buffer, contentType } }
+    if (!response.ok) return { failure: response.status === 404 ? 'coverage' : 'network' }
+    const data = await response.arrayBuffer()
+    const contentType = response.headers.get('content-type') ?? (providerId === 'viirs-night' ? 'image/jpeg' : 'image/png')
+    if (settings.tileCacheEnabled) void writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
+    return { response: new Response(data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'edgeone' } }) }
   } catch {
     return { failure: 'network' }
   }
 }
 
-type MirrorTileOutcome = { response: Response } | { failure: 'coverage' | 'network' }
-
-async function mirrorTileResponse(kind: MirrorTileKind, key: TileKey): Promise<MirrorTileOutcome> {
-  const { level, x, y } = key
-  const shift = tileWgs84ShiftPixels(level, x, y)
-  if (!shift) {
-    const fallbackUrl = amapFallbackTileUrl(kind, level, x, y)
-    if (!fallbackUrl) return { failure: 'coverage' }
-    try {
-      const response = await fetchTileWithRetry(fallbackUrl)
-      if (!response.ok) return { failure: 'network' }
-      const data = await response.arrayBuffer()
-      const contentType = response.headers.get('content-type') ?? 'image/png'
-      if (settings.tileCacheEnabled) void writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
-      return { response: new Response(data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'amap' } }) }
-    } catch {
-      return { failure: 'network' }
-    }
-  }
-  let sourceFailure: 'coverage' | 'network' | null = null
-  const warped = await warpTileToWgs84(level, x, y, async (sourceLevel, sourceX, sourceY) => {
-    const outcome = await fetchAmapSourceTile(kind, sourceLevel, sourceX, sourceY)
-    if ('tile' in outcome) return outcome.tile
-    if (outcome.failure === 'network' || sourceFailure === null) sourceFailure = outcome.failure
-    return null
-  }).catch(() => null)
-  if (!warped) return { failure: sourceFailure ?? 'coverage' }
-  if (settings.tileCacheEnabled) void writeTile({ ...key, data: warped.data, contentType: warped.contentType, expiresAt: Date.now() + TILE_TTL_MS })
-  return { response: new Response(warped.data, { headers: { 'content-type': warped.contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'amap-warped' } }) }
-}
-
-async function serveMirrorTile(providerId: string, kind: MirrorTileKind, key: TileKey): Promise<Response | null> {
+async function serveMirrorTile(providerId: string, _kind: MirrorTileKind, key: TileKey, granuleDate: string): Promise<Response | null> {
   if (!mirrorLoggedProviders.has(providerId)) {
     mirrorLoggedProviders.add(providerId)
-    logger.info('tiles', `镜像瓦片源已启用，${providerId} 使用高德境内瓦片（GCJ-02 纠偏回 WGS84）`)
+    logger.info('tiles', `镜像瓦片源已启用，${providerId} 使用奈索星联 EdgeOne 镜像服务`)
   }
-  const outcome = await mirrorTileResponse(kind, key).catch((error: unknown) => {
-    logger.warn('tiles', `镜像瓦片合成失败，${providerId} 本次改用原影像源`, error)
+  const outcome = await edgeOneMirrorTileResponse(providerId, key, granuleDate).catch((error: unknown) => {
+    logger.warn('tiles', `镜像瓦片请求异常，${providerId} 本次改用原影像源`, error)
     return null
   })
   if (!outcome) return null
@@ -623,14 +563,14 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   const kind = mirrorEligibleProviders[providerId]
   const mirrorKey: TileKey = { providerId, styleId: mirrorCacheStyleId(requestStyleId), level, x, y }
   const originKey: TileKey = { providerId, styleId: requestStyleId, level, x, y }
-  const mirrored = Boolean(kind) && level <= AMAP_FALLBACK_MAX_LEVEL && mirrorSource(providerId) === 'mirror'
+  const mirrored = Boolean(kind) && Boolean(edgeOneTileMirrorUrl(providerId, level, x, y, granuleDate)) && mirrorSource(providerId) === 'mirror'
   const key = mirrored ? mirrorKey : originKey
   const cached = await cachedTileResponse(key, false)
   if (cached) return cached
   const remoteUrl = tileRemoteUrl(providerId, requestStyleId, level, x, y, granuleDate)
   if (!remoteUrl) return new Response('Unknown provider', { status: 404 })
   if (kind && mirrored) {
-    const mirror = await serveMirrorTile(providerId, kind, mirrorKey)
+    const mirror = await serveMirrorTile(providerId, kind, mirrorKey, granuleDate)
     if (mirror) return mirror
   }
   return serveOriginTile(providerId, originKey, remoteUrl)
@@ -914,6 +854,10 @@ function registerIpcHandlers(): void {
         tileMirrorModeNow = patch.tileMirrorMode
         nextSettings.tileMirrorMode = patch.tileMirrorMode
       }
+      if (patch.mirrorConsentPrompted !== undefined) {
+        if (typeof patch.mirrorConsentPrompted !== 'boolean') throw new Error('无效的镜像协议确认设置')
+        nextSettings.mirrorConsentPrompted = patch.mirrorConsentPrompted
+      }
       if (patch.networkProxy !== undefined) {
         if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')
         const normalized = normalizeNetworkProxy(patch.networkProxy)
@@ -938,9 +882,12 @@ function registerIpcHandlers(): void {
     if (tileMirrorModeChanged) {
       mirrorLoggedProviders.clear()
       tileMirrorRouter.setMode(tileMirrorModeNow)
+      setDatasetMirrorEnabled(tileMirrorModeNow === 'on')
+      setModelsDevMirrorEnabled(tileMirrorModeNow === 'on')
       logger.info('tiles', `镜像瓦片源模式已切换为「${tileMirrorModeNow}」`)
       broadcastMirrorStatus(mirrorModeNotice(tileMirrorModeNow))
       scheduleMirrorRefresh('settings')
+      if (tileMirrorModeNow === 'on') void refreshEarthquakes().catch(() => undefined)
     }
     return settingsSnapshot()
   })
@@ -1646,10 +1593,13 @@ app.whenReady().then(async () => {
   await mkdir(tileCachePath, { recursive: true })
   settings = await readSettings()
   tileMirrorRouter.setMode(settings.tileMirrorMode)
+  setDatasetMirrorEnabled(settings.tileMirrorMode === 'on')
+  setModelsDevMirrorEnabled(settings.tileMirrorMode === 'on')
   if (tileCacheNamespaceStale) {
     tileCacheNamespaceStale = false
     logger.info('tiles', '镜像瓦片源设置已升级为模式选择，正在重建底图瓦片缓存命名空间')
     await clearMirrorProviderTileCaches()
+    await saveSettings((current) => current)
   }
   await applyNetworkProxy()
   void startOnlineData(userDataPath, (snapshot) => {

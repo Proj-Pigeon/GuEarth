@@ -18,6 +18,7 @@ export interface GuEarthSettings {
   terrainLighting: boolean
   tileCacheEnabled: boolean
   tileMirrorMode: TileMirrorMode
+  mirrorConsentPrompted: boolean
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -32,6 +33,7 @@ export interface GuEarthSettingsPatch {
   terrainLighting?: boolean
   tileCacheEnabled?: boolean
   tileMirrorMode?: TileMirrorMode
+  mirrorConsentPrompted?: boolean
   networkProxy?: string
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'

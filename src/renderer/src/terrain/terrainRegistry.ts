@@ -1,17 +1,45 @@
 import * as Cesium from 'cesium'
-import { withoutTileAvailability } from '../../../common/terrainAvailability'
+import { attachOriginTerrainFallback, withoutTileAvailability } from '../../../common/terrainAvailability'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
+import { EDGEONE_ARCGIS_TERRAIN_URL } from '../../../common/tileMirror'
+import { useGlobeStore } from '@renderer/stores/globe'
 
 const arcgisTerrainUrl = 'https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'
 
+function isTerrainMirrorEnabled(): boolean {
+  try {
+    return useGlobeStore().tileMirrorMode === 'on'
+  } catch {
+    return false
+  }
+}
+
+async function createArcGisTerrain(): Promise<Cesium.ArcGISTiledElevationTerrainProvider> {
+  const createOrigin = (): Promise<Cesium.ArcGISTiledElevationTerrainProvider> =>
+    Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(arcgisTerrainUrl)
+  if (isTerrainMirrorEnabled()) {
+    try {
+      const mirrorProvider = await Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(EDGEONE_ARCGIS_TERRAIN_URL)
+      return attachOriginTerrainFallback<
+        Cesium.TerrainData,
+        Cesium.Request,
+        Cesium.ArcGISTiledElevationTerrainProvider
+      >(mirrorProvider, createOrigin)
+    } catch {
+      return createOrigin()
+    }
+  }
+  return createOrigin()
+}
+
 export const terrainRegistry: Record<TerrainProviderId, () => Promise<Cesium.TerrainProvider>> = {
   ellipsoid: async () => new Cesium.EllipsoidTerrainProvider(),
-  'arcgis-terrain': async () => withoutTileAvailability(await Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(arcgisTerrainUrl)),
+  'arcgis-terrain': async () => withoutTileAvailability(await createArcGisTerrain()),
   'cesium-world-terrain': () => Cesium.CesiumTerrainProvider.fromUrl(Cesium.IonResource.fromAssetId(1), { requestVertexNormals: true })
 }
 
 const detailedSamplingTerrains: Partial<Record<TerrainProviderId, () => Promise<Cesium.TerrainProvider>>> = {
-  'arcgis-terrain': () => Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(arcgisTerrainUrl)
+  'arcgis-terrain': () => createArcGisTerrain()
 }
 
 export function detailedSamplingTerrain(id: string): (() => Promise<Cesium.TerrainProvider>) | undefined {

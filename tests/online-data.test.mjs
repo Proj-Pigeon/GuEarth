@@ -678,16 +678,21 @@ test('snapshot listeners receive increasing revisions and all status changes wit
 test('earthquakes always refresh at startup even when cache is younger than six hours', async () => {
   let requests = 0
   let offline = false
+  const urls = []
   const cached = { fetchedAt: Date.now(), events: [] }
   const api = load('../src/main/datasets.ts', {
     fs: { existsSync: () => true, readFileSync: () => JSON.stringify(cached) }, path: require('node:path'),
-    electron: { net: { fetch: async () => { requests++; if (offline) throw new Error('offline'); return ok({ features: [] }) } } },
+    electron: { net: { fetch: async (url) => { urls.push(url); requests++; if (offline) throw new Error('offline'); return ok({ features: [] }) } } },
     './geo/gcj02': {}, './jsonStore': { writeJson: async () => {} },
     '../../resources/geo/china-provinces.geojson?asset': ''
   })
   api.initDatasets('/test')
   assert.equal((await api.loadEarthquakeFeed()).stale, undefined)
   assert.equal(requests, 1)
+  assert.equal(urls[0], 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_month.geojson')
+  api.setDatasetMirrorEnabled(true)
+  await api.loadEarthquakeFeed()
+  assert.equal(urls[1], 'https://earth.proxy.nexaorion.cn/datasets/earthquakes')
   offline = true
   const fallback = await api.loadEarthquakeFeed()
   assert.equal(fallback.stale, true)
