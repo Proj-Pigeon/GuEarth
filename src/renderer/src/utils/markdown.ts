@@ -80,39 +80,100 @@ export function renderMarkdown(text: string): VNodeChild[] {
   return renderTokens(markdown.parse(text, {}))
 }
 
-const streamingTokenPattern = /(\s+|[\u3400-\u9fff\uf900-\ufaff]|[^\s\u3400-\u9fff\uf900-\ufaff]+)/g
+const streamingTokenPattern = /(\s+|[\u3400-\u9fff\uf900-\ufaff]|[^\s\p{P}\p{S}\u3400-\u9fff\uf900-\ufaff]+(?:[._'-][^\s\p{P}\p{S}\u3400-\u9fff\uf900-\ufaff]+)*|[\p{P}\p{S}])/gu
 const wordPattern = /[\p{L}\p{N}]/u
 const nonStreamingTags = new Set(['pre', 'code'])
-const streamingTailTokens = 120
+const streamingTailTokens = 6
+const streamingFreshWords = 2
+const maxBatchStaggerMs = 36
+const maxTokenStepMs = 12
 
-interface StreamingToken {
-  node: VNode
-  parent: VNodeChild[]
+export interface StreamingDelayState {
+  seenCount: number
+  settledCount: number
+  lastText: string
+  settledText: string
+  delays: Map<number, number>
+}
+
+export function createStreamingDelayState(): StreamingDelayState {
+  return { seenCount: 0, settledCount: 0, lastText: '', settledText: '', delays: new Map() }
+}
+
+export function settleStreamingDelayState(delayState: StreamingDelayState, text: string): void {
+  delayState.settledCount = delayState.seenCount
+  delayState.lastText = text
+  delayState.settledText = text
+  delayState.delays.clear()
+}
+
+export function resetStreamingDelayState(delayState: StreamingDelayState): void {
+  delayState.seenCount = 0
+  delayState.settledCount = 0
+  delayState.lastText = ''
+  delayState.settledText = ''
+  delayState.delays.clear()
+}
+
+interface StreamingTokenMeta {
+  position: number
   word: boolean
-  space: boolean
 }
 
 interface StreamingState {
   position: number
   windowStart: number
-  tokens: StreamingToken[]
+  freshStart: number
+  delays: Map<number, number> | undefined
+  lastCaretParent: VNodeChild[] | undefined
 }
 
-function countStreamingTokens(children: VNodeChild[], insideCode = false): number {
-  let count = 0
+function collectStreamingTokens(children: VNodeChild[], tokens: StreamingTokenMeta[], offset = { value: 0 }, insideCode = false): void {
   for (const child of children) {
     if (typeof child === 'string') {
-      if (!insideCode) count += (child.match(streamingTokenPattern) ?? [child]).length
+      if (insideCode) continue
+      for (const piece of child.match(streamingTokenPattern) ?? [child]) {
+        if (!/^\s+$/.test(piece)) {
+          tokens.push({ position: offset.value, word: wordPattern.test(piece) })
+        }
+        offset.value += 1
+      }
     } else if (Array.isArray(child)) {
-      count += countStreamingTokens(child, insideCode)
+      collectStreamingTokens(child, tokens, offset, insideCode)
     } else if (child && typeof child === 'object' && 'type' in child) {
       const vnode = child as VNode
       if (Array.isArray(vnode.children)) {
-        count += countStreamingTokens(vnode.children as VNodeChild[], insideCode || (typeof vnode.type === 'string' && nonStreamingTags.has(vnode.type)))
+        collectStreamingTokens(
+          vnode.children as VNodeChild[],
+          tokens,
+          offset,
+          insideCode || (typeof vnode.type === 'string' && nonStreamingTags.has(vnode.type))
+        )
       }
     }
   }
-  return count
+}
+
+function updateStreamingDelays(text: string, tokens: StreamingTokenMeta[], tailStartIndex: number, delayState: StreamingDelayState): { windowStart: number; delays: Map<number, number> } {
+  const total = tokens.length
+  if ((delayState.lastText && !text.startsWith(delayState.lastText)) || (delayState.settledText && !text.startsWith(delayState.settledText))) {
+    resetStreamingDelayState(delayState)
+  } else if (total < delayState.seenCount) {
+    delayState.seenCount = total
+    delayState.settledCount = Math.min(delayState.settledCount, total)
+  }
+  const activeStartIndex = Math.max(tailStartIndex, Math.min(delayState.settledCount, total))
+  const windowStart = activeStartIndex < total ? tokens[activeStartIndex].position : Number.POSITIVE_INFINITY
+  delayState.delays.clear()
+  const newlyAdded = tokens.slice(Math.max(delayState.seenCount, activeStartIndex))
+  const stepMs = newlyAdded.length > 1 ? Math.min(maxTokenStepMs, Math.floor(maxBatchStaggerMs / newlyAdded.length)) : 0
+  newlyAdded.forEach((token, index) => {
+    const delay = index * stepMs
+    if (delay > 0) delayState.delays.set(token.position, delay)
+  })
+  delayState.seenCount = total
+  delayState.lastText = text
+  return { windowStart, delays: delayState.delays }
 }
 
 function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insideCode = false): VNodeChild[] {
@@ -127,7 +188,9 @@ function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insi
       for (const piece of child.match(streamingTokenPattern) ?? [child]) {
         const position = state.position
         state.position += 1
-        if (position < state.windowStart) {
+        const isSpace = /^\s+$/.test(piece)
+        if (!isSpace) state.lastCaretParent = result
+        if (isSpace || position < state.windowStart) {
           plain += piece
           continue
         }
@@ -135,9 +198,12 @@ function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insi
           result.push(plain)
           plain = ''
         }
-        const node = h('span', { key: `stream-token-${position}`, class: 'stream-token' }, piece)
-        state.tokens.push({ node, parent: result, word: wordPattern.test(piece), space: /^\s+$/.test(piece) })
-        result.push(node)
+        const isFreshWord = wordPattern.test(piece) && position >= state.freshStart
+        const tokenClass = isFreshWord ? 'stream-token stream-token-fresh' : 'stream-token'
+        const delay = state.delays?.get(position)
+        const props: Record<string, unknown> = { key: `stream-token-${position}`, class: tokenClass }
+        if (delay) props.style = { animationDelay: `${delay}ms` }
+        result.push(h('span', props, piece))
       }
       if (plain) result.push(plain)
     } else if (Array.isArray(child)) {
@@ -145,7 +211,11 @@ function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insi
     } else if (child && typeof child === 'object' && 'type' in child) {
       const vnode = child as VNode
       if (Array.isArray(vnode.children)) {
-        vnode.children = wrapStreamingTokens(vnode.children as VNodeChild[], state, insideCode || (typeof vnode.type === 'string' && nonStreamingTags.has(vnode.type)))
+        vnode.children = wrapStreamingTokens(
+          vnode.children as VNodeChild[],
+          state,
+          insideCode || (typeof vnode.type === 'string' && nonStreamingTags.has(vnode.type))
+        )
       }
       result.push(vnode)
     } else result.push(child)
@@ -153,16 +223,27 @@ function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insi
   return result
 }
 
-export function renderStreamingMarkdown(text: string): VNodeChild[] {
+export function renderStreamingMarkdown(text: string, delayState?: StreamingDelayState): VNodeChild[] {
   const nodes = renderMarkdown(text)
-  const total = countStreamingTokens(nodes)
-  const state: StreamingState = { position: 0, windowStart: Math.max(0, total - streamingTailTokens), tokens: [] }
+  const tokens: StreamingTokenMeta[] = []
+  collectStreamingTokens(nodes, tokens)
+  const words = tokens.filter((token) => token.word)
+  const tailStartIndex = Math.max(0, tokens.length - streamingTailTokens)
+  const defaultWindowStart = tokens.length > 0 ? tokens[tailStartIndex].position : Number.POSITIVE_INFINITY
+  const { windowStart, delays } = delayState
+    ? updateStreamingDelays(text, tokens, tailStartIndex, delayState)
+    : { windowStart: defaultWindowStart, delays: undefined }
+  const freshStart = words.length > 0 ? Math.max(windowStart, words[Math.max(0, words.length - streamingFreshWords)].position) : Number.POSITIVE_INFINITY
+  const state: StreamingState = {
+    position: 0,
+    windowStart,
+    freshStart,
+    delays,
+    lastCaretParent: undefined
+  }
   const wrapped = wrapStreamingTokens(nodes, state)
-  if (state.tokens.length === 0) return wrapped
-  const words = state.tokens.filter((token) => token.word)
-  for (const token of words.slice(-2)) token.node.props = { ...(token.node.props ?? {}), class: 'stream-token stream-token-fresh' }
-  for (const token of state.tokens.slice(-12)) token.node.props = { ...(token.node.props ?? {}), class: `${token.node.props?.class ?? 'stream-token'} stream-token-enter` }
-  const last = [...state.tokens].reverse().find((token) => !token.space)
-  if (last) last.parent.push(h('span', { key: 'stream-caret', class: 'stream-caret', 'aria-hidden': 'true' }))
+  if (state.lastCaretParent) {
+    state.lastCaretParent.push(h('span', { key: 'stream-caret', class: 'stream-caret', 'aria-hidden': 'true' }))
+  }
   return wrapped
 }

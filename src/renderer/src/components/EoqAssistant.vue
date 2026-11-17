@@ -5,7 +5,7 @@ import { Bubble, Sender, Suggestion } from 'ant-design-x-vue'
 import { message as antdMessage, Modal } from 'ant-design-vue'
 import type { VNode } from 'vue'
 import { CheckOutlined, CloseCircleOutlined, CloseOutlined, CompassOutlined, CompressOutlined, CopyOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SettingOutlined, UpOutlined } from '@ant-design/icons-vue'
-import { useAiStore, toolLabel, type ChatMessage, type ReasoningPart, type ToolStep } from '@renderer/stores/ai'
+import { useAiStore, toolLabel, type AssistantPart, type ChatMessage, type ReasoningPart, type ToolStep } from '@renderer/stores/ai'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import type { AiModelConfig, AiProviderConfig, StoredAiConversationSummary } from '../../../preload'
 import ContextMeter from './ContextMeter.vue'
@@ -338,8 +338,12 @@ const reasonTouched = reactive(new Set<string>())
 const reasonOpen = reactive(new Set<string>())
 const openTools = reactive(new Set<string>())
 
-function isReasoningLive(message: ChatMessage, part: ReasoningPart): boolean {
+function isPartLive(message: ChatMessage, part: AssistantPart): boolean {
   return message.status === 'streaming' && message.parts[message.parts.length - 1] === part
+}
+
+function isReasoningLive(message: ChatMessage, part: ReasoningPart): boolean {
+  return isPartLive(message, part)
 }
 
 function reasoningActive(message: ChatMessage, part: ReasoningPart): string[] {
@@ -631,7 +635,7 @@ watch(currentConversationId, () => {
                 <div class="reasoning-text">{{ part.text }}</div>
               </a-collapse-panel>
             </a-collapse>
-            <StreamingMarkdown v-else-if="part.kind === 'text'" :text="part.text" :streaming="message.status === 'streaming'" @rendered="scheduleAssistantScroll" />
+            <StreamingMarkdown v-else-if="part.kind === 'text'" :text="part.text" :streaming="isPartLive(message, part)" @rendered="scheduleAssistantScroll" />
             <WebSearchStep
               v-else-if="part.step.name === 'web_search'"
               :step="part.step"
@@ -829,11 +833,11 @@ h2{margin:0;color:rgba(0,0,0,.88);font-size:20px;font-weight:600;line-height:28p
 .answer-text :deep(a){color:#1677ff}
 .answer-text :deep(hr){margin:12px 0;border:0;border-top:1px solid rgba(5,5,5,.06)}
 .answer-text :deep(img){max-width:100%;border-radius:6px}
-.answer-text :deep(.stream-token){transition:color .7s ease}
-.answer-text :deep(.stream-token-enter){animation:stream-token-in .3s ease both}
-.answer-text :deep(.stream-token-fresh){color:#1677ff}
+.answer-text :deep(.stream-token){animation:stream-token-in .2s ease-out both}
+.answer-text :deep(.stream-token-fresh){animation:stream-token-fresh-in .26s ease-out both}
 .answer-text :deep(.stream-caret){display:inline-block;width:2px;height:1em;margin-left:2px;border-radius:1px;background:#1677ff;vertical-align:-.15em;animation:stream-caret-pulse 1s ease-in-out infinite}
-@keyframes stream-token-in{from{opacity:0}to{opacity:1}}
+@keyframes stream-token-in{from{opacity:.4}to{opacity:1}}
+@keyframes stream-token-fresh-in{0%{opacity:.4;color:#1677ff}40%{opacity:1;color:#1677ff}100%{opacity:1;color:inherit}}
 @keyframes stream-caret-pulse{0%,100%{opacity:1}50%{opacity:.2}}
 .pending-line{margin:2px 0}
 .ai-disclaimer{margin:-6px 4px 0;color:rgba(0,0,0,.45);font-size:12px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -867,7 +871,7 @@ h2{margin:0;color:rgba(0,0,0,.88);font-size:20px;font-weight:600;line-height:28p
   .shimmer-text{animation:none;background:none;-webkit-background-clip:border-box;background-clip:border-box;color:rgba(0,0,0,.45)}
   .suggestion-fade-enter-active,.suggestion-fade-leave-active{transition:none}
   .message-actions{transition:none}
-  .answer-text :deep(.stream-token){transition:none;animation:none}
+  .answer-text :deep(.stream-token),.answer-text :deep(.stream-token-fresh){transition:none;animation:none}
   .answer-text :deep(.stream-caret){animation:none}
 }
 </style>
