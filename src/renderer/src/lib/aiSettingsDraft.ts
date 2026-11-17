@@ -37,15 +37,29 @@ function searchSignature(provider: AiSearchProviderConfig): string {
   return JSON.stringify([provider.id, provider.name.trim(), provider.kind])
 }
 
+export interface ActiveModelPair {
+  providerId: string
+  modelId: string
+}
+
+export function normalizeActiveChoice(choice: unknown): string {
+  return typeof choice === 'string' ? choice : ''
+}
+
+export function parseActiveChoice(choice: unknown): ActiveModelPair {
+  const value = normalizeActiveChoice(choice)
+  const separatorIndex = value.indexOf(':')
+  if (separatorIndex < 0) return { providerId: '', modelId: '' }
+  return { providerId: value.slice(0, separatorIndex), modelId: value.slice(separatorIndex + 1) }
+}
+
 export function activePairSignature(providerId: string, modelId: string): string {
   return modelId ? JSON.stringify([providerId, modelId]) : ''
 }
 
 export function draftChoiceSignature(choice: string | null | undefined): string {
-  const value = typeof choice === 'string' ? choice : ''
-  const separator = value.indexOf(':')
-  if (separator < 0) return ''
-  return activePairSignature(value.slice(0, separator), value.slice(separator + 1))
+  const { providerId, modelId } = parseActiveChoice(choice)
+  return activePairSignature(providerId, modelId)
 }
 
 export function providerListSignature(providers: AiProviderConfig[]): string {

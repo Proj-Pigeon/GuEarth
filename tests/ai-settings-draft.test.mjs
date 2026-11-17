@@ -13,7 +13,7 @@ registerHooks({
   }
 })
 
-const { isAiDraftDirty } = await import('../src/renderer/src/lib/aiSettingsDraft.ts')
+const { draftChoiceSignature, isAiDraftDirty, normalizeActiveChoice, parseActiveChoice } = await import('../src/renderer/src/lib/aiSettingsDraft.ts')
 
 function model(id, overrides = {}) {
   return {
@@ -132,4 +132,30 @@ test('search provider edits mark the draft dirty', () => {
 
   const switched = draft({ activeSearchProviderId: 'other' })
   assert.equal(isAiDraftDirty(switched, persisted), true)
+})
+
+test('normalizeActiveChoice keeps strings and coerces cleared values to empty string', () => {
+  assert.equal(normalizeActiveChoice('p1:p1-chat'), 'p1:p1-chat')
+  assert.equal(normalizeActiveChoice(undefined), '')
+  assert.equal(normalizeActiveChoice(null), '')
+  assert.equal(normalizeActiveChoice(''), '')
+})
+
+test('parseActiveChoice splits on the first colon and resolves cleared values to an empty pair', () => {
+  assert.deepEqual(parseActiveChoice('p1:deepseek-chat'), { providerId: 'p1', modelId: 'deepseek-chat' })
+  assert.deepEqual(parseActiveChoice('p1:vendor:model'), { providerId: 'p1', modelId: 'vendor:model' })
+
+  const empty = { providerId: '', modelId: '' }
+  assert.deepEqual(parseActiveChoice(undefined), empty)
+  assert.deepEqual(parseActiveChoice(null), empty)
+  assert.deepEqual(parseActiveChoice(''), empty)
+  assert.deepEqual(parseActiveChoice('no-separator'), empty)
+})
+
+test('draftChoiceSignature uses the same active-choice parsing as save', () => {
+  assert.equal(draftChoiceSignature('p1:vendor:model'), JSON.stringify(['p1', 'vendor:model']))
+  assert.equal(draftChoiceSignature(undefined), '')
+  assert.equal(draftChoiceSignature(null), '')
+  assert.equal(draftChoiceSignature('no-separator'), '')
+  assert.equal(draftChoiceSignature('p1:'), '')
 })
