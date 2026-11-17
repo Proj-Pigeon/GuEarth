@@ -85,6 +85,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   let polarCaps: Cesium.Primitive | undefined
   let mirrorListenerDisposer: (() => void) | undefined
   let lastMirrorRouteSignature: string | undefined
+  let terrainMirrorMode: 'on' | 'off' | undefined
   let bootstrapGeneration = 0
   let renderLoopGeneration = 0
   let renderLoopRunning = false
@@ -368,6 +369,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   }
 
   async function setTerrain(id: string, expectedGeneration: number): Promise<void> {
+    terrainMirrorMode = id === 'arcgis-terrain' ? (store.tileMirrorMode === 'on' ? 'on' : 'off') : undefined
     const create = terrainProviderFactory(id)
     terrainRequestSeq += 1
     const requestSeq = terrainRequestSeq
@@ -511,6 +513,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   }
 
   async function resolveInitialTerrain(id: string): Promise<{ provider: Cesium.TerrainProvider; id: string }> {
+    terrainMirrorMode = id === 'arcgis-terrain' ? (store.tileMirrorMode === 'on' ? 'on' : 'off') : undefined
     const create = terrainProviderFactory(id)
     let settled = false
     const timeout = new Promise<{ provider: Cesium.TerrainProvider; id: string }>((resolve) => {
@@ -902,7 +905,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       let terrainSetup: { provider: Cesium.TerrainProvider; id: string } | undefined
       let terrainApplied = false
       const applyInitialTerrain = (): void => {
-        if (runId !== bootstrapGeneration || !terrainSetup || terrainApplied) return
+        if (runId !== bootstrapGeneration || !terrainSetup || terrainApplied || terrainRequestSeq !== 0) return
         const activeViewer = viewer.value
         if (!activeViewer || activeViewer.isDestroyed() || activeViewer !== currentViewer) return
         terrainApplied = true
@@ -1048,9 +1051,18 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   function applyMirrorStatus(status: TileMirrorStatus): void {
     store.setMirroredProviders(status.mirroredProviders)
     const signature = mirrorRouteSignature(status.mirroredProviders)
-    if (lastMirrorRouteSignature !== undefined && lastMirrorRouteSignature !== signature) {
+    const nextTerrainMirrorMode: 'on' | 'off' = status.mode === 'on' ? 'on' : 'off'
+    const routeChanged = lastMirrorRouteSignature !== undefined && lastMirrorRouteSignature !== signature
+    const initialTerrainMirrorMismatch =
+      lastMirrorRouteSignature === undefined &&
+      store.terrainProviderId === 'arcgis-terrain' &&
+      terrainMirrorMode !== undefined &&
+      terrainMirrorMode !== nextTerrainMirrorMode
+    if (routeChanged) {
       reloadMirrorBasemapLayers()
       if (store.terrainProviderId === 'arcgis-terrain') void retryTerrain()
+    } else if (initialTerrainMirrorMismatch) {
+      void retryTerrain()
     }
     lastMirrorRouteSignature = signature
     if (status.notice) failureStore.reportDegrade(status.notice)

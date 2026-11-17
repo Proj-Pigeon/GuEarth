@@ -1,5 +1,5 @@
 import * as Cesium from 'cesium'
-import { withoutTileAvailability } from '../../../common/terrainAvailability'
+import { attachOriginTerrainFallback, withoutTileAvailability } from '../../../common/terrainAvailability'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
 import { EDGEONE_ARCGIS_TERRAIN_URL } from '../../../common/tileMirror'
 import { useGlobeStore } from '@renderer/stores/globe'
@@ -15,14 +15,21 @@ function isTerrainMirrorEnabled(): boolean {
 }
 
 async function createArcGisTerrain(): Promise<Cesium.ArcGISTiledElevationTerrainProvider> {
+  const createOrigin = (): Promise<Cesium.ArcGISTiledElevationTerrainProvider> =>
+    Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(arcgisTerrainUrl)
   if (isTerrainMirrorEnabled()) {
     try {
-      return await Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(EDGEONE_ARCGIS_TERRAIN_URL)
+      const mirrorProvider = await Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(EDGEONE_ARCGIS_TERRAIN_URL)
+      return attachOriginTerrainFallback<
+        Cesium.TerrainData,
+        Cesium.Request,
+        Cesium.ArcGISTiledElevationTerrainProvider
+      >(mirrorProvider, createOrigin)
     } catch {
-      return Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(arcgisTerrainUrl)
+      return createOrigin()
     }
   }
-  return Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(arcgisTerrainUrl)
+  return createOrigin()
 }
 
 export const terrainRegistry: Record<TerrainProviderId, () => Promise<Cesium.TerrainProvider>> = {

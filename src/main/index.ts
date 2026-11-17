@@ -151,7 +151,7 @@ async function readSettings(): Promise<PersistedSettings> {
     const storedTerrainProviderId = typeof parsed.selectedTerrainProviderId === 'string' ? parsed.selectedTerrainProviderId : defaultSettings.selectedTerrainProviderId
     const terrainProviderId = storedTerrainProviderId === 'mapbox-terrain' ? 'cesium-world-terrain' : storedTerrainProviderId
     const resolvedMirror = resolveStoredTileMirrorSettings(parsed.tileMirrorMode, parsed.tileMirrorEnabled, parsed.mirrorConsentPrompted)
-    tileCacheNamespaceStale = hasLegacyTileMirrorSetting(parsed.tileMirrorMode, parsed.tileMirrorEnabled) || parsed.mirrorConsentPrompted !== true
+    tileCacheNamespaceStale = hasLegacyTileMirrorSetting(parsed.tileMirrorMode, parsed.tileMirrorEnabled)
     return {
       selectedImageryProviderId: typeof parsed.selectedImageryProviderId === 'string' ? parsed.selectedImageryProviderId : defaultSettings.selectedImageryProviderId,
       selectedTerrainProviderId: legacyTerrain && terrainProviderId === 'ellipsoid' ? defaultSettings.selectedTerrainProviderId : terrainProviderId,
@@ -1599,6 +1599,7 @@ app.whenReady().then(async () => {
     tileCacheNamespaceStale = false
     logger.info('tiles', '镜像瓦片源设置已升级为模式选择，正在重建底图瓦片缓存命名空间')
     await clearMirrorProviderTileCaches()
+    await saveSettings((current) => current)
   }
   await applyNetworkProxy()
   void startOnlineData(userDataPath, (snapshot) => {

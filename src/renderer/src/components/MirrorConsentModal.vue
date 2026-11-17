@@ -51,12 +51,12 @@ function handleAccept(): void {
     <div class="consent-content">
       <p v-if="detectionNotice" class="consent-paragraph">{{ detectionNotice }}</p>
       <p class="consent-paragraph">
-        咕咕地球携手奈索星联团队，为中国境内用户提供海外资源镜像服务。您需要遵守<button type="button" class="policy-link" @click="openPolicy('agreement')">《咕咕地球镜像服务使用协议》</button>与<button type="button" class="policy-link" @click="openPolicy('acceptable-use')">《可接受使用政策》</button>。
+        咕咕地球携手奈索星联团队，为中国境内用户提供海外资源镜像服务。您需要遵守<a-button type="link" class="policy-link" @click="openPolicy('agreement')">《咕咕地球镜像服务使用协议》</a-button>与<a-button type="link" class="policy-link" @click="openPolicy('acceptable-use')">《可接受使用政策》</a-button>。
       </p>
       <div class="consent-checkbox-row">
         <a-checkbox v-model:checked="agreed">
           <span class="checkbox-label">
-            我已阅读并同意<button type="button" class="policy-link" @click.stop="openPolicy('agreement')">《咕咕地球镜像服务使用协议》</button>与<button type="button" class="policy-link" @click.stop="openPolicy('acceptable-use')">《可接受使用政策》</button>
+            我已阅读并同意<a-button type="link" class="policy-link" @click.stop="openPolicy('agreement')">《咕咕地球镜像服务使用协议》</a-button>与<a-button type="link" class="policy-link" @click.stop="openPolicy('acceptable-use')">《可接受使用政策》</a-button>
           </span>
         </a-checkbox>
       </div>
@@ -105,24 +105,14 @@ function handleAccept(): void {
 }
 
 .policy-link {
+  height: auto;
   padding: 0;
-  border: none;
-  background: transparent;
-  color: #1677ff;
+  border: 0;
   font-size: inherit;
-  font-family: inherit;
   line-height: inherit;
-  cursor: pointer;
-}
-
-.policy-link:hover {
-  color: #4096ff;
-}
-
-.policy-link:focus-visible {
-  outline: 2px solid #1677ff;
-  outline-offset: 1px;
-  border-radius: 2px;
+  vertical-align: baseline;
+  white-space: normal;
+  text-align: left;
 }
 
 .consent-footer {

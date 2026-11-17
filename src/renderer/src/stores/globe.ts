@@ -120,6 +120,7 @@ export const useGlobeStore = defineStore('globe', () => {
   const tileCacheEnabled = ref(true)
   const tileMirrorMode = ref<TileMirrorMode>('off')
   const mirrorConsentPrompted = ref(true)
+  let mirrorConsentKnown = false
   const settingsHydrated = ref(false)
   const mirrorConsentOpen = ref(false)
   const mirrorConsentReason = ref<MirrorConsentReason>('china')
@@ -150,6 +151,7 @@ export const useGlobeStore = defineStore('globe', () => {
       terrainLighting.value = settings.terrainLighting
       tileCacheEnabled.value = settings.tileCacheEnabled
       mirrorConsentPrompted.value = settings.mirrorConsentPrompted === true
+      mirrorConsentKnown = true
       tileMirrorMode.value = settings.mirrorConsentPrompted === true && normalizeTileMirrorMode(settings.tileMirrorMode) === 'on' ? 'on' : 'off'
       networkProxy.value = settings.networkProxy ?? ''
       providerStyles.value = Object.fromEntries(providerCatalog.map((provider) => [provider.id, styleFor(provider.id, settings.providerStyles?.[provider.id] ?? provider.defaultStyleId)]))
@@ -158,6 +160,7 @@ export const useGlobeStore = defineStore('globe', () => {
       settingsHydrated.value = true
       failureStore.clearFailure('settings')
     } catch {
+      mirrorConsentKnown = false
       settingsHydrated.value = true
       failureStore.reportFailure({ scope: 'settings', message: '设置读取失败，已使用默认设置', retryable: true })
     }
@@ -172,7 +175,7 @@ export const useGlobeStore = defineStore('globe', () => {
       terrainLighting: terrainLighting.value,
       tileCacheEnabled: tileCacheEnabled.value,
       tileMirrorMode: tileMirrorMode.value,
-      mirrorConsentPrompted: mirrorConsentPrompted.value,
+      ...(mirrorConsentKnown ? { mirrorConsentPrompted: mirrorConsentPrompted.value } : {}),
       networkProxy: networkProxy.value,
       providerStyles: { ...providerStyles.value },
       sceneMode: sceneMode.value
@@ -232,6 +235,7 @@ export const useGlobeStore = defineStore('globe', () => {
     mirrorConsentOpen.value = false
   }
   function acceptMirrorConsent(): void {
+    mirrorConsentKnown = true
     mirrorConsentPrompted.value = true
     tileMirrorMode.value = 'on'
     mirrorConsentOpen.value = false
@@ -239,6 +243,7 @@ export const useGlobeStore = defineStore('globe', () => {
   }
   function declineMirrorConsent(): void {
     const wasUnprompted = !mirrorConsentPrompted.value
+    mirrorConsentKnown = true
     mirrorConsentPrompted.value = true
     if (mirrorConsentReason.value !== 'settings') tileMirrorMode.value = 'off'
     mirrorConsentOpen.value = false

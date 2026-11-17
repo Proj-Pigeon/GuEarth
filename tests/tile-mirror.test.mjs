@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
 import { createPinia, setActivePinia } from 'pinia'
+import { attachOriginTerrainFallback } from '../src/common/terrainAvailability.ts'
 import {
   MIRROR_POLICY_FALLBACK_TITLES,
   MIRROR_POLICY_IDS,
@@ -360,5 +361,90 @@ test('globeStore mirror consent workflow gates enabling on consent and persists 
   assert.equal(store.mirrorConsentOpen, false)
   assert.equal(store.tileMirrorMode, 'on')
   assert.equal(updates.at(-1).tileMirrorMode, 'on')
+})
+
+test('globeStore does not persist mirrorConsentPrompted after settings.get failure', async (t) => {
+  const originalWindow = globalThis.window
+  const updates = []
+  globalThis.window = {
+    guEarth: {
+      settings: {
+        get: async () => {
+          throw new Error('disk read error')
+        },
+        update: async (patch) => {
+          updates.push(patch)
+          return patch
+        }
+      }
+    }
+  }
+  t.after(() => {
+    globalThis.window = originalWindow
+  })
+  setActivePinia(createPinia())
+  const store = useGlobeStore()
+  await store.hydrateSettings()
+  assert.equal(store.settingsHydrated, true)
+
+  store.setTileCacheEnabled(false)
+  assert.equal(updates.length, 1)
+  assert.equal(Object.prototype.hasOwnProperty.call(updates[0], 'mirrorConsentPrompted'), false)
+
+  store.acceptMirrorConsent()
+  assert.equal(updates.length, 2)
+  assert.equal(updates[1].mirrorConsentPrompted, true)
+  assert.equal(updates[1].tileMirrorMode, 'on')
+})
+
+test('attachOriginTerrainFallback falls back on runtime tile failure and switches to origin after threshold', async () => {
+  let mirrorCalls = 0
+  let originCreations = 0
+  let originCalls = 0
+  let failMirror = true
+  const mirrorProvider = {
+    requestTileGeometry: () => {
+      mirrorCalls += 1
+      if (failMirror) return Promise.reject(new Error('503 Service Unavailable'))
+      return Promise.resolve('mirror-tile')
+    },
+    getTileDataAvailable: () => true
+  }
+  const originProvider = {
+    requestTileGeometry: () => {
+      originCalls += 1
+      return Promise.resolve('origin-tile')
+    },
+    getTileDataAvailable: () => false
+  }
+  const wrapped = attachOriginTerrainFallback(
+    mirrorProvider,
+    async () => {
+      originCreations += 1
+      return originProvider
+    },
+    2
+  )
+
+  assert.equal(await wrapped.requestTileGeometry(0, 0, 0), 'origin-tile')
+  assert.equal(mirrorCalls, 1)
+  assert.equal(originCreations, 1)
+  assert.equal(originCalls, 1)
+
+  failMirror = false
+  assert.equal(await wrapped.requestTileGeometry(1, 0, 0), 'mirror-tile')
+  assert.equal(mirrorCalls, 2)
+
+  failMirror = true
+  assert.equal(await wrapped.requestTileGeometry(2, 0, 0), 'origin-tile')
+  assert.equal(await wrapped.requestTileGeometry(3, 0, 0), 'origin-tile')
+  assert.equal(mirrorCalls, 4)
+  assert.equal(originCalls, 3)
+
+  assert.equal(await wrapped.requestTileGeometry(4, 0, 0), 'origin-tile')
+  assert.equal(mirrorCalls, 4)
+  assert.equal(originCreations, 1)
+  assert.equal(originCalls, 4)
+  assert.equal(wrapped.getTileDataAvailable(4, 0, 0), false)
 })
 

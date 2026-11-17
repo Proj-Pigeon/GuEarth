@@ -194,7 +194,7 @@ async function testProxy(): Promise<void> {
             </a-tag>
           </div>
           <p class="setting-desc">
-            由咕咕地球携手奈索星联团队提供加速服务，加速海外底图、3D 地形与教学数据加载。启用即表示同意<button type="button" class="policy-inline-link" @click="globeStore.openMirrorPolicy('agreement')">《咕咕地球镜像服务使用协议》</button>与<button type="button" class="policy-inline-link" @click="globeStore.openMirrorPolicy('acceptable-use')">《可接受使用政策》</button>。
+            由咕咕地球携手奈索星联团队提供加速服务，加速海外底图、3D 地形与教学数据加载。启用即表示同意<a-button type="link" class="policy-inline-link" @click="globeStore.openMirrorPolicy('agreement')">《咕咕地球镜像服务使用协议》</a-button>与<a-button type="link" class="policy-inline-link" @click="globeStore.openMirrorPolicy('acceptable-use')">《可接受使用政策》</a-button>。
           </p>
         </div>
         <a-switch
@@ -223,8 +223,7 @@ async function testProxy(): Promise<void> {
 .setting-title-row{display:flex;align-items:center;gap:8px}
 .setting-title{color:rgba(0,0,0,0.88);font-size:14px;line-height:22px}
 .setting-desc{margin:4px 0 0;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
-.policy-inline-link{padding:0;border:none;background:transparent;color:#1677ff;font-size:inherit;font-family:inherit;line-height:inherit;cursor:pointer}
-.policy-inline-link:hover{color:#4096ff}
+.policy-inline-link{height:auto;padding:0;border:0;font-size:inherit;line-height:inherit;vertical-align:baseline;white-space:normal;text-align:left}
 .proxy-mode-group{display:flex;width:100%;max-width:420px}
 .proxy-mode-group :deep(.ant-radio-button-wrapper){flex:1;text-align:center}
 .proxy-input{margin-top:8px;max-width:420px}
