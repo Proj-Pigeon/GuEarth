@@ -8,6 +8,7 @@ import MapSettings from './settings/MapSettings.vue'
 import AiSettingsSection from './settings/AiSettingsSection.vue'
 import LaboratorySettings from './settings/LaboratorySettings.vue'
 import AboutSettings from './settings/AboutSettings.vue'
+import UnsavedChangesBar from './settings/UnsavedChangesBar.vue'
 
 type PendingAction = { kind: 'navigate'; section: SettingsSection } | { kind: 'close' }
 
@@ -19,7 +20,11 @@ const confirmOpen = ref(false)
 const confirmSaving = ref(false)
 const pendingAction = ref<PendingAction | null>(null)
 
+const barSaving = ref(false)
+
 const settingsInteractive = computed(() => !laboratoryBusy.value && !confirmOpen.value)
+const aiDirty = computed(() => aiSection.value?.isDirty() ?? false)
+const unsavedBarOpen = computed(() => settingsWindow.activeSection === 'ai' && aiDirty.value && !confirmOpen.value)
 
 interface NavItem {
   id: SettingsSection
@@ -52,7 +57,21 @@ const navGroups: NavGroup[] = [
 ]
 
 function hasUnsavedAiChanges(): boolean {
-  return aiSection.value?.isDirty() ?? false
+  return aiDirty.value
+}
+
+async function handleBarSave(): Promise<void> {
+  if (barSaving.value) return
+  barSaving.value = true
+  try {
+    await aiSection.value?.saveDrafts()
+  } finally {
+    barSaving.value = false
+  }
+}
+
+function handleBarDiscard(): void {
+  aiSection.value?.discardDrafts()
 }
 
 function runPendingAction(action: PendingAction | null): void {
@@ -136,7 +155,7 @@ async function handleConfirmSave(): Promise<void> {
           </button>
         </div>
       </nav>
-      <div class="settings-pane">
+      <div :class="['settings-pane', { 'has-unsaved-bar': unsavedBarOpen }]">
         <AccountSettings v-show="settingsWindow.activeSection === 'account'" />
         <GeneralSettings v-show="settingsWindow.activeSection === 'general'" @restart-guide="emit('restartGuide')" />
         <MapSettings v-show="settingsWindow.activeSection === 'map'" />
@@ -148,6 +167,7 @@ async function handleConfirmSave(): Promise<void> {
         />
         <LaboratorySettings v-show="settingsWindow.activeSection === 'laboratory'" :active="settingsWindow.activeSection === 'laboratory'" @busy-change="laboratoryBusy = $event" />
         <AboutSettings v-show="settingsWindow.activeSection === 'about'" />
+        <UnsavedChangesBar :open="unsavedBarOpen" :saving="barSaving" @save="handleBarSave" @discard="handleBarDiscard" />
       </div>
     </template>
   </a-modal>
@@ -249,9 +269,14 @@ async function handleConfirmSave(): Promise<void> {
 }
 
 .settings-pane {
+  position: relative;
   flex: 1;
   min-width: 0;
   height: 100%;
+}
+
+.settings-pane.has-unsaved-bar :deep(.settings-section) {
+  padding-bottom: 88px;
 }
 
 .unsaved-confirm-text {
