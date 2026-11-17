@@ -10,6 +10,7 @@ import { mirrorEligibleProviders } from '../../../common/tileMirror'
 import type { PlaceSuggestion, TileMirrorStatus } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
+import { flightArrivalAllowed } from '../lib/flightFraming'
 import { resolveFlightDestination } from './terrainFlight'
 import { cancelTransectFlight } from './useTransectFlight'
 import { terrainProviderFactory, terrainRegistry } from '@renderer/terrain/terrainRegistry'
@@ -1129,11 +1130,31 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     const currentViewer = viewer.value
     if (!currentViewer || currentViewer.isDestroyed()) return
     if (![longitude, latitude, height].every(Number.isFinite) || longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90 || height <= 0) return
+    currentViewer.camera.cancelFlight()
     const requestSequence = ++flightRequestSequence
-    const destination = await resolveFlightDestination(currentViewer.scene, longitude, latitude, height)
-    if (viewer.value !== currentViewer || currentViewer.isDestroyed() || requestSequence !== flightRequestSequence) return
-    currentViewer.camera.flyTo({ destination, duration: 1.2, complete: updateCameraState })
-    return Cesium.Cartographic.fromCartesian(destination).height
+    let userSteered = false
+    const markSteered = (): void => { userSteered = true }
+    const canvas = currentViewer.scene.canvas
+    canvas.addEventListener('pointerdown', markSteered)
+    canvas.addEventListener('wheel', markSteered, { passive: true })
+    canvas.addEventListener('keydown', markSteered)
+    try {
+      const destination = await resolveFlightDestination(currentViewer.scene, longitude, latitude, height, {
+        isCancelled: () => userSteered || viewer.value !== currentViewer || currentViewer.isDestroyed() || requestSequence !== flightRequestSequence
+      })
+      if (!destination || !flightArrivalAllowed({
+        requestSequence,
+        activeSequence: flightRequestSequence,
+        viewerAlive: viewer.value === currentViewer && !currentViewer.isDestroyed(),
+        userSteered
+      })) return
+      currentViewer.camera.flyTo({ destination, duration: 1.2, complete: updateCameraState })
+      return Cesium.Cartographic.fromCartesian(destination).height
+    } finally {
+      canvas.removeEventListener('pointerdown', markSteered)
+      canvas.removeEventListener('wheel', markSteered)
+      canvas.removeEventListener('keydown', markSteered)
+    }
   }
 
   function flyToPlace(place: PlaceSuggestion): void {
