@@ -7,6 +7,7 @@ import { useAiStore } from '@renderer/stores/ai'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import { ipcErrorMessage } from '@renderer/lib/ipcError'
 import { isAiDraftDirty, type AiPersistedState } from '@renderer/lib/aiSettingsDraft'
+import { parseActiveChoice } from '@renderer/lib/aiActiveChoice'
 import SearchProviderSettings from '../SearchProviderSettings.vue'
 import MemorySettings from '../MemorySettings.vue'
 
@@ -594,10 +595,7 @@ async function saveDrafts(): Promise<boolean> {
     message.warning(problem)
     return false
   }
-  const choice = activeChoice.value
-  const separatorIndex = choice.indexOf(':')
-  const activeProviderId = separatorIndex >= 0 ? choice.slice(0, separatorIndex) : ''
-  const activeModelId = separatorIndex >= 0 ? choice.slice(separatorIndex + 1) : ''
+  const { providerId: activeProviderId, modelId: activeModelId } = parseActiveChoice(activeChoice.value)
   const next: AiSettings = {
     providers: draftProviders.value.map((provider) => ({
       id: provider.id,
