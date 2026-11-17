@@ -118,6 +118,13 @@ test('a persisted provider without an active model matches an empty draft choice
   assert.equal(isAiDraftDirty(draft({ activeChoice: '' }), withoutModel), false)
 })
 
+test('clearing the select to undefined matches an empty draft choice', () => {
+  assert.equal(isAiDraftDirty(draft({ activeChoice: undefined }), persisted), true)
+
+  const withoutModel = { ...persisted, activeModelId: '' }
+  assert.equal(isAiDraftDirty(draft({ activeChoice: undefined }), withoutModel), false)
+})
+
 test('search provider edits mark the draft dirty', () => {
   const renamed = draft()
   renamed.searchProviders[0].name = '百度'

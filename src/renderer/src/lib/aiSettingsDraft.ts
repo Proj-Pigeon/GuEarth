@@ -41,10 +41,11 @@ export function activePairSignature(providerId: string, modelId: string): string
   return modelId ? JSON.stringify([providerId, modelId]) : ''
 }
 
-export function draftChoiceSignature(choice: string): string {
-  const separator = choice.indexOf(':')
+export function draftChoiceSignature(choice: string | null | undefined): string {
+  const value = typeof choice === 'string' ? choice : ''
+  const separator = value.indexOf(':')
   if (separator < 0) return ''
-  return activePairSignature(choice.slice(0, separator), choice.slice(separator + 1))
+  return activePairSignature(value.slice(0, separator), value.slice(separator + 1))
 }
 
 export function providerListSignature(providers: AiProviderConfig[]): string {

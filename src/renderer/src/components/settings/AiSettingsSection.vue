@@ -144,6 +144,15 @@ function syncDraftsFromStore(): void {
   }
 }
 
+function draftSignature(): string {
+  return JSON.stringify([
+    draftProviders.value.map((provider) => ({ ...provider, models: provider.models.map((model) => ({ ...model })) })),
+    activeChoice.value,
+    draftSearchProviders.value.map((provider) => ({ ...provider })),
+    activeSearchProviderId.value
+  ])
+}
+
 onMounted(async () => {
   try {
     apiKeyDraft.value = ''
@@ -585,7 +594,7 @@ async function saveDrafts(): Promise<boolean> {
     message.warning(problem)
     return false
   }
-  const choice = typeof activeChoice.value === 'string' ? activeChoice.value : ''
+  const choice = activeChoice.value
   const separatorIndex = choice.indexOf(':')
   const activeProviderId = separatorIndex >= 0 ? choice.slice(0, separatorIndex) : ''
   const activeModelId = separatorIndex >= 0 ? choice.slice(separatorIndex + 1) : ''
@@ -616,10 +625,12 @@ async function saveDrafts(): Promise<boolean> {
     memoryEnabled: store.settings.memoryEnabled,
     socraticEnabled: store.settings.socraticEnabled
   }
+  const submittedSignature = draftSignature()
   try {
     await store.saveSettings(next)
-    syncDraftsFromStore()
-    message.success('AI 设置已保存')
+    const editedDuringSave = draftSignature() !== submittedSignature
+    if (!editedDuringSave) syncDraftsFromStore()
+    message.success(editedDuringSave ? '此前的改动已保存，新的改动尚未保存' : 'AI 设置已保存')
     return true
   } catch {
     message.error('设置保存失败')
@@ -633,7 +644,7 @@ function discardDrafts(): void {
 
 async function handleSave(): Promise<void> {
   const saved = await saveDrafts()
-  if (saved) settingsWindow.close()
+  if (saved && !dirty.value) settingsWindow.close()
 }
 
 defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })

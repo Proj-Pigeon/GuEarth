@@ -101,11 +101,18 @@ function requestClose(): void {
 }
 
 function handleConfirmIgnore(): void {
+  if (confirmSaving.value) return
   aiSection.value?.discardDrafts()
   const action = pendingAction.value
   pendingAction.value = null
   confirmOpen.value = false
   runPendingAction(action)
+}
+
+function handleConfirmContinue(): void {
+  if (confirmSaving.value) return
+  pendingAction.value = null
+  confirmOpen.value = false
 }
 
 async function handleConfirmSave(): Promise<void> {
@@ -284,5 +291,12 @@ async function handleConfirmSave(): Promise<void> {
   color: rgba(0, 0, 0, 0.65);
   font-size: 14px;
   line-height: 22px;
+}
+
+.unsaved-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
 }
 </style>

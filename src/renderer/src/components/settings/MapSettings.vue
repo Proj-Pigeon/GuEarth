@@ -71,7 +71,7 @@ async function saveCredential(): Promise<void> {
         : await window.guEarth.settings.clearProviderApiKey(`${id}-sk`)
       globeStore.setCredentialStatus(`${id}-sk`, securityStatus)
     } catch {
-      message.error('签名密钥保存失败，请重试')
+      message.error('主密钥已保存，但签名密钥保存失败，请重试')
       return
     }
   }
