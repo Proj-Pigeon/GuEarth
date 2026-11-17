@@ -5,14 +5,15 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-0.1.17%20early-f4f4f5?style=flat-square&labelColor=18181b" alt="0.1.17 early">
-  <img src="https://img.shields.io/badge/platform-Windows%20x64-f4f4f5?style=flat-square&labelColor=18181b" alt="Windows x64">
+  <img src="https://img.shields.io/badge/status-0.1.18%20early-f4f4f5?style=flat-square&labelColor=18181b" alt="0.1.18 early">
+  <img src="https://img.shields.io/badge/platform-Windows%20x64%20%7C%20Linux-f4f4f5?style=flat-square&labelColor=18181b" alt="Windows x64 | Linux">
   <img src="https://img.shields.io/badge/license-Apache--2.0-f4f4f5?style=flat-square&labelColor=18181b" alt="Apache-2.0">
 </p>
 
 ## 特性
 
 - 🌍 **多数据源 3D 地球** : 得益于互联网上各类开放数据，通过结合多源数据，我们可渲染出高精度的数字地球；
+- 🚀 **国内网络加速** : 内置海外资源镜像服务，网络访问受限时也能稳定加载底图、地形与教学数据；
 - 🤖 **EOQ 智能助手** : 自研 Agent Harness 框架，通过内置工具/知识库和互联网工具，让 AI 帮你做帮你说；
 - 🧪 **地理实验室** : 通过内置的地理实验室，深度结合中国高中地理课程课本要求，通过实时数据实现地理数据可视化和分析；
 - 🖼️ **教学场景** : 通过内置的教学场景工具，无论是人类还是 AI，都可以快速创建微课内容，助力 AI 教育赋能；
@@ -20,9 +21,9 @@
 
 ## 安装与使用
 
-咕咕地球目前支持在 `Windows x64` 和 `macOS(Apple Silicon)` 平台运行，`Linux` 和 国产操作系统 平台理论上支持运行，但兼容性未经测试。
+咕咕地球目前支持在 `Windows x64`、`Linux (x64 / arm64)` 和 `macOS(Apple Silicon)` 平台运行，`国产操作系统` 平台理论上支持运行，但兼容性未经测试。
 
-在 [GitHub Release](https://github.com/Proj-Pigeon/GuEarth/releases) 页面中可以下载最新的安装包。您也可以前往[官网](https://www.project-pigeon.com/docs#%E4%B8%8B%E8%BD%BD)获取以往版本的国内网盘下载链接/直链。
+在 [GitHub Release](https://github.com/Proj-Pigeon/GuEarth/releases) 页面中可以下载最新的安装包，并支持软件内自动更新。您也可以前往[官网](https://www.project-pigeon.com/docs#%E4%B8%8B%E8%BD%BD)获取以往版本的国内网盘下载链接/直链。
 
 ## 文档
 
