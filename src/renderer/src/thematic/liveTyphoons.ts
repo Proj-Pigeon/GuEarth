@@ -38,12 +38,12 @@ function orderedPoints(points: StormPoint[]): StormPoint[] {
 function pointProperties(storm: LiveStorm, point: StormPoint, kind: '实况' | '预报' | '最新中心', feed: TyphoonFeed, cached: boolean): Cesium.PropertyBag {
   const wind = point.windSpeed === null ? '未提供' : `${point.windSpeed} km/h`
   const pressure = point.pressure === null ? '未提供' : `${point.pressure} hPa`
-  const source = `和风天气 QWeather${feed.sources.length ? `；${feed.sources.join('；')}` : ''}`
-  const publication = kind === '预报' && storm.now ? `最新实况发布时间：${formatOnlineTime(storm.now.time)}。` : ''
+  const source = `和风天气${feed.sources.length ? `（${feed.sources.join('、')}）` : ''}`
+  const publication = kind === '预报' && storm.now ? `最新实况时间：${formatOnlineTime(storm.now.time)}。` : ''
   return new Cesium.PropertyBag({
     name: `${storm.name}（${storm.id}）·${kind}`,
     layerId: 'typhoon',
-    summary: `${kind}时间：${formatOnlineTime(point.time)}。${publication}强度：${intensityStyle(point.type).name}（${point.type || 'unknown'}）。风速：${wind}；中心气压：${pressure}。经纬度：${point.longitude}°，${point.latitude}°。状态：${storm.active ? '活跃' : '已结束'}。来源：${source}。抓取时间：${formatOnlineTime(feed.fetchedAt)}。数据状态：${cached ? '更新失败，使用缓存快照' : '最新获取的快照'}。${storm.forecastError ? `预报获取异常：${storm.forecastError}` : ''}`,
+    summary: `${kind}时间：${formatOnlineTime(point.time)}。${publication}强度：${intensityStyle(point.type).name}。风速：${wind}；中心气压：${pressure}。经纬度：${point.longitude}°，${point.latitude}°。状态：${storm.active ? '活跃' : '已结束'}。数据来源：${source}。更新时间：${formatOnlineTime(feed.fetchedAt)}。${cached ? '更新失败，暂显示缓存数据。' : ''}${storm.forecastError ? `预报暂不可用：${storm.forecastError}` : ''}`,
     time: point.time,
     type: point.type,
     windSpeed: point.windSpeed,
@@ -92,7 +92,7 @@ export function buildLiveTyphoons(dataSource: Cesium.CustomDataSource, feed: Typ
           disableDepthTestDistance: Number.POSITIVE_INFINITY
         },
         label: center ? {
-          text: `${storm.name}${storm.active ? '' : '（已结束）'}\n发布 ${formatOnlineTime(point.time)}${cached ? '\n缓存快照' : ''}`,
+          text: `${storm.name}${storm.active ? '' : '（已结束）'}\n${formatOnlineTime(point.time)}${cached ? '\n缓存数据' : ''}`,
           font: '600 12px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif',
           fillColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.88)'),
           showBackground: true,

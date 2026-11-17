@@ -49,7 +49,7 @@ async function saveKey(): Promise<void> {
     }
     message.success('搜索 API Key 已保存')
   } catch {
-    error.value = '搜索密钥保存失败，请检查系统安全存储后重试'
+    error.value = '保存失败，请重试'
   } finally {
     saving.value = false
   }
@@ -91,7 +91,6 @@ async function clearKey(): Promise<void> {
         <a-tag v-if="!loading && !error" :color="credential.configured ? 'success' : 'default'">{{ credential.configured ? '已配置' : '未配置' }}</a-tag>
       </template>
       <a-spin :spinning="loading">
-        <p class="search-description">由 Agent 按需搜索网页，并在回答中引用来源</p>
         <a-form layout="vertical">
           <a-form-item label="AppBuilder API Key" :html-for="`search-key-${selected.id}`">
             <a-input-password
@@ -114,7 +113,7 @@ async function clearKey(): Promise<void> {
     <a-alert v-if="error" type="error" show-icon :message="error">
       <template #action><a-button :disabled="saving || clearing" @click="refreshCredential">刷新状态</a-button></template>
     </a-alert>
-    <a-empty v-if="!selected" description="暂无可用搜索供应商" />
+    <a-empty v-if="!selected" description="暂无可用搜索服务" />
   </section>
 </template>
 

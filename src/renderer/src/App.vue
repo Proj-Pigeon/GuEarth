@@ -161,7 +161,7 @@ const selectedShape = computed(() => shapes.value.find((shape) => shape.id === s
 const levelSwitcherVisible = computed(() => isGlobeReady.value && camera.value.height < 5000000)
 const webglNotice = computed(() => failureStore.notices.webgl)
 const showGlobeLoading = computed(() => !isGlobeReady.value || onlineData.loading || Boolean(webglNotice.value))
-const globeLoadingText = computed(() => webglNotice.value ? webglNotice.value.message : onlineData.loading ? '正在拉取在线数据…' : globeError.value ? '地图尚未显示，请检查网络或重试' : globeLoadTimedOut.value ? '地图加载较慢，请检查网络' : '正在加载地图…')
+const globeLoadingText = computed(() => webglNotice.value ? webglNotice.value.message : onlineData.loading ? '正在加载数据…' : globeError.value ? '地图尚未显示，请检查网络或重试' : globeLoadTimedOut.value ? '地图加载较慢，请检查网络' : '正在加载地图…')
 const globeLoadingRetryable = computed(() => Boolean(webglNotice.value) || (!onlineData.loading && (globeLoadTimedOut.value || Boolean(globeError.value))))
 const isLabOpen = ref(false)
 const nightBasemapActive = computed(() => hidesThematicLayers(store.selectedLayerId))
@@ -1344,9 +1344,8 @@ function deleteSelectedShape(): void {
         <a-spin :spinning="!globeLoadTimedOut && !globeError && !webglNotice" size="small" />
         <span class="globe-loading-text" role="status">{{ globeLoadingText }}</span>
         <span v-if="webglNotice?.detail" class="globe-loading-stage globe-loading-hint">{{ webglNotice.detail }}</span>
-        <span v-else-if="onlineData.loading" class="globe-loading-stage">正在预取地震及已配置的台风数据，完成后使用本次启动的数据</span>
-        <span v-else-if="globeLoadStage" class="globe-loading-stage">{{ globeLoadStage }}</span>
-        <span v-if="globeLoadingRetryable && !webglNotice" class="globe-loading-stage">影像源持续无法加载时，可在「设置 → 地图」将高德镜像瓦片源切换为「开启」</span>
+        <span v-else-if="!onlineData.loading && globeLoadStage" class="globe-loading-stage">{{ globeLoadStage }}</span>
+        <span v-if="globeLoadingRetryable && !webglNotice" class="globe-loading-stage">若持续无法加载，可在「设置 → 地图」开启国内地图加速</span>
         <a-button v-if="globeLoadingRetryable" type="text" size="small" @click="handleRetry"><ReloadOutlined />重试</a-button>
       </div>
       <FailureBanner />
@@ -1483,7 +1482,7 @@ function deleteSelectedShape(): void {
           :message="recordingDirectoryDialogError"
           class="recording-directory-error"
         />
-        <p class="recording-directory-copy">首次录制需要一个可写的文件夹来保存视频文件。点击“选择文件夹”后，在系统窗口中选取目标位置。</p>
+        <p class="recording-directory-copy">请选择一个文件夹用于保存录制的视频。</p>
       </a-modal>
     </div>
   </a-config-provider>

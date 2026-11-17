@@ -42,12 +42,12 @@ export const BUFFER_MISSING_REPORT_MS = 8000
 export const RENDER_FAULT_LIMIT = 3
 
 export const WEBGL_UNAVAILABLE_MESSAGE = '三维地球无法启动'
-export const WEBGL_UNAVAILABLE_DETAIL = '显卡加速暂时不可用。请更新显卡驱动，或关闭其他占用显卡的程序后点击重试。使用远程桌面或虚拟机时，请在本机直接打开。'
+export const WEBGL_UNAVAILABLE_DETAIL = '显卡加速暂时不可用，请更新显卡驱动或关闭其他占用显卡的程序后重试。'
 export const SURFACE_UNAVAILABLE_MESSAGE = '地球画面无法创建'
-export const SURFACE_UNAVAILABLE_DETAIL = '图形表面尺寸为 0。请先还原窗口再点击重试；若窗口已经正常显示仍是空白，请更新显卡驱动。'
+export const SURFACE_UNAVAILABLE_DETAIL = '画面尺寸异常，请先还原窗口后点击重试；若仍空白请更新显卡驱动。'
 export const RENDER_HALTED_MESSAGE = '三维地球渲染已停止'
-export const RENDER_HALTED_DETAIL = '画面渲染遇到无法恢复的图形错误。请更新显卡驱动后点击重试。'
-export const WEBGL_RETRY_STAGE = '显卡上下文未就绪，正在重试…'
+export const RENDER_HALTED_DETAIL = '画面渲染遇到异常，请更新显卡驱动后点击重试。'
+export const WEBGL_RETRY_STAGE = '正在准备图形界面…'
 
 export const WEBGL_CONTEXT_ATTEMPTS: readonly WebGlContextAttempt[] = [
   { id: 'webgl2', requestWebgl1: false, preserveDrawingBuffer: true, antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false },

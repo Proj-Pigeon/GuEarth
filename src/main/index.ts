@@ -412,21 +412,21 @@ async function clearMirrorProviderTileCaches(): Promise<void> {
 }
 
 function mirrorRouteNotice(previous: readonly string[], next: readonly string[]): string {
-  if (next.length === 0) return '网络环境检测：境外影像源可用，已恢复直连原影像源'
-  if (previous.length === 0) return '网络环境检测：境外影像源不可用，已自动切换到高德镜像瓦片源'
-  return `网络环境检测：高德镜像瓦片源已更新为 ${next.length} 个底图源`
+  if (next.length === 0) return '已恢复直连原地图源'
+  if (previous.length === 0) return '已自动切换到国内加速地图源'
+  return `已自动优化 ${next.length} 个地图源的网络线路`
 }
 
 function mirrorFallbackNotice(): string {
   return settings.tileMirrorMode === 'on'
-    ? '高德镜像瓦片源请求失败，已自动回退到原影像源'
-    : '高德镜像瓦片源请求失败，已自动恢复直连原影像源'
+    ? '加速线路异常，已自动切回原地图源'
+    : '加速线路异常，已恢复直连原地图源'
 }
 
 function mirrorModeNotice(mode: TileMirrorMode): string {
-  if (mode === 'off') return '高德镜像瓦片源已关闭'
-  if (mode === 'on') return '高德镜像瓦片源已开启'
-  return '高德镜像瓦片源已设为自动模式'
+  if (mode === 'off') return '国内地图加速已关闭'
+  if (mode === 'on') return '国内地图加速已开启'
+  return '国内地图加速已设为自动'
 }
 
 function notifyMirrorRouteChange(previous: readonly string[]): void {

@@ -299,7 +299,7 @@ test('earthquake refresh requests are deduplicated and keep the failure state on
   await assert.rejects(first)
   const failed = await fixture.api.getOnlineData()
   assert.equal(failed.earthquakes, null)
-  assert.equal(failed.earthquakeError, 'USGS 地震数据获取失败，请检查网络后重试')
+  assert.equal(failed.earthquakeError, '地震数据更新失败，请检查网络后重试')
   assert.deepEqual(fixture.counts(), { earthquakes: 2, typhoons: 1 })
 })
 

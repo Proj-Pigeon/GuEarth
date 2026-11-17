@@ -47,7 +47,7 @@ async function runVerification(): Promise<void> {
   running.value = true
   highResult.value = null
   lowResult.value = null
-  statusText.value = '正在统计 POI，请稍候…'
+  statusText.value = '正在统计，请稍候…'
   try {
     const [high, low] = await Promise.all([
       window.guEarth.places.poiStatistics({ centerName: selectedHigh.value.name, city: selectedHigh.value.city, radiusMeters: VERIFICATION_RADIUS_KM * 1000, maxSamples: 400 }),
@@ -61,9 +61,9 @@ async function runVerification(): Promise<void> {
     }
     const highCategories = high.categories.length
     const lowCategories = low.categories.length
-    statusText.value = `高级中心地：${high.sampled} 条 / ${highCategories} 类；低级中心地：${low.sampled} 条 / ${lowCategories} 类。${highCategories >= lowCategories && high.sampled >= low.sampled ? '结果符合中心地理论：等级越高，POI 总量越大、职能类别越齐全。' : '本次抽样差异不明显，可更换对比城市或扩大半径后重试。'}`
+    statusText.value = `高级中心地：${high.sampled} 条 / ${highCategories} 类；低级中心地：${low.sampled} 条 / ${lowCategories} 类。${highCategories >= lowCategories && high.sampled >= low.sampled ? '结果符合中心地理论：等级越高，服务数量越多、类别越齐全。' : '本次对比差异不明显，可更换城市后重试。'}`
   } catch (error) {
-    statusText.value = error instanceof Error ? error.message : 'POI 统计请求失败'
+    statusText.value = error instanceof Error ? error.message : '数据请求失败，请重试'
   } finally {
     running.value = false
   }
@@ -128,9 +128,9 @@ const series = computed<BarSeries[]>(() => [
         <a-select-option v-for="item in CENTRAL_PLACE_CASES" :key="item.name" :value="item.name">{{ item.name }}</a-select-option>
       </a-select>
     </div>
-    <div v-if="missingKey" class="panel-note">需要先在「图层管理 → 供应商密钥」配置高德 Web 服务 Key 才能进行 POI 统计。</div>
+    <div v-if="missingKey" class="panel-note">请先在「设置 → 地图」中配置高德地图密钥。</div>
     <a-button class="panel-action" size="small" block :disabled="running || missingKey" @click="runVerification">
-      <ReloadOutlined :spin="running" /> {{ running ? '统计中…' : '开始 POI 统计对比' }}
+      <ReloadOutlined :spin="running" /> {{ running ? '统计中…' : '开始对比统计' }}
     </a-button>
     <p v-if="statusText" class="fact">{{ statusText }}</p>
     <template v-if="highResult && lowResult && !highResult.error && !lowResult.error">
@@ -157,7 +157,7 @@ const series = computed<BarSeries[]>(() => [
     >
       {{ climateStore.overlays['city-tiers'] ? '城市等级图层已开启' : '在地球上查看城市等级体系' }}
     </a-button>
-    <div class="panel-note">城市等级与职能描述依据第七次人口普查城镇化数据与《城市规划原理》惯用分级；POI 统计来自高德开放平台。</div>
+    <div class="panel-note">数据来源：第七次人口普查、高德地图</div>
   </div>
 </template>
 

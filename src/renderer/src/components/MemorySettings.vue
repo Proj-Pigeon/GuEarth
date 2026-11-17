@@ -80,7 +80,7 @@ async function toggleEnabled(value: boolean): Promise<void> {
     <div class="memory-toggle">
       <div class="memory-toggle-text">
         <div class="memory-toggle-title">记忆功能</div>
-        <p class="memory-toggle-desc">开启后，EOQ 会在对话中主动记住你的教学背景与偏好，越用越懂你；也可手动添加。所有记忆仅保存在本机。</p>
+        <p class="memory-toggle-desc">自动记住你的个性偏好</p>
       </div>
       <a-switch
         :checked="store.settings.memoryEnabled"
@@ -93,7 +93,7 @@ async function toggleEnabled(value: boolean): Promise<void> {
     <div class="memory-add">
       <a-input
         v-model:value="draft"
-        placeholder="手动添加一条记忆，例如：我是高中地理老师，偏好案例式讲解"
+        placeholder="添加偏好，如：我是高中地理老师，喜欢结合案例讲解"
         :maxlength="300"
         @press-enter="addMemory"
       />
@@ -101,7 +101,7 @@ async function toggleEnabled(value: boolean): Promise<void> {
     </div>
 
     <a-spin :spinning="loading">
-      <div v-if="sortedMemories.length === 0 && !loading" class="memory-empty">暂无记忆。开启后 EOQ 会在对话中自动积累，也可以在上方手动添加。</div>
+      <div v-if="sortedMemories.length === 0 && !loading" class="memory-empty">暂无记录</div>
       <ul v-else class="memory-list">
         <li v-for="memory in sortedMemories" :key="memory.id" class="memory-item">
           <div class="memory-item-body">

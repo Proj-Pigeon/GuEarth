@@ -768,13 +768,13 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
       feed = await window.guEarth.datasets.getEarthquakes(refresh)
     } catch {
       if (sources.get('plate-tectonics') === dataSource) {
-        failureStore.reportFailure({ scope: 'dataset', message: '近期地震数据获取失败，本次仅显示板块边界与火山', detail: '在线地震数据获取失败，请检查网络后点击重试', retryable: true })
+        failureStore.reportFailure({ scope: 'dataset', message: '近期地震数据加载失败，暂仅显示板块边界与火山', detail: '请检查网络后点击重试', retryable: true })
       }
       return
     }
     if (sources.get('plate-tectonics') !== dataSource) return
     if (feed.stale) {
-      failureStore.reportFailure({ scope: 'dataset', message: '地震数据刷新失败，当前显示缓存数据', detail: '在线地震数据获取失败，请检查网络后点击重试，重试成功后将更新为最新数据', retryable: true })
+      failureStore.reportFailure({ scope: 'dataset', message: '地震数据更新失败，暂显示缓存数据', detail: '请检查网络后点击重试', retryable: true })
     } else {
       failureStore.clearFailure('dataset')
     }
@@ -1413,11 +1413,11 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
     const outcome = await ensureSeaLevelSamples(current)
     if (sources.get('sea-level-rise') !== dataSource) return
     if (outcome === 'terrain-required') {
-      failureStore.reportFailure({ scope: 'sea-level-terrain', message: '未加载真实地形，淹没模拟不可用', detail: '可能因启动时网络较慢，地形源已被自动降级为椭球。请在「图层管理 → 地形」选择「全球 3D 地形」，切换后本图层会自动重建', retryable: true })
+      failureStore.reportFailure({ scope: 'sea-level-terrain', message: '请先在「图层管理 → 3D 地形」中开启「全球 3D 地形」', detail: '需要 3D 地形数据才能模拟淹没范围', retryable: true })
       return
     }
     if (outcome === 'failed') {
-      failureStore.reportFailure({ scope: 'sea-level-terrain', message: '地形采样失败，淹没模拟不可用', detail: '地形源不可达或网络受限，稍后点击重试', retryable: true })
+      failureStore.reportFailure({ scope: 'sea-level-terrain', message: '地形数据加载失败，淹没模拟暂不可用', detail: '请检查网络后重试', retryable: true })
       return
     }
     failureStore.clearFailure('sea-level-terrain')

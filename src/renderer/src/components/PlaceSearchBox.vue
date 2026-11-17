@@ -84,7 +84,7 @@ async function search(text: string): Promise<void> {
     return
   }
   if (!provider.value) {
-    options.value = [statusOption('请在「图层管理 → 供应商密钥」中配置高德或百度 API Key', true)]
+    options.value = [statusOption('请先在「设置 → 地图」中配置高德或百度密钥', true)]
     return
   }
   options.value = [{

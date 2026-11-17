@@ -310,7 +310,7 @@ export const useAiStore = defineStore('ai', () => {
       return
     }
     if (event.type === 'context-compression-start') {
-      if (event.sessionId === activeSessionId) setContextNotice('正在压缩上下文...', 'compressing')
+      if (event.sessionId === activeSessionId) setContextNotice('正在整理对话…', 'compressing')
       return
     }
     if (event.type === 'context-compressed') {
@@ -322,12 +322,12 @@ export const useAiStore = defineStore('ai', () => {
           beforeTokens: event.beforeTokens,
           afterTokens: event.afterTokens
         })
-        setContextNotice(`已压缩上下文 ${formatContextTokens(event.afterTokens)}`, 'idle')
+        setContextNotice(`已精简对话 ${formatContextTokens(event.afterTokens)}`, 'idle')
       }
       return
     }
     if (event.type === 'context-compression-error') {
-      if (event.sessionId === activeSessionId) setContextNotice('无法压缩上下文', 'error')
+      if (event.sessionId === activeSessionId) setContextNotice('整理失败', 'error')
       return
     }
     if (event.type === 'model-retry') {
@@ -542,7 +542,7 @@ export const useAiStore = defineStore('ai', () => {
       const assistant = currentAssistant()
       if (assistant) {
         assistant.status = 'error'
-        assistant.error = '尚未配置 AI 模型：点击右上角设置，添加供应商与模型并保存 API Key'
+        assistant.error = '尚未配置 AI 模型：请点击右上角设置，添加服务商和模型并保存 API Key'
       }
       void persistConversation()
       return
@@ -614,13 +614,13 @@ export const useAiStore = defineStore('ai', () => {
 
   async function compressContext(): Promise<void> {
     if (isStreaming.value || !window.guEarth?.ai) return
-    setContextNotice('正在压缩上下文...', 'compressing')
+    setContextNotice('正在整理对话…', 'compressing')
     try {
       const result = await window.guEarth.ai.compressContext(contextEntries())
       applyCompressedContext(result)
-      setContextNotice(`已压缩上下文 ${formatContextTokens(result.afterTokens)}`, 'idle')
+      setContextNotice(`已精简对话 ${formatContextTokens(result.afterTokens)}`, 'idle')
     } catch {
-      setContextNotice('无法压缩上下文', 'error')
+      setContextNotice('整理失败', 'error')
     }
   }
 

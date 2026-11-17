@@ -6,6 +6,7 @@ import type { AiModelConfig, AiModelImportRow, AiProviderConfig, AiSearchProvide
 import { useAiStore } from '@renderer/stores/ai'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import { ipcErrorMessage } from '@renderer/lib/ipcError'
+import { isAiDraftDirty, type AiPersistedState } from '@renderer/lib/aiSettingsDraft'
 import SearchProviderSettings from '../SearchProviderSettings.vue'
 import MemorySettings from '../MemorySettings.vue'
 
@@ -19,6 +20,7 @@ interface ModelDraft extends AiModelConfig {
 }
 
 const props = defineProps<{ active: boolean }>()
+const emit = defineEmits<{ requestClose: [] }>()
 
 const store = useAiStore()
 const settingsWindow = useSettingsWindowStore()
@@ -74,6 +76,24 @@ const pagedModels = computed(() => filteredModels.value.slice((modelPage.value -
 
 const settingsLocked = computed(() => settingsReading.value || settingsReadFailed.value)
 
+const persistedState = computed<AiPersistedState>(() => ({
+  providers: store.settings.providers,
+  activeProviderId: store.settings.activeProviderId,
+  activeModelId: store.settings.activeModelId,
+  searchProviders: store.settings.searchProviders,
+  activeSearchProviderId: store.settings.activeSearchProviderId
+}))
+
+const dirty = computed(() => {
+  if (settingsReading.value || settingsReadFailed.value) return false
+  return isAiDraftDirty({
+    providers: draftProviders.value,
+    activeChoice: activeChoice.value,
+    searchProviders: draftSearchProviders.value,
+    activeSearchProviderId: activeSearchProviderId.value
+  }, persistedState.value)
+})
+
 const thinkingLevelOptions: { value: AiThinkingLevel; label: string }[] = [
   { value: 'low', label: '低' },
   { value: 'medium', label: '中' },
@@ -112,19 +132,34 @@ async function refreshCredentialStatuses(): Promise<void> {
   credentialStatuses.value = Object.fromEntries(entries)
 }
 
+function syncDraftsFromStore(): void {
+  draftProviders.value = store.settings.providers.map(toProviderDraft)
+  draftSearchProviders.value = store.settings.searchProviders.map((provider) => ({ ...provider }))
+  activeSearchProviderId.value = store.settings.activeSearchProviderId
+  activeChoice.value = store.settings.activeProviderId && store.settings.activeModelId
+    ? `${store.settings.activeProviderId}:${store.settings.activeModelId}`
+    : ''
+  if (!draftProviders.value.some((provider) => provider.id === selectedProviderId.value)) {
+    selectedProviderId.value = store.settings.activeProviderId || draftProviders.value[0]?.id || ''
+  }
+}
+
+function draftSignature(): string {
+  return JSON.stringify([
+    draftProviders.value.map((provider) => ({ ...provider, models: provider.models.map((model) => ({ ...model })) })),
+    activeChoice.value,
+    draftSearchProviders.value.map((provider) => ({ ...provider })),
+    activeSearchProviderId.value
+  ])
+}
+
 onMounted(async () => {
   try {
     apiKeyDraft.value = ''
     await store.hydrate()
     settingsReadFailed.value = !store.hydrated
     if (settingsReadFailed.value) return
-    draftProviders.value = store.settings.providers.map(toProviderDraft)
-    draftSearchProviders.value = store.settings.searchProviders.map((provider) => ({ ...provider }))
-    activeSearchProviderId.value = store.settings.activeSearchProviderId
-    activeChoice.value = store.settings.activeProviderId && store.settings.activeModelId
-      ? `${store.settings.activeProviderId}:${store.settings.activeModelId}`
-      : ''
-    selectedProviderId.value = store.settings.activeProviderId || draftProviders.value[0]?.id || ''
+    syncDraftsFromStore()
     apiKeyDraft.value = ''
     void refreshCredentialStatuses()
   } catch {
@@ -155,7 +190,7 @@ function addProvider(): void {
   const provider: ProviderDraft = reactive({
     key: makeKey(),
     id,
-    name: `供应商 ${draftProviders.value.length + 1}`,
+    name: `服务商 ${draftProviders.value.length + 1}`,
     protocol: 'openai',
     baseUrl: '',
     models: []
@@ -168,8 +203,8 @@ function removeProvider(providerId: string): void {
   const provider = draftProviders.value.find((item) => item.id === providerId)
   if (!provider) return
   Modal.confirm({
-    title: '删除供应商？',
-    content: provider.models.length ? `将同时删除其下的 ${provider.models.length} 个模型。` : '该供应商将从列表中移除。',
+    title: '删除服务商？',
+    content: provider.models.length ? `将同时删除其下的 ${provider.models.length} 个模型。` : '该服务商将从列表中移除。',
     okText: '删除',
     cancelText: '取消',
     okType: 'danger',
@@ -548,18 +583,18 @@ function validate(): string {
   return ''
 }
 
-async function handleSave(): Promise<void> {
-  if (settingsReading.value) return
+async function saveDrafts(): Promise<boolean> {
+  if (settingsReading.value) return false
   if (settingsReadFailed.value) {
     message.error('AI 设置读取失败，无法保存')
-    return
+    return false
   }
   const problem = validate()
   if (problem) {
     message.warning(problem)
-    return
+    return false
   }
-  const choice = typeof activeChoice.value === 'string' ? activeChoice.value : ''
+  const choice = activeChoice.value
   const separatorIndex = choice.indexOf(':')
   const activeProviderId = separatorIndex >= 0 ? choice.slice(0, separatorIndex) : ''
   const activeModelId = separatorIndex >= 0 ? choice.slice(separatorIndex + 1) : ''
@@ -590,27 +625,44 @@ async function handleSave(): Promise<void> {
     memoryEnabled: store.settings.memoryEnabled,
     socraticEnabled: store.settings.socraticEnabled
   }
+  const submittedSignature = draftSignature()
   try {
     await store.saveSettings(next)
-    message.success('AI 设置已保存')
-    settingsWindow.close()
+    const editedDuringSave = draftSignature() !== submittedSignature
+    if (!editedDuringSave) syncDraftsFromStore()
+    message.success(editedDuringSave ? '此前的改动已保存，新的改动尚未保存' : 'AI 设置已保存')
+    return true
   } catch {
     message.error('设置保存失败')
+    return false
   }
 }
+
+function discardDrafts(): void {
+  syncDraftsFromStore()
+}
+
+async function handleSave(): Promise<void> {
+  const saved = await saveDrafts()
+  if (saved && !dirty.value) settingsWindow.close()
+}
+
+defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
 </script>
 
 <template>
   <section class="settings-section" aria-label="AI 设置">
-    <h3 class="section-title">AI</h3>
+    <div class="section-heading">
+      <h3 class="section-title">AI</h3>
+      <a-tag v-if="dirty" color="warning" class="unsaved-tag">未保存</a-tag>
+    </div>
 
     <a-alert
       v-if="settingsReadFailed"
       class="read-failure-alert"
       type="error"
       show-icon
-      message="AI 设置读取失败"
-      description="为避免默认配置覆盖已保存的供应商设置，本页的保存操作已禁用，请重启应用后重试。"
+      message="AI 设置读取失败，请重启应用后重试"
     />
 
     <section class="settings-block">
@@ -618,7 +670,7 @@ async function handleSave(): Promise<void> {
       <a-select
         v-model:value="activeChoice"
         class="full-select"
-        placeholder="选择供应商与模型"
+        placeholder="选择服务商与模型"
         allow-clear
       >
         <a-select-opt-group v-for="provider in draftProviders.filter((item) => item.models.some((model) => model.enabled))" :key="provider.id" :label="provider.name">
@@ -627,11 +679,10 @@ async function handleSave(): Promise<void> {
           </a-select-option>
         </a-select-opt-group>
       </a-select>
-      <div class="default-hint">发送提问时将使用该模型。</div>
     </section>
 
     <section class="settings-block provider-layout" data-guide-target="ai-provider-settings">
-      <div class="block-heading">LLM 供应商</div>
+      <div class="block-heading">AI 服务商</div>
       <div class="provider-columns">
         <div class="provider-rail">
           <div
@@ -643,7 +694,7 @@ async function handleSave(): Promise<void> {
             <span class="provider-item-name">{{ provider.name }}</span>
             <a-tag v-if="credentialStatuses[provider.id]?.configured" color="green" class="provider-item-tag">密钥</a-tag>
           </div>
-          <a-button type="dashed" block @click="addProvider"><PlusOutlined />添加供应商</a-button>
+          <a-button type="dashed" block @click="addProvider"><PlusOutlined />添加服务商</a-button>
         </div>
 
         <div v-if="selectedProvider" class="provider-editor">
@@ -665,7 +716,7 @@ async function handleSave(): Promise<void> {
           <div class="field-row">
             <label class="field-label">API Key</label>
             <div class="key-row">
-              <a-input-password v-model:value="apiKeyDraft" placeholder="sk-…（仅保存在本机安全存储）" />
+              <a-input-password v-model:value="apiKeyDraft" placeholder="输入 API Key" />
               <a-button type="primary" :disabled="!apiKeyDraft.trim()" @click="saveApiKey"><SaveOutlined />保存</a-button>
               <a-button :disabled="!credentialStatuses[selectedProvider.id]?.configured" @click="clearApiKey"><DeleteOutlined />清除</a-button>
             </div>
@@ -705,12 +756,12 @@ async function handleSave(): Promise<void> {
                     @change="(value: string | number | boolean) => toggleModel(model, value)"
                   />
                 </a-tooltip>
-                <a-tooltip title="响应测试">
+                <a-tooltip title="测试连接">
                   <a-button
                     type="text"
                     :loading="testingModelKey === model.key"
                     :disabled="Boolean(testingModelKey) && testingModelKey !== model.key"
-                    aria-label="响应测试"
+                    aria-label="测试连接"
                     @click="testModel(model)"
                   ><ThunderboltOutlined v-if="testingModelKey !== model.key" /></a-button>
                 </a-tooltip>
@@ -735,10 +786,10 @@ async function handleSave(): Promise<void> {
           />
 
           <div class="provider-danger">
-            <a-button danger type="text" @click="removeProvider(selectedProvider.id)">删除该供应商</a-button>
+            <a-button danger type="text" @click="removeProvider(selectedProvider.id)">删除该服务商</a-button>
           </div>
         </div>
-        <div v-else class="provider-editor provider-editor-empty">先在左侧添加一个供应商。</div>
+        <div v-else class="provider-editor provider-editor-empty">先在左侧添加一个服务商。</div>
       </div>
     </section>
 
@@ -760,26 +811,26 @@ async function handleSave(): Promise<void> {
           <a-input v-model:value="modelDraft.label" placeholder="可选" />
         </div>
         <div class="field-row">
-          <label class="field-label">上下文窗口</label>
+          <label class="field-label">最大上下文长度</label>
           <a-input-number v-model:value="modelDraft.contextWindow" class="model-context-input" :min="4096" :max="2000000" :step="32000" />
         </div>
         <div class="model-switches">
           <span class="model-field">
-            <label>流式传输</label>
+            <label>流式输出</label>
             <a-switch v-model:checked="modelDraft.streaming" size="small" />
           </span>
           <span class="model-field">
-            <a-tooltip title="允许向模型发送截图等图片">
-              <label class="vision-label">视觉</label>
+            <a-tooltip title="支持识别图片和截图">
+              <label class="vision-label">图像识别</label>
             </a-tooltip>
             <a-switch v-model:checked="modelDraft.vision" size="small" />
           </span>
           <span class="model-field">
-            <label>思考</label>
+            <label>深度思考</label>
             <a-switch v-model:checked="modelDraft.thinking" size="small" />
           </span>
           <span class="model-field">
-            <label>思考等级</label>
+            <label>思考深度</label>
             <a-select v-model:value="modelDraft.thinkingLevel" :disabled="!modelDraft.thinking" size="small" class="level-select" :options="thinkingLevelOptions" />
           </span>
         </div>
@@ -801,9 +852,9 @@ async function handleSave(): Promise<void> {
         <a-alert
           type="info"
           show-icon
-          :message="importMatching ? '正在重新匹配…' : `匹配成功 ${importMatchedCount} 个，匹配失败 ${importFailedCount} 个`"
+          :message="importMatching ? '正在重新匹配…' : `匹配成功 ${importMatchedCount} 个，未匹配 ${importFailedCount} 个`"
         />
-        <a-tooltip title="按“/”后的模型名匹配元数据">
+        <a-tooltip title="按“/”后的名称自动匹配模型信息">
           <span class="import-option">
             <span>模型组兼容</span>
             <a-switch
@@ -869,7 +920,7 @@ async function handleSave(): Promise<void> {
     </a-modal>
 
     <section class="settings-block">
-      <div class="block-heading">搜索供应商</div>
+      <div class="block-heading">联网搜索</div>
       <SearchProviderSettings v-model:active-provider-id="activeSearchProviderId" :providers="draftSearchProviders" />
     </section>
 
@@ -879,11 +930,11 @@ async function handleSave(): Promise<void> {
     </section>
 
     <section class="settings-block">
-      <div class="block-heading">教学</div>
+      <div class="block-heading">教学风格</div>
       <div class="teaching-toggle">
         <div class="teaching-toggle-text">
-          <div class="teaching-toggle-title">苏格拉底模式</div>
-          <p class="teaching-toggle-desc">开启后 EOQ 以提问引导思考，不直接给出答案。</p>
+          <div class="teaching-toggle-title">苏格拉底引导模式</div>
+          <p class="teaching-toggle-desc">以提问启发思考，不直接给出答案</p>
         </div>
         <a-switch
           :checked="store.settings.socraticEnabled"
@@ -896,7 +947,7 @@ async function handleSave(): Promise<void> {
     </section>
 
     <div class="ai-footer">
-      <a-button @click="settingsWindow.close()">取消</a-button>
+      <a-button @click="emit('requestClose')">取消</a-button>
       <a-button type="primary" :disabled="settingsLocked" @click="handleSave">保存设置</a-button>
     </div>
   </section>
@@ -905,6 +956,8 @@ async function handleSave(): Promise<void> {
 <style scoped>
 .settings-section{height:100%;overflow-y:auto;padding:24px;box-sizing:border-box}
 .section-title{margin:0;color:rgba(0,0,0,0.88);font-size:20px;font-weight:600;line-height:28px}
+.section-heading{display:flex;align-items:center;gap:8px}
+.unsaved-tag{margin-inline-end:0}
 .section-desc{margin:4px 0 0;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
 .settings-block{padding:16px 0;margin-top:16px;border-bottom:1px solid rgba(5,5,5,0.06)}
 .settings-block:last-of-type{border-bottom:none}

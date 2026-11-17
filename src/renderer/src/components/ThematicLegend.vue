@@ -28,7 +28,7 @@ const liveTyphoonEntries = [
   ...Object.entries(liveTyphoonIntensityStyles).map(([code, style]) => ({ ...style, name: `${style.name}（${code}）` })),
   unknownTyphoonIntensityStyle
 ]
-const typhoonModeOptions = [{ label: '在线快照', value: 'live' }, { label: '历史案例', value: 'history' }]
+const typhoonModeOptions = [{ label: '实时台风', value: 'live' }, { label: '历史案例', value: 'history' }]
 
 function setTyphoonMode(value: string | number): void {
   if (value === 'live' || value === 'history') onlineData.setTyphoonMode(value)
@@ -97,58 +97,52 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
         v-if="onlineData.snapshot?.typhoonConfigured === false"
         type="info"
         show-icon
-        message="未配置，显示内置历史教学案例"
+        message="尚未配置实时数据源，当前显示历史案例"
       />
       <template v-if="typhoonHistory">
-        <p class="legend-copy">内置历史教学案例，非实时数据。</p>
         <div v-for="entry in historicalTyphoonEntries" :key="entry.name" class="legend-item">
           <span class="swatch" :style="{ background: entry.color }"></span><span>{{ entry.name }}</span>
         </div>
         <div class="legend-item"><span class="swatch" style="background: #fa541c"></span><span>历史台风路径与结构锚点</span></div>
       </template>
       <template v-else>
-        <p class="legend-copy">范围：西北太平洋（NP）</p>
         <div v-if="onlineData.loading || onlineData.typhoonLoading" class="legend-item" role="status">
-          <a-spin size="small" /><span>正在获取台风数据…</span>
+          <a-spin size="small" /><span>正在加载台风数据…</span>
         </div>
         <a-alert
           v-if="onlineData.snapshot?.typhoonError"
           :type="typhoonFeed ? 'warning' : 'error'"
           show-icon
-          :message="typhoonFeed ? '更新失败，显示缓存快照' : '台风数据不可用，无可用缓存'"
+          :message="typhoonFeed ? '更新失败，暂显示上次数据' : '暂无法获取台风数据'"
           :description="onlineData.snapshot.typhoonError"
         />
         <a-alert
           v-else-if="!onlineData.loading && !onlineData.typhoonLoading && !typhoonFeed"
           type="error"
           show-icon
-          message="台风数据不可用，无可用缓存"
+          message="暂无法获取台风数据"
         />
         <template v-if="typhoonFeed">
-          <p class="legend-copy">抓取时间：<span class="legend-time">{{ formatOnlineTime(typhoonFeed.fetchedAt) }}</span></p>
+          <p class="legend-copy">更新时间：<span class="legend-time">{{ formatOnlineTime(typhoonFeed.fetchedAt) }}</span></p>
           <a-alert
             v-if="!activeStormCount"
             type="info"
             show-icon
-            :message="typhoonCached ? '缓存快照中无活跃台风' : '本次快照中无活跃台风'"
-            :description="typhoonFeed.storms.length ? '仅显示接口返回的已结束台风实况路径，不显示当前中心。' : undefined"
+            :message="typhoonCached ? '当前暂无活跃台风（历史缓存）' : '当前暂无活跃台风'"
           />
-          <p v-else class="legend-copy">快照中有 {{ activeStormCount }} 个活跃台风；点击路径点查看详情。</p>
-          <a-alert v-if="forecastErrors" type="warning" show-icon message="部分台风预报不可用" :description="forecastErrors" />
+          <p v-else class="legend-copy">当前有 {{ activeStormCount }} 个活跃台风，点击路径点查看详情</p>
+          <a-alert v-if="forecastErrors" type="warning" show-icon message="部分台风预报暂不可用" :description="forecastErrors" />
           <div v-for="entry in liveTyphoonEntries" :key="entry.name" class="legend-item">
             <span class="swatch" :style="{ background: entry.color }"></span><span>{{ entry.name }}</span>
           </div>
-          <div class="legend-item"><span class="swatch swatch-observed"></span><span>实线：已观测路径</span></div>
-          <div class="legend-item"><span class="swatch swatch-dashed"></span><span>虚线：最新中心之后的预报</span></div>
-          <p class="legend-copy">大点：最新发布中心；无中心数据时不绘制。预报点为空心点。</p>
-          <p class="legend-copy">风速：km/h；气压：hPa。</p>
-          <p class="legend-copy">来源：和风天气 QWeather<span v-if="typhoonFeed.sources.length">；{{ typhoonFeed.sources.join('；') }}</span></p>
-          <p class="legend-copy">许可：{{ typhoonFeed.license.join('；') || '接口未提供' }}</p>
+          <div class="legend-item"><span class="swatch swatch-observed"></span><span>实线：实况路径</span></div>
+          <div class="legend-item"><span class="swatch swatch-dashed"></span><span>虚线：预报路径</span></div>
+          <p class="legend-copy">实心大点：当前中心 · 空心点：预报位置</p>
+          <p class="legend-copy">数据来源：和风天气<span v-if="typhoonFeed.sources.length">（{{ typhoonFeed.sources.join('、') }}）</span></p>
         </template>
-        <a-button v-if="onlineData.snapshot?.typhoonStatus === 'error'" @click="onlineData.ensureTyphoons(true)">重试获取</a-button>
-        <p class="legend-copy">启动时预取数据；新增或修改配置后首次使用时获取，之后切换模式复用快照。获取失败可直接重试。</p>
+        <a-button v-if="onlineData.snapshot?.typhoonStatus === 'error'" @click="onlineData.ensureTyphoons(true)">重试</a-button>
       </template>
-      <a-button @click="settingsWindow.open('laboratory')">实验室数据设置</a-button>
+      <a-button @click="settingsWindow.open('laboratory')">配置数据源</a-button>
     </div>
     <div v-if="store.overlays['ocean-currents']" class="legend-group">
       <div class="legend-item"><span class="swatch" style="background: #f5222d"></span><span>暖流</span></div>
@@ -180,13 +174,13 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
       <div class="legend-item"><span class="swatch" style="background: #fa8c16"></span><span>地震 M5.5+</span></div>
       <div class="legend-item"><span class="swatch" style="background: #f5222d"></span><span>地震 M7+</span></div>
       <p v-if="onlineData.snapshot?.earthquakes" class="legend-copy">
-        USGS 地震快照抓取时间：<span class="legend-time">{{ formatOnlineTime(onlineData.snapshot.earthquakes.fetchedAt) }}</span>
+        地震更新时间：<span class="legend-time">{{ formatOnlineTime(onlineData.snapshot.earthquakes.fetchedAt) }}</span>
       </p>
       <a-alert
         v-if="onlineData.snapshot?.earthquakeError"
         :type="onlineData.snapshot.earthquakes ? 'warning' : 'error'"
         show-icon
-        :message="onlineData.snapshot.earthquakes ? '地震更新失败，显示缓存快照' : '地震数据不可用，无可用缓存'"
+        :message="onlineData.snapshot.earthquakes ? '地震更新失败，暂显示上次数据' : '暂无法获取地震数据'"
         :description="onlineData.snapshot.earthquakeError"
       />
     </div>
@@ -202,29 +196,25 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
     <div v-if="store.overlays['migration-flows']" class="legend-group">
       <div class="legend-item"><span class="swatch" style="height: 5px; background: #fa8c16"></span><span>主要迁移流向</span></div>
       <div class="legend-item"><span class="swatch" style="height: 3px; background: rgba(250, 140, 22, 0.72)"></span><span>次要迁移流向</span></div>
-      <div class="legend-item legend-hint"><span>线宽表示规模，放大后显示次要路线标签</span></div>
     </div>
     <div v-if="store.overlays['city-tiers']" class="legend-group">
       <div class="legend-heading">城市等级（服务半径示意）</div>
       <div v-for="tier in tierEntries" :key="tier.name" class="legend-item">
         <span class="swatch swatch-dot" :style="{ background: tier.color }"></span><span>{{ tier.name }}</span>
       </div>
-      <div class="legend-item legend-hint"><span>圆圈为该等级典型服务范围示意</span></div>
     </div>
     <div v-if="store.overlays['functional-zones']" class="legend-group">
-      <div class="legend-heading">城市功能分区（真实区位）</div>
+      <div class="legend-heading">城市功能分区</div>
       <a-select size="small" :value="store.functionalZoneCityId" :options="functionalZoneCityOptions" style="width: 100%" aria-label="选择功能分区城市" @change="store.setFunctionalZoneCity" />
       <div v-for="zone in functionalZoneEntries" :key="zone.name" class="legend-item">
         <span class="swatch" :style="{ background: zone.color }"></span><span>{{ zone.name }}</span>
       </div>
-      <div class="legend-item legend-hint"><span>切换城市后视角自动飞往该城；点击地图上的功能区查看区位说明</span></div>
     </div>
     <div v-if="store.overlays['agri-regions']" class="legend-group">
       <div class="legend-heading">农业区划</div>
       <div v-for="category in agriCategoryEntries" :key="category.name" class="legend-item">
         <span class="swatch" :style="{ background: category.color }"></span><span>{{ category.name }}</span>
       </div>
-      <div class="legend-item legend-hint"><span>点击产区查看作物与区位因素</span></div>
     </div>
     <div v-if="store.overlays['industrial-bases']" class="legend-group">
       <div class="legend-heading">四大工业基地</div>
@@ -236,17 +226,14 @@ const industrialBaseEntries = industrialBases.map((base) => ({ name: base.name, 
       <div class="legend-heading">产业转移流向</div>
       <div class="legend-item"><span class="swatch" style="height: 5px; background: #722ed1"></span><span>主要转移方向</span></div>
       <div class="legend-item"><span class="swatch" style="height: 3px; background: rgba(114, 46, 209, 0.72)"></span><span>次要转移方向</span></div>
-      <div class="legend-item legend-hint"><span>自东向西、由沿海向内陆梯度转移</span></div>
     </div>
     <div v-if="store.overlays['hsr-network']" class="legend-group">
-      <div class="legend-heading">高铁网络（随年份生长）</div>
+      <div class="legend-heading">高铁网络</div>
       <div class="legend-item"><span class="swatch" style="height: 5px; background: #d4380d"></span><span>已开通高铁干线</span></div>
-      <div class="legend-item legend-hint"><span>打开「交通运输布局」面板播放年份动画</span></div>
     </div>
     <div v-if="store.overlays['sea-level-rise']" class="legend-group">
       <div class="legend-heading">海平面上升淹没模拟</div>
-      <div class="legend-item"><span class="swatch" style="background: #1677ff"></span><span>被淹没的沿海陆地格网（+{{ store.seaLevelRise }} m 情景）</span></div>
-      <div class="legend-item legend-hint"><span>在「海平面上升淹没模拟」面板切换情景</span></div>
+      <div class="legend-item"><span class="swatch" style="background: #1677ff"></span><span>预计淹没区域（+{{ store.seaLevelRise }} m）</span></div>
     </div>
   </div>
 </template>

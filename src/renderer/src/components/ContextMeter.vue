@@ -26,8 +26,8 @@ const percent = computed(() => Math.min(100, Math.max(0, Math.round(props.stats.
 const tone = computed(() => percent.value >= 80 ? 'error' : percent.value > 70 ? 'warning' : 'normal')
 const strokeColor = computed(() => tone.value === 'error' ? '#ff4d4f' : tone.value === 'warning' ? '#faad14' : '#1677ff')
 const statusText = computed(() => {
-  if (props.status === 'compressing') return '正在压缩上下文...'
-  if (props.status === 'error') return '无法压缩上下文'
+  if (props.status === 'compressing') return '正在整理对话…'
+  if (props.status === 'error') return '整理失败'
   return props.notice || `${percent.value}%`
 })
 
@@ -73,7 +73,7 @@ function compress(): void {
     <template #content>
       <div class="context-card">
         <div class="context-card-head">
-          <span class="context-card-title">上下文窗口</span>
+          <span class="context-card-title">对话容量</span>
           <span class="context-card-total">{{ formatTokens(stats.usedTokens) }} / {{ formatTokens(stats.contextWindow) }} ({{ percent }}%)</span>
         </div>
         <div class="context-bar">
@@ -93,7 +93,7 @@ function compress(): void {
           </div>
         </div>
         <a-button type="primary" size="small" block :loading="status === 'compressing'" :disabled="disabled || stats.usedTokens === 0" @click="compress">
-          <CompressOutlined v-if="status !== 'compressing'" />压缩
+          <CompressOutlined v-if="status !== 'compressing'" />精简对话
         </a-button>
       </div>
     </template>

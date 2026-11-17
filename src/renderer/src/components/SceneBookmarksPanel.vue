@@ -93,7 +93,7 @@ function confirmEdit(): void {
     <div class="scene-list">
       <div v-if="!scenes.length" class="scene-empty">
         <Empty description="还没有教学场景">
-          <span class="scene-empty-hint">调整好视角、图层与时间后，把当前画面保存为场景，即可一键备课播放。</span>
+          <span class="scene-empty-hint">将当前视角与图层保存为场景，方便课堂播放。</span>
         </Empty>
       </div>
       <div v-for="(scene, index) in scenes" :key="scene.id" class="scene-item">

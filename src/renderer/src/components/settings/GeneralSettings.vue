@@ -47,7 +47,6 @@ async function restartGuide(): Promise<void> {
       <div class="setting-row">
         <div class="setting-copy">
           <div class="setting-title">录制保存目录</div>
-          <p class="setting-desc">教学场景视频录制默认保存的位置。</p>
         </div>
         <a-button :loading="choosing" @click="chooseDirectory"><FolderOpenOutlined />更改目录</a-button>
       </div>
@@ -59,9 +58,8 @@ async function restartGuide(): Promise<void> {
       <div class="setting-row">
         <div class="setting-copy">
           <div class="setting-title">新手引导</div>
-          <p class="setting-desc">从头开始进行新手引导</p>
         </div>
-        <a-button @click="restartGuide"><QuestionCircleOutlined />重新运行引导</a-button>
+        <a-button @click="restartGuide"><QuestionCircleOutlined />重新开始</a-button>
       </div>
     </div>
   </section>
