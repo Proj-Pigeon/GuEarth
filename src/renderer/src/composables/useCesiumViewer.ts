@@ -10,7 +10,7 @@ import { mirrorEligibleProviders } from '../../../common/tileMirror'
 import type { PlaceSuggestion, TileMirrorStatus } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
-import { flightArrivalAllowed } from '../lib/flightFraming'
+import { flightArrivalAllowed, flightPointerIsSteering } from '../lib/flightFraming'
 import { resolveFlightDestination } from './terrainFlight'
 import { cancelTransectFlight } from './useTransectFlight'
 import { terrainProviderFactory, terrainRegistry } from '@renderer/terrain/terrainRegistry'
@@ -1134,8 +1134,12 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     const requestSequence = ++flightRequestSequence
     let userSteered = false
     const markSteered = (): void => { userSteered = true }
+    const markDragged = (event: Event): void => {
+      if (event instanceof PointerEvent && flightPointerIsSteering(event.buttons)) userSteered = true
+    }
     const canvas = currentViewer.scene.canvas
     canvas.addEventListener('pointerdown', markSteered)
+    canvas.addEventListener('pointermove', markDragged)
     canvas.addEventListener('wheel', markSteered, { passive: true })
     canvas.addEventListener('keydown', markSteered)
     try {
@@ -1152,6 +1156,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       return Cesium.Cartographic.fromCartesian(destination).height
     } finally {
       canvas.removeEventListener('pointerdown', markSteered)
+      canvas.removeEventListener('pointermove', markDragged)
       canvas.removeEventListener('wheel', markSteered)
       canvas.removeEventListener('keydown', markSteered)
     }

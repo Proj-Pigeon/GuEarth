@@ -4,6 +4,7 @@ import {
   conservativeFlightHeightM,
   destinationAt,
   flightArrivalAllowed,
+  flightPointerIsSteering,
   flightReliefOffsets,
   flightSampleCeilingM,
   planFlightCameraHeight
@@ -155,4 +156,12 @@ test('a stale flight is dropped when a newer request or direct steering wins', (
   assert.equal(flightArrivalAllowed({ requestSequence: 4, activeSequence: 4, viewerAlive: false, userSteered: false }), false)
   assert.equal(flightArrivalAllowed({ requestSequence: 4, activeSequence: 4, viewerAlive: true, userSteered: true }), false)
   assert.equal(flightArrivalAllowed({ requestSequence: 4, activeSequence: 4, viewerAlive: true, userSteered: false }), true)
+})
+
+test('only a pressed pointer counts as steering during terrain sampling', () => {
+  assert.equal(flightPointerIsSteering(0), false)
+  assert.equal(flightPointerIsSteering(1), true)
+  assert.equal(flightPointerIsSteering(2), true)
+  assert.equal(flightPointerIsSteering(4), true)
+  assert.equal(flightPointerIsSteering(Number.NaN), false)
 })

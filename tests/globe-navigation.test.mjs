@@ -100,8 +100,13 @@ test('ordinary lowland flight preserves the requested height', async () => {
 })
 
 test('high altitude flight does not wait for terrain requests', async () => {
-  const scene = terrainScene(() => { assert.fail('unexpected terrain request') })
+  let requests = 0
+  const scene = terrainScene(() => {
+    requests += 1
+    return heightmap(8849)
+  })
   assert.ok(Math.abs(await flightHeight(scene, 60000) - 60000) < 1e-5)
+  assert.equal(requests, 0)
 })
 
 test('unavailable terrain uses a conservative altitude instead of entering the mountain', async () => {
@@ -142,13 +147,23 @@ test('sampled lowland point and city heights stay on the requested frame', async
 })
 
 test('broad flight does not sample or tighten a steep destination', async () => {
-  const scene = terrainScene(() => { assert.fail('unexpected terrain request') })
+  let requests = 0
+  const scene = terrainScene(() => {
+    requests += 1
+    return heightmap(8849)
+  })
   assert.ok(Math.abs(await flightHeight(scene, 400000) - 400000) < 1e-3)
+  assert.equal(requests, 0)
 })
 
 test('flight above the framing ceiling does not wait for terrain', async () => {
-  const scene = terrainScene(() => { assert.fail('unexpected terrain request') })
+  let requests = 0
+  const scene = terrainScene(() => {
+    requests += 1
+    return heightmap(8849)
+  })
   assert.ok(Math.abs(await flightHeight(scene, 25000) - 25000) < 1e-3)
+  assert.equal(requests, 0)
 })
 
 test('close flight still samples flat terrain before accepting the request', async () => {

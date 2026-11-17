@@ -119,3 +119,7 @@ export function flightSampleCeilingM(verticalExaggeration: number, relativeHeigh
 export function flightArrivalAllowed(input: FlightArrivalInput): boolean {
   return input.viewerAlive && !input.userSteered && input.requestSequence === input.activeSequence
 }
+
+export function flightPointerIsSteering(buttons: number): boolean {
+  return Number.isFinite(buttons) && buttons !== 0
+}
