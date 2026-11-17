@@ -23,6 +23,7 @@ const totalArea = computed(() => totalInundatedAreaKm2(rise.value))
 const sampledReady = computed(() => seaSamplingStatus.value === 'ready')
 const hasSamples = computed(() => stats.value.some((item) => item.sampled > 0))
 const sampledCount = computed(() => stats.value.reduce((sum, item) => sum + item.sampled, 0))
+const partialSamples = computed(() => sampledReady.value && sampledCount.value < totalGridCellCount)
 const maskFallback = computed(() => sampledReady.value && landMask.value === null)
 
 const categories = computed(() => stats.value.map((item) => item.zone.name.split('（')[0]))
@@ -82,7 +83,10 @@ async function flyToZone(index: number): Promise<void> {
     <template v-if="sampledReady">
       <div class="chart-title">沿海低地预计淹没面积（km²）</div>
       <BarChart v-if="hasSamples" :categories="[...categories]" :series="series" :value-min="0" y-name="km²" :height="170" />
-      <div v-if="sampledCount < totalGridCellCount" class="panel-note">部分地形数据未加载，当前估算偏保守，可稍后重试。</div>
+      <div v-if="partialSamples" class="panel-note">
+        部分地形数据未加载，当前估算偏保守。
+        <a-button type="link" size="small" @click="beginSampling">重试</a-button>
+      </div>
       <div v-if="maskFallback" class="panel-note">海陆边界加载失败，当前估算仅供参考。</div>
     </template>
     <div v-else-if="seaSamplingStatus === 'terrain-required'" class="panel-note">请先在「图层管理 → 3D 地形」中开启「全球 3D 地形」。</div>
@@ -93,7 +97,12 @@ async function flyToZone(index: number): Promise<void> {
     </div>
 
     <div class="fact">
-      海平面上升 {{ rise }} 米时，五大沿海低地预计淹没约 {{ totalArea.toLocaleString() }} km²。{{ scenarioSummary(rise) }}
+      <template v-if="sampledReady">
+        海平面上升 {{ rise }} 米时，五大沿海低地预计淹没约 {{ totalArea.toLocaleString() }} km²。{{ scenarioSummary(rise) }}
+      </template>
+      <template v-else>
+        海平面上升 {{ rise }} 米时，淹没面积将在地形数据加载完成后显示。{{ scenarioSummary(rise) }}
+      </template>
     </div>
 
     <div class="chart-title">实地察看沿海低地</div>
