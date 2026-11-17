@@ -6,8 +6,7 @@ import type { AiModelConfig, AiModelImportRow, AiProviderConfig, AiSearchProvide
 import { useAiStore } from '@renderer/stores/ai'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import { ipcErrorMessage } from '@renderer/lib/ipcError'
-import { isAiDraftDirty, type AiPersistedState } from '@renderer/lib/aiSettingsDraft'
-import { parseActiveChoice } from '@renderer/lib/aiActiveChoice'
+import { isAiDraftDirty, normalizeActiveChoice, parseActiveChoice, type AiPersistedState } from '@renderer/lib/aiSettingsDraft'
 import SearchProviderSettings from '../SearchProviderSettings.vue'
 import MemorySettings from '../MemorySettings.vue'
 
@@ -666,10 +665,11 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
     <section class="settings-block">
       <div class="block-heading">默认模型</div>
       <a-select
-        v-model:value="activeChoice"
+        :value="activeChoice || undefined"
         class="full-select"
         placeholder="选择服务商与模型"
         allow-clear
+        @update:value="(value: unknown) => (activeChoice = normalizeActiveChoice(value))"
       >
         <a-select-opt-group v-for="provider in draftProviders.filter((item) => item.models.some((model) => model.enabled))" :key="provider.id" :label="provider.name">
           <a-select-option v-for="model in provider.models.filter((item) => item.enabled)" :key="`${provider.id}:${model.id}`" :value="`${provider.id}:${model.id}`">
