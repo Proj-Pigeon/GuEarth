@@ -78,7 +78,7 @@ const loginLoading = computed(() => account.phase === 'creating' || account.phas
 function confirmSignOut(): void {
   Modal.confirm({
     title: '退出登录？',
-    content: '为保证账户安全，退出后需要重新登录。',
+    content: '退出后需要重新登录。',
     okText: '退出登录',
     okButtonProps: { danger: true },
     cancelText: '取消',
@@ -106,8 +106,7 @@ function confirmSignOut(): void {
       class="account-alert"
       type="warning"
       show-icon
-      message="本机已退出，但鸽巢通行证端的设备授权未能撤销"
-      description="请到账号页的设备列表手动撤销此设备，避免旧令牌继续有效。"
+      message="本机已退出，请到账号中心手动移除此设备"
     >
       <template #action>
         <a-space direction="vertical" :size="4">
@@ -143,8 +142,8 @@ function confirmSignOut(): void {
             <p class="setting-desc">
               {{
                 challengeExpired
-                  ? '本次登录确认已超时，请取消后重新发起登录。'
-                  : '已打开浏览器确认页；若未自动跳转，请打开确认页并核对下方验证码。'
+                  ? '登录已超时，请取消后重试'
+                  : '请在浏览器中确认登录，并核对下方验证码'
               }}
             </p>
           </div>
@@ -166,12 +165,9 @@ function confirmSignOut(): void {
         </div>
       </template>
 
-      <div v-else class="setting-row">
+      <div v-else class="setting-row setting-row-center">
         <div class="setting-copy">
-          <div class="setting-title">登录</div>
-          <p class="setting-desc">
-            通过 鸽巢通行证 登录咕咕地球。
-          </p>
+          <div class="setting-title">鸽巢通行证</div>
         </div>
         <a-button
           type="primary"

@@ -181,7 +181,7 @@ function addProvider(): void {
   const provider: ProviderDraft = reactive({
     key: makeKey(),
     id,
-    name: `供应商 ${draftProviders.value.length + 1}`,
+    name: `服务商 ${draftProviders.value.length + 1}`,
     protocol: 'openai',
     baseUrl: '',
     models: []
@@ -194,8 +194,8 @@ function removeProvider(providerId: string): void {
   const provider = draftProviders.value.find((item) => item.id === providerId)
   if (!provider) return
   Modal.confirm({
-    title: '删除供应商？',
-    content: provider.models.length ? `将同时删除其下的 ${provider.models.length} 个模型。` : '该供应商将从列表中移除。',
+    title: '删除服务商？',
+    content: provider.models.length ? `将同时删除其下的 ${provider.models.length} 个模型。` : '该服务商将从列表中移除。',
     okText: '删除',
     cancelText: '取消',
     okType: 'danger',
@@ -651,8 +651,7 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
       class="read-failure-alert"
       type="error"
       show-icon
-      message="AI 设置读取失败"
-      description="为避免默认配置覆盖已保存的供应商设置，本页的保存操作已禁用，请重启应用后重试。"
+      message="AI 设置读取失败，请重启应用后重试"
     />
 
     <section class="settings-block">
@@ -660,7 +659,7 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
       <a-select
         v-model:value="activeChoice"
         class="full-select"
-        placeholder="选择供应商与模型"
+        placeholder="选择服务商与模型"
         allow-clear
       >
         <a-select-opt-group v-for="provider in draftProviders.filter((item) => item.models.some((model) => model.enabled))" :key="provider.id" :label="provider.name">
@@ -669,11 +668,10 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
           </a-select-option>
         </a-select-opt-group>
       </a-select>
-      <div class="default-hint">发送提问时将使用该模型。</div>
     </section>
 
     <section class="settings-block provider-layout" data-guide-target="ai-provider-settings">
-      <div class="block-heading">LLM 供应商</div>
+      <div class="block-heading">AI 服务商</div>
       <div class="provider-columns">
         <div class="provider-rail">
           <div
@@ -685,7 +683,7 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
             <span class="provider-item-name">{{ provider.name }}</span>
             <a-tag v-if="credentialStatuses[provider.id]?.configured" color="green" class="provider-item-tag">密钥</a-tag>
           </div>
-          <a-button type="dashed" block @click="addProvider"><PlusOutlined />添加供应商</a-button>
+          <a-button type="dashed" block @click="addProvider"><PlusOutlined />添加服务商</a-button>
         </div>
 
         <div v-if="selectedProvider" class="provider-editor">
@@ -707,7 +705,7 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
           <div class="field-row">
             <label class="field-label">API Key</label>
             <div class="key-row">
-              <a-input-password v-model:value="apiKeyDraft" placeholder="sk-…（仅保存在本机安全存储）" />
+              <a-input-password v-model:value="apiKeyDraft" placeholder="输入 API Key" />
               <a-button type="primary" :disabled="!apiKeyDraft.trim()" @click="saveApiKey"><SaveOutlined />保存</a-button>
               <a-button :disabled="!credentialStatuses[selectedProvider.id]?.configured" @click="clearApiKey"><DeleteOutlined />清除</a-button>
             </div>
@@ -747,12 +745,12 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
                     @change="(value: string | number | boolean) => toggleModel(model, value)"
                   />
                 </a-tooltip>
-                <a-tooltip title="响应测试">
+                <a-tooltip title="测试连接">
                   <a-button
                     type="text"
                     :loading="testingModelKey === model.key"
                     :disabled="Boolean(testingModelKey) && testingModelKey !== model.key"
-                    aria-label="响应测试"
+                    aria-label="测试连接"
                     @click="testModel(model)"
                   ><ThunderboltOutlined v-if="testingModelKey !== model.key" /></a-button>
                 </a-tooltip>
@@ -777,10 +775,10 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
           />
 
           <div class="provider-danger">
-            <a-button danger type="text" @click="removeProvider(selectedProvider.id)">删除该供应商</a-button>
+            <a-button danger type="text" @click="removeProvider(selectedProvider.id)">删除该服务商</a-button>
           </div>
         </div>
-        <div v-else class="provider-editor provider-editor-empty">先在左侧添加一个供应商。</div>
+        <div v-else class="provider-editor provider-editor-empty">先在左侧添加一个服务商。</div>
       </div>
     </section>
 
@@ -802,26 +800,26 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
           <a-input v-model:value="modelDraft.label" placeholder="可选" />
         </div>
         <div class="field-row">
-          <label class="field-label">上下文窗口</label>
+          <label class="field-label">最大上下文长度</label>
           <a-input-number v-model:value="modelDraft.contextWindow" class="model-context-input" :min="4096" :max="2000000" :step="32000" />
         </div>
         <div class="model-switches">
           <span class="model-field">
-            <label>流式传输</label>
+            <label>流式输出</label>
             <a-switch v-model:checked="modelDraft.streaming" size="small" />
           </span>
           <span class="model-field">
-            <a-tooltip title="允许向模型发送截图等图片">
-              <label class="vision-label">视觉</label>
+            <a-tooltip title="支持识别图片和截图">
+              <label class="vision-label">图像识别</label>
             </a-tooltip>
             <a-switch v-model:checked="modelDraft.vision" size="small" />
           </span>
           <span class="model-field">
-            <label>思考</label>
+            <label>深度思考</label>
             <a-switch v-model:checked="modelDraft.thinking" size="small" />
           </span>
           <span class="model-field">
-            <label>思考等级</label>
+            <label>思考深度</label>
             <a-select v-model:value="modelDraft.thinkingLevel" :disabled="!modelDraft.thinking" size="small" class="level-select" :options="thinkingLevelOptions" />
           </span>
         </div>
@@ -843,9 +841,9 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
         <a-alert
           type="info"
           show-icon
-          :message="importMatching ? '正在重新匹配…' : `匹配成功 ${importMatchedCount} 个，匹配失败 ${importFailedCount} 个`"
+          :message="importMatching ? '正在重新匹配…' : `匹配成功 ${importMatchedCount} 个，未匹配 ${importFailedCount} 个`"
         />
-        <a-tooltip title="按“/”后的模型名匹配元数据">
+        <a-tooltip title="按“/”后的名称自动匹配模型信息">
           <span class="import-option">
             <span>模型组兼容</span>
             <a-switch
@@ -911,7 +909,7 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
     </a-modal>
 
     <section class="settings-block">
-      <div class="block-heading">搜索供应商</div>
+      <div class="block-heading">联网搜索</div>
       <SearchProviderSettings v-model:active-provider-id="activeSearchProviderId" :providers="draftSearchProviders" />
     </section>
 
@@ -921,11 +919,11 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
     </section>
 
     <section class="settings-block">
-      <div class="block-heading">教学</div>
+      <div class="block-heading">教学风格</div>
       <div class="teaching-toggle">
         <div class="teaching-toggle-text">
-          <div class="teaching-toggle-title">苏格拉底模式</div>
-          <p class="teaching-toggle-desc">开启后 EOQ 以提问引导思考，不直接给出答案。</p>
+          <div class="teaching-toggle-title">苏格拉底引导模式</div>
+          <p class="teaching-toggle-desc">以提问启发思考，不直接给出答案</p>
         </div>
         <a-switch
           :checked="store.settings.socraticEnabled"

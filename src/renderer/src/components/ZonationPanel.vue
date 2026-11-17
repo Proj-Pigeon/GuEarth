@@ -232,12 +232,12 @@ onUnmounted(() => {
       <text v-for="tick in profileLayout.kmTicks" :key="tick" :x="PROFILE_LEFT + ((PROFILE_W - PROFILE_LEFT - PROFILE_RIGHT) * tick) / profileLayout.maxKm" :y="PROFILE_H - 6" text-anchor="middle" class="axis-label">{{ tick }}</text>
       <text :x="PROFILE_W - PROFILE_RIGHT" :y="PROFILE_H - 6" text-anchor="end" class="axis-unit">km</text>
     </svg>
-    <a-alert v-if="degraded" type="warning" show-icon message="地形源不可用或部分格网未取到，本剖面为粗略估算值" />
+    <a-alert v-if="degraded" type="warning" show-icon message="部分地形数据未加载，当前剖面仅供参考" />
     <div class="section-title">带谱解读</div>
     <div v-for="fact in active.facts" :key="fact" class="fact">· {{ fact }}</div>
     <div class="section-title">垂直地域分异要点</div>
     <div v-for="principle in zonationPrinciples" :key="principle" class="fact principle">· {{ principle }}</div>
-    <div class="panel-note">带谱界线为教学近似值；切换山脉会飞往实地并沿剖面采样真实地形，点击「沿剖面飞行」可沿剖面线引导视察。</div>
+    <div class="panel-note">带谱界线为教学示意，可点击「沿剖面飞行」实地观察。</div>
   </div>
 </template>
 

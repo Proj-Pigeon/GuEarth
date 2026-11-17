@@ -39,7 +39,7 @@ function reloadApp(): void {
       </span>
     </template>
     <p class="crash-message">{{ crashDialogState.message }}</p>
-    <p class="crash-meta">错误上下文已自动记录并上报 Sentry。本次运行已记录 {{ crashDialogState.sessionErrors }} 个错误，可复制日志反馈给开发者。</p>
+    <p class="crash-meta">可复制日志反馈给开发者排查问题。</p>
     <template #footer>
       <a-button @click="closeCrashDialog">关闭</a-button>
       <a-button :loading="copying" @click="copyLogs">

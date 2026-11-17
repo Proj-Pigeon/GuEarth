@@ -100,7 +100,6 @@ function flyToPlace(): void {
         <MessageOutlined /> 按高考答题结构请 AI 点评
       </a-button>
     </div>
-    <div class="panel-note">点评会以对话形式出现在 EOQ 助手中；AI 可调用区位分析工具与专题图层佐证结论。</div>
   </div>
 </template>
 

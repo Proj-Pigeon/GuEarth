@@ -260,7 +260,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       lastTileErrorLoggedAt = Date.now()
       logger.warn('basemap', `${name}瓦片加载失败`, detail)
     }
-    store.setGlobeError('地图数据加载失败，正在使用已缓存的部分', detail)
+    store.setGlobeError('地图加载失败，暂显示已缓存画面', detail)
   }
 
   async function addLayer(id: string, expectedGeneration: number): Promise<LayerLoadResult> {
@@ -269,7 +269,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     if (imageryLayers.has(id)) return { ok: true }
     if (layersInFlight.has(id)) return { ok: false, reason: 'inflight', message: '', detail: '' }
     if (provider.meta.requiresKey && !store.providerCredentials[id]?.configured) {
-      return { ok: false, reason: 'key', message: `${provider.meta.name}需要 API Key`, detail: '请在「图层管理 → 供应商密钥」中配置后重试' }
+      return { ok: false, reason: 'key', message: `${provider.meta.name}需要配置密钥`, detail: '请在「设置 → 地图」中配置密钥后重试' }
     }
     layersInFlight.add(id)
     try {
@@ -384,7 +384,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       const detail = error instanceof Error ? error.message : ''
       logger.warn('terrain', `${terrainName(id)}不可用`, detail)
       if (id === 'ellipsoid') {
-        store.setTerrainError('地形不可用，且无法降级为平滑球面', detail)
+        store.setTerrainError('地形加载失败', detail)
         return
       }
       const fallback = await terrainRegistry.ellipsoid()
@@ -392,7 +392,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       applyTerrain(fallback)
       store.setTerrainError('')
       store.setActiveTerrainId('ellipsoid')
-      failureStore.reportDegrade(`${terrainName(id)}不可用，已降级为平滑球面`)
+      failureStore.reportDegrade(`${terrainName(id)}加载失败，已切换为平滑球面`)
     }
   }
 
@@ -520,7 +520,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
         if (settled) return
         settled = true
         logger.warn('terrain', `${terrainName(id)}加载超时，已降级为平滑球面`)
-        failureStore.reportDegrade(`${terrainName(id)}加载超时，已降级为平滑球面`)
+        failureStore.reportDegrade(`${terrainName(id)}加载超时，已切换为平滑球面`)
         void terrainRegistry.ellipsoid().then((provider) => resolve({ provider, id: 'ellipsoid' }))
       }, TERRAIN_RESOLVE_BUDGET_MS)
     })
@@ -532,7 +532,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     } catch (error) {
       settled = true
       logger.warn('terrain', `${terrainName(id)}不可用，已降级为平滑球面`, error)
-      failureStore.reportDegrade(`${terrainName(id)}不可用，已降级为平滑球面`)
+      failureStore.reportDegrade(`${terrainName(id)}不可用，已切换为平滑球面`)
       return { provider: await terrainRegistry.ellipsoid(), id: 'ellipsoid' }
     }
   }
@@ -873,7 +873,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     const expectedGeneration = generation
     const host = container.value
     if (!host) return
-    store.setGlobeLoadStage('正在初始化地球…')
+    store.setGlobeLoadStage('正在启动地球…')
     const terrainPromise = resolveInitialTerrain(store.terrainProviderId)
     try {
       const created = await createViewerWithRetries(runId)
@@ -884,7 +884,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       startOwnedRenderLoop(currentViewer.cesiumWidget)
       currentViewer.scene.globe.show = true
       currentViewer.scene.globe.tileCacheSize = 256
-      store.setGlobeLoadStage('正在显示地球表面…')
+      store.setGlobeLoadStage('正在准备画面…')
       currentViewer.camera.setView({ destination: Cesium.Cartesian3.fromDegrees(105, 35, 15000000) })
       const initialMode = store.sceneMode === '2D' ? Cesium.SceneMode.SCENE2D : Cesium.SceneMode.SCENE3D
       currentViewer.scene.mode = initialMode
@@ -917,7 +917,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
           evaluateGlobeReady()
         }
         currentViewer.scene.requestRender()
-        store.setGlobeLoadStage(terrainSetup.id === 'ellipsoid' ? '正在加载地图瓦片…' : '正在加载首屏地形…')
+        store.setGlobeLoadStage(terrainSetup.id === 'ellipsoid' ? '正在加载地图…' : '正在加载地形…')
       }
       initialSurfaceReadyCallback = undefined
       attachInitialSurfaceTracking(currentViewer)

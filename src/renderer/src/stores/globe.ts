@@ -50,7 +50,7 @@ export const providerCatalog: ProviderMeta[] = [
   { id: 'osm', name: 'OpenStreetMap', description: '道路与地名', region: 'global', coordinateSystem: 'WGS84', requiresKey: false, styles: [{ id: 'standard', name: '标准' }], defaultStyleId: 'standard' },
   { id: 'esri-imagery', name: 'Esri', description: '卫星影像', region: 'global', coordinateSystem: 'WGS84', requiresKey: false, styles: [{ id: 'satellite', name: '卫星' }], defaultStyleId: 'satellite' },
   { id: 'opentopomap', name: 'OpenTopoMap', description: '地形晕渲', region: 'global', coordinateSystem: 'WGS84', requiresKey: false, styles: [{ id: 'topo', name: '地形' }], defaultStyleId: 'topo' },
-  { id: 'viirs-night', name: 'NASA 夜光', description: 'VIIRS 夜间灯光（Black Marble）', region: 'global', coordinateSystem: 'WGS84', requiresKey: false, styles: [{ id: 'night', name: '夜光' }], defaultStyleId: 'night' }
+  { id: 'viirs-night', name: 'NASA 夜光', description: '全球夜间灯光分布', region: 'global', coordinateSystem: 'WGS84', requiresKey: false, styles: [{ id: 'night', name: '夜光' }], defaultStyleId: 'night' }
 ]
 
 export interface BasemapCategoryMeta {
@@ -87,9 +87,9 @@ export interface TerrainMeta {
 }
 
 export const terrainCatalog: TerrainMeta[] = [
-  { id: 'arcgis-terrain', name: '全球 3D 地形', description: 'ArcGIS 高程，免密钥' },
-  { id: 'cesium-world-terrain', name: 'Cesium 世界地形', description: 'Cesium ion 官方高程' },
-  { id: 'ellipsoid', name: '椭球（无起伏）', description: '光滑球面，无山脉' }
+  { id: 'arcgis-terrain', name: '全球 3D 地形', description: '真实起伏山地地形' },
+  { id: 'cesium-world-terrain', name: 'Cesium 世界地形', description: '高精度全球地形' },
+  { id: 'ellipsoid', name: '平滑球面（无起伏）', description: '平滑球体，不显示山脉起伏' }
 ]
 
 const terrainProviderIds = new Set<string>(terrainCatalog.map((terrain) => terrain.id))

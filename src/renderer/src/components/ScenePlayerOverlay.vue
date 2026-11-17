@@ -12,13 +12,13 @@ const scenesStore = useScenesStore()
 
 const recordingActive = computed(() => scenesStore.recording.state === 'recording' || scenesStore.recording.state === 'preparing')
 const isRecordingPreparing = computed(() => scenesStore.recording.state === 'preparing')
-const prewarmNotice = computed(() => scenesStore.recording.prewarmMessage || '正在预加载录制画面…')
+const prewarmNotice = computed(() => scenesStore.recording.prewarmMessage || '正在准备录制…')
 const prewarmProgress = computed(() => {
   const total = scenesStore.recording.prewarmTotal || props.player.prewarmTotal
   const step = scenesStore.recording.prewarmStep || props.player.prewarmIndex
   return total > 0 ? `${Math.min(step, total)} / ${total}` : ''
 })
-const prewarmWarning = computed(() => scenesStore.recording.prewarmTimedOut ? scenesStore.recording.prewarmMessage || '网络较慢，部分地图细节可能在录制中继续补齐。' : '')
+const prewarmWarning = computed(() => scenesStore.recording.prewarmTimedOut ? scenesStore.recording.prewarmMessage || '网络较慢，部分地图细节将在录制时继续加载。' : '')
 const prewarmQualityOptions = [
   { label: '标准', value: 'standard' },
   { label: '高清', value: 'high' },
@@ -65,7 +65,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       <div class="prewarm-text">{{ isRecordingPreparing ? prewarmNotice : '正在准备课程资源…' }}</div>
       <div v-if="prewarmProgress" class="prewarm-progress">{{ prewarmProgress }}</div>
       <div v-if="isRecordingPreparing" class="prewarm-quality">
-        <div class="prewarm-quality-label">底图精细度</div>
+        <div class="prewarm-quality-label">画质</div>
         <a-segmented :value="scenesStore.recording.prewarmQuality" :options="prewarmQualityOptions" size="small" @change="setPrewarmQuality" />
       </div>
       <div v-if="prewarmWarning" class="prewarm-warning">{{ prewarmWarning }}</div>

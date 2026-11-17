@@ -16,7 +16,7 @@ export interface ThematicLayerMeta {
 export const thematicLayerCatalog: ThematicLayerMeta[] = [
   { id: 'wind-particles', name: '季风粒子动画', description: '示意风场随月份演变', seasonal: true },
   { id: 'pressure-belts', name: '气压带与风带', description: '七压六风及其季节移动（1月/7月）', seasonal: true },
-  { id: 'koppen-zones', name: '世界气候类型', description: '全球气候类型分布示意（可点击查看成因）' },
+  { id: 'koppen-zones', name: '世界气候类型', description: '全球气候类型分布与成因' },
   { id: 'frontal-cyclone', name: '锋面气旋', description: '北半球温带气旋结构示意' },
   { id: 'rain-belt', name: '降水雨带', description: '东部雨带随月份推进', seasonal: true },
   { id: 'summer-monsoon', name: '夏季风风向', description: '偏南气流路径' },
@@ -24,20 +24,20 @@ export const thematicLayerCatalog: ThematicLayerMeta[] = [
   { id: 'ocean-currents', name: '世界洋流', description: '暖流与寒流分布', seasonal: true },
   { id: 'climate-zones', name: '中国气候区', description: '五大气候区示意' },
   { id: 'coriolis-demo', name: '地转偏向力演示', description: '水平运动物体的偏转轨迹（北右南左）' },
-  { id: 'plate-tectonics', name: '板块运动与地震火山', description: '三大类板块边界、典型火山与近期地震（可点击查看成因）' },
-  { id: 'temperature-zones', name: '五带与直射点回归', description: '五带划分与回归线、极圈界线，直射点标记随日期时刻移动' },
-  { id: 'typhoon', name: '台风（热带气旋）', description: '西北太平洋台风实况与预报快照，可切换内置历史教学案例（在线数据需配置）' },
-  { id: 'enso', name: 'ENSO（厄尔尼诺与拉尼娜）', description: '赤道太平洋海温距平三相位着色与沃克环流示意（可点击查看影响）' },
-  { id: 'province-population', name: '省级人口密度', description: '第七次人口普查分省人口密度分级设色（可点击查看各省数据）' },
+  { id: 'plate-tectonics', name: '板块运动与地震火山', description: '板块边界、典型火山与近期地震' },
+  { id: 'temperature-zones', name: '五带与直射点回归', description: '五带划分与直射点周年移动' },
+  { id: 'typhoon', name: '台风（热带气旋）', description: '实时台风路径与预报，支持查看历史案例' },
+  { id: 'enso', name: 'ENSO（厄尔尼诺与拉尼娜）', description: '海温变化与沃克环流示意' },
+  { id: 'province-population', name: '省级人口密度', description: '第七次人口普查分省人口密度' },
   { id: 'hu-line', name: '胡焕庸线', description: '黑河—腾冲线与东西两侧人口对比' },
-  { id: 'migration-flows', name: '人口迁移流动', description: '主要省际人口迁移流向示意（可点击查看）' },
-  { id: 'city-tiers', name: '中国城市等级', description: '全国/区域/省会/地级/县级五级城市与服务范围示意（可点击查看）' },
-  { id: 'functional-zones', name: '城市功能分区', description: '武汉/上海/北京/广州/深圳/成都/沈阳七城真实功能区锚定，可在图例中切换城市（可点击查看）' },
-  { id: 'agri-regions', name: '农业区划', description: '九大商品粮基地与商品棉、甘蔗、甜菜产区分布（可点击查看区位）' },
-  { id: 'industrial-bases', name: '四大工业基地', description: '辽中南、京津唐、沪宁杭、珠三角基地与主导区位（可点击查看）' },
-  { id: 'industrial-transfers', name: '产业转移流向', description: '东部沿海向中西部与海外的产业转移弧线（可点击查看）' },
-  { id: 'hsr-network', name: '高铁网络生长', description: '2008 年以来主要高铁干线随年份生长（配合面板时间轴播放）' },
-  { id: 'sea-level-rise', name: '海平面上升淹没模拟', description: '沿海低地格网地形采样，按上升情景着色被淹没陆地（可点击查看）' }
+  { id: 'migration-flows', name: '人口迁移流动', description: '主要省际人口迁移流向' },
+  { id: 'city-tiers', name: '中国城市等级', description: '五级城市体系与服务范围示意' },
+  { id: 'functional-zones', name: '城市功能分区', description: '七座城市功能区分布，可在图例中切换城市' },
+  { id: 'agri-regions', name: '农业区划', description: '主要商品粮基地与经济作物产区分布' },
+  { id: 'industrial-bases', name: '四大工业基地', description: '四大工业基地位置与主导区位' },
+  { id: 'industrial-transfers', name: '产业转移流向', description: '东部沿海向中西部与海外的产业转移' },
+  { id: 'hsr-network', name: '高铁网络生长', description: '2008 年以来高铁干线随年份动态延伸' },
+  { id: 'sea-level-rise', name: '海平面上升淹没模拟', description: '模拟不同上升高度下沿海低地的淹没范围' }
 ]
 
 const MONTHS_PER_SECOND = 0.5

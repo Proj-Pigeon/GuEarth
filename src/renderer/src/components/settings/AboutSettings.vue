@@ -41,8 +41,7 @@ async function copyDiagnostics(): Promise<void> {
     <div class="settings-block">
       <div class="setting-row">
         <div class="setting-copy">
-          <div class="setting-title">复制诊断信息</div>
-          <p class="setting-desc">若需要反馈问题，请复制诊断信息给开发者参考</p>
+          <div class="setting-title">诊断信息</div>
         </div>
         <a-button :loading="copying" @click="copyDiagnostics"><CopyOutlined />复制</a-button>
       </div>

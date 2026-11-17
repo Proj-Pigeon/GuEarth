@@ -74,8 +74,8 @@ export function startOnlineData(userDataPath: string, listener: (snapshot: Onlin
     dataPath = userDataPath
     onChange = listener
     startupData = Promise.all([
-      loadEarthquakeFeed().then((earthquakes) => publish({ earthquakes, earthquakeError: earthquakes.stale ? 'USGS 本次刷新失败，显示缓存地震数据' : '' }))
-        .catch(() => publish({ earthquakes: null, earthquakeError: 'USGS 地震数据获取失败，请检查网络后重新启动' })),
+      loadEarthquakeFeed().then((earthquakes) => publish({ earthquakes, earthquakeError: earthquakes.stale ? '地震数据更新失败，暂显示上次数据' : '' }))
+        .catch(() => publish({ earthquakes: null, earthquakeError: '地震数据加载失败，请检查网络' })),
       ensureTyphoons()
     ]).then(() => snapshot)
   }
@@ -97,11 +97,11 @@ export async function getStartupEarthquakes(): Promise<EarthquakeFeed> {
 export function refreshEarthquakes(): Promise<EarthquakeFeed> {
   if (earthquakeRequest) return earthquakeRequest
   const request = loadEarthquakeFeed().then((earthquakes) => {
-    publish({ earthquakes, earthquakeError: earthquakes.stale ? 'USGS 本次刷新失败，显示缓存地震数据' : '' })
+    publish({ earthquakes, earthquakeError: earthquakes.stale ? '地震数据更新失败，暂显示上次数据' : '' })
     return earthquakes
   }).catch((error: unknown) => {
-    publish({ earthquakeError: 'USGS 地震数据获取失败，请检查网络后重试' })
-    throw error instanceof Error ? error : new Error('USGS 地震数据获取失败，请检查网络后重试')
+    publish({ earthquakeError: '地震数据更新失败，请检查网络后重试' })
+    throw error instanceof Error ? error : new Error('地震数据更新失败，请检查网络后重试')
   }).finally(() => {
     if (earthquakeRequest === request) earthquakeRequest = null
   })

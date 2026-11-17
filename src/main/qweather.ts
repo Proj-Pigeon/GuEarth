@@ -65,8 +65,8 @@ function strings(value: unknown): string[] {
 function apiError(code: string): Error {
   const reason: Record<string, string> = {
     '400': '请求参数无效', '401': '认证失败，请检查 API Key',
-    '402': '额度不足，请检查账户余额', '403': '没有台风接口权限，请检查订阅与 API Host',
-    '404': '数据不存在', '429': '请求限额已达上限'
+    '402': '额度不足，请检查账户余额', '403': '当前账号暂无台风数据权限，请检查订阅',
+    '404': '数据不存在', '429': '请求次数已达上限'
   }
   return new Error(`和风天气：${reason[code] ?? `服务异常（${/^\d{3}$/.test(code) ? code : '未知状态'}）`}`)
 }
@@ -85,15 +85,15 @@ export async function fetchTyphoonFeed(credentials: QWeatherCredentials, cancell
         headers: { 'X-QW-Api-Key': credentials.apiKey }, redirect: 'error', signal
       })
     } catch {
-      throw new Error(signal.aborted ? '和风天气请求超时' : '和风天气连接失败，请检查网络和 API Host')
+      throw new Error(signal.aborted ? '请求超时，请重试' : '连接失败，请检查网络或配置')
     }
     if (!response.ok) throw apiError(String(response.status))
     if (response.status === 204) return { storm: [], forecast: [] }
     const body = await response.text()
-    if (body.length > 5_000_000) throw new Error('和风天气响应过大')
+    if (body.length > 5_000_000) throw new Error('返回数据异常')
     let data: unknown
-    try { data = JSON.parse(body) } catch { throw new Error('和风天气响应不是有效 JSON') }
-    if (!isRecord(data)) throw new Error('和风天气响应格式无效')
+    try { data = JSON.parse(body) } catch { throw new Error('返回数据异常') }
+    if (!isRecord(data)) throw new Error('返回数据异常')
     const code = String(data.code)
     if (code === '204') return { storm: [], forecast: [] }
     if (code !== '200') throw apiError(code)

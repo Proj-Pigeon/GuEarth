@@ -6,8 +6,8 @@ import { cancelTransectFlight } from '@renderer/composables/useTransectFlight'
 const store = useZonationStore()
 
 const stageText: Record<ZonationFlightStage, string> = {
-  sampling: '正在采样沿线地形，计算安全飞行高度…',
-  prewarm: '正在预载沿线影像（画面短暂降暗）',
+  sampling: '正在规划飞行高度…',
+  prewarm: '正在加载沿线地图…',
   flying: '剖面飞行中'
 }
 
@@ -20,7 +20,7 @@ const percent = computed(() => {
 const metaText = computed(() => {
   const hud = store.flightHud
   if (!hud) return ''
-  if (hud.stage === 'sampling') return '请稍候（最长约半分钟）'
+  if (hud.stage === 'sampling') return '请稍候…'
   if (hud.stage === 'flying' && hud.altitudeM !== undefined) return `高度 ${Math.round(hud.altitudeM).toLocaleString()} 米`
   return `${hud.completed} / ${hud.total}`
 })

@@ -17,9 +17,9 @@ const tileMirrorModeLabels: Record<TileMirrorMode, string> = {
 }
 
 const tileMirrorModeDescriptions: Record<TileMirrorMode, string> = {
-  auto: '启动时自动测试境外影像源是否可用：不可用时改用高德镜像瓦片，可用时保持直连。',
-  on: '请求失败前始终使用高德镜像瓦片；一旦请求失败会提示并自动回退到原影像源。',
-  off: '始终请求原影像源，不使用高德镜像瓦片。'
+  auto: '海外地图受限时自动使用国内加速线路',
+  on: '优先使用国内加速线路',
+  off: '始终直连原地图服务'
 }
 
 const tileMirrorModeOptions = tileMirrorModes.map((mode) => ({ value: mode, label: tileMirrorModeLabels[mode] }))
@@ -61,7 +61,7 @@ async function saveCredential(): Promise<void> {
     const status = await window.guEarth.settings.setProviderApiKey(id, value)
     globeStore.setCredentialStatus(id, status)
   } catch {
-    message.error('密钥保存失败：系统安全存储不可用')
+    message.error('保存失败，请重试')
     return
   }
   if (touchesSecurityKey) {
@@ -71,7 +71,7 @@ async function saveCredential(): Promise<void> {
         : await window.guEarth.settings.clearProviderApiKey(`${id}-sk`)
       globeStore.setCredentialStatus(`${id}-sk`, securityStatus)
     } catch {
-      message.error('密钥已保存，但签名密钥写入失败，请重试')
+      message.error('签名密钥保存失败，请重试')
       return
     }
   }
@@ -154,13 +154,13 @@ async function testProxy(): Promise<void> {
 
     <section v-if="keyProviders.length" class="settings-block" data-guide-target="map-credentials">
       <div class="block-heading">
-        <span>供应商密钥</span>
+        <span>地图搜索密钥</span>
         <a-tag v-if="selectedCredentialStatus?.configured && (!requiresSecurityKey || selectedSecurityCredentialStatus?.configured)" color="green">已配置</a-tag>
       </div>
       <a-select v-model:value="credentialProviderId" class="full-width">
         <a-select-option v-for="provider in keyProviders" :key="provider.id" :value="provider.id">{{ provider.name }}</a-select-option>
       </a-select>
-      <a-input v-model:value="credentialDraft" type="password" :placeholder="credentialProviderId === 'amap' ? '输入 Web 服务 API Key' : supportsSecurityKey ? '输入 AK (访问密钥)' : '输入 API Key'" class="key-input" @press-enter="saveCredential" />
+      <a-input v-model:value="credentialDraft" type="password" :placeholder="credentialProviderId === 'amap' ? '输入高德 Web 服务 Key' : supportsSecurityKey ? '输入 AK（访问密钥）' : '输入 API Key'" class="key-input" @press-enter="saveCredential" />
       <a-input v-if="supportsSecurityKey" v-model:value="credentialSkDraft" type="password" :placeholder="securityKeyPlaceholder" class="key-input" @press-enter="saveCredential" />
       <a-alert v-if="supportsSecurityKey && !requiresSecurityKey" type="info" :message="credentialProviderId === 'amap' ? '仅在高德控制台开启数字签名时填写签名私钥' : '若使用签名鉴权，需填写有效签名密钥'" show-icon class="credential-hint" />
       <div class="key-actions">
@@ -187,8 +187,8 @@ async function testProxy(): Promise<void> {
     <section class="settings-block">
       <div class="setting-row">
         <div class="setting-copy">
-          <div class="setting-title">瓦片缓存</div>
-          <p class="setting-desc">将已下载的地图瓦片缓存到本地，在后续使用可以节省流量、提高加载速度。</p>
+          <div class="setting-title">地图缓存</div>
+          <p class="setting-desc">将浏览过的地图保存在本地，再次打开更快、更省流量</p>
         </div>
         <a-switch :checked="tileCacheEnabled" @change="(value: string | number | boolean) => globeStore.setTileCacheEnabled(value === true)" />
       </div>
@@ -198,9 +198,9 @@ async function testProxy(): Promise<void> {
       <div class="setting-row">
         <div class="setting-copy">
           <div class="setting-title-row">
-            <span class="setting-title">高德镜像瓦片源</span>
+            <span class="setting-title">国内地图加速</span>
             <a-tag v-if="tileMirrorMode !== 'off'" :color="tileMirrorRouteActive ? 'blue' : undefined">
-              {{ tileMirrorRouteActive ? '正在使用镜像源' : '正在使用原影像源' }}
+              {{ tileMirrorRouteActive ? '已启用加速' : '直连原服务' }}
             </a-tag>
           </div>
           <p class="setting-desc">{{ tileMirrorModeDescription }}</p>
@@ -209,7 +209,7 @@ async function testProxy(): Promise<void> {
           class="mirror-mode-select"
           :value="tileMirrorMode"
           :options="tileMirrorModeOptions"
-          aria-label="高德镜像瓦片源"
+          aria-label="国内地图加速"
           @change="handleTileMirrorModeChange"
         />
       </div>

@@ -165,7 +165,7 @@ async function handleConfirmSave(): Promise<void> {
     @ok="handleConfirmSave"
     @cancel="handleConfirmIgnore"
   >
-    <p class="unsaved-confirm-text">供应商、模型与默认模型的修改还没有保存，离开后这些修改将会丢失。</p>
+    <p class="unsaved-confirm-text">修改尚未保存，离开后将丢失。</p>
   </a-modal>
 </template>
 

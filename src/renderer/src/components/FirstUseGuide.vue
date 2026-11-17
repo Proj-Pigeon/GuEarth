@@ -44,56 +44,56 @@ function getTarget(name: string): HTMLElement {
 const steps = computed(() => [
   {
     title: '初始视角，重新认识地球🌏',
-    description: '返回默认全球视角。靠近地表后，可切换平视 3D 地形；发现新版本时，此处会显示更新入口。',
+    description: '回到默认全球视角。',
     target: () => getTarget('home'),
     placement: 'top'
   },
   {
     title: '地图与地形图层🗺️',
-    description: '切换底图、调整 3D 地形与光照。',
+    description: '切换地图样式、3D 地形与太阳光照。',
     target: () => getTarget('layers'),
     placement: 'top'
   },
   {
     title: '地理实验室🧪',
-    description: '打开太阳、天气、地貌、海洋等教学实验与专题图层。',
+    description: '打开太阳、大气、水文、地貌等教学实验与专题图层。',
     target: () => getTarget('lab'),
     placement: 'top'
   },
   {
     title: '标注管理📌',
-    description: '查看已保存的标注和文件夹，并编辑或定位到对应标注。',
+    description: '查看、编辑并定位已保存的标注。',
     target: () => getTarget('annotations'),
     placement: 'top'
   },
   {
     title: '绘制与清除✏️',
-    description: '支持绘制点、线（测距）、多边形（测面积）、箭头和文本。清除按钮可删除全部标注。',
+    description: '绘制点、线、面、箭头和文字，支持测距与测面积。',
     target: () => getTarget('drawing-tools'),
     placement: 'top'
   },
   {
     title: '搜索地点🔎',
-    description: '在左上角输入地点并选择搜索结果，即可飞往目标。使用搜索前，需配置高德或百度 API 密钥。',
+    description: '输入地名快速定位并飞往目标位置。',
     target: () => getTarget('place-search'),
     placement: 'bottomLeft'
   },
   {
     title: '配置地图搜索密钥🔑',
-    description: '在“设置 → 地图”中选择高德并填写 Web 服务 API Key，或选择百度并填写 AK，然后保存。配置完成后即可搜索地点。',
+    description: '在此填写高德或百度地图密钥并保存，即可启用地点搜索。',
     target: () => getTarget('map-credentials'),
     placement: 'left'
   },
   {
     title: 'EOQ 智能助手🤖',
-    description: '点击此处打开 EOQ 助手。使用 AI 问答前，需要先添加模型供应商。',
+    description: '点击打开 EOQ 地理教学助手。',
     target: () => getTarget('assistant'),
     placement: 'top'
   },
   {
     title: '配置 AI 模型🧠',
     description: h('div', { style: { display: 'grid', gap: '12px' } }, [
-      h('div', '如需使用 AI，请在“设置 → AI”中点击“添加供应商”，填写接口地址和 API Key，再添加模型、设为默认并保存。API Key 保存在本机安全存储中。'),
+      h('div', '在这里添加 AI 服务商、密钥和模型并设为默认，即可开始对话。'),
       h(Checkbox, {
         checked: dontPromptAgain.value,
         'onUpdate:checked': (checked: boolean) => {

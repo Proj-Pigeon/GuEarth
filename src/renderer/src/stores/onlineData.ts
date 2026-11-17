@@ -17,7 +17,7 @@ export const useOnlineDataStore = defineStore('onlineData', () => {
     const failure = useFailureStore()
     if (data.earthquakeError && data.earthquakeError !== previous?.earthquakeError) failure.reportDegrade(data.earthquakeError)
     if (data.typhoonError && data.typhoonError !== previous?.typhoonError) {
-      failure.reportDegrade(`${data.typhoonError}；${data.typhoons ? '显示带时间标注的缓存台风数据' : '暂无在线台风数据'}，可在台风图层重试或修改数据源配置`)
+      failure.reportDegrade(`${data.typhoonError}${data.typhoons ? '，暂显示上次台风数据' : ''}`)
     }
   }
 
@@ -33,7 +33,7 @@ export const useOnlineDataStore = defineStore('onlineData', () => {
       try {
         applySnapshot(await window.guEarth.datasets.getOnlineData())
       } catch {
-        useFailureStore().reportDegrade('启动在线数据读取失败，请重新启动应用')
+        useFailureStore().reportDegrade('在线数据加载失败，请重启应用重试')
       } finally {
         loading.value = false
       }
@@ -48,7 +48,7 @@ export const useOnlineDataStore = defineStore('onlineData', () => {
     try {
       applySnapshot(await window.guEarth.datasets.ensureTyphoons(retry))
     } catch {
-      useFailureStore().reportDegrade('在线台风数据读取失败，请重新打开台风图层重试')
+      useFailureStore().reportDegrade('台风数据加载失败，请重试')
     }
   }
 

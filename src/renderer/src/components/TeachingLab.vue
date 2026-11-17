@@ -320,7 +320,7 @@ const chapters: LabChapter[] = [
       layerEntry('province-population'),
       layerEntry('hu-line'),
       layerEntry('migration-flows'),
-      citiesPanelEntry('城镇与中心地验证', '城市等级体系、中心地理论 POI 对比验证'),
+      citiesPanelEntry('城镇与中心地验证', '城市等级与中心地理论验证'),
       layerEntry('city-tiers'),
       layerEntry('functional-zones')
     ]
@@ -338,7 +338,7 @@ const chapters: LabChapter[] = [
     id: 'transport',
     title: '必修二 · 交通运输',
     entries: [
-      transportPanelEntry('交通运输布局', '高铁网络生长时间轴、营业里程曲线与线路实地察看'),
+      transportPanelEntry('交通运输布局', '高铁网络生长时间轴、营业里程与线路察看'),
       layerEntry('hsr-network')
     ]
   },
@@ -346,7 +346,7 @@ const chapters: LabChapter[] = [
     id: 'environment',
     title: '必修二 · 环境与发展',
     entries: [
-      environmentPanelEntry('海平面上升淹没模拟', '选择上升情景，观察沿海低地淹没范围（需真实地形源）'),
+      environmentPanelEntry('海平面上升淹没模拟', '模拟不同上升高度下的沿海低地淹没范围'),
       layerEntry('sea-level-rise')
     ]
   },
@@ -354,7 +354,7 @@ const chapters: LabChapter[] = [
     id: 'sandbox',
     title: '决策沙盘 · 复习评价',
     entries: [
-      decisionPanelEntry('区位决策沙盘', '电子装配厂/制糖厂/港口/酒庄情境，勾选区位因素请 AI 按高考结构点评')
+      decisionPanelEntry('区位决策沙盘', '工业与农业选址模拟，并由 AI 点评')
     ]
   }
 ]

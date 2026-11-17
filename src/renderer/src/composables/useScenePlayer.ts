@@ -488,7 +488,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
     playerState.narration = ''
     playerState.recording = true
     scenesStore.setPresenting(true)
-    scenesStore.setRecording({ state: 'preparing', title, currentStep: 0, totalSteps: scenes.length, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '正在启动离屏录制渲染…', prewarmTimedOut: false, skipPrewarm: false, videoPath: '', error: '', cancelled: false })
+    scenesStore.setRecording({ state: 'preparing', title, currentStep: 0, totalSteps: scenes.length, prewarmStep: 0, prewarmTotal: 0, prewarmMessage: '正在准备录制…', prewarmTimedOut: false, skipPrewarm: false, videoPath: '', error: '', cancelled: false })
     const cancel = (): void => {
       void window.guEarth.recordings.offscreenCancel()
     }
@@ -502,7 +502,7 @@ export function useScenePlayer(viewer: Ref<Cesium.Viewer | undefined>, switchBas
           prewarmStep: progress.sceneIndex,
           prewarmTotal: progress.totalScenes,
           prewarmTimedOut: progress.timedOut === true,
-          prewarmMessage: progress.timedOut === true ? '网络较慢，部分高清地图细节可能在录制中继续加载…' : `正在预加载高清录制画面 ${progress.sceneIndex}/${progress.totalScenes}`
+          prewarmMessage: progress.timedOut === true ? '网络较慢，部分地图细节将在录制时继续加载…' : `正在加载录制画面 ${progress.sceneIndex}/${progress.totalScenes}`
         })
         return
       }

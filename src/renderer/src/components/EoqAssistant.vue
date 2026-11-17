@@ -55,7 +55,7 @@ const activeCommandIndex = ref(0)
 const agentCommands: AgentCommand[] = [
   { name: '/new', label: '新建会话', icon: PlusOutlined, run: () => store.newConversation() },
   { name: '/resume', label: '历史会话', icon: HistoryOutlined, run: () => { historyOpen.value = true } },
-  { name: '/compact', label: '压缩上下文', icon: CompressOutlined, run: () => store.compressContext() },
+  { name: '/compact', label: '精简对话', icon: CompressOutlined, run: () => store.compressContext() },
   { name: '/settings', label: '设置', icon: SettingOutlined, run: () => settingsWindow.open('ai') }
 ]
 const commandQuery = computed(() => {
@@ -735,7 +735,7 @@ watch(currentConversationId, () => {
         />
       </template>
     </Suggestion>
-    <p class="ai-disclaimer" title="内容由 AI 生成，咕咕地球不为其生成的内容负责，请谨慎甄别">内容由 AI 生成，咕咕地球不为其生成的内容负责，请谨慎甄别</p>
+    <p class="ai-disclaimer" title="内容由 AI 生成，请注意甄别">内容由 AI 生成，请注意甄别</p>
   </a-drawer>
 
   <a-modal
