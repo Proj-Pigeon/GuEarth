@@ -36,25 +36,36 @@ const { useOnlineDataStore } = await import('../src/renderer/src/stores/onlineDa
 const { useFailureStore } = await import('../src/renderer/src/stores/failure.ts')
 
 const renderer = createRenderer({
-  createElement: (tag) => ({ tag, children: [] }),
-  createText: (text) => ({ text }),
-  createComment: (text) => ({ text }),
+  createElement: (tag) => ({ tag, children: [], parent: null }),
+  createText: (text) => ({ text, parent: null }),
+  createComment: (text) => ({ text, parent: null }),
   setText: (node, text) => { node.text = text },
-  setElementText: (node, text) => { node.text = text },
+  setElementText: (node, text) => { node.text = text; node.children = [] },
   patchProp: (node, key, _previous, value) => { node[key] = value },
-  insert: (node, parent) => { parent.children.push(node) },
-  remove() {},
-  parentNode: () => null,
+  insert: (node, parent) => { node.parent = parent; parent.children.push(node) },
+  remove: (node) => {
+    if (!node.parent) return
+    const index = node.parent.children.indexOf(node)
+    if (index >= 0) node.parent.children.splice(index, 1)
+    node.parent = null
+  },
+  parentNode: (node) => node.parent ?? null,
   nextSibling: () => null
 })
 
-test('streaming Markdown coalesces updates for 50ms, flushes completion and cancels unmount work', async (t) => {
+test('streaming Markdown coalesces updates for 50ms, settles idle tail and cancels unmount work', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const props = reactive({ text: 'initial', streaming: true })
   let renders = 0
+  const root = { children: [] }
   const app = renderer.createApp({ setup: () => () => h(StreamingMarkdown, { ...props, onRendered: () => renders++ }) })
-  app.mount({ children: [] })
+  app.mount(root)
+  const hasStreamingArtifacts = (node) => Boolean(
+    (typeof node?.class === 'string' && (node.class.includes('stream-token') || node.class.includes('stream-caret')))
+    || (Array.isArray(node?.children) && node.children.some(hasStreamingArtifacts))
+  )
   assert.equal(renders, 1)
+  assert.equal(hasStreamingArtifacts(root), true)
   for (let index = 0; index < 8; index++) {
     props.text = `stream-${index}`
     await nextTick()
@@ -66,19 +77,29 @@ test('streaming Markdown coalesces updates for 50ms, flushes completion and canc
   t.mock.timers.tick(1)
   await nextTick()
   assert.equal(renders, 2)
+  assert.equal(hasStreamingArtifacts(root), true)
+  t.mock.timers.tick(260)
+  await nextTick()
+  assert.equal(renders, 2)
+  assert.equal(hasStreamingArtifacts(root), false)
+  props.text = 'resumed stream'
+  await nextTick()
+  assert.equal(renders, 3)
+  assert.equal(hasStreamingArtifacts(root), true)
   props.text = 'final text'
   await nextTick()
   props.streaming = false
   await nextTick()
-  assert.equal(renders, 3)
+  assert.equal(renders, 4)
+  assert.equal(hasStreamingArtifacts(root), false)
   t.mock.timers.tick(50)
-  assert.equal(renders, 3)
+  assert.equal(renders, 4)
   props.streaming = true
   props.text = 'pending'
   await nextTick()
   app.unmount()
-  t.mock.timers.tick(50)
-  assert.equal(renders, 3)
+  t.mock.timers.tick(500)
+  assert.equal(renders, 4)
 })
 
 test('thematic sources clean up across viewer changes, delayed additions and unmount', async (t) => {

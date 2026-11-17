@@ -37,7 +37,7 @@ const { listTileFiles, pruneTileFiles } = await import('../src/main/tileCacheFil
 const { writeAtomic, serialQueue, writeJson } = await import('../src/main/jsonStore.ts')
 const { interpolateCamera, useScenePlayer } = await import('../src/renderer/src/composables/useScenePlayer.ts')
 const { useScenesStore } = await import('../src/renderer/src/stores/scenes.ts')
-const { renderMarkdown, renderStreamingMarkdown } = await import('../src/renderer/src/utils/markdown.ts')
+const { renderMarkdown, renderStreamingMarkdown, createStreamingDelayState, settleStreamingDelayState } = await import('../src/renderer/src/utils/markdown.ts')
 
 async function directory(t) {
   const path = await mkdtemp(join(tmpdir(), 'guearth-review-'))
@@ -176,10 +176,52 @@ test('streaming markdown tints the last two words, appends one caret and leaves 
     else if (value && typeof value === 'object') { seen.push(value); walk(value.children) }
   }
   walk(nodes)
+  const tokens = seen.filter((node) => node.props?.class?.includes('stream-token'))
   const fresh = seen.filter((node) => node.props?.class?.includes('stream-token-fresh'))
   const carets = seen.filter((node) => node.props?.class === 'stream-caret')
+  assert.equal(tokens.length, 6)
   assert.equal(fresh.length, 2)
   assert.equal(carets.length, 1)
+  assert.deepEqual(tokens.map((node) => node.children[0]), ['前', '言', '加', '粗', '结', '尾'])
   assert.deepEqual(fresh.map((node) => node.children[0]), ['结', '尾'])
   assert.equal(seen.some((node) => node.type === 'pre' && node.children.some((child) => child?.props?.class?.includes('stream-token'))), false)
+
+  const delayState = createStreamingDelayState()
+  const firstBatch = renderStreamingMarkdown('珠穆朗玛', delayState)
+  const firstTokens = []
+  function collectFirst(value) {
+    if (Array.isArray(value)) value.forEach(collectFirst)
+    else if (value && typeof value === 'object') { firstTokens.push(value); collectFirst(value.children) }
+  }
+  collectFirst(firstBatch)
+  const firstSpans = firstTokens.filter((node) => node.props?.class?.includes('stream-token'))
+  assert.deepEqual(firstSpans.map((node) => node.props?.style?.animationDelay ?? '0ms'), ['0ms', '9ms', '18ms', '27ms'])
+
+  settleStreamingDelayState(delayState, '珠穆朗玛')
+  const punctuated = renderStreamingMarkdown('珠穆朗玛峰（8848.86m）。', delayState)
+  const punctuatedNodes = []
+  function collect(value) {
+    if (Array.isArray(value)) value.forEach(collect)
+    else if (value && typeof value === 'object') { punctuatedNodes.push(value); collect(value.children) }
+  }
+  collect(punctuated)
+  const resumedSpans = punctuatedNodes.filter((node) => node.props?.class?.includes('stream-token'))
+  const punctuatedFresh = punctuatedNodes.filter((node) => node.props?.class?.includes('stream-token-fresh'))
+  assert.deepEqual(resumedSpans.map((node) => node.children), ['峰', '（', '8848.86m', '）', '。'])
+  assert.deepEqual(punctuatedFresh.map((node) => node.children), ['峰', '8848.86m'])
+  const paragraph = punctuated[0]
+  assert.equal(paragraph.children[0], '珠穆朗玛')
+  assert.equal(paragraph.children[paragraph.children.length - 1]?.props?.class, 'stream-caret')
+
+  const burstState = createStreamingDelayState()
+  const burst = renderStreamingMarkdown('京师、齐河、长清、泰安。', burstState)
+  const burstNodes = []
+  function collectBurst(value) {
+    if (Array.isArray(value)) value.forEach(collectBurst)
+    else if (value && typeof value === 'object') { burstNodes.push(value); collectBurst(value.children) }
+  }
+  collectBurst(burst)
+  const burstSpans = burstNodes.filter((node) => node.props?.class?.includes('stream-token'))
+  assert.equal(burstSpans.length, 6)
+  assert.equal(burst[0].children[0], '京师、齐河、')
 })
