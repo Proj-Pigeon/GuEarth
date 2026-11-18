@@ -6,7 +6,7 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { captureError, captureWarning } from '@renderer/lib/crashReporter'
 import { advanceBufferGap, backingStoreSize, BUFFER_MISSING_REPORT_MS, classifyRenderFault, contextOptionsForAttempt, decideRenderFrame, glRendererName, isWebGlInitializationError, nudgedCanvasSize, RENDER_HALTED_DETAIL, RENDER_HALTED_MESSAGE, shouldStopRenderLoop, shouldUseSoftwareMsaaWorkaround, surfaceFailureCopy, WEBGL_CONTEXT_ATTEMPTS, WEBGL_RETRY_STAGE, WEBGL_UNAVAILABLE_DETAIL, WEBGL_UNAVAILABLE_MESSAGE, webGlRetryDelayMs, type BufferGapState, type GlRendererSource, type SurfaceFrameKind, type SurfaceSize, type WebGlContextAttempt } from '../../../common/globeSurface'
 import { logger, stringifyLogValue } from '../../../common/logger'
-import { mirrorEligibleProviders } from '../../../common/tileMirror'
+import { isLikelyMainlandChinaEnv, mirrorEligibleProviders } from '../../../common/tileMirror'
 import type { PlaceSuggestion, TileMirrorStatus } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
@@ -513,8 +513,24 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     store.setGlobeReady(true)
   }
 
+  function resolvedTimeZone(): string {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone
+    } catch {
+      return ''
+    }
+  }
+
+  function shouldDeferInitialTerrainForConsent(id: string): boolean {
+    if (id !== 'arcgis-terrain' || store.mirrorConsentPrompted) return false
+    return store.mirrorConsentOpen || isLikelyMainlandChinaEnv(navigator.language, resolvedTimeZone())
+  }
+
   async function resolveInitialTerrain(id: string): Promise<{ provider: Cesium.TerrainProvider; id: string }> {
     terrainMirrorMode = id === 'arcgis-terrain' ? (store.tileMirrorMode === 'on' ? 'on' : 'off') : undefined
+    if (shouldDeferInitialTerrainForConsent(id)) {
+      return { provider: await terrainRegistry.ellipsoid(), id: 'ellipsoid' }
+    }
     const create = terrainProviderFactory(id)
     let settled = false
     const timeout = new Promise<{ provider: Cesium.TerrainProvider; id: string }>((resolve) => {
@@ -1086,6 +1102,13 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       : Cesium.JulianDate.now()
     currentViewer.scene.globe.enableLighting = store.terrainLighting || solarStore.active
     currentViewer.scene.requestRender()
+  })
+
+  watch(() => store.mirrorConsentOpen, (open, wasOpen) => {
+    if (!wasOpen || open) return
+    if (store.terrainProviderId !== 'arcgis-terrain') return
+    if (store.activeTerrainId === 'arcgis-terrain' || store.tileMirrorMode === 'on') return
+    void retryTerrain()
   })
 
   function toggleLevelView(): void {

@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/electron/main'
 import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, screen, session } from 'electron'
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
-import { edgeOneTileMirrorUrl, hasLegacyTileMirrorSetting, isTileMirrorMode, mirrorCacheStyleId, mirrorEligibleProviders, originProbeReachable, resolveStoredTileMirrorSettings, TileMirrorRouter } from '../common/tileMirror'
+import { edgeOneTileMirrorUrl, hasLegacyTileMirrorSetting, isMirrorCoverageNotFound, isTileMirrorMode, mirrorCacheStyleId, mirrorEligibleProviders, originProbeReachable, resolveStoredTileMirrorSettings, TileMirrorRouter } from '../common/tileMirror'
 import type { MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 import { serveTileResponse } from '../common/tileProtocol'
@@ -495,7 +495,7 @@ async function edgeOneMirrorTileResponse(providerId: string, key: TileKey, granu
   if (!url) return { failure: 'coverage' }
   try {
     const response = await fetchTileWithRetry(url)
-    if (!response.ok) return { failure: response.status === 404 ? 'coverage' : 'network' }
+    if (!response.ok) return { failure: isMirrorCoverageNotFound(response.status, response.headers) ? 'coverage' : 'network' }
     const data = await response.arrayBuffer()
     const contentType = response.headers.get('content-type') ?? (providerId === 'viirs-night' ? 'image/jpeg' : 'image/png')
     if (settings.tileCacheEnabled) void writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })

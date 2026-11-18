@@ -6,11 +6,12 @@ import type {
   AiProtocol,
   AiProviderConfig
 } from '../../preload'
+import { EDGEONE_MODELS_DEV_URL } from '../../common/tileMirror'
 import { readProviderKey } from '../keyVault'
 import { readResponseText, ResponseTooLargeError } from './responseReader'
 
 const MODELS_DEV_URL = 'https://models.dev/api.json'
-const MODELS_DEV_MIRROR_URL = 'https://earth.proxy.nexaorion.cn/modelsdev'
+const MODELS_DEV_MIRROR_URL = EDGEONE_MODELS_DEV_URL
 const REQUEST_TIMEOUT_MS = 20_000
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 const MAX_PROVIDER_MODELS = 2_000

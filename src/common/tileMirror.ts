@@ -1,6 +1,6 @@
 export type MirrorTileKind = 'vector' | 'satellite' | 'night'
 
-export const EDGEONE_MIRROR_BASE_URL = 'https://earth.proxy.nexaorion.cn'
+export const EDGEONE_MIRROR_BASE_URL = 'https://proxy.project-pigeon.com'
 export const EDGEONE_ARCGIS_TERRAIN_URL = `${EDGEONE_MIRROR_BASE_URL}/arcgis`
 export const EDGEONE_EARTHQUAKES_URL = `${EDGEONE_MIRROR_BASE_URL}/datasets/earthquakes`
 export const EDGEONE_MODELS_DEV_URL = `${EDGEONE_MIRROR_BASE_URL}/modelsdev`
@@ -125,6 +125,13 @@ export function mirrorCacheStyleId(styleId: string): string {
 
 export function originProbeReachable(status: number): boolean {
   return status !== 403 && status !== 451
+}
+
+export function isMirrorCoverageNotFound(status: number, headers: Pick<Headers, 'get'>): boolean {
+  if (status !== 404) return false
+  if (headers.get('x-proxy-upstream')) return true
+  const contentType = headers.get('content-type') ?? ''
+  return contentType.toLowerCase().includes('application/json')
 }
 
 export class TileMirrorRouter {

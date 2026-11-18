@@ -2,12 +2,13 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { net } from 'electron'
 import type { EarthquakeFeed, ProvinceFeature, ProvinceGeoDocument } from '../preload'
+import { EDGEONE_EARTHQUAKES_URL } from '../common/tileMirror'
 import { gcj02ToWgs84 } from './geo/gcj02'
 import { writeJson } from './jsonStore'
 import provincesAssetPath from '../../resources/geo/china-provinces.geojson?asset'
 
 const EARTHQUAKE_FEED_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_month.geojson'
-const EARTHQUAKE_MIRROR_URL = 'https://earth.proxy.nexaorion.cn/datasets/earthquakes'
+const EARTHQUAKE_MIRROR_URL = EDGEONE_EARTHQUAKES_URL
 const FETCH_TIMEOUT_MS = 15000
 
 let earthquakesPath = ''
