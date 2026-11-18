@@ -136,14 +136,20 @@ export function isMirrorCoverageNotFound(status: number, headers: Pick<Headers, 
 
 export class TileMirrorRouter {
   private mode: TileMirrorMode = 'off'
+  private modeGeneration = 0
   private readonly reachability = new Map<string, OriginReachability>()
   private readonly originFailures = new Map<string, number>()
   private readonly originFallbacks = new Set<string>()
 
   setMode(mode: TileMirrorMode): void {
     this.mode = mode
+    this.modeGeneration += 1
     this.originFailures.clear()
     this.originFallbacks.clear()
+  }
+
+  currentModeGeneration(): number {
+    return this.modeGeneration
   }
 
   sourceFor(providerId: string): TileSource {
@@ -187,7 +193,8 @@ export class TileMirrorRouter {
     return previous !== next
   }
 
-  noteMirrorFailure(providerId: string): boolean {
+  noteMirrorFailure(providerId: string, expectedGeneration?: number): boolean {
+    if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) return false
     if (this.mode === 'on') {
       if (this.originFallbacks.has(providerId)) return false
       this.originFallbacks.add(providerId)

@@ -47,6 +47,7 @@ registerHooks({
 })
 
 const { useGlobeStore } = await import('../src/renderer/src/stores/globe.ts')
+const { useFailureStore } = await import('../src/renderer/src/stores/failure.ts')
 
 test('mirror eligible providers cover the four overseas basemaps, satellite kind only for esri imagery', () => {
   assert.deepEqual(Object.keys(mirrorEligibleProviders).sort(), ['esri-imagery', 'opentopomap', 'osm', 'viirs-night'])
@@ -455,5 +456,74 @@ test('attachOriginTerrainFallback falls back on runtime tile failure and switche
   assert.equal(originCreations, 1)
   assert.equal(originCalls, 4)
   assert.equal(wrapped.getTileDataAvailable(4, 0, 0), false)
+})
+
+test('TileMirrorRouter ignores stale mirror failures after a mode switch', () => {
+  const router = new TileMirrorRouter()
+  router.setMode('auto')
+  router.noteProbeResult('osm', false)
+  const autoGen = router.currentModeGeneration()
+  assert.equal(router.sourceFor('osm'), 'mirror')
+
+  router.setMode('on')
+  const onGen = router.currentModeGeneration()
+  assert.notEqual(onGen, autoGen)
+  assert.equal(router.sourceFor('osm'), 'mirror')
+
+  assert.equal(router.noteMirrorFailure('osm', autoGen), false)
+  assert.equal(router.sourceFor('osm'), 'mirror')
+
+  assert.equal(router.noteMirrorFailure('osm', onGen), true)
+  assert.equal(router.sourceFor('osm'), 'origin')
+})
+
+test('globeStore syncs mirror mode back to actual status when consent persistence fails', async (t) => {
+  const originalWindow = globalThis.window
+  globalThis.window = {
+    guEarth: {
+      settings: {
+        get: async () => ({
+          selectedImageryProviderId: 'osm',
+          selectedTerrainProviderId: 'arcgis-terrain',
+          terrainExaggeration: 2,
+          terrainLighting: false,
+          tileCacheEnabled: true,
+          tileMirrorMode: 'off',
+          mirrorConsentPrompted: false,
+          networkProxy: '',
+          providerStyles: { osm: 'standard' },
+          providerCredentials: {},
+          sceneMode: '3D',
+          setupGuideDismissed: null
+        }),
+        update: async () => {
+          throw new Error('disk write failed')
+        }
+      },
+      tiles: {
+        getMirrorStatus: async () => ({
+          mode: 'off',
+          mirroredProviders: [],
+          notice: ''
+        })
+      }
+    }
+  }
+  t.after(() => {
+    globalThis.window = originalWindow
+  })
+  setActivePinia(createPinia())
+  const store = useGlobeStore()
+  const failureStore = useFailureStore()
+  await store.hydrateSettings()
+  store.openMirrorConsent('china')
+  store.acceptMirrorConsent()
+  assert.equal(store.mirrorConsentOpen, false)
+  assert.equal(store.mirrorConsentPrompted, true)
+
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(store.tileMirrorMode, 'off')
+  assert.deepEqual(store.mirroredProviders, [])
+  assert.equal(failureStore.degradations.length, 1)
 })
 
