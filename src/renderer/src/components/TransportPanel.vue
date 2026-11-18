@@ -38,6 +38,7 @@ async function flyToLine(line: HsrLine): Promise<void> {
     const mid = line.path[Math.floor(line.path.length / 2)]
     const span = Math.min(1200000, Math.max(250000, line.lengthKm * 420))
     const destination = await resolveFlightDestination(current.scene, mid[0], mid[1], span)
+    if (!destination || current.isDestroyed()) return
     current.camera.flyTo({ destination, duration: 1.6 })
   } finally {
     flying.value = false
