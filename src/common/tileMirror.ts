@@ -1,6 +1,6 @@
 export type MirrorTileKind = 'vector' | 'satellite' | 'night'
 
-export const EDGEONE_MIRROR_BASE_URL = 'https://earth.proxy.nexaorion.cn'
+export const EDGEONE_MIRROR_BASE_URL = 'https://proxy.project-pigeon.com'
 export const EDGEONE_ARCGIS_TERRAIN_URL = `${EDGEONE_MIRROR_BASE_URL}/arcgis`
 export const EDGEONE_EARTHQUAKES_URL = `${EDGEONE_MIRROR_BASE_URL}/datasets/earthquakes`
 export const EDGEONE_MODELS_DEV_URL = `${EDGEONE_MIRROR_BASE_URL}/modelsdev`
@@ -127,16 +127,29 @@ export function originProbeReachable(status: number): boolean {
   return status !== 403 && status !== 451
 }
 
+export function isMirrorCoverageNotFound(status: number, headers: Pick<Headers, 'get'>): boolean {
+  if (status !== 404) return false
+  if (headers.get('x-proxy-upstream')) return true
+  const contentType = headers.get('content-type') ?? ''
+  return contentType.toLowerCase().includes('application/json')
+}
+
 export class TileMirrorRouter {
   private mode: TileMirrorMode = 'off'
+  private modeGeneration = 0
   private readonly reachability = new Map<string, OriginReachability>()
   private readonly originFailures = new Map<string, number>()
   private readonly originFallbacks = new Set<string>()
 
   setMode(mode: TileMirrorMode): void {
     this.mode = mode
+    this.modeGeneration += 1
     this.originFailures.clear()
     this.originFallbacks.clear()
+  }
+
+  currentModeGeneration(): number {
+    return this.modeGeneration
   }
 
   sourceFor(providerId: string): TileSource {
@@ -180,7 +193,8 @@ export class TileMirrorRouter {
     return previous !== next
   }
 
-  noteMirrorFailure(providerId: string): boolean {
+  noteMirrorFailure(providerId: string, expectedGeneration?: number): boolean {
+    if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) return false
     if (this.mode === 'on') {
       if (this.originFallbacks.has(providerId)) return false
       this.originFallbacks.add(providerId)

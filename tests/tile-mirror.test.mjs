@@ -19,6 +19,7 @@ import {
   edgeOneTileMirrorUrl,
   hasLegacyTileMirrorSetting,
   isLikelyMainlandChinaEnv,
+  isMirrorCoverageNotFound,
   isMirrorSatelliteProvider,
   mirrorCacheStyleId,
   mirrorEligibleProviders,
@@ -46,6 +47,7 @@ registerHooks({
 })
 
 const { useGlobeStore } = await import('../src/renderer/src/stores/globe.ts')
+const { useFailureStore } = await import('../src/renderer/src/stores/failure.ts')
 
 test('mirror eligible providers cover the four overseas basemaps, satellite kind only for esri imagery', () => {
   assert.deepEqual(Object.keys(mirrorEligibleProviders).sort(), ['esri-imagery', 'opentopomap', 'osm', 'viirs-night'])
@@ -57,22 +59,22 @@ test('mirror eligible providers cover the four overseas basemaps, satellite kind
   assert.equal(isMirrorSatelliteProvider(''), false)
 })
 
-test('EdgeOne mirror endpoints point to earth.proxy.nexaorion.cn and validate tile coordinates', () => {
-  assert.equal(EDGEONE_MIRROR_BASE_URL, 'https://earth.proxy.nexaorion.cn')
-  assert.equal(EDGEONE_ARCGIS_TERRAIN_URL, 'https://earth.proxy.nexaorion.cn/arcgis')
-  assert.equal(EDGEONE_EARTHQUAKES_URL, 'https://earth.proxy.nexaorion.cn/datasets/earthquakes')
-  assert.equal(EDGEONE_MODELS_DEV_URL, 'https://earth.proxy.nexaorion.cn/modelsdev')
+test('EdgeOne mirror endpoints point to proxy.project-pigeon.com and validate tile coordinates', () => {
+  assert.equal(EDGEONE_MIRROR_BASE_URL, 'https://proxy.project-pigeon.com')
+  assert.equal(EDGEONE_ARCGIS_TERRAIN_URL, 'https://proxy.project-pigeon.com/arcgis')
+  assert.equal(EDGEONE_EARTHQUAKES_URL, 'https://proxy.project-pigeon.com/datasets/earthquakes')
+  assert.equal(EDGEONE_MODELS_DEV_URL, 'https://proxy.project-pigeon.com/modelsdev')
 
-  assert.equal(edgeOneTileMirrorUrl('osm', 5, 12, 8), 'https://earth.proxy.nexaorion.cn/tiles/osm/5/12/8.png')
+  assert.equal(edgeOneTileMirrorUrl('osm', 5, 12, 8), 'https://proxy.project-pigeon.com/tiles/osm/5/12/8.png')
   assert.equal(edgeOneTileMirrorUrl('osm', 20, 0, 0), undefined)
-  assert.equal(edgeOneTileMirrorUrl('esri-imagery', 6, 25, 13), 'https://earth.proxy.nexaorion.cn/tiles/esri/6/13/25')
-  assert.equal(edgeOneTileMirrorUrl('esri-imagery', 23, 100, 200), 'https://earth.proxy.nexaorion.cn/tiles/esri/23/200/100')
+  assert.equal(edgeOneTileMirrorUrl('esri-imagery', 6, 25, 13), 'https://proxy.project-pigeon.com/tiles/esri/6/13/25')
+  assert.equal(edgeOneTileMirrorUrl('esri-imagery', 23, 100, 200), 'https://proxy.project-pigeon.com/tiles/esri/23/200/100')
   assert.equal(edgeOneTileMirrorUrl('esri-imagery', 24, 0, 0), undefined)
-  assert.equal(edgeOneTileMirrorUrl('opentopomap', 17, 10, 20), 'https://earth.proxy.nexaorion.cn/tiles/opentopo/17/10/20.png')
+  assert.equal(edgeOneTileMirrorUrl('opentopomap', 17, 10, 20), 'https://proxy.project-pigeon.com/tiles/opentopo/17/10/20.png')
   assert.equal(edgeOneTileMirrorUrl('opentopomap', 18, 0, 0), undefined)
   assert.equal(
     edgeOneTileMirrorUrl('viirs-night', 8, 120, 80, '2026-11-15'),
-    'https://earth.proxy.nexaorion.cn/tiles/viirs/2026-11-15/8/80/120.jpeg'
+    'https://proxy.project-pigeon.com/tiles/viirs/2026-11-15/8/80/120.jpeg'
   )
   assert.equal(edgeOneTileMirrorUrl('viirs-night', 9, 0, 0, '2026-11-15'), undefined)
   assert.equal(edgeOneTileMirrorUrl('viirs-night', 4, 1, 1, 'invalid-date'), undefined)
@@ -206,6 +208,14 @@ test('origin probe treats an answered request as reachable and a policy block as
   for (const status of [200, 204, 301, 404, 429, 500, 503]) assert.equal(originProbeReachable(status), true, `${status} is an answered request`)
   assert.equal(originProbeReachable(403), false)
   assert.equal(originProbeReachable(451), false)
+})
+
+test('mirror 404 is treated as coverage miss only when returned by the proxy function', () => {
+  assert.equal(isMirrorCoverageNotFound(404, new Headers({ 'content-type': 'application/json; charset=utf-8' })), true)
+  assert.equal(isMirrorCoverageNotFound(404, new Headers({ 'x-proxy-upstream': 'https://services.arcgisonline.com/tile/1/0/0' })), true)
+  assert.equal(isMirrorCoverageNotFound(404, new Headers({ 'content-type': 'text/html; charset=utf-8' })), false)
+  assert.equal(isMirrorCoverageNotFound(404, new Headers()), false)
+  assert.equal(isMirrorCoverageNotFound(502, new Headers({ 'content-type': 'application/json' })), false)
 })
 
 test('auto mode keeps the origin until consecutive failures prove the environment needs the mirror', () => {
@@ -446,5 +456,74 @@ test('attachOriginTerrainFallback falls back on runtime tile failure and switche
   assert.equal(originCreations, 1)
   assert.equal(originCalls, 4)
   assert.equal(wrapped.getTileDataAvailable(4, 0, 0), false)
+})
+
+test('TileMirrorRouter ignores stale mirror failures after a mode switch', () => {
+  const router = new TileMirrorRouter()
+  router.setMode('auto')
+  router.noteProbeResult('osm', false)
+  const autoGen = router.currentModeGeneration()
+  assert.equal(router.sourceFor('osm'), 'mirror')
+
+  router.setMode('on')
+  const onGen = router.currentModeGeneration()
+  assert.notEqual(onGen, autoGen)
+  assert.equal(router.sourceFor('osm'), 'mirror')
+
+  assert.equal(router.noteMirrorFailure('osm', autoGen), false)
+  assert.equal(router.sourceFor('osm'), 'mirror')
+
+  assert.equal(router.noteMirrorFailure('osm', onGen), true)
+  assert.equal(router.sourceFor('osm'), 'origin')
+})
+
+test('globeStore syncs mirror mode back to actual status when consent persistence fails', async (t) => {
+  const originalWindow = globalThis.window
+  globalThis.window = {
+    guEarth: {
+      settings: {
+        get: async () => ({
+          selectedImageryProviderId: 'osm',
+          selectedTerrainProviderId: 'arcgis-terrain',
+          terrainExaggeration: 2,
+          terrainLighting: false,
+          tileCacheEnabled: true,
+          tileMirrorMode: 'off',
+          mirrorConsentPrompted: false,
+          networkProxy: '',
+          providerStyles: { osm: 'standard' },
+          providerCredentials: {},
+          sceneMode: '3D',
+          setupGuideDismissed: null
+        }),
+        update: async () => {
+          throw new Error('disk write failed')
+        }
+      },
+      tiles: {
+        getMirrorStatus: async () => ({
+          mode: 'off',
+          mirroredProviders: [],
+          notice: ''
+        })
+      }
+    }
+  }
+  t.after(() => {
+    globalThis.window = originalWindow
+  })
+  setActivePinia(createPinia())
+  const store = useGlobeStore()
+  const failureStore = useFailureStore()
+  await store.hydrateSettings()
+  store.openMirrorConsent('china')
+  store.acceptMirrorConsent()
+  assert.equal(store.mirrorConsentOpen, false)
+  assert.equal(store.mirrorConsentPrompted, true)
+
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(store.tileMirrorMode, 'off')
+  assert.deepEqual(store.mirroredProviders, [])
+  assert.equal(failureStore.degradations.length, 1)
 })
 

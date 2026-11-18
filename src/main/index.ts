@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/electron/main'
 import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, screen, session } from 'electron'
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
-import { edgeOneTileMirrorUrl, hasLegacyTileMirrorSetting, isTileMirrorMode, mirrorCacheStyleId, mirrorEligibleProviders, originProbeReachable, resolveStoredTileMirrorSettings, TileMirrorRouter } from '../common/tileMirror'
+import { edgeOneTileMirrorUrl, hasLegacyTileMirrorSetting, isMirrorCoverageNotFound, isTileMirrorMode, mirrorCacheStyleId, mirrorEligibleProviders, originProbeReachable, resolveStoredTileMirrorSettings, TileMirrorRouter } from '../common/tileMirror'
 import type { MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 import { serveTileResponse } from '../common/tileProtocol'
@@ -495,7 +495,7 @@ async function edgeOneMirrorTileResponse(providerId: string, key: TileKey, granu
   if (!url) return { failure: 'coverage' }
   try {
     const response = await fetchTileWithRetry(url)
-    if (!response.ok) return { failure: response.status === 404 ? 'coverage' : 'network' }
+    if (!response.ok) return { failure: isMirrorCoverageNotFound(response.status, response.headers) ? 'coverage' : 'network' }
     const data = await response.arrayBuffer()
     const contentType = response.headers.get('content-type') ?? (providerId === 'viirs-night' ? 'image/jpeg' : 'image/png')
     if (settings.tileCacheEnabled) void writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
@@ -505,7 +505,7 @@ async function edgeOneMirrorTileResponse(providerId: string, key: TileKey, granu
   }
 }
 
-async function serveMirrorTile(providerId: string, _kind: MirrorTileKind, key: TileKey, granuleDate: string): Promise<Response | null> {
+async function serveMirrorTile(providerId: string, _kind: MirrorTileKind, key: TileKey, granuleDate: string, modeGeneration: number): Promise<Response | null> {
   if (!mirrorLoggedProviders.has(providerId)) {
     mirrorLoggedProviders.add(providerId)
     logger.info('tiles', `镜像瓦片源已启用，${providerId} 使用奈索星联 EdgeOne 镜像服务`)
@@ -517,7 +517,7 @@ async function serveMirrorTile(providerId: string, _kind: MirrorTileKind, key: T
   if (!outcome) return null
   if ('response' in outcome) return outcome.response
   if (outcome.failure !== 'network') return null
-  if (!tileMirrorRouter.noteMirrorFailure(providerId)) return null
+  if (!tileMirrorRouter.noteMirrorFailure(providerId, modeGeneration)) return null
   logger.warn('tiles', `镜像瓦片源请求失败，${providerId} 已回退到原影像源`)
   broadcastMirrorStatus(mirrorFallbackNotice())
   return null
@@ -563,6 +563,7 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   const kind = mirrorEligibleProviders[providerId]
   const mirrorKey: TileKey = { providerId, styleId: mirrorCacheStyleId(requestStyleId), level, x, y }
   const originKey: TileKey = { providerId, styleId: requestStyleId, level, x, y }
+  const modeGeneration = tileMirrorRouter.currentModeGeneration()
   const mirrored = Boolean(kind) && Boolean(edgeOneTileMirrorUrl(providerId, level, x, y, granuleDate)) && mirrorSource(providerId) === 'mirror'
   const key = mirrored ? mirrorKey : originKey
   const cached = await cachedTileResponse(key, false)
@@ -570,7 +571,7 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   const remoteUrl = tileRemoteUrl(providerId, requestStyleId, level, x, y, granuleDate)
   if (!remoteUrl) return new Response('Unknown provider', { status: 404 })
   if (kind && mirrored) {
-    const mirror = await serveMirrorTile(providerId, kind, mirrorKey, granuleDate)
+    const mirror = await serveMirrorTile(providerId, kind, mirrorKey, granuleDate, modeGeneration)
     if (mirror) return mirror
   }
   return serveOriginTile(providerId, originKey, remoteUrl)

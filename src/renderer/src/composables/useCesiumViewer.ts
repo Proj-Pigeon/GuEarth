@@ -6,7 +6,7 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { captureError, captureWarning } from '@renderer/lib/crashReporter'
 import { advanceBufferGap, backingStoreSize, BUFFER_MISSING_REPORT_MS, classifyRenderFault, contextOptionsForAttempt, decideRenderFrame, glRendererName, isWebGlInitializationError, nudgedCanvasSize, RENDER_HALTED_DETAIL, RENDER_HALTED_MESSAGE, shouldStopRenderLoop, shouldUseSoftwareMsaaWorkaround, surfaceFailureCopy, WEBGL_CONTEXT_ATTEMPTS, WEBGL_RETRY_STAGE, WEBGL_UNAVAILABLE_DETAIL, WEBGL_UNAVAILABLE_MESSAGE, webGlRetryDelayMs, type BufferGapState, type GlRendererSource, type SurfaceFrameKind, type SurfaceSize, type WebGlContextAttempt } from '../../../common/globeSurface'
 import { logger, stringifyLogValue } from '../../../common/logger'
-import { mirrorEligibleProviders } from '../../../common/tileMirror'
+import { isLikelyMainlandChinaEnv, mirrorEligibleProviders } from '../../../common/tileMirror'
 import type { PlaceSuggestion, TileMirrorStatus } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
@@ -68,6 +68,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   let generation = 0
   let flightRequestSequence = 0
   let terrainRequestSeq = 0
+  let terrainRequestInFlight = false
   let activeBasemapId = ''
   let lastTileErrorAt = 0
   let lastTileErrorLoggedAt = 0
@@ -374,12 +375,14 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     const create = terrainProviderFactory(id)
     terrainRequestSeq += 1
     const requestSeq = terrainRequestSeq
+    terrainRequestInFlight = true
     try {
       const terrain = await create()
       if (!viewer.value || viewer.value.isDestroyed() || expectedGeneration !== generation || requestSeq !== terrainRequestSeq) return
       applyTerrain(terrain)
       store.setActiveTerrainId(id)
       store.setTerrainError('')
+      if (id === 'ellipsoid') markEllipsoidTerrainReady()
     } catch (error) {
       if (requestSeq !== terrainRequestSeq) return
       const detail = error instanceof Error ? error.message : ''
@@ -393,7 +396,10 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       applyTerrain(fallback)
       store.setTerrainError('')
       store.setActiveTerrainId('ellipsoid')
+      markEllipsoidTerrainReady()
       failureStore.reportDegrade(`${terrainName(id)}加载失败，已切换为平滑球面`)
+    } finally {
+      if (requestSeq === terrainRequestSeq) terrainRequestInFlight = false
     }
   }
 
@@ -513,8 +519,29 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     store.setGlobeReady(true)
   }
 
-  async function resolveInitialTerrain(id: string): Promise<{ provider: Cesium.TerrainProvider; id: string }> {
+  function markEllipsoidTerrainReady(): void {
+    initialTerrainReady = true
+    evaluateGlobeReady()
+  }
+
+  function resolvedTimeZone(): string {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone
+    } catch {
+      return ''
+    }
+  }
+
+  function shouldDeferInitialTerrainForConsent(id: string): boolean {
+    if (id !== 'arcgis-terrain' || store.mirrorConsentPrompted) return false
+    return store.mirrorConsentOpen || isLikelyMainlandChinaEnv(navigator.language, resolvedTimeZone())
+  }
+
+  async function resolveInitialTerrain(id: string): Promise<{ provider: Cesium.TerrainProvider; id: string; deferred?: boolean }> {
     terrainMirrorMode = id === 'arcgis-terrain' ? (store.tileMirrorMode === 'on' ? 'on' : 'off') : undefined
+    if (shouldDeferInitialTerrainForConsent(id)) {
+      return { provider: await terrainRegistry.ellipsoid(), id: 'ellipsoid', deferred: true }
+    }
     const create = terrainProviderFactory(id)
     let settled = false
     const timeout = new Promise<{ provider: Cesium.TerrainProvider; id: string }>((resolve) => {
@@ -802,6 +829,8 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
 
   function destroyActiveViewer(): void {
     generation += 1
+    terrainRequestSeq = 0
+    terrainRequestInFlight = false
     clearLoadTimeout()
     stopOwnedRenderLoop()
     contextRecoveryDetach?.()
@@ -903,7 +932,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
         applyMirrorStatus(status)
       })
       updateCameraState()
-      let terrainSetup: { provider: Cesium.TerrainProvider; id: string } | undefined
+      let terrainSetup: { provider: Cesium.TerrainProvider; id: string; deferred?: boolean } | undefined
       let terrainApplied = false
       const applyInitialTerrain = (): void => {
         if (runId !== bootstrapGeneration || !terrainSetup || terrainApplied || terrainRequestSeq !== 0) return
@@ -912,12 +941,12 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
         terrainApplied = true
         applyTerrain(terrainSetup.provider)
         store.setActiveTerrainId(terrainSetup.id)
-        if (terrainSetup.id === 'ellipsoid') {
-          initialTerrainReady = true
-          evaluateGlobeReady()
-        }
+        if (terrainSetup.id === 'ellipsoid') markEllipsoidTerrainReady()
         currentViewer.scene.requestRender()
         store.setGlobeLoadStage(terrainSetup.id === 'ellipsoid' ? '正在加载地图…' : '正在加载地形…')
+        if (terrainSetup.deferred && !store.mirrorConsentOpen && store.terrainProviderId === 'arcgis-terrain') {
+          void retryTerrain()
+        }
       }
       initialSurfaceReadyCallback = undefined
       attachInitialSurfaceTracking(currentViewer)
@@ -1059,10 +1088,13 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
       store.terrainProviderId === 'arcgis-terrain' &&
       terrainMirrorMode !== undefined &&
       terrainMirrorMode !== nextTerrainMirrorMode
+    const terrainMatchesNextMode =
+      terrainMirrorMode === nextTerrainMirrorMode &&
+      (store.activeTerrainId === 'arcgis-terrain' || terrainRequestInFlight)
     if (routeChanged) {
       reloadMirrorBasemapLayers()
-      if (store.terrainProviderId === 'arcgis-terrain') void retryTerrain()
-    } else if (initialTerrainMirrorMismatch) {
+      if (store.terrainProviderId === 'arcgis-terrain' && !terrainMatchesNextMode) void retryTerrain()
+    } else if (initialTerrainMirrorMismatch && !terrainMatchesNextMode) {
       void retryTerrain()
     }
     lastMirrorRouteSignature = signature
@@ -1087,6 +1119,23 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     currentViewer.scene.globe.enableLighting = store.terrainLighting || solarStore.active
     currentViewer.scene.requestRender()
   })
+
+  watch(
+    () => [store.mirrorConsentOpen, store.tileMirrorMode, store.activeTerrainId] as const,
+    ([open, mirrorMode, activeTerrainId], previous) => {
+      const wasOpen = previous?.[0] ?? false
+      const prevMirrorMode = previous?.[1]
+      if (open || store.terrainProviderId !== 'arcgis-terrain') return
+      if (activeTerrainId === 'arcgis-terrain') return
+      if (!viewer.value || viewer.value.isDestroyed()) return
+      const consentJustClosed = wasOpen && !open
+      const mirrorModeChanged = prevMirrorMode !== undefined && prevMirrorMode !== mirrorMode
+      if (!consentJustClosed && !mirrorModeChanged) return
+      const desiredTerrainMode: 'on' | 'off' = mirrorMode === 'on' ? 'on' : 'off'
+      if (terrainRequestInFlight && terrainMirrorMode === desiredTerrainMode) return
+      void retryTerrain()
+    }
+  )
 
   function toggleLevelView(): void {
     flightRequestSequence += 1

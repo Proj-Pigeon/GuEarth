@@ -4,6 +4,7 @@ import { createRequire } from 'node:module'
 import { compileFunction } from 'node:vm'
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 import { test } from 'node:test'
+import * as tileMirror from '../src/common/tileMirror.ts'
 
 const responseReaderSource = readFileSync(new URL('../src/main/ai/responseReader.ts', import.meta.url), 'utf8')
 const responseReaderOutput = transpileModule(responseReaderSource, {
@@ -21,6 +22,7 @@ function loadImporter(respond, key = 'secret-key') {
   const requests = []
   const dependencies = new Map([
     ['electron', { net: { fetch: async (url, options) => { requests.push({ url, options }); return respond(url, options) } } }],
+    ['../../common/tileMirror', tileMirror],
     ['../keyVault', { readProviderKey: () => key }],
     ['./responseReader', responseReaderApi]
   ])
@@ -281,7 +283,7 @@ test('models.dev catalog uses EdgeOne mirror when enabled and falls back to orig
   let mirrorFail = false
   const importer = loadImporter((url) => {
     urls.push(url)
-    if (url === 'https://earth.proxy.nexaorion.cn/modelsdev') {
+    if (url === 'https://proxy.project-pigeon.com/modelsdev') {
       if (mirrorFail) return response({}, 502)
       return response(catalog)
     }
@@ -291,19 +293,19 @@ test('models.dev catalog uses EdgeOne mirror when enabled and falls back to orig
   importer.modelImporterInternals.setModelsDevMirrorEnabled(true)
   const first = await importer.importModels(request({ ids: ['gpt-5-mini'] }))
   assert.equal(first.models[0].matched, true)
-  assert.deepEqual(urls, ['https://earth.proxy.nexaorion.cn/modelsdev'])
+  assert.deepEqual(urls, ['https://proxy.project-pigeon.com/modelsdev'])
 
   const fallbackUrls = []
   mirrorFail = true
   const fallbackImporter = loadImporter((url) => {
     fallbackUrls.push(url)
-    if (url === 'https://earth.proxy.nexaorion.cn/modelsdev') return response({}, 502)
+    if (url === 'https://proxy.project-pigeon.com/modelsdev') return response({}, 502)
     if (url === 'https://models.dev/api.json') return response(catalog)
     return response({ data: [{ id: 'gpt-5-mini' }] })
   })
   fallbackImporter.modelImporterInternals.setModelsDevMirrorEnabled(true)
   const second = await fallbackImporter.importModels(request({ ids: ['gpt-5-mini'] }))
   assert.equal(second.models[0].matched, true)
-  assert.deepEqual(fallbackUrls, ['https://earth.proxy.nexaorion.cn/modelsdev', 'https://models.dev/api.json'])
+  assert.deepEqual(fallbackUrls, ['https://proxy.project-pigeon.com/modelsdev', 'https://models.dev/api.json'])
 })
 

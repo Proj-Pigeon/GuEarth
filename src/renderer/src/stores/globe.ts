@@ -121,6 +121,7 @@ export const useGlobeStore = defineStore('globe', () => {
   const tileMirrorMode = ref<TileMirrorMode>('off')
   const mirrorConsentPrompted = ref(true)
   let mirrorConsentKnown = false
+  let mirrorPersistSeq = 0
   const settingsHydrated = ref(false)
   const mirrorConsentOpen = ref(false)
   const mirrorConsentReason = ref<MirrorConsentReason>('china')
@@ -166,20 +167,50 @@ export const useGlobeStore = defineStore('globe', () => {
     }
   }
 
-  async function persistSettings(): Promise<void> {
-    if (!apiAvailable()) return
-    await window.guEarth.settings.update({
-      selectedImageryProviderId: selectedLayerId.value,
-      selectedTerrainProviderId: terrainProviderId.value,
-      terrainExaggeration: terrainExaggeration.value,
-      terrainLighting: terrainLighting.value,
-      tileCacheEnabled: tileCacheEnabled.value,
-      tileMirrorMode: tileMirrorMode.value,
-      ...(mirrorConsentKnown ? { mirrorConsentPrompted: mirrorConsentPrompted.value } : {}),
-      networkProxy: networkProxy.value,
-      providerStyles: { ...providerStyles.value },
-      sceneMode: sceneMode.value
-    })
+  async function persistSettings(): Promise<boolean> {
+    if (!apiAvailable()) return true
+    try {
+      await window.guEarth.settings.update({
+        selectedImageryProviderId: selectedLayerId.value,
+        selectedTerrainProviderId: terrainProviderId.value,
+        terrainExaggeration: terrainExaggeration.value,
+        terrainLighting: terrainLighting.value,
+        tileCacheEnabled: tileCacheEnabled.value,
+        tileMirrorMode: tileMirrorMode.value,
+        ...(mirrorConsentKnown ? { mirrorConsentPrompted: mirrorConsentPrompted.value } : {}),
+        networkProxy: networkProxy.value,
+        providerStyles: { ...providerStyles.value },
+        sceneMode: sceneMode.value
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async function syncMirrorSettingsAfterFailure(previousMode: TileMirrorMode, seq: number): Promise<void> {
+    let nextMode: TileMirrorMode = previousMode
+    let nextProviders: string[] | undefined
+    if (apiAvailable() && typeof window.guEarth.tiles?.getMirrorStatus === 'function') {
+      try {
+        const status = await window.guEarth.tiles.getMirrorStatus()
+        nextMode = status.mode === 'on' ? 'on' : 'off'
+        nextProviders = [...status.mirroredProviders]
+      } catch {
+        nextMode = previousMode
+      }
+    }
+    if (seq !== mirrorPersistSeq) return
+    tileMirrorMode.value = nextMode
+    if (nextProviders) mirroredProviders.value = nextProviders
+    failureStore.reportDegrade('镜像服务设置保存失败，已恢复原网络设置')
+  }
+
+  async function persistMirrorSettings(previousMode: TileMirrorMode): Promise<void> {
+    const seq = ++mirrorPersistSeq
+    const saved = await persistSettings()
+    if (saved || seq !== mirrorPersistSeq) return
+    await syncMirrorSettingsAfterFailure(previousMode, seq)
   }
 
   function setLayerPanelOpen(value: boolean): void { isLayerPanelOpen.value = value }
@@ -224,8 +255,9 @@ export const useGlobeStore = defineStore('globe', () => {
   function setTileMirrorMode(value: unknown): void {
     const mode = normalizeTileMirrorMode(value)
     if (mode === tileMirrorMode.value) return
+    const previousMode = tileMirrorMode.value
     tileMirrorMode.value = mode
-    void persistSettings()
+    void persistMirrorSettings(previousMode)
   }
   function openMirrorConsent(reason: MirrorConsentReason): void {
     mirrorConsentReason.value = reason
@@ -235,19 +267,21 @@ export const useGlobeStore = defineStore('globe', () => {
     mirrorConsentOpen.value = false
   }
   function acceptMirrorConsent(): void {
+    const previousMode = tileMirrorMode.value
     mirrorConsentKnown = true
     mirrorConsentPrompted.value = true
     tileMirrorMode.value = 'on'
     mirrorConsentOpen.value = false
-    void persistSettings()
+    void persistMirrorSettings(previousMode)
   }
   function declineMirrorConsent(): void {
+    const previousMode = tileMirrorMode.value
     const wasUnprompted = !mirrorConsentPrompted.value
     mirrorConsentKnown = true
     mirrorConsentPrompted.value = true
     if (mirrorConsentReason.value !== 'settings') tileMirrorMode.value = 'off'
     mirrorConsentOpen.value = false
-    if (wasUnprompted || mirrorConsentReason.value !== 'settings') void persistSettings()
+    if (wasUnprompted || mirrorConsentReason.value !== 'settings') void persistMirrorSettings(previousMode)
   }
   function openMirrorPolicy(policyId: MirrorPolicyId = 'agreement'): void {
     mirrorPolicyActiveId.value = policyId
