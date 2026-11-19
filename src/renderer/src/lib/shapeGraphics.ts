@@ -61,19 +61,59 @@ export function pathDistance(cartesians: Cesium.Cartesian3[]): number {
   return total
 }
 
-export function triangleArea(first: Cesium.Cartesian3, second: Cesium.Cartesian3, third: Cesium.Cartesian3): number {
-  const ab = geodesicDistance(first, second)
-  const bc = geodesicDistance(second, third)
-  const ca = geodesicDistance(third, first)
-  const semi = (ab + bc + ca) / 2
-  const product = semi * (semi - ab) * (semi - bc) * (semi - ca)
-  return product > 0 ? Math.sqrt(product) : 0
+const EARTH_RADIUS_M = Cesium.Ellipsoid.WGS84.maximumRadius
+
+function tangentToward(origin: Cesium.Cartesian3, point: Cesium.Cartesian3): Cesium.Cartesian3 {
+  const projected = Cesium.Cartesian3.subtract(
+    point,
+    Cesium.Cartesian3.multiplyByScalar(origin, Cesium.Cartesian3.dot(origin, point), new Cesium.Cartesian3()),
+    new Cesium.Cartesian3()
+  )
+  return Cesium.Cartesian3.normalize(projected, new Cesium.Cartesian3())
+}
+
+function signedTriangleSolidAngle(first: Cesium.Cartesian3, second: Cesium.Cartesian3, third: Cesium.Cartesian3): number {
+  const numerator = Cesium.Cartesian3.dot(first, Cesium.Cartesian3.cross(second, third, new Cesium.Cartesian3()))
+  const denominator =
+    1 + Cesium.Cartesian3.dot(first, second) + Cesium.Cartesian3.dot(second, third) + Cesium.Cartesian3.dot(third, first)
+  return 2 * Math.atan2(numerator, denominator)
+}
+
+function algebraicSolidAngle(directions: Cesium.Cartesian3[]): number {
+  let total = 0
+  for (let index = 1; index < directions.length - 1; index += 1) total += signedTriangleSolidAngle(directions[0], directions[index], directions[index + 1])
+  return Math.abs(total)
 }
 
 export function polygonArea(cartesians: Cesium.Cartesian3[]): number {
-  let total = 0
-  for (let index = 1; index < cartesians.length - 1; index += 1) total += triangleArea(cartesians[0], cartesians[index], cartesians[index + 1])
-  return total
+  const directions: Cesium.Cartesian3[] = []
+  for (const cartesian of cartesians) {
+    if (!isUsablePosition(cartesian)) continue
+    const direction = Cesium.Cartesian3.normalize(cartesian, new Cesium.Cartesian3())
+    const previous = directions[directions.length - 1]
+    if (previous && Cesium.Cartesian3.equalsEpsilon(previous, direction, 0, Cesium.Math.EPSILON12)) continue
+    directions.push(direction)
+  }
+  if (directions.length > 1 && Cesium.Cartesian3.equalsEpsilon(directions[0], directions[directions.length - 1], 0, Cesium.Math.EPSILON12)) directions.pop()
+  if (directions.length < 3) return 0
+  // 高斯-博内定理：球面多边形面积只取决于各顶点处的有向转角，凹多边形同样成立
+  let turnSum = 0
+  for (let index = 0; index < directions.length; index += 1) {
+    const current = directions[index]
+    const incoming = Cesium.Cartesian3.negate(tangentToward(current, directions[(index + directions.length - 1) % directions.length]), new Cesium.Cartesian3())
+    const outgoing = tangentToward(current, directions[(index + 1) % directions.length])
+    const turn = Math.atan2(
+      Cesium.Cartesian3.dot(Cesium.Cartesian3.cross(incoming, outgoing, new Cesium.Cartesian3()), current),
+      Cesium.Cartesian3.dot(incoming, outgoing)
+    )
+    turnSum += turn
+  }
+  const winding = turnSum / (2 * Math.PI)
+  if (Math.abs(Math.abs(winding) - 1) > 0.5) return algebraicSolidAngle(directions) * EARTH_RADIUS_M * EARTH_RADIUS_M
+  let solidAngle = 2 * Math.PI - turnSum
+  if (solidAngle < 0) solidAngle = -solidAngle
+  if (solidAngle > 2 * Math.PI) solidAngle = 4 * Math.PI - solidAngle
+  return solidAngle * EARTH_RADIUS_M * EARTH_RADIUS_M
 }
 
 export function textOutlineColor(color: Cesium.Color): Cesium.Color {

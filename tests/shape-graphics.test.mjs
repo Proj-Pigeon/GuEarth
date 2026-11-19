@@ -17,7 +17,7 @@ registerHooks({
   }
 })
 
-const { SHAPE_COLOR, measurementFor, pointGraphics, polygonGraphics, polylineOptions, shapeColorOf, shapeLabelOptions } = await import('../src/renderer/src/lib/shapeGraphics.ts')
+const { SHAPE_COLOR, measurementFor, pointGraphics, polygonArea, polygonGraphics, polylineOptions, shapeColorOf, shapeLabelOptions } = await import('../src/renderer/src/lib/shapeGraphics.ts')
 
 const STYLE = { color: '#fa541c', textColor: '#ffffff', fontFamily: 'Arial', fontSize: 15, textFrame: false, lineWidth: 4 }
 const positions = [
@@ -108,4 +108,81 @@ test('shapes without any label text produce no label graphics', () => {
   const cartesians = [Cesium.Cartesian3.fromDegrees(116, 39)]
   const label = shapeLabelOptions({ kind: 'point', positions: [{ longitude: 116, latitude: 39, height: 0 }], annotation: '', ...STYLE }, cartesians)
   assert.equal(label, undefined)
+})
+
+const ringCartesians = (ring) => ring.map(([longitude, latitude]) => Cesium.Cartesian3.fromDegrees(longitude, latitude))
+const planarAreaM2 = (ring) => {
+  const points = ring.map(([longitude, latitude]) => [
+    longitude * 111320 * Math.cos((latitude * Math.PI) / 180),
+    latitude * 110570
+  ])
+  let twice = 0
+  for (let index = 0; index < points.length; index += 1) {
+    const [x1, y1] = points[index]
+    const [x2, y2] = points[(index + 1) % points.length]
+    twice += x1 * y2 - x2 * y1
+  }
+  return Math.abs(twice) / 2
+}
+
+test('polygon area follows concave outlines instead of fanning from the first vertex', () => {
+  const concave = [
+    [116, 39], [116.03, 39], [116.03, 39.03], [116.02, 39.03],
+    [116.02, 39.01], [116.01, 39.01], [116.01, 39.03], [116, 39.03]
+  ]
+  const area = polygonArea(ringCartesians(concave))
+  const planar = planarAreaM2(concave)
+  assert.ok(Math.abs(area - planar) / planar < 0.01, `${area} vs ${planar}`)
+})
+
+test('polygon area is stable across winding, duplicate vertices and a closed ring', () => {
+  const concave = [
+    [116, 39], [116.03, 39], [116.03, 39.03], [116.02, 39.03],
+    [116.02, 39.01], [116.01, 39.01], [116.01, 39.03], [116, 39.03]
+  ]
+  const area = polygonArea(ringCartesians(concave))
+  const tolerance = area * 1e-7
+  assert.ok(Math.abs(area - polygonArea(ringCartesians([...concave].reverse()))) < tolerance)
+  assert.ok(Math.abs(area - polygonArea(ringCartesians([...concave, concave[0]]))) < tolerance)
+  assert.ok(Math.abs(area - polygonArea(ringCartesians([concave[0], concave[0], ...concave.slice(1)]))) < tolerance)
+  assert.equal(polygonArea(ringCartesians([concave[0], concave[1], concave[0]])), 0)
+})
+
+test('polygon area ignores adjacent vertices that share a direction but differ in height', () => {
+  const ring = [
+    Cesium.Cartesian3.fromDegrees(116, 39, 0),
+    Cesium.Cartesian3.fromDegrees(116, 39, 1200),
+    Cesium.Cartesian3.fromDegrees(116.01, 39, 0),
+    Cesium.Cartesian3.fromDegrees(116, 39.01, 0)
+  ]
+  const area = polygonArea(ring)
+  assert.ok(Number.isFinite(area) && area > 0, String(area))
+})
+
+const HALF_EARTH_M2 = 2 * Math.PI * Cesium.Ellipsoid.WGS84.maximumRadius ** 2
+
+test('self-intersecting rings fall back to the algebraic area instead of half the globe', () => {
+  const crossed = [[0, 0], [1, 0], [0, 1], [1, 1]]
+  const square = [[0, 0], [1, 0], [1, 1], [0, 1]]
+  const crossedArea = polygonArea(ringCartesians(crossed))
+  const squareArea = polygonArea(ringCartesians(square))
+  assert.ok(crossedArea < HALF_EARTH_M2 * 0.001, `crossed ring reported ${crossedArea}`)
+  assert.ok(crossedArea < squareArea, `${crossedArea} vs ${squareArea}`)
+
+  const star = polygonArea(ringCartesians([[0, 0], [2, -1], [0.5, -3], [-1.5, -1], [0.5, -0.2]]))
+  assert.ok(star < HALF_EARTH_M2 * 0.001, `star ring reported ${star}`)
+  assert.ok(Number.isFinite(star) && star > 0, String(star))
+})
+
+test('rings that revisit a vertex keep a bounded area', () => {
+  const pinched = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0], [0, 1]]
+  const area = polygonArea(ringCartesians(pinched))
+  assert.ok(area < HALF_EARTH_M2 * 0.001, `pinched ring reported ${area}`)
+  assert.ok(Math.abs(area - polygonArea(ringCartesians([[0, 0], [1, 0], [1, 1], [0, 1]]))) < 1e4, String(area))
+})
+
+test('polygon area stays exact for rings that cross the antimeridian', () => {
+  const area = polygonArea(ringCartesians([[179, 0], [-179, 0], [-179, 1], [179, 1]]))
+  const planar = planarAreaM2([[179, 0], [-179, 0], [-179, 1], [179, 1]].map(([longitude, latitude]) => [longitude > 0 ? longitude - 360 : longitude, latitude]))
+  assert.ok(Math.abs(area - planar) / planar < 0.01, `${area} vs ${planar}`)
 })
