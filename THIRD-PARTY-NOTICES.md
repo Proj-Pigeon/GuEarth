@@ -23,5 +23,6 @@ License texts are located in `resources/licenses/`.
 - [React DOM](https://github.com/facebook/react) — MIT
 - [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) — MIT
 - [Koffi](https://github.com/Koromix/koffi) — MIT
+- [GeographicLib](https://github.com/geographiclib/geographiclib-js) — MIT
 - [Electron](https://github.com/electron/electron) — MIT
 - [Chromium](https://www.chromium.org/) — BSD-style / Third-Party Licenses
