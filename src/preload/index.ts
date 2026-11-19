@@ -283,6 +283,29 @@ export interface StoredAiConversation extends StoredAiConversationSummary {
   compression?: StoredAiCompression
 }
 
+export interface AiConversationSearchHit {
+  id: string
+  title: string
+  updatedAt: number
+  score: number
+  snippet: string
+  compressionSummary?: string
+}
+
+export interface AiMemoryRecallMatch extends AgentMemory {
+  score: number
+}
+
+export interface AiHawdbStatus {
+  ready: boolean
+  storageMode: 'disk' | 'memory-snapshot'
+  hawdbVersion: string
+  formatVersion: number
+  knowledgeCount: number
+  memoryCount: number
+  conversationCount: number
+}
+
 export interface PlaceSuggestion {
   name: string
   province: string
@@ -580,13 +603,16 @@ const api = {
       list: (): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-list'),
       get: (id: string): Promise<StoredAiConversation | null> => ipcRenderer.invoke('ai:history-get', id),
       save: (conversation: StoredAiConversation): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-save', conversation),
-      delete: (id: string): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-delete', id)
+      delete: (id: string): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-delete', id),
+      search: (query: string, limit?: number, excludeId?: string): Promise<AiConversationSearchHit[]> => ipcRenderer.invoke('ai:history-search', query, limit, excludeId)
     },
     memory: {
       list: (): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-list'),
       add: (content: string): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-add', content),
-      delete: (id: string): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-delete', id)
+      delete: (id: string): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-delete', id),
+      recall: (query: string, limit?: number): Promise<AiMemoryRecallMatch[]> => ipcRenderer.invoke('ai:memory-recall', query, limit)
     },
+    hawdbStatus: (): Promise<AiHawdbStatus> => ipcRenderer.invoke('ai:hawdb-status'),
     onEvent: (listener: (event: AiChatEvent) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: AiChatEvent): void => listener(payload)
       ipcRenderer.on('ai:event', wrapped)

@@ -3,8 +3,10 @@ import { randomUUID } from 'crypto'
 import { storageChildPath } from '../storagePath'
 import { readJson, serialQueue, writeJson } from '../jsonStore'
 import type { AiSearchReference, StoredAiCompression, StoredAiConversation, StoredAiConversationSummary, StoredAiMessage, StoredAiPart, StoredAiToolStep } from '../../preload'
+import type { EoqHawdbClient } from './hawdb/client'
+import type { ConversationSearchHit } from './hawdb/protocol'
 
-const MAX_CONVERSATIONS = 50
+export const MAX_CONVERSATIONS = 50
 const MAX_MESSAGES = 400
 const ID_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/
 
@@ -118,10 +120,12 @@ export function normalizeConversation(value: unknown): StoredAiConversation | nu
   }
 }
 
-function summary(conversation: StoredAiConversationSummary): StoredAiConversationSummary {
+export function conversationSummary(conversation: StoredAiConversationSummary): StoredAiConversationSummary {
   const { id, title, createdAt, updatedAt } = conversation
   return { id, title, createdAt, updatedAt }
 }
+
+const summary = conversationSummary
 
 interface HistoryEntry extends StoredAiConversationSummary {
   file: string
@@ -160,10 +164,14 @@ function normalizeRecoveryManifest(value: unknown): RecoveryManifest {
 export class AiChatHistoryStore {
   private directory = ''
   private conversations: HistoryEntry[] = []
+  private hawdb: EoqHawdbClient | null = null
+  private hawdbSummaries: StoredAiConversationSummary[] = []
   private migration: MigrationState = 'complete'
   private enqueue = serialQueue()
 
   async init(path: string): Promise<void> {
+    this.hawdb = null
+    this.hawdbSummaries = []
     this.directory = `${path}.d`
     this.conversations = []
     this.migration = 'complete'
@@ -278,12 +286,20 @@ export class AiChatHistoryStore {
     this.conversations = list
   }
 
+  attachHawdb(client: EoqHawdbClient, initialSummaries: StoredAiConversationSummary[]): void {
+    this.hawdb = client
+    this.hawdbSummaries = initialSummaries.map(summary)
+  }
+
   list(): StoredAiConversationSummary[] {
-    return this.conversations.map(summary)
+    return this.hawdb ? this.hawdbSummaries.map(summary) : this.conversations.map(summary)
   }
 
   get(id: string): Promise<StoredAiConversation | null> {
     return this.enqueue(async () => {
+      if (this.hawdb?.isReady()) {
+        return this.hawdb.getConversation(id)
+      }
       const entry = this.conversations.find((item) => item.id === id)
       if (!entry) return null
       return normalizeConversation(await readJson(this.conversationPath(entry.file)))
@@ -294,6 +310,10 @@ export class AiChatHistoryStore {
     const conversation = normalizeConversation(value)
     if (!conversation) return Promise.reject(new Error('无效的会话数据'))
     return this.enqueue(async () => {
+      if (this.hawdb?.isReady()) {
+        this.hawdbSummaries = (await this.hawdb.saveConversation(conversation)).map(summary)
+        return this.list()
+      }
       const entry = { ...summary(conversation), file: `${conversation.id}.${randomUUID()}.json` }
       const next = sortedEntries([entry, ...this.conversations.filter((item) => item.id !== conversation.id)])
       const removed = this.conversations.filter((item) => !next.some((retained) => retained.file === item.file))
@@ -312,11 +332,24 @@ export class AiChatHistoryStore {
 
   delete(id: string): Promise<StoredAiConversationSummary[]> {
     return this.enqueue(async () => {
+      if (this.hawdb?.isReady()) {
+        this.hawdbSummaries = (await this.hawdb.deleteConversation(id)).map(summary)
+        return this.list()
+      }
       const removed = this.conversations.find((item) => item.id === id)
       const next = this.conversations.filter((item) => item.id !== id)
       await this.persistIndex(next)
       if (removed) await unlink(this.conversationPath(removed.file)).catch(() => undefined)
       return this.list()
     })
+  }
+
+  async search(query: string, limit = 5, excludeId?: string): Promise<ConversationSearchHit[]> {
+    const clean = typeof query === 'string' ? query.trim() : ''
+    if (!clean) return []
+    if (this.hawdb?.isReady()) {
+      return this.hawdb.searchConversations(clean, limit, excludeId)
+    }
+    return []
   }
 }

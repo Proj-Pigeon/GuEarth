@@ -38,6 +38,9 @@ import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
 import { AiSettingsStore } from './ai/settingsStore'
 import { AiChatHistoryStore } from './ai/chatHistoryStore'
 import { AiMemoryStore } from './ai/memoryStore'
+import { EoqHawdbClient } from './ai/hawdb/client'
+import { findHawdbBinary } from './ai/hawdb/paths'
+import { getAllKnowledgeEntries, knowledgeDatasetHash } from './ai/knowledge'
 import { registerAiIpcHandlers } from './ai/agent'
 import { poiStatistics, searchPlaces } from './ai/amap'
 import { searchBaiduPlaces } from './ai/baidu'
@@ -117,6 +120,7 @@ let scenes: SceneDocument = { scenes: [] }
 const aiSettings = new AiSettingsStore()
 const aiChatHistory = new AiChatHistoryStore()
 const aiMemories = new AiMemoryStore()
+const eoqHawdb = new EoqHawdbClient()
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'guearth-tile', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
@@ -1608,16 +1612,49 @@ app.whenReady().then(async () => {
       if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('datasets:online-data-changed', snapshot)
     }
   })
+  const legacyHistoryPath = join(userDataPath, 'ai-chat-history.json')
+  const legacyMemoriesPath = join(userDataPath, 'ai-memories.json')
+  const initEoqStores = async (): Promise<void> => {
+    const libraryPath = findHawdbBinary(app.getAppPath(), process.resourcesPath, app.isPackaged)
+    if (libraryPath) {
+      try {
+        const opened = await eoqHawdb.open({
+          libraryPath,
+          dbRoot: join(userDataPath, 'eoq-hawdb'),
+          legacyMemoriesPath,
+          legacyHistoryPath,
+          knowledgeEntries: getAllKnowledgeEntries(),
+          knowledgeHash: knowledgeDatasetHash()
+        })
+        aiMemories.attachHawdb(eoqHawdb, opened.memories)
+        aiChatHistory.attachHawdb(eoqHawdb, opened.conversations)
+        logger.info(
+          'ai',
+          'EOQ HawDB 引擎已就绪',
+          `mode=${opened.status.storageMode} version=${opened.status.hawdbVersion} knowledge=${opened.status.knowledgeCount} memories=${opened.status.memoryCount} conversations=${opened.status.conversationCount}`
+        )
+        return
+      } catch (error) {
+        logger.warn('ai', 'EOQ HawDB 初始化失败，已降级为 JSON 存储', error)
+        await eoqHawdb.close().catch(() => undefined)
+      }
+    } else {
+      logger.warn('ai', '未找到内置 HawDB 引擎库，已降级为 JSON 存储')
+    }
+    await Promise.all([
+      aiChatHistory.init(legacyHistoryPath),
+      aiMemories.init(legacyMemoriesPath)
+    ])
+  }
   const loaded = await Promise.all([
     readAnnotations(),
     readScenes(),
     aiSettings.init(join(userDataPath, 'ai-settings.json')),
-    aiChatHistory.init(join(userDataPath, 'ai-chat-history.json')),
-    aiMemories.init(join(userDataPath, 'ai-memories.json'))
+    initEoqStores()
   ])
   ;[annotations, scenes] = loaded
   registerIpcHandlers()
-  registerAiIpcHandlers(aiSettings, aiChatHistory, aiMemories)
+  registerAiIpcHandlers(aiSettings, aiChatHistory, aiMemories, eoqHawdb)
   initUpdater(join(userDataPath, 'updates'))
   initAccount()
   logger.info('app', '主进程服务就绪')
@@ -1642,7 +1679,7 @@ app.on('before-quit', (event) => {
   if (quitting) return
   event.preventDefault()
   quitting = true
-  void flushJsonWrites().finally(() => app.quit())
+  void Promise.allSettled([flushJsonWrites(), eoqHawdb.close()]).finally(() => app.quit())
 })
 
 app.on('will-quit', () => {

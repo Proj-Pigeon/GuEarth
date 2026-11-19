@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import entries from './entries.json'
 import expandedEntries from './entries-expanded.json'
 import curriculumEntries from './entries-curriculum.json'
@@ -137,6 +138,16 @@ export function retrieveKnowledge(query: string, module?: string, topK = DEFAULT
   }
 }
 
+const datasetHash = createHash('sha256').update(JSON.stringify(knowledgeEntries)).digest('hex')
+
 export function knowledgeEntryCount(): number {
   return knowledgeEntries.length
+}
+
+export function getAllKnowledgeEntries(): KnowledgeEntry[] {
+  return knowledgeEntries
+}
+
+export function knowledgeDatasetHash(): string {
+  return datasetHash
 }

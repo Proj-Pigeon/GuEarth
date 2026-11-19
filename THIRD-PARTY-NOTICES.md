@@ -23,6 +23,11 @@
 - 组件：OpenH264（静态编译于上述 FFmpeg 构建内；构建脚本对应上游提交 `1c5ac2f8d7fd7c263f0644e0e7a2a760775f0345`）
   - 许可证：BSD-2-Clause（Copyright (c) 2013, Cisco Systems）
   - 许可证文本：`licenses/openh264-BSD-2-Clause.txt`
+- 组件：HawDB（版本 0.35.1，嵌入式多模数据引擎）
+  - 文件：`hawdb_ffi.dll`（Windows x64）、`libhawdb_ffi.so`（Linux x64 / arm64）、`libhawdb_ffi.dylib`（macOS x64 / arm64）
+  - 许可证：Apache-2.0
+  - 许可证文本：`licenses/LICENSE`（Apache License 2.0 原文）
+  - 上游项目：https://github.com/nowledge-co/hawdb
 - 组件：CesiumJS（三维数字地球引擎）
   - 许可证：Apache-2.0
   - 许可证文本与第三方代码清单：`licenses/Cesium-LICENSE.md`
@@ -32,7 +37,7 @@
   - 许可证文本：`licenses/ECharts-LICENSE.txt`
   - 内含子组件 d3.js（BSD-3-Clause）的许可证文本：`licenses/LICENSE-d3`
   - 上游项目：https://github.com/apache/echarts
-- 组件：Vue.js、Pinia、Ant Design Vue、Ant Design X Vue、@ant-design/x、antd、Vue-ECharts、Markdown-It、KaTeX、Day.js、Sentry Electron SDK、React、React DOM、mp4-muxer（macOS 录制的 MP4 封装）
+- 组件：Vue.js、Pinia、Ant Design Vue、Ant Design X Vue、@ant-design/x、antd、Vue-ECharts、Markdown-It、KaTeX、Day.js、Sentry Electron SDK、React、React DOM、mp4-muxer（macOS 录制的 MP4 封装）、Koffi（C FFI 绑定）
   - 许可证：MIT
   - 许可证原文（含各自版权行）：`licenses/mit/`
 - 组件：Electron 与 Chromium

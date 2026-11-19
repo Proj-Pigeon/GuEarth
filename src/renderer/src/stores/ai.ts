@@ -67,6 +67,7 @@ const MAIN_PROCESS_TOOL_LABELS: Record<string, string> = {
   analyze_location: '区位分析',
   web_search: '联网搜索',
   retrieve_knowledge: '知识库检索',
+  search_conversations: '历史对话检索',
   save_memory: '写入记忆',
   delete_memory: '删除记忆'
 }
@@ -74,7 +75,8 @@ const MAIN_PROCESS_TOOL_LABELS: Record<string, string> = {
 const MAIN_PROCESS_RUNNING_LABELS: Record<string, string> = {
   save_memory: '正在写入记忆',
   delete_memory: '正在删除记忆',
-  analyze_location: '正在分析区位'
+  analyze_location: '正在分析区位',
+  search_conversations: '正在检索历史对话'
 }
 
 export function toolLabel(name: string, running = false): string {
