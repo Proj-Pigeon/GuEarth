@@ -16,6 +16,7 @@ export interface MirrorEndpointProbeResult {
   ok: boolean
   latencyMs: number | null
   error?: string
+  checkedAt?: number
 }
 
 export const DEFAULT_MIRROR_ENDPOINT: MirrorEndpointId = 'edgeone'
@@ -335,32 +336,61 @@ export class TileMirrorRouter {
     return previous !== next
   }
 
+  nextMirrorFallbackExpiryAt(): number | null {
+    if (this.mode !== 'on') return null
+    let earliest: number | null = null
+    const current = this.now()
+    for (const [providerId, until] of [...this.mirrorFallbackUntil.entries()]) {
+      if (current >= until) {
+        this.mirrorFallbackUntil.delete(providerId)
+        continue
+      }
+      if (earliest === null || until < earliest) earliest = until
+    }
+    return earliest
+  }
+
   noteMirrorSuccess(providerId: string, expectedGeneration?: number): void {
     if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) return
     this.mirrorFailures.set(providerId, 0)
     this.mirrorFallbackUntil.delete(providerId)
   }
 
-  noteMirrorFailure(providerId: string, expectedGeneration?: number): boolean {
+  recordMirrorFailure(providerId: string, expectedGeneration?: number): boolean {
     if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) return false
     if (this.mode === 'on') {
       if (this.isMirrorFallbackActive(providerId)) return false
-      const failures = (this.mirrorFailures.get(providerId) ?? 0) + 1
-      this.mirrorFailures.set(providerId, failures)
-      if (failures < MIRROR_FAILURES_BEFORE_FALLBACK) return false
+    } else if (this.mode === 'auto') {
+      if (this.reachability.get(providerId) !== 'blocked') return false
+    } else {
+      return false
+    }
+    const failures = (this.mirrorFailures.get(providerId) ?? 0) + 1
+    this.mirrorFailures.set(providerId, failures)
+    if (failures < MIRROR_FAILURES_BEFORE_FALLBACK) return false
+    this.mirrorFailures.set(providerId, 0)
+    return true
+  }
+
+  commitMirrorFallback(providerId: string, expectedGeneration?: number): boolean {
+    if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) return false
+    if (this.mode === 'on') {
+      if (this.isMirrorFallbackActive(providerId)) return false
       this.mirrorFailures.set(providerId, 0)
       this.mirrorFallbackUntil.set(providerId, this.now() + MIRROR_FALLBACK_COOLDOWN_MS)
       return true
     }
     if (this.mode !== 'auto') return false
     if (this.reachability.get(providerId) !== 'blocked') return false
-    const failures = (this.mirrorFailures.get(providerId) ?? 0) + 1
-    this.mirrorFailures.set(providerId, failures)
-    if (failures < MIRROR_FAILURES_BEFORE_FALLBACK) return false
     this.mirrorFailures.set(providerId, 0)
     this.originFailures.set(providerId, 0)
     this.reachability.set(providerId, 'reachable')
     return true
+  }
+
+  noteMirrorFailure(providerId: string, expectedGeneration?: number): boolean {
+    if (!this.recordMirrorFailure(providerId, expectedGeneration)) return false
+    return this.commitMirrorFallback(providerId, expectedGeneration)
   }
 
   resetMirrorFallback(providerId?: string): boolean {
@@ -385,6 +415,7 @@ export class MirrorEndpointManager {
   private active: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT
   private probeResults: Partial<Record<MirrorEndpointId, MirrorEndpointProbeResult>> = {}
   private readonly failedUntil = new Map<MirrorEndpointId, number>()
+  private readonly failedAt = new Map<MirrorEndpointId, number>()
   private readonly now: () => number
 
   constructor(now: () => number = Date.now) {
@@ -396,9 +427,26 @@ export class MirrorEndpointManager {
     if (until === undefined) return false
     if (this.now() >= until) {
       this.failedUntil.delete(endpoint)
+      this.failedAt.delete(endpoint)
       return false
     }
     return true
+  }
+
+  private applySingleProbeHealth(probe: MirrorEndpointProbeResult): void {
+    this.probeResults[probe.endpoint] = probe
+    if (probe.ok) {
+      const failedAt = this.failedAt.get(probe.endpoint)
+      const observedAt = probe.checkedAt ?? this.now()
+      if (failedAt === undefined || observedAt >= failedAt) {
+        this.failedUntil.delete(probe.endpoint)
+        this.failedAt.delete(probe.endpoint)
+      }
+    }
+  }
+
+  private eligibleProbes(probes: readonly MirrorEndpointProbeResult[]): MirrorEndpointProbeResult[] {
+    return probes.filter((probe) => !this.isEndpointFailed(probe.endpoint))
   }
 
   getPreference(): MirrorEndpointPreference {
@@ -419,6 +467,7 @@ export class MirrorEndpointManager {
     const previousActive = this.active
     this.preference = preference
     this.failedUntil.clear()
+    this.failedAt.clear()
     if (preference !== 'auto') {
       this.active = preference
     } else {
@@ -428,38 +477,43 @@ export class MirrorEndpointManager {
     return this.active !== previousActive
   }
 
-  applyProbeResult(probe: MirrorEndpointProbeResult): { changed: boolean; active: MirrorEndpointId } {
-    this.probeResults[probe.endpoint] = probe
-    if (probe.ok) this.failedUntil.delete(probe.endpoint)
-    if (this.preference !== 'auto' || !probe.ok) {
+  applyProbeResult(
+    probe: MirrorEndpointProbeResult,
+    candidates?: readonly MirrorEndpointProbeResult[]
+  ): { changed: boolean; active: MirrorEndpointId } {
+    this.applySingleProbeHealth(probe)
+    if (this.preference !== 'auto') {
       return { changed: false, active: this.active }
     }
     const previousActive = this.active
-    this.active = selectBestMirrorEndpoint(this.getProbeResults(), this.active)
+    const pool = this.eligibleProbes(candidates ?? this.getProbeResults())
+    this.active = selectBestMirrorEndpoint(pool, this.active)
     return { changed: this.active !== previousActive, active: this.active }
   }
 
   applyProbeResults(probes: readonly MirrorEndpointProbeResult[]): { changed: boolean; active: MirrorEndpointId } {
     for (const probe of probes) {
-      this.probeResults[probe.endpoint] = probe
-      if (probe.ok) this.failedUntil.delete(probe.endpoint)
+      this.applySingleProbeHealth(probe)
     }
     if (this.preference !== 'auto') {
       return { changed: false, active: this.active }
     }
     const previousActive = this.active
-    this.active = selectBestMirrorEndpoint(probes, this.active)
+    this.active = selectBestMirrorEndpoint(this.eligibleProbes(probes), this.active)
     return { changed: this.active !== previousActive, active: this.active }
   }
 
   noteEndpointSuccess(endpoint: MirrorEndpointId): void {
     this.failedUntil.delete(endpoint)
+    this.failedAt.delete(endpoint)
   }
 
   tryFailover(failedEndpoint: MirrorEndpointId): MirrorEndpointId | null {
     if (this.preference !== 'auto') return null
     if (this.active !== failedEndpoint) return null
-    this.failedUntil.set(failedEndpoint, this.now() + MIRROR_FALLBACK_COOLDOWN_MS)
+    const now = this.now()
+    this.failedUntil.set(failedEndpoint, now + MIRROR_FALLBACK_COOLDOWN_MS)
+    this.failedAt.set(failedEndpoint, now)
     const candidate = alternateMirrorEndpoint(failedEndpoint)
     if (this.isEndpointFailed(candidate)) return null
     this.active = candidate
@@ -468,5 +522,6 @@ export class MirrorEndpointManager {
 
   clearFailures(): void {
     this.failedUntil.clear()
+    this.failedAt.clear()
   }
 }

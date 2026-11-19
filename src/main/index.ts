@@ -23,7 +23,7 @@ import {
 } from '../common/tileMirror'
 import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
-import { describeTileFetchError, fetchTilePayloadWithRetry, sanitizeTileUrlForLog, serveTileResponse, TILE_FETCH_TIMEOUT_MS, type FetchedTilePayload } from '../common/tileProtocol'
+import { describeTileFetchError, fetchTilePayloadWithRetry, isRetryableTileStatus, sanitizeTileUrlForLog, serveTileResponse, TILE_FETCH_TIMEOUT_MS, type FetchedTilePayload } from '../common/tileProtocol'
 import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
 import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
 import { ENSO_PHASE_SET, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS, type EnsoPhase } from '../common/thematicState'
@@ -446,6 +446,33 @@ const STARTUP_MIRROR_PROBE_BUDGET_MS = 1_500
 
 let mirrorEndpointProbing = false
 let mirrorEndpointProbeSeq = 0
+let mirrorRouteGeneration = 0
+let mirrorFallbackExpiryTimer: NodeJS.Timeout | undefined
+
+function advanceMirrorRouteGeneration(): number {
+  mirrorRouteGeneration += 1
+  return mirrorRouteGeneration
+}
+
+function scheduleMirrorFallbackExpirySync(): void {
+  if (mirrorFallbackExpiryTimer) {
+    clearTimeout(mirrorFallbackExpiryTimer)
+    mirrorFallbackExpiryTimer = undefined
+  }
+  const nextExpiryAt = tileMirrorRouter.nextMirrorFallbackExpiryAt()
+  if (nextExpiryAt === null) return
+  const delayMs = Math.max(1, nextExpiryAt - Date.now() + 20)
+  mirrorFallbackExpiryTimer = setTimeout(() => {
+    mirrorFallbackExpiryTimer = undefined
+    const activeFallbacks = new Set(tileMirrorRouter.fallenBackProviders(mirrorEligibleProviderIds()))
+    for (const providerId of [...mirrorFallenBackProviders]) {
+      if (!activeFallbacks.has(providerId)) mirrorFallenBackProviders.delete(providerId)
+    }
+    broadcastMirrorStatus('')
+    scheduleMirrorFallbackExpirySync()
+  }, delayMs)
+  mirrorFallbackExpiryTimer.unref()
+}
 
 function activeMirrorConsumerEndpoint(): MirrorEndpointId | null {
   return settings.tileMirrorMode === 'on' ? mirrorEndpointManager.getActive() : null
@@ -505,15 +532,15 @@ async function probeSingleMirrorEndpoint(endpoint: MirrorEndpointId): Promise<Mi
     })
     if (!response.ok) {
       void response.body?.cancel().catch(() => undefined)
-      return { endpoint, ok: false, latencyMs: null, error: `HTTP ${response.status}` }
+      return { endpoint, ok: false, latencyMs: null, error: `HTTP ${response.status}`, checkedAt: startedAt }
     }
     const buffer = await response.arrayBuffer()
     if (buffer.byteLength === 0) {
-      return { endpoint, ok: false, latencyMs: null, error: '空响应' }
+      return { endpoint, ok: false, latencyMs: null, error: '空响应', checkedAt: startedAt }
     }
-    return { endpoint, ok: true, latencyMs: Math.max(1, Date.now() - startedAt) }
+    return { endpoint, ok: true, latencyMs: Math.max(1, Date.now() - startedAt), checkedAt: startedAt }
   } catch (error) {
-    return { endpoint, ok: false, latencyMs: null, error: describeTileFetchError(error) }
+    return { endpoint, ok: false, latencyMs: null, error: describeTileFetchError(error), checkedAt: startedAt }
   }
 }
 
@@ -531,16 +558,18 @@ async function probeMirrorEndpoints(
     probeSingleMirrorEndpoint(endpoint).then((result) => {
       if (seq !== mirrorEndpointProbeSeq) return result
       roundProbes.push(result)
+      const outcome = mirrorEndpointManager.applyProbeResult(result, roundProbes)
+      if (outcome.changed) {
+        advanceMirrorRouteGeneration()
+        mirrorLoggedProviders.clear()
+        mirrorFallenBackProviders.clear()
+        tileMirrorRouter.resetMirrorFallback()
+        scheduleMirrorFallbackExpirySync()
+        syncMirrorConsumers()
+        broadcastMirrorStatus('')
+      }
       if (result.ok && !resolvedFirst) {
         resolvedFirst = true
-        const outcome = mirrorEndpointManager.applyProbeResults(roundProbes)
-        if (outcome.changed) {
-          mirrorLoggedProviders.clear()
-          mirrorFallenBackProviders.clear()
-          tileMirrorRouter.resetMirrorFallback()
-          syncMirrorConsumers()
-          broadcastMirrorStatus('')
-        }
         onFirstReachable?.()
       }
       return result
@@ -549,16 +578,9 @@ async function probeMirrorEndpoints(
   const results = await Promise.all(probePromises)
   if (seq !== mirrorEndpointProbeSeq) return
   mirrorEndpointProbing = false
-  const outcome = mirrorEndpointManager.applyProbeResults(results)
-  if (outcome.changed) {
-    mirrorLoggedProviders.clear()
-    mirrorFallenBackProviders.clear()
-    tileMirrorRouter.resetMirrorFallback()
-    syncMirrorConsumers()
-  }
   logger.info(
     'tiles',
-    `镜像源测速（${reason}）完成，当前使用 ${mirrorEndpointLabel(outcome.active)}`,
+    `镜像源测速（${reason}）完成，当前使用 ${mirrorEndpointLabel(mirrorEndpointManager.getActive())}`,
     formatMirrorProbeSummary(results)
   )
   broadcastMirrorStatus('')
@@ -684,8 +706,15 @@ async function mirrorTileResponse(
   }
 }
 
-async function serveMirrorTile(providerId: string, _kind: MirrorTileKind, key: TileKey, granuleDate: string, modeGeneration: number): Promise<Response | null> {
-  const endpoint = mirrorEndpointManager.getActive()
+async function serveMirrorTile(
+  providerId: string,
+  _kind: MirrorTileKind,
+  key: TileKey,
+  granuleDate: string,
+  modeGeneration: number,
+  routeGeneration: number,
+  endpoint: MirrorEndpointId
+): Promise<Response | null> {
   const logKey = `${endpoint}:${providerId}`
   if (!mirrorLoggedProviders.has(logKey)) {
     mirrorLoggedProviders.add(logKey)
@@ -693,38 +722,62 @@ async function serveMirrorTile(providerId: string, _kind: MirrorTileKind, key: T
   }
   const outcome = await mirrorTileResponse(providerId, key, granuleDate, endpoint)
   if ('response' in outcome) {
-    tileMirrorRouter.noteMirrorSuccess(providerId, modeGeneration)
-    mirrorEndpointManager.noteEndpointSuccess(endpoint)
-    if (mirrorFallenBackProviders.delete(providerId)) {
-      logger.info('tiles', `镜像瓦片源已恢复，${providerId} 重新使用 ${mirrorEndpointLabel(endpoint)} 镜像服务`)
-      broadcastMirrorStatus('')
+    if (
+      routeGeneration === mirrorRouteGeneration
+      && modeGeneration === tileMirrorRouter.currentModeGeneration()
+      && endpoint === mirrorEndpointManager.getActive()
+    ) {
+      tileMirrorRouter.noteMirrorSuccess(providerId, modeGeneration)
+      mirrorEndpointManager.noteEndpointSuccess(endpoint)
+      if (mirrorFallenBackProviders.delete(providerId)) {
+        logger.info('tiles', `镜像瓦片源已恢复，${providerId} 重新使用 ${mirrorEndpointLabel(endpoint)} 镜像服务`)
+        broadcastMirrorStatus('')
+      }
+      scheduleMirrorFallbackExpirySync()
     }
     return outcome.response
   }
   if (outcome.failure !== 'network') return null
-  if (endpoint !== mirrorEndpointManager.getActive()) return null
-  if (tileMirrorRouter.noteMirrorFailure(providerId, modeGeneration)) {
-    if (settings.tileMirrorMode === 'on') {
-      const failoverEndpoint = mirrorEndpointManager.tryFailover(endpoint)
-      if (failoverEndpoint) {
-        tileMirrorRouter.resetMirrorFallback()
-        mirrorFallenBackProviders.clear()
-        mirrorLoggedProviders.clear()
-        syncMirrorConsumers()
-        logger.warn('tiles', `镜像源 ${mirrorEndpointLabel(endpoint)} 连续失败，已自动切换至 ${mirrorEndpointLabel(failoverEndpoint)}`, outcome.detail)
-        broadcastMirrorStatus(`镜像源 ${mirrorEndpointShortLabel(endpoint)} 异常，已自动切换至 ${mirrorEndpointShortLabel(failoverEndpoint)}`)
-        const retryOutcome = await mirrorTileResponse(providerId, key, granuleDate, failoverEndpoint)
-        if ('response' in retryOutcome) {
+  if (
+    routeGeneration !== mirrorRouteGeneration
+    || modeGeneration !== tileMirrorRouter.currentModeGeneration()
+    || endpoint !== mirrorEndpointManager.getActive()
+  ) {
+    return null
+  }
+  if (tileMirrorRouter.recordMirrorFailure(providerId, modeGeneration)) {
+    const failoverEndpoint = (settings.tileMirrorMode === 'on' || settings.tileMirrorMode === 'auto')
+      ? mirrorEndpointManager.tryFailover(endpoint)
+      : null
+    if (failoverEndpoint) {
+      const failoverRouteGeneration = advanceMirrorRouteGeneration()
+      tileMirrorRouter.resetMirrorFallback()
+      mirrorFallenBackProviders.clear()
+      mirrorLoggedProviders.clear()
+      scheduleMirrorFallbackExpirySync()
+      syncMirrorConsumers()
+      logger.warn('tiles', `镜像源 ${mirrorEndpointLabel(endpoint)} 连续失败，已自动切换至 ${mirrorEndpointLabel(failoverEndpoint)}`, outcome.detail)
+      broadcastMirrorStatus(`镜像源 ${mirrorEndpointShortLabel(endpoint)} 异常，已自动切换至 ${mirrorEndpointShortLabel(failoverEndpoint)}`)
+      const retryOutcome = await mirrorTileResponse(providerId, key, granuleDate, failoverEndpoint)
+      if ('response' in retryOutcome) {
+        if (
+          failoverRouteGeneration === mirrorRouteGeneration
+          && modeGeneration === tileMirrorRouter.currentModeGeneration()
+          && failoverEndpoint === mirrorEndpointManager.getActive()
+        ) {
           tileMirrorRouter.noteMirrorSuccess(providerId, modeGeneration)
           mirrorEndpointManager.noteEndpointSuccess(failoverEndpoint)
-          return retryOutcome.response
         }
-        return null
+        return retryOutcome.response
       }
+      return null
     }
-    mirrorFallenBackProviders.add(providerId)
-    logger.warn('tiles', `镜像瓦片源（${mirrorEndpointLabel(endpoint)}）连续失败，${providerId} 已临时回退到原影像源`, outcome.detail)
-    broadcastMirrorStatus(mirrorFallbackNotice())
+    if (tileMirrorRouter.commitMirrorFallback(providerId, modeGeneration)) {
+      if (settings.tileMirrorMode === 'on') mirrorFallenBackProviders.add(providerId)
+      scheduleMirrorFallbackExpirySync()
+      logger.warn('tiles', `镜像瓦片源（${mirrorEndpointLabel(endpoint)}）连续失败，${providerId} 已临时回退到原影像源`, outcome.detail)
+      broadcastMirrorStatus(mirrorFallbackNotice())
+    }
     return null
   }
   if (shouldLogTileFailure(`mirror:${endpoint}:${providerId}`)) {
@@ -746,7 +799,7 @@ async function serveOriginTile(providerId: string, key: TileKey, remoteUrl: stri
     if (shouldLogTileFailure(`origin:${providerId}`)) {
       logger.warn('tiles', `原影像瓦片请求失败，${providerId}`, `HTTP ${payload.status} ${describeTileTarget(key, remoteUrl)}`)
     }
-    if (payload.status === 429 || payload.status >= 500) {
+    if (isRetryableTileStatus(payload.status)) {
       if (tileMirrorRouter.noteOriginFailure(providerId)) notifyMirrorRouteChange(previous)
       const stale = await cachedTileResponse(key, true)
       if (stale) return stale
@@ -779,14 +832,16 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   const mirrorKey: TileKey = { providerId, styleId: mirrorCacheStyleId(requestStyleId), level, x, y }
   const originKey: TileKey = { providerId, styleId: requestStyleId, level, x, y }
   const modeGeneration = tileMirrorRouter.currentModeGeneration()
-  const mirrored = Boolean(kind) && Boolean(mirrorTileUrl(providerId, level, x, y, granuleDate, mirrorEndpointManager.getActive())) && mirrorSource(providerId) === 'mirror'
+  const routeGeneration = mirrorRouteGeneration
+  const endpoint = mirrorEndpointManager.getActive()
+  const mirrored = Boolean(kind) && Boolean(mirrorTileUrl(providerId, level, x, y, granuleDate, endpoint)) && mirrorSource(providerId) === 'mirror'
   const key = mirrored ? mirrorKey : originKey
   const cached = await cachedTileResponse(key, false)
   if (cached) return cached
   const remoteUrl = tileRemoteUrl(providerId, requestStyleId, level, x, y, granuleDate)
   if (!remoteUrl) return new Response('Unknown provider', { status: 404 })
   if (kind && mirrored) {
-    const mirror = await serveMirrorTile(providerId, kind, mirrorKey, granuleDate, modeGeneration)
+    const mirror = await serveMirrorTile(providerId, kind, mirrorKey, granuleDate, modeGeneration, routeGeneration, endpoint)
     if (mirror) return mirror
   }
   return serveOriginTile(providerId, originKey, remoteUrl)
@@ -1047,6 +1102,7 @@ function registerIpcHandlers(): void {
     let tileMirrorModeNow: TileMirrorMode = settings.tileMirrorMode
     let tileMirrorSourceChanged = false
     let tileMirrorSourceNow: MirrorEndpointPreference = settings.tileMirrorSource
+    let networkProxyChanged = false
     await saveSettings((settings) => {
       const nextSettings: PersistedSettings = {
         ...settings,
@@ -1086,6 +1142,7 @@ function registerIpcHandlers(): void {
         if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')
         const normalized = normalizeNetworkProxy(patch.networkProxy)
         if (normalized === '' && patch.networkProxy.trim() !== '') throw new Error('无效的代理地址')
+        networkProxyChanged = normalized !== nextSettings.networkProxy
         nextSettings.networkProxy = normalized
       }
       if (patch.providerStyles !== undefined) {
@@ -1117,11 +1174,13 @@ function registerIpcHandlers(): void {
     if (patch.errorReportingEnabled !== undefined || patch.telemetryEnabled !== undefined || patch.aiTelemetryEnabled !== undefined) {
       applyPrivacySettings(settings)
     }
-    if (patch.networkProxy !== undefined) {
+    if (networkProxyChanged) {
       void applyNetworkProxy().then(() => {
+        advanceMirrorRouteGeneration()
         const recovered = tileMirrorRouter.resetMirrorFallback()
         mirrorFallenBackProviders.clear()
         mirrorEndpointManager.clearFailures()
+        scheduleMirrorFallbackExpirySync()
         if (settings.tileMirrorMode === 'on' && settings.tileMirrorSource === 'auto') {
           void probeMirrorEndpoints('network')
         } else if (recovered) {
@@ -1143,10 +1202,12 @@ function registerIpcHandlers(): void {
           mirrorEndpointProbing = false
         }
       }
+      advanceMirrorRouteGeneration()
       mirrorLoggedProviders.clear()
       mirrorFallenBackProviders.clear()
       mirrorEndpointManager.clearFailures()
       tileMirrorRouter.resetMirrorFallback()
+      scheduleMirrorFallbackExpirySync()
       syncMirrorConsumers()
       if (tileMirrorModeChanged) {
         logger.info('tiles', `镜像瓦片源模式已切换为「${tileMirrorModeNow}」`)
@@ -1243,10 +1304,12 @@ function registerIpcHandlers(): void {
   ipcMain.handle('tiles:mirror-status', (): TileMirrorStatus => mirrorStatus())
   ipcMain.handle('tiles:reset-mirror-fallback', (_event, providerId?: unknown, notify = true): TileMirrorStatus => {
     const id = typeof providerId === 'string' && providerId.trim() ? safeId(providerId) : undefined
+    advanceMirrorRouteGeneration()
     const recovered = tileMirrorRouter.resetMirrorFallback(id)
     mirrorEndpointManager.clearFailures()
     if (id) mirrorFallenBackProviders.delete(id)
     else mirrorFallenBackProviders.clear()
+    scheduleMirrorFallbackExpirySync()
     if (recovered) {
       logger.info('tiles', `已重置镜像回退状态，${id ?? '全部底图源'} 重新尝试镜像服务`)
       if (notify !== false) broadcastMirrorStatus('')
@@ -1960,6 +2023,11 @@ app.on('will-quit', () => {
     teardownOffscreenRecording?.()
   } catch {
     return
+  } finally {
+    if (mirrorFallbackExpiryTimer) {
+      clearTimeout(mirrorFallbackExpiryTimer)
+      mirrorFallbackExpiryTimer = undefined
+    }
   }
 })
 

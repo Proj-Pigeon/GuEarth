@@ -353,12 +353,12 @@ async function testProxy(): Promise<void> {
 .proxy-result{margin-top:8px;color:rgba(0,0,0,0.65);font-size:12px;line-height:20px;word-break:break-all}
 .proxy-result-ok{color:#389e0d}
 .proxy-result-fail{color:#cf1322}
-.mirror-source-section{margin-top:16px;padding-top:12px;border-top:1px solid rgba(5,5,5,0.06)}
-.mirror-source-header{display:flex;align-items:center;justify-content:space-between;gap:8px;max-width:420px;margin-bottom:8px}
-.mirror-source-heading{color:rgba(0,0,0,0.65);font-size:12px;line-height:20px}
-.mirror-source-hint{margin:8px 0 0;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
-.mirror-probe-list{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px;font-size:12px;line-height:20px}
-.mirror-probe-item{color:rgba(0,0,0,0.65)}
-.mirror-probe-ok{color:#389e0d}
-.mirror-probe-fail{color:#cf1322}
+.mirror-source-section{margin-top:var(--ant-margin,16px);padding-top:var(--ant-padding-sm,12px);border-top:1px solid var(--ant-color-split,rgba(5,5,5,0.06))}
+.mirror-source-header{display:flex;align-items:center;justify-content:space-between;gap:var(--ant-margin-xs,8px);max-width:420px;margin-bottom:var(--ant-margin-xs,8px)}
+.mirror-source-heading{color:var(--ant-color-text-secondary,rgba(0,0,0,0.65));font-size:var(--ant-font-size-sm,12px);line-height:20px}
+.mirror-source-hint{margin:var(--ant-margin-xs,8px) 0 0;color:var(--ant-color-text-tertiary,rgba(0,0,0,0.45));font-size:var(--ant-font-size-sm,12px);line-height:20px}
+.mirror-probe-list{display:flex;flex-wrap:wrap;gap:var(--ant-margin-sm,12px);margin-top:var(--ant-margin-xxs,4px);font-size:var(--ant-font-size-sm,12px);line-height:20px}
+.mirror-probe-item{color:var(--ant-color-text-secondary,rgba(0,0,0,0.65))}
+.mirror-probe-ok{color:var(--ant-color-success,#52c41a)}
+.mirror-probe-fail{color:var(--ant-color-error,#ff4d4f)}
 </style>

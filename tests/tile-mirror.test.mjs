@@ -816,3 +816,210 @@ test('globeStore hydrates, persists, and rolls back tileMirrorSource and applies
   assert.equal(store.activeMirrorEndpoint, 'edgeone')
 })
 
+test('fetchTilePayloadWithRetry recovers after a rejected fetcher call with a single backoff', async () => {
+  const delays = []
+  let calls = 0
+  const result = await fetchTilePayloadWithRetry(
+    async () => {
+      calls += 1
+      if (calls === 1) throw new Error('ECONNRESET')
+      return new Response(new Uint8Array([9, 8, 7, 6]), { status: 200, headers: { 'content-type': 'image/png' } })
+    },
+    { attempts: 3, baseDelayMs: 120, sleep: async (ms) => { delays.push(ms) } }
+  )
+  assert.equal(result.ok, true)
+  assert.equal(result.status, 200)
+  assert.equal(result.data.byteLength, 4)
+  assert.equal(calls, 2)
+  assert.deepEqual(delays, [120])
+})
+
+test('fetchTilePayloadWithRetry normalizes non-integer and non-finite attempts and returns final 503 response', async () => {
+  for (const [attempts, expectedCalls] of [[2.5, 2], [0, 1], [-2, 1], [Number.NaN, 3], [Number.POSITIVE_INFINITY, 3]]) {
+    let calls = 0
+    const result = await fetchTilePayloadWithRetry(
+      async () => {
+        calls += 1
+        return new Response('unavailable', { status: 503 })
+      },
+      { attempts, baseDelayMs: 10, sleep: async () => undefined }
+    )
+    assert.equal(result.ok, false)
+    assert.equal(result.status, 503)
+    assert.equal(calls, expectedCalls)
+  }
+})
+
+test('TileMirrorRouter separates failure threshold detection from fallback commit and reports fallback expiry', () => {
+  let clock = 10_000
+  const router = new TileMirrorRouter(() => clock)
+  router.setMode('auto')
+  router.noteProbeResult('osm', false)
+  const autoGen = router.currentModeGeneration()
+  assert.equal(router.sourceFor('osm'), 'mirror')
+
+  for (let attempt = 1; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {
+    assert.equal(router.recordMirrorFailure('osm', autoGen), false)
+  }
+  assert.equal(router.recordMirrorFailure('osm', autoGen), true)
+  assert.equal(router.sourceFor('osm'), 'mirror')
+  assert.equal(router.reachabilityFor('osm'), 'blocked')
+
+  router.resetMirrorFallback()
+  assert.equal(router.sourceFor('osm'), 'mirror')
+
+  for (let attempt = 1; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {
+    assert.equal(router.recordMirrorFailure('osm', autoGen), false)
+  }
+  assert.equal(router.recordMirrorFailure('osm', autoGen), true)
+  assert.equal(router.commitMirrorFallback('osm', autoGen), true)
+  assert.equal(router.sourceFor('osm'), 'origin')
+  assert.equal(router.reachabilityFor('osm'), 'reachable')
+
+  router.setMode('on')
+  const onGen = router.currentModeGeneration()
+  assert.equal(router.nextMirrorFallbackExpiryAt(), null)
+  for (let attempt = 1; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {
+    assert.equal(router.recordMirrorFailure('esri-imagery', onGen), false)
+  }
+  assert.equal(router.recordMirrorFailure('esri-imagery', onGen), true)
+  assert.equal(router.sourceFor('esri-imagery'), 'mirror')
+  assert.equal(router.commitMirrorFallback('esri-imagery', onGen), true)
+  assert.equal(router.sourceFor('esri-imagery'), 'origin')
+  assert.equal(router.nextMirrorFallbackExpiryAt(), clock + MIRROR_FALLBACK_COOLDOWN_MS)
+
+  clock += MIRROR_FALLBACK_COOLDOWN_MS
+  assert.equal(router.nextMirrorFallbackExpiryAt(), null)
+  assert.equal(router.sourceFor('esri-imagery'), 'mirror')
+})
+
+test('MirrorEndpointManager does not let an earlier probe undo a subsequent failover', () => {
+  let clock = 10_000
+  const manager = new MirrorEndpointManager(() => clock)
+  const roundStartedAt = clock
+
+  const edgeOneProbe = { endpoint: 'edgeone', ok: true, latencyMs: 40, checkedAt: roundStartedAt }
+  const roundProbes = [edgeOneProbe]
+  assert.deepEqual(manager.applyProbeResult(edgeOneProbe, roundProbes), { changed: false, active: 'edgeone' })
+
+  clock += 500
+  assert.equal(manager.tryFailover('edgeone'), 'cloudflare')
+  assert.equal(manager.getActive(), 'cloudflare')
+
+  clock += 1_500
+  const cloudflareFailedProbe = { endpoint: 'cloudflare', ok: false, latencyMs: null, error: 'timeout', checkedAt: roundStartedAt }
+  roundProbes.push(cloudflareFailedProbe)
+  assert.deepEqual(manager.applyProbeResult(cloudflareFailedProbe, roundProbes), { changed: false, active: 'cloudflare' })
+  assert.equal(manager.getActive(), 'cloudflare')
+  assert.deepEqual(manager.applyProbeResults(roundProbes), { changed: false, active: 'cloudflare' })
+  assert.equal(manager.getActive(), 'cloudflare')
+
+  const cloudflareSlowProbe = { endpoint: 'cloudflare', ok: true, latencyMs: 280, checkedAt: roundStartedAt }
+  assert.deepEqual(manager.applyProbeResults([edgeOneProbe, cloudflareSlowProbe]), { changed: false, active: 'cloudflare' })
+  assert.equal(manager.getActive(), 'cloudflare')
+
+  const freshManager = new MirrorEndpointManager(() => clock)
+  const freshRound = [
+    { endpoint: 'edgeone', ok: true, latencyMs: 220, checkedAt: clock },
+    { endpoint: 'cloudflare', ok: true, latencyMs: 75, checkedAt: clock }
+  ]
+  assert.deepEqual(freshManager.applyProbeResult(freshRound[0], [freshRound[0]]), { changed: false, active: 'edgeone' })
+  assert.deepEqual(freshManager.applyProbeResult(freshRound[1], freshRound), { changed: true, active: 'cloudflare' })
+})
+
+test('globeStore preserves pending tileMirrorSource across stale broadcasts and unrelated saves', async (t) => {
+  const originalWindow = globalThis.window
+  const updates = []
+  let resolveSourceSave
+  globalThis.window = {
+    guEarth: {
+      settings: {
+        get: async () => ({
+          selectedImageryProviderId: 'osm',
+          selectedTerrainProviderId: 'arcgis-terrain',
+          terrainExaggeration: 2,
+          terrainLighting: false,
+          tileCacheEnabled: true,
+          tileMirrorMode: 'on',
+          tileMirrorSource: 'auto',
+          mirrorConsentPrompted: true,
+          networkProxy: '',
+          providerStyles: { osm: 'standard' },
+          providerCredentials: {},
+          sceneMode: '3D',
+          setupGuideDismissed: null
+        }),
+        update: (patch) => {
+          updates.push(patch)
+          if (patch.tileMirrorSource !== undefined) {
+            return new Promise((resolve) => {
+              resolveSourceSave = () => resolve(patch)
+            })
+          }
+          return Promise.resolve(patch)
+        }
+      },
+      tiles: {
+        getMirrorStatus: async () => ({
+          mode: 'on',
+          sourcePreference: 'auto',
+          activeEndpoint: 'edgeone',
+          probingEndpoints: false,
+          endpointProbes: [],
+          mirroredProviders: ['osm'],
+          fallenBackProviders: [],
+          notice: ''
+        })
+      }
+    }
+  }
+  t.after(() => {
+    globalThis.window = originalWindow
+  })
+  setActivePinia(createPinia())
+  const store = useGlobeStore()
+  await store.hydrateSettings()
+
+  store.setTileMirrorSource('cloudflare')
+  assert.equal(store.tileMirrorSource, 'cloudflare')
+  assert.equal(store.activeMirrorEndpoint, 'cloudflare')
+  assert.deepEqual(updates[0], { tileMirrorSource: 'cloudflare' })
+
+  store.applyTileMirrorStatus({
+    mode: 'on',
+    sourcePreference: 'auto',
+    activeEndpoint: 'edgeone',
+    probingEndpoints: true,
+    endpointProbes: [{ endpoint: 'edgeone', ok: true, latencyMs: 65 }],
+    mirroredProviders: ['osm'],
+    fallenBackProviders: ['esri-imagery'],
+    notice: ''
+  })
+  assert.equal(store.tileMirrorSource, 'cloudflare')
+  assert.equal(store.activeMirrorEndpoint, 'cloudflare')
+  assert.equal(store.mirrorProbingEndpoints, true)
+  assert.deepEqual(store.mirrorFallenBackProviders, ['esri-imagery'])
+
+  store.setTerrainProvider('cesium-world-terrain')
+  assert.equal(Object.prototype.hasOwnProperty.call(updates[1], 'tileMirrorSource'), false)
+  assert.equal(updates[1].selectedTerrainProviderId, 'cesium-world-terrain')
+
+  resolveSourceSave()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(store.tileMirrorSource, 'cloudflare')
+
+  store.applyTileMirrorStatus({
+    mode: 'on',
+    sourcePreference: 'cloudflare',
+    activeEndpoint: 'cloudflare',
+    probingEndpoints: false,
+    endpointProbes: [{ endpoint: 'cloudflare', ok: true, latencyMs: 110 }],
+    mirroredProviders: ['osm'],
+    fallenBackProviders: [],
+    notice: ''
+  })
+  assert.equal(store.tileMirrorSource, 'cloudflare')
+  assert.equal(store.mirrorProbingEndpoints, false)
+  assert.deepEqual(store.mirrorFallenBackProviders, [])
+})
+

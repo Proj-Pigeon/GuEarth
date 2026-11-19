@@ -32,11 +32,16 @@ function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function normalizeRetryAttempts(attempts: number | undefined): number {
+  if (attempts === undefined || !Number.isFinite(attempts)) return TILE_FETCH_ATTEMPTS
+  return Math.max(1, Math.trunc(attempts))
+}
+
 export async function fetchTilePayloadWithRetry(
   fetcher: (signal: AbortSignal) => Promise<Response>,
   options: TileRetryOptions = {}
 ): Promise<FetchedTilePayload> {
-  const attempts = Math.max(1, options.attempts ?? TILE_FETCH_ATTEMPTS)
+  const attempts = normalizeRetryAttempts(options.attempts)
   const timeoutMs = options.timeoutMs ?? TILE_FETCH_TIMEOUT_MS
   const baseDelayMs = options.baseDelayMs ?? TILE_RETRY_BASE_DELAY_MS
   const sleep = options.sleep ?? defaultSleep

@@ -1037,6 +1037,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   async function retryBasemap(): Promise<void> {
     const currentViewer = viewer.value
     if (!currentViewer || currentViewer.isDestroyed()) return
+    const expectedGeneration = generation
     const id = store.selectedLayerId
     store.setGlobeError('')
     store.setGlobeLoadStage('正在重新加载地图…')
@@ -1050,12 +1051,28 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
         void 0
       }
     }
+    if (
+      viewer.value !== currentViewer
+      || currentViewer.isDestroyed()
+      || generation !== expectedGeneration
+      || store.selectedLayerId !== id
+    ) {
+      return
+    }
     const existing = imageryLayers.get(id)
     if (existing) {
       retireImageryLayer(existing)
       imageryLayers.delete(id)
     }
-    const result = await addLayer(id, generation)
+    const result = await addLayer(id, expectedGeneration)
+    if (
+      viewer.value !== currentViewer
+      || currentViewer.isDestroyed()
+      || generation !== expectedGeneration
+      || store.selectedLayerId !== id
+    ) {
+      return
+    }
     if (result.ok) {
       revealBasemap(id)
       return
