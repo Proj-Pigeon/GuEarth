@@ -51,6 +51,7 @@ function projectRing(ring: Cesium.Cartesian3[]): ProjectedRing | undefined {
     const plane = Cesium.EllipsoidTangentPlane.fromPoints(ring)
     const planar: Cesium.Cartesian2[] = []
     for (const cartesian of ring) {
+      if (Cesium.Cartesian3.dot(cartesian, plane.zAxis) <= 0) return undefined
       const projected = plane.projectPointOntoPlane(cartesian)
       if (!projected) return undefined
       planar.push(projected)
@@ -65,6 +66,17 @@ function orient(origin: Cesium.Cartesian2, first: Cesium.Cartesian2, second: Ces
   return (first.x - origin.x) * (second.y - origin.y) - (first.y - origin.y) * (second.x - origin.x)
 }
 
+function pointOnSegment(origin: Cesium.Cartesian2, end: Cesium.Cartesian2, point: Cesium.Cartesian2): boolean {
+  const edgeX = end.x - origin.x
+  const edgeY = end.y - origin.y
+  const lengthSquared = edgeX * edgeX + edgeY * edgeY
+  if (!(lengthSquared > 0)) return false
+  const cross = edgeX * (point.y - origin.y) - edgeY * (point.x - origin.x)
+  if (cross * cross > lengthSquared * 1e-20) return false
+  const dot = (point.x - origin.x) * edgeX + (point.y - origin.y) * edgeY
+  return dot >= 0 && dot <= lengthSquared
+}
+
 function edgesCross(planar: Cesium.Cartesian2[]): boolean {
   const count = planar.length
   for (let start = 0; start < count; start += 1) {
@@ -72,9 +84,19 @@ function edgesCross(planar: Cesium.Cartesian2[]): boolean {
     for (let other = start + 1; other < count; other += 1) {
       const otherEnd = (other + 1) % count
       if (startEnd === other || start === otherEnd || startEnd === otherEnd) continue
-      const acrossStart = orient(planar[start], planar[startEnd], planar[other]) * orient(planar[start], planar[startEnd], planar[otherEnd])
-      const acrossOther = orient(planar[other], planar[otherEnd], planar[start]) * orient(planar[other], planar[otherEnd], planar[startEnd])
+      const startEdge = planar[start]
+      const startEdgeEnd = planar[startEnd]
+      const otherEdge = planar[other]
+      const otherEdgeEnd = planar[otherEnd]
+      const acrossStart = orient(startEdge, startEdgeEnd, otherEdge) * orient(startEdge, startEdgeEnd, otherEdgeEnd)
+      const acrossOther = orient(otherEdge, otherEdgeEnd, startEdge) * orient(otherEdge, otherEdgeEnd, startEdgeEnd)
       if (acrossStart < 0 && acrossOther < 0) return true
+      if (
+        pointOnSegment(startEdge, startEdgeEnd, otherEdge) ||
+        pointOnSegment(startEdge, startEdgeEnd, otherEdgeEnd) ||
+        pointOnSegment(otherEdge, otherEdgeEnd, startEdge) ||
+        pointOnSegment(otherEdge, otherEdgeEnd, startEdgeEnd)
+      ) return true
     }
   }
   return false

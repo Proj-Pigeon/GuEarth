@@ -218,6 +218,15 @@ test('polygon area drops a true duplicate geocentric direction', () => {
     Cesium.Cartesian3.fromDegrees(10, 60.05)
   ]
   assertReportedArea(polygonArea(cell), HIGH_LATITUDE_GEODESIC_M2)
+  const farRadial = [
+    origin,
+    Cesium.Cartesian3.multiplyByScalar(origin, 1.001, new Cesium.Cartesian3()),
+    Cesium.Cartesian3.fromDegrees(10.05, 60),
+    Cesium.Cartesian3.fromDegrees(10.05, 60.05),
+    Cesium.Cartesian3.fromDegrees(10, 60.05)
+  ]
+  assert.ok(Cesium.Cartesian3.angleBetween(origin, farRadial[1]) < Cesium.Math.EPSILON12)
+  assert.ok(Math.abs(polygonArea(farRadial) - HIGH_LATITUDE_GEODESIC_M2) > labelTolerance(HIGH_LATITUDE_GEODESIC_M2))
   const equatorial = [
     Cesium.Cartesian3.fromDegrees(0, 0, 0),
     Cesium.Cartesian3.fromDegrees(0, 0, 5000),
@@ -252,6 +261,22 @@ test('self-intersecting polygons report the rendered fill instead of cancelling 
   const star = polygonArea(ringCartesians([[0, 0], [2, -1], [0.5, -3], [-1.5, -1], [0.5, -0.2]]))
   assertReportedArea(star, starFilled)
   assert.ok(Math.abs(star - starCancelled) > labelTolerance(starFilled))
+})
+
+test('a ring that meets only at a repeated vertex reports the rendered lobe', () => {
+  const touch = [[-1, -1], [0, 0], [1, 1], [-1, 1], [0, 0], [1, -1]]
+  const area = polygonArea(ringCartesians(touch))
+  assertReportedArea(area, 12309734185.834341)
+  assert.ok(area > labelTolerance(area))
+})
+
+test('separated collinear edges stay on the geodesic area', () => {
+  const stepped = [[0, 0], [1, 0], [1, 1], [2, 1], [2, 0], [3, 0], [3, 2], [0, 2]]
+  assertReportedArea(polygonArea(ringCartesians(stepped)), 61548025574.44525)
+})
+
+test('a simple ring outside the tangent hemisphere keeps the geodesic area', () => {
+  assertReportedArea(polygonArea(ringCartesians([[-170, 20], [-10, 20], [10, -10], [170, -10]])), 227054440823306.5, 1)
 })
 
 test('a ring that revisits a vertex keeps the simple polygon area', () => {
