@@ -10,9 +10,17 @@ files:
   - '!resources/bin/**'
   - '!node_modules/**'
   - node_modules/koffi/**
-  - '!node_modules/koffi/src/**'
   - '!node_modules/koffi/doc/**'
+  - '!node_modules/koffi/lib/**'
   - '!node_modules/koffi/vendor/**'
+  - '!node_modules/koffi/cnoke.cjs'
+  - '!node_modules/koffi/src/**/*.cc'
+  - '!node_modules/koffi/src/**/*.hh'
+  - '!node_modules/koffi/src/**/*.asm'
+  - '!node_modules/koffi/src/**/*.S'
+  - '!node_modules/koffi/src/**/*.inc'
+  - '!node_modules/koffi/src/**/*.def'
+  - '!node_modules/koffi/src/**/CMakeLists.txt'
   - node_modules/@koromix/koffi-*/**
 asarUnpack:
   - out/renderer/cesium/**

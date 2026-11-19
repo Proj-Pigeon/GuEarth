@@ -1,6 +1,6 @@
 import { cpSync, createReadStream, existsSync, statSync } from 'fs'
 import { extname, join, resolve, sep } from 'path'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import { defineConfig } from 'electron-vite'
 import type { Connect, Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
@@ -46,9 +46,10 @@ function cesiumStaticPlugin(): Plugin {
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
     build: {
+      externalizeDeps: false,
       rollupOptions: {
+        external: ['koffi'],
         input: {
           index: resolve('src/main/index.ts'),
           hawdbWorker: resolve('src/main/ai/hawdb/worker.ts')
@@ -57,7 +58,9 @@ export default defineConfig({
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()]
+    build: {
+      externalizeDeps: false
+    }
   },
   renderer: {
     resolve: {
