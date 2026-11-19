@@ -1,7 +1,10 @@
 import { reactive } from 'vue'
 import * as Sentry from '@sentry/electron/renderer'
 import { logger, stringifyLogValue } from '../../../common/logger'
+import { surfaceFailureAlreadyShown } from '../../../common/globeSurface'
 import { describeResourceFailure } from '../../../common/resourceFailure'
+import { capturePosthogException } from '../posthog'
+import { isErrorReportingEnabled } from './privacyRuntime'
 
 const MODAL_REOPEN_COOLDOWN_MS = 3000
 const MODAL_OPEN_LIMIT = 5
@@ -49,11 +52,15 @@ export function notifyCrashMessage(message: string): void {
 
 export function captureError(scope: string, error: unknown, extra?: Record<string, unknown>): void {
   logger.error(scope, describeError(error), error)
+  if (!surfaceFailureAlreadyShown(extra)) notifyCrashMessage(describeError(error))
+  if (!isErrorReportingEnabled()) return
+  capturePosthogException(error)
   Sentry.captureException(error, { tags: { scope }, extra })
 }
 
 export function captureWarning(scope: string, message: string, extra?: Record<string, unknown>): void {
   logger.warn(scope, message)
+  if (!isErrorReportingEnabled()) return
   Sentry.captureMessage(message, { level: 'warning', tags: { scope }, extra })
 }
 
@@ -61,6 +68,7 @@ export function installGlobalErrorListeners(): void {
   window.addEventListener('error', (event) => {
     if (!event.message && !event.error) return
     showModal(event.message || describeError(event.error))
+    if (isErrorReportingEnabled()) capturePosthogException(event.error ?? new Error(event.message))
   })
   window.addEventListener('unhandledrejection', (event) => {
     const resourceFailure = describeResourceFailure(event.reason)
@@ -69,6 +77,7 @@ export function installGlobalErrorListeners(): void {
       return
     }
     showModal(describeError(event.reason))
+    if (isErrorReportingEnabled()) capturePosthogException(event.reason)
   })
 }
 

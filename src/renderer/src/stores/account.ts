@@ -3,8 +3,11 @@ import { defineStore } from 'pinia'
 import type { AccountPhase, AccountProfile, AccountState } from '../../../preload'
 import { accountPhaseLabel } from '../../../common/passport'
 import { ipcErrorMessage } from '../lib/ipcError'
+import { isTelemetryEnabled, onPrivacySettingsChange } from '../lib/privacyRuntime'
+import { identifyTelemetryUser, isTelemetryUserIdentified, resetTelemetryIdentity } from '../posthog'
 
 let bound = false
+let identifiedSub: string | null = null
 
 export const useAccountStore = defineStore('account', () => {
   const phase = ref<AccountPhase>('signed-out')
@@ -33,7 +36,36 @@ export const useAccountStore = defineStore('account', () => {
   })
   const phaseLabel = computed(() => accountPhaseLabel(phase.value))
 
+  function syncIdentity(currentPhase: AccountPhase, currentProfile: AccountProfile | null): void {
+    const nextSub = currentPhase === 'signed-in' ? currentProfile?.sub.trim() ?? '' : ''
+
+    if (!isTelemetryEnabled()) {
+      if (identifiedSub || isTelemetryUserIdentified()) resetTelemetryIdentity()
+      identifiedSub = null
+      return
+    }
+
+    if (nextSub) {
+      if (identifiedSub && nextSub !== identifiedSub) resetTelemetryIdentity()
+      if (nextSub !== identifiedSub || !isTelemetryUserIdentified()) {
+        const personProperties: Record<string, string> = {}
+        if (currentProfile?.email) personProperties.email = currentProfile.email
+        if (currentProfile?.name) personProperties.name = currentProfile.name
+        identifyTelemetryUser(nextSub, personProperties)
+        identifiedSub = nextSub
+      }
+      return
+    }
+
+    if (identifiedSub || isTelemetryUserIdentified()) {
+      resetTelemetryIdentity()
+      identifiedSub = null
+    }
+  }
+
   function applyState(state: AccountState): void {
+    syncIdentity(state.phase, state.profile)
+
     phase.value = state.phase
     profile.value = state.profile
     userCode.value = state.challenge?.userCode ?? ''
@@ -49,6 +81,7 @@ export const useAccountStore = defineStore('account', () => {
   async function hydrate(): Promise<void> {
     if (bound) return
     bound = true
+    onPrivacySettingsChange(() => syncIdentity(phase.value, profile.value))
     window.guEarth.account.onState(applyState)
     try {
       applyState(await window.guEarth.account.getState())

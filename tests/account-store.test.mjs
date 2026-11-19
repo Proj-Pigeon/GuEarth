@@ -6,8 +6,30 @@ import { pathToFileURL } from 'node:url'
 import { createPinia, setActivePinia } from 'pinia'
 import { accountPhaseLabel, signedOutAccountState } from '../src/common/passport.ts'
 
+const posthogState = {
+  identified: false,
+  identifies: [],
+  resets: 0
+}
+globalThis.__posthogStub = posthogState
+
+const posthogStubUrl = `data:text/javascript,${encodeURIComponent(`
+export function identifyTelemetryUser(id, props) {
+  globalThis.__posthogStub.identified = true
+  globalThis.__posthogStub.identifies.push({ id, props })
+}
+export function resetTelemetryIdentity() {
+  globalThis.__posthogStub.identified = false
+  globalThis.__posthogStub.resets += 1
+}
+export function isTelemetryUserIdentified() {
+  return globalThis.__posthogStub.identified
+}
+`)}`
+
 registerHooks({
   resolve(specifier, context, nextResolve) {
+    if (specifier === '../posthog' || specifier.endsWith('/posthog')) return { url: posthogStubUrl, shortCircuit: true }
     if (specifier.startsWith('@renderer/')) return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)
     try {
       return nextResolve(specifier, context)
@@ -215,4 +237,31 @@ test('a session invalidated by Passport drops back to signed-out with a re-login
   assert.equal(store.phase, 'signed-out')
   assert.equal(store.signedIn, false)
   assert.equal(store.error, '登录状态已失效，请重新登录')
+})
+
+test('telemetry identity is never sent while telemetryEnabled is off and resets stale identity when signed out', async () => {
+  const { applyRendererPrivacySettings } = await import('../src/renderer/src/lib/privacyRuntime.ts')
+  posthogState.identifies.length = 0
+  posthogState.resets = 0
+  posthogState.identified = false
+
+  emit(signedInState())
+  assert.equal(posthogState.identifies.length, 0)
+
+  applyRendererPrivacySettings({ errorReportingEnabled: false, telemetryEnabled: true, aiTelemetryEnabled: false })
+  assert.equal(posthogState.identifies.length, 1)
+  assert.equal(posthogState.identifies[0].id, 'usr_123')
+  assert.equal(posthogState.resets, 0)
+
+  applyRendererPrivacySettings({ errorReportingEnabled: false, telemetryEnabled: false, aiTelemetryEnabled: false })
+  assert.equal(posthogState.resets, 1)
+  assert.equal(posthogState.identified, false)
+
+  posthogState.identified = true
+  applyRendererPrivacySettings({ errorReportingEnabled: false, telemetryEnabled: true, aiTelemetryEnabled: false })
+  emit(signedOutAccountState(DEVICE_LIST_URL))
+  assert.equal(posthogState.identified, false)
+  assert.ok(posthogState.resets >= 2)
+
+  applyRendererPrivacySettings({ errorReportingEnabled: false, telemetryEnabled: false, aiTelemetryEnabled: false })
 })

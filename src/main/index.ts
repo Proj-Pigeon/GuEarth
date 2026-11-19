@@ -27,18 +27,40 @@ import { describeTileFetchError, fetchTilePayloadWithRetry, sanitizeTileUrlForLo
 import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
 import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
 import { ENSO_PHASE_SET, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS, type EnsoPhase } from '../common/thematicState'
+import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../common/privacy'
 
 attachConsoleLogTee('main')
 
+function readInitialErrorReportingEnabled(): boolean {
+  try {
+    const raw = readFileSync(join(app.getPath('userData'), 'settings.json'), 'utf8')
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return DEFAULT_PRIVACY_SETTINGS.errorReportingEnabled
+    }
+    return resolvePrivacySettings(parsed as Record<string, unknown>).errorReportingEnabled
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | null)?.code
+    if (code === 'ENOENT') return DEFAULT_PRIVACY_SETTINGS.errorReportingEnabled
+    return false
+  }
+}
+
+let errorReportingEnabled = readInitialErrorReportingEnabled()
+let sentryIntegrationsInstalled = errorReportingEnabled
+
 Sentry.init({
   dsn: 'https://28239780e3a5ede424bde1114849f448@o4509333304573952.ingest.us.sentry.io/4512192370769920',
+  enabled: errorReportingEnabled,
+  sendClientReports: false,
   beforeSend(event) {
+    if (!errorReportingEnabled) return null
     event.extra = { ...event.extra, mainProcessLogs: logger.dump(80) }
     return event
   }
 })
 import { execFileSync, spawn } from 'child_process'
-import { rmSync } from 'fs'
+import { readFileSync, rmSync } from 'fs'
 import { dirname, join } from 'path'
 import { flushJsonWrites, readJson, serialQueue, writeAtomic, writeJson } from './jsonStore'
 import { listTileFiles, pruneTileFiles } from './tileCacheFiles'
@@ -66,6 +88,8 @@ import { ensureTyphoons, getOnlineData, getStartupEarthquakes, invalidateTyphoon
 import { listLaboratoryProviders, removeLaboratoryProvider, saveLaboratoryProvider } from './laboratory'
 import { initUpdater } from './updater'
 import { initAccount } from './account'
+import { setAiPosthogEnabled, shutdownPosthog } from './ai/posthog'
+import { capturePosthogLog, setPosthogLogsEnabled, shutdownPosthogLogs } from './posthogLogs'
 
 interface PersistedSettings {
   selectedImageryProviderId: string
@@ -81,6 +105,9 @@ interface PersistedSettings {
   providerCredentials: Record<string, ProviderCredentialStatus>
   sceneMode: '2D' | '3D'
   setupGuideDismissed: boolean | null
+  errorReportingEnabled: boolean
+  telemetryEnabled: boolean
+  aiTelemetryEnabled: boolean
   recordingDirectory: string | null
 }
 
@@ -103,6 +130,7 @@ const defaultSettings: PersistedSettings = {
   providerCredentials: {},
   sceneMode: '3D',
   setupGuideDismissed: null,
+  ...DEFAULT_PRIVACY_SETTINGS,
   recordingDirectory: null
 }
 
@@ -171,6 +199,7 @@ async function readSettings(): Promise<PersistedSettings> {
     const storedTerrainProviderId = typeof parsed.selectedTerrainProviderId === 'string' ? parsed.selectedTerrainProviderId : defaultSettings.selectedTerrainProviderId
     const terrainProviderId = storedTerrainProviderId === 'mapbox-terrain' ? 'cesium-world-terrain' : storedTerrainProviderId
     const resolvedMirror = resolveStoredTileMirrorSettings(parsed.tileMirrorMode, parsed.tileMirrorEnabled, parsed.mirrorConsentPrompted)
+    const resolvedPrivacy = resolvePrivacySettings(parsed)
     tileCacheNamespaceStale = hasLegacyTileMirrorSetting(parsed.tileMirrorMode, parsed.tileMirrorEnabled)
     return {
       selectedImageryProviderId: typeof parsed.selectedImageryProviderId === 'string' ? parsed.selectedImageryProviderId : defaultSettings.selectedImageryProviderId,
@@ -186,6 +215,7 @@ async function readSettings(): Promise<PersistedSettings> {
       providerCredentials,
       sceneMode: parsed.sceneMode === '2D' ? '2D' : '3D',
       setupGuideDismissed: typeof parsed.setupGuideDismissed === 'boolean' ? parsed.setupGuideDismissed : null,
+      ...resolvedPrivacy,
       recordingDirectory: typeof parsed.recordingDirectory === 'string' && parsed.recordingDirectory.trim() ? parsed.recordingDirectory : null
     }
   } catch (error) {
@@ -236,6 +266,20 @@ async function usableRecordingDirectory(): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+function applyPrivacySettings(current: PersistedSettings): void {
+  errorReportingEnabled = current.errorReportingEnabled
+  const sentryClient = Sentry.getClient()
+  if (sentryClient) {
+    sentryClient.getOptions().enabled = current.errorReportingEnabled
+    if (current.errorReportingEnabled && !sentryIntegrationsInstalled) {
+      sentryIntegrationsInstalled = true
+      sentryClient.init()
+    }
+  }
+  setPosthogLogsEnabled(current.errorReportingEnabled)
+  setAiPosthogEnabled(current.aiTelemetryEnabled)
 }
 
 function settingsSnapshot(): GuEarthSettings {
@@ -1056,8 +1100,23 @@ function registerIpcHandlers(): void {
         if (typeof patch.setupGuideDismissed !== 'boolean') throw new Error('无效的向导设置')
         nextSettings.setupGuideDismissed = patch.setupGuideDismissed
       }
+      if (patch.errorReportingEnabled !== undefined) {
+        if (typeof patch.errorReportingEnabled !== 'boolean') throw new Error('无效的错误报告设置')
+        nextSettings.errorReportingEnabled = patch.errorReportingEnabled
+      }
+      if (patch.telemetryEnabled !== undefined) {
+        if (typeof patch.telemetryEnabled !== 'boolean') throw new Error('无效的遥测设置')
+        nextSettings.telemetryEnabled = patch.telemetryEnabled
+      }
+      if (patch.aiTelemetryEnabled !== undefined) {
+        if (typeof patch.aiTelemetryEnabled !== 'boolean') throw new Error('无效的 AI 使用信息上报设置')
+        nextSettings.aiTelemetryEnabled = patch.aiTelemetryEnabled
+      }
       return nextSettings
     })
+    if (patch.errorReportingEnabled !== undefined || patch.telemetryEnabled !== undefined || patch.aiTelemetryEnabled !== undefined) {
+      applyPrivacySettings(settings)
+    }
     if (patch.networkProxy !== undefined) {
       void applyNetworkProxy().then(() => {
         const recovered = tileMirrorRouter.resetMirrorFallback()
@@ -1782,13 +1841,17 @@ function createWindow(): void {
 
   win.webContents.on('render-process-gone', (_event, details) => {
     logger.error('window', `渲染进程退出（${details.reason}）`, `exitCode=${details.exitCode}`)
-    Sentry.captureMessage(`渲染进程退出：${details.reason}`, { level: 'fatal', extra: { exitCode: details.exitCode } })
+    if (errorReportingEnabled) {
+      Sentry.captureMessage(`渲染进程退出：${details.reason}`, { level: 'fatal', extra: { exitCode: details.exitCode } })
+    }
   })
 
   win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     if (!isMainFrame || errorCode === -3) return
     logger.error('window', '页面加载失败', `${errorCode} ${errorDescription} ${validatedURL}`)
-    Sentry.captureMessage('渲染页面加载失败', { level: 'error', extra: { errorCode, errorDescription, url: validatedURL } })
+    if (errorReportingEnabled) {
+      Sentry.captureMessage('渲染页面加载失败', { level: 'error', extra: { errorCode, errorDescription, url: validatedURL } })
+    }
   })
 
   if (process.env['ELECTRON_RENDERER_URL']) {
@@ -1823,6 +1886,7 @@ app.whenReady().then(async () => {
   initDatasets(userDataPath)
   await mkdir(tileCachePath, { recursive: true })
   settings = await readSettings()
+  applyPrivacySettings(settings)
   tileMirrorRouter.setMode(settings.tileMirrorMode)
   mirrorEndpointManager.setPreference(settings.tileMirrorSource)
   syncMirrorConsumers()
@@ -1864,6 +1928,7 @@ app.whenReady().then(async () => {
   initUpdater(join(userDataPath, 'updates'))
   initAccount()
   logger.info('app', '主进程服务就绪')
+  capturePosthogLog('info', 'main_process_ready')
   protocol.handle('guearth-tile', async (request) => {
     const response = await serveTileResponse(
       () => handleTileProtocol(request),
@@ -1885,7 +1950,9 @@ app.on('before-quit', (event) => {
   if (quitting) return
   event.preventDefault()
   quitting = true
-  void flushJsonWrites().finally(() => app.quit())
+  void Promise.all([shutdownPosthog(), shutdownPosthogLogs()])
+    .finally(() => flushJsonWrites())
+    .finally(() => app.quit())
 })
 
 app.on('will-quit', () => {
@@ -1905,6 +1972,11 @@ let gpuCrashReportedAt = 0
 app.on('child-process-gone', (_event, details) => {
   if (details.type !== 'GPU') return
   logger.error('gpu', `GPU 进程退出（${details.reason}）`, `exitCode=${details.exitCode}`)
+  capturePosthogLog('error', 'gpu_process_exited', {
+    exit_code: details.exitCode,
+    reason: details.reason
+  })
+  if (!errorReportingEnabled) return
   if (Date.now() - gpuCrashReportedAt < 60_000) return
   gpuCrashReportedAt = Date.now()
   Sentry.captureMessage(`GPU 进程退出：${details.reason}`, { level: 'error', extra: { exitCode: details.exitCode } })
