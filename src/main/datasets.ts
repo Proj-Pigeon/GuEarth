@@ -2,21 +2,24 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { net } from 'electron'
 import type { EarthquakeFeed, ProvinceFeature, ProvinceGeoDocument } from '../preload'
-import { EDGEONE_EARTHQUAKES_URL } from '../common/tileMirror'
+import { DEFAULT_MIRROR_ENDPOINT, mirrorEarthquakesUrl, type MirrorEndpointId } from '../common/tileMirror'
 import { gcj02ToWgs84 } from './geo/gcj02'
 import { writeJson } from './jsonStore'
 import provincesAssetPath from '../../resources/geo/china-provinces.geojson?asset'
 
 const EARTHQUAKE_FEED_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_month.geojson'
-const EARTHQUAKE_MIRROR_URL = EDGEONE_EARTHQUAKES_URL
 const FETCH_TIMEOUT_MS = 15000
 
 let earthquakesPath = ''
-let datasetMirrorEnabled = false
+let datasetMirrorEndpoint: MirrorEndpointId | null = null
 let provinceGeometry: ProvinceGeoDocument | null = null
 
+export function setDatasetMirrorEndpoint(endpoint: MirrorEndpointId | null): void {
+  datasetMirrorEndpoint = endpoint
+}
+
 export function setDatasetMirrorEnabled(enabled: boolean): void {
-  datasetMirrorEnabled = enabled
+  datasetMirrorEndpoint = enabled ? DEFAULT_MIRROR_ENDPOINT : null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -82,9 +85,9 @@ async function fetchFeedFromUrl(url: string): Promise<EarthquakeFeed['events']> 
 }
 
 async function fetchFeed(): Promise<EarthquakeFeed['events']> {
-  if (datasetMirrorEnabled) {
+  if (datasetMirrorEndpoint) {
     try {
-      return await fetchFeedFromUrl(EARTHQUAKE_MIRROR_URL)
+      return await fetchFeedFromUrl(mirrorEarthquakesUrl(datasetMirrorEndpoint))
     } catch {
       return fetchFeedFromUrl(EARTHQUAKE_FEED_URL)
     }

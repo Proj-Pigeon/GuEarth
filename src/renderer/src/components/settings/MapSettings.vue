@@ -1,13 +1,30 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons-vue'
 import { credentialOnlyProviders, providerCatalog, useGlobeStore } from '@renderer/stores/globe'
 import { networkProxyMode, normalizeNetworkProxy, type NetworkProxyMode } from '../../../../common/networkProxy'
+import {
+  mirrorEndpointLabel,
+  mirrorEndpointShortLabel,
+  type MirrorEndpointPreference
+} from '../../../../common/tileMirror'
 
 const globeStore = useGlobeStore()
-const { networkProxy, selectedLayerId, tileCacheEnabled, tileMirrorMode, mirroredProviders, mirrorFallenBackProviders, providerCredentials } = storeToRefs(globeStore)
+const {
+  networkProxy,
+  selectedLayerId,
+  tileCacheEnabled,
+  tileMirrorMode,
+  tileMirrorSource,
+  activeMirrorEndpoint,
+  mirrorProbingEndpoints,
+  mirrorEndpointProbes,
+  mirroredProviders,
+  mirrorFallenBackProviders,
+  providerCredentials
+} = storeToRefs(globeStore)
 
 const tileMirrorEnabled = computed(() => tileMirrorMode.value === 'on')
 const tileMirrorRouteActive = computed(() => tileMirrorEnabled.value || mirroredProviders.value.length > 0)
@@ -17,14 +34,68 @@ const tileMirrorFallenBack = computed(() =>
   && (mirrorFallenBackProviders.value.includes(selectedLayerId.value) || mirroredProviders.value.length === 0)
 )
 const tileMirrorStatusColor = computed(() => (tileMirrorFallenBack.value ? 'orange' : tileMirrorRouteActive.value ? 'blue' : undefined))
-const tileMirrorStatusLabel = computed(() => (tileMirrorFallenBack.value ? '镜像异常，已回退直连' : tileMirrorRouteActive.value ? '已启用镜像' : '直连原服务'))
+const tileMirrorStatusLabel = computed(() => {
+  if (tileMirrorFallenBack.value) return '镜像异常，已回退直连'
+  if (tileMirrorRouteActive.value) {
+    if (mirrorProbingEndpoints.value) return '正在匹配镜像源…'
+    return `已启用 · ${mirrorEndpointShortLabel(activeMirrorEndpoint.value)}`
+  }
+  return '直连原服务'
+})
+const tileMirrorSourceHint = computed(() => {
+  if (tileMirrorSource.value === 'auto') {
+    if (mirrorProbingEndpoints.value) return '正在测速 EdgeOne 与 Cloudflare，自动选择最适合当前网络的镜像源…'
+    return `每次启动自动测速并在 EdgeOne 与 Cloudflare 中选择更优线路，当前使用：${mirrorEndpointLabel(activeMirrorEndpoint.value)}`
+  }
+  return `已固定使用 ${mirrorEndpointLabel(tileMirrorSource.value)}，启动时不会自动切换`
+})
+const mirrorProbeEntries = computed(() =>
+  mirrorEndpointProbes.value.map((probe) => ({
+    endpoint: probe.endpoint,
+    label: mirrorEndpointShortLabel(probe.endpoint),
+    ok: probe.ok,
+    text: probe.ok && probe.latencyMs !== null ? `${probe.latencyMs} ms` : (probe.error ? `不可用（${probe.error}）` : '不可用')
+  }))
+)
+
+onMounted(() => {
+  if (typeof window.guEarth?.tiles?.getMirrorStatus !== 'function') return
+  void window.guEarth.tiles.getMirrorStatus().then((status) => {
+    globeStore.applyTileMirrorStatus(status)
+  }).catch(() => undefined)
+})
+
+function handleTileMirrorSourceChange(event: { target: { value: MirrorEndpointPreference } }): void {
+  globeStore.setTileMirrorSource(event.target.value)
+}
+
+async function reprobeMirrorEndpoints(): Promise<void> {
+  if (mirrorProbingEndpoints.value || typeof window.guEarth?.tiles?.probeMirrorEndpoints !== 'function') return
+  try {
+    const status = await window.guEarth.tiles.probeMirrorEndpoints()
+    globeStore.applyTileMirrorStatus(status)
+    const probes = status.endpointProbes ?? []
+    const anyReachable = probes.some((probe) => probe.ok)
+    if (!anyReachable) {
+      message.warning('镜像源测速失败，请检查网络连接或代理设置')
+      return
+    }
+    const active = status.activeEndpoint ?? activeMirrorEndpoint.value
+    if (tileMirrorSource.value === 'auto') {
+      message.success(`测速完成，已匹配 ${mirrorEndpointShortLabel(active)} 镜像源`)
+    } else {
+      message.success('镜像源测速完成')
+    }
+  } catch {
+    message.error('镜像源测速失败，请重试')
+  }
+}
 
 async function retryTileMirror(): Promise<void> {
   if (typeof window.guEarth?.tiles?.resetMirrorFallback !== 'function') return
   try {
     const status = await window.guEarth.tiles.resetMirrorFallback()
-    globeStore.setMirroredProviders(status.mirroredProviders)
-    globeStore.setMirrorFallenBackProviders(status.fallenBackProviders ?? [])
+    globeStore.applyTileMirrorStatus(status)
     message.info('已重新尝试镜像线路')
   } catch {
     message.error('重置镜像状态失败，请重试')
@@ -223,6 +294,37 @@ async function testProxy(): Promise<void> {
           @change="handleTileMirrorSwitchChange"
         />
       </div>
+      <div v-if="tileMirrorEnabled" class="mirror-source-section">
+        <div class="mirror-source-header">
+          <span class="mirror-source-heading">镜像服务源</span>
+          <a-button
+            size="small"
+            :loading="mirrorProbingEndpoints"
+            @click="reprobeMirrorEndpoints"
+          >
+            {{ mirrorProbingEndpoints ? '测速中…' : '重新测速' }}
+          </a-button>
+        </div>
+        <a-radio-group
+          :value="tileMirrorSource"
+          class="proxy-mode-group"
+          @change="handleTileMirrorSourceChange"
+        >
+          <a-radio-button value="auto">自动匹配</a-radio-button>
+          <a-radio-button value="edgeone">EdgeOne</a-radio-button>
+          <a-radio-button value="cloudflare">Cloudflare</a-radio-button>
+        </a-radio-group>
+        <p class="mirror-source-hint">{{ tileMirrorSourceHint }}</p>
+        <div v-if="mirrorProbeEntries.length > 0" class="mirror-probe-list">
+          <span
+            v-for="entry in mirrorProbeEntries"
+            :key="entry.endpoint"
+            :class="['mirror-probe-item', entry.ok ? 'mirror-probe-ok' : 'mirror-probe-fail']"
+          >
+            {{ entry.label }}：{{ entry.text }}
+          </span>
+        </div>
+      </div>
     </section>
   </section>
 </template>
@@ -251,4 +353,12 @@ async function testProxy(): Promise<void> {
 .proxy-result{margin-top:8px;color:rgba(0,0,0,0.65);font-size:12px;line-height:20px;word-break:break-all}
 .proxy-result-ok{color:#389e0d}
 .proxy-result-fail{color:#cf1322}
+.mirror-source-section{margin-top:16px;padding-top:12px;border-top:1px solid rgba(5,5,5,0.06)}
+.mirror-source-header{display:flex;align-items:center;justify-content:space-between;gap:8px;max-width:420px;margin-bottom:8px}
+.mirror-source-heading{color:rgba(0,0,0,0.65);font-size:12px;line-height:20px}
+.mirror-source-hint{margin:8px 0 0;color:rgba(0,0,0,0.45);font-size:12px;line-height:20px}
+.mirror-probe-list{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px;font-size:12px;line-height:20px}
+.mirror-probe-item{color:rgba(0,0,0,0.65)}
+.mirror-probe-ok{color:#389e0d}
+.mirror-probe-fail{color:#cf1322}
 </style>

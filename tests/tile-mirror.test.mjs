@@ -19,6 +19,8 @@ import {
   tileRetryDelayMs
 } from '../src/common/tileProtocol.ts'
 import {
+  CLOUDFLARE_MIRROR_BASE_URL,
+  DEFAULT_MIRROR_ENDPOINT,
   EDGEONE_ARCGIS_TERRAIN_URL,
   EDGEONE_EARTHQUAKES_URL,
   EDGEONE_MIRROR_BASE_URL,
@@ -30,12 +32,20 @@ import {
   isMirrorSatelliteProvider,
   MIRROR_FALLBACK_COOLDOWN_MS,
   MIRROR_FAILURES_BEFORE_FALLBACK,
+  mirrorArcGisTerrainUrl,
   mirrorCacheStyleId,
+  mirrorEarthquakesUrl,
   mirrorEligibleProviders,
+  MirrorEndpointManager,
+  mirrorModelsDevUrl,
+  mirrorProbeUrl,
+  mirrorTileUrl,
+  normalizeMirrorEndpointPreference,
   normalizeTileMirrorMode,
   ORIGIN_FAILURES_BEFORE_MIRROR,
   originProbeReachable,
   resolveStoredTileMirrorSettings,
+  selectBestMirrorEndpoint,
   TileMirrorRouter,
   tileMirrorModes,
   withinMirrorSatelliteDetail
@@ -633,5 +643,176 @@ test('tile log helpers strip query secrets and include error cause', () => {
   )
   const err = new Error('fetch failed', { cause: new Error('net::ERR_CONNECTION_REFUSED') })
   assert.match(describeTileFetchError(err), /Error: fetch failed \(Error: net::ERR_CONNECTION_REFUSED\)/)
+})
+
+test('multi-mirror URL builders support both EdgeOne and Cloudflare endpoints', () => {
+  assert.equal(CLOUDFLARE_MIRROR_BASE_URL, 'https://cf.proxy.project-pigeon.com')
+  assert.equal(mirrorArcGisTerrainUrl('edgeone'), 'https://proxy.project-pigeon.com/arcgis')
+  assert.equal(mirrorArcGisTerrainUrl('cloudflare'), 'https://cf.proxy.project-pigeon.com/arcgis')
+  assert.equal(mirrorEarthquakesUrl('cloudflare'), 'https://cf.proxy.project-pigeon.com/datasets/earthquakes')
+  assert.equal(mirrorModelsDevUrl('cloudflare'), 'https://cf.proxy.project-pigeon.com/modelsdev')
+  assert.equal(mirrorProbeUrl('edgeone'), 'https://proxy.project-pigeon.com/tiles/esri/1/0/0')
+  assert.equal(mirrorProbeUrl('cloudflare'), 'https://cf.proxy.project-pigeon.com/tiles/esri/1/0/0')
+  assert.equal(mirrorTileUrl('osm', 5, 12, 8, undefined, 'cloudflare'), 'https://cf.proxy.project-pigeon.com/tiles/osm/5/12/8.png')
+  assert.equal(mirrorTileUrl('esri-imagery', 6, 25, 13, undefined, 'cloudflare'), 'https://cf.proxy.project-pigeon.com/tiles/esri/6/13/25')
+  assert.equal(mirrorTileUrl('opentopomap', 10, 5, 6, undefined, 'cloudflare'), 'https://cf.proxy.project-pigeon.com/tiles/opentopo/10/5/6.png')
+  assert.equal(
+    mirrorTileUrl('viirs-night', 8, 120, 80, '2026-11-19', 'cloudflare'),
+    'https://cf.proxy.project-pigeon.com/tiles/viirs/2026-11-19/8/80/120.jpeg'
+  )
+  assert.equal(normalizeMirrorEndpointPreference('auto'), 'auto')
+  assert.equal(normalizeMirrorEndpointPreference('edgeone'), 'edgeone')
+  assert.equal(normalizeMirrorEndpointPreference('cloudflare'), 'cloudflare')
+  assert.equal(normalizeMirrorEndpointPreference('unknown'), 'auto')
+  assert.equal(normalizeMirrorEndpointPreference(undefined), 'auto')
+})
+
+test('selectBestMirrorEndpoint chooses the fastest reachable mirror and breaks ties consistently', () => {
+  assert.equal(
+    selectBestMirrorEndpoint([
+      { endpoint: 'edgeone', ok: true, latencyMs: 240 },
+      { endpoint: 'cloudflare', ok: true, latencyMs: 95 }
+    ]),
+    'cloudflare'
+  )
+  assert.equal(
+    selectBestMirrorEndpoint([
+      { endpoint: 'edgeone', ok: false, latencyMs: null, error: 'timeout' },
+      { endpoint: 'cloudflare', ok: true, latencyMs: 310 }
+    ]),
+    'cloudflare'
+  )
+  assert.equal(
+    selectBestMirrorEndpoint([
+      { endpoint: 'edgeone', ok: true, latencyMs: 120 },
+      { endpoint: 'cloudflare', ok: true, latencyMs: 120 }
+    ]),
+    'edgeone'
+  )
+  assert.equal(
+    selectBestMirrorEndpoint([
+      { endpoint: 'edgeone', ok: false, latencyMs: null, error: 'timeout' },
+      { endpoint: 'cloudflare', ok: false, latencyMs: null, error: 'HTTP 502' }
+    ], 'cloudflare'),
+    'cloudflare'
+  )
+})
+
+test('MirrorEndpointManager auto-selects from probes, respects manual override, and fails over in auto mode', () => {
+  let clock = 50_000
+  const manager = new MirrorEndpointManager(() => clock)
+  assert.equal(manager.getPreference(), 'auto')
+  assert.equal(manager.getActive(), DEFAULT_MIRROR_ENDPOINT)
+
+  const firstProbe = manager.applyProbeResults([
+    { endpoint: 'edgeone', ok: false, latencyMs: null, error: 'timeout' },
+    { endpoint: 'cloudflare', ok: true, latencyMs: 140 }
+  ])
+  assert.deepEqual(firstProbe, { changed: true, active: 'cloudflare' })
+  assert.equal(manager.getActive(), 'cloudflare')
+  assert.equal(manager.getProbeResults().length, 2)
+
+  assert.equal(manager.setPreference('edgeone'), true)
+  assert.equal(manager.getActive(), 'edgeone')
+  assert.equal(manager.tryFailover('edgeone'), null)
+  assert.equal(manager.getActive(), 'edgeone')
+
+  const manualProbe = manager.applyProbeResults([
+    { endpoint: 'edgeone', ok: true, latencyMs: 420 },
+    { endpoint: 'cloudflare', ok: true, latencyMs: 85 }
+  ])
+  assert.deepEqual(manualProbe, { changed: false, active: 'edgeone' })
+  assert.equal(manager.getActive(), 'edgeone')
+
+  assert.equal(manager.setPreference('auto'), true)
+  assert.equal(manager.getActive(), 'cloudflare')
+
+  assert.equal(manager.tryFailover('cloudflare'), 'edgeone')
+  assert.equal(manager.getActive(), 'edgeone')
+  assert.equal(manager.tryFailover('edgeone'), null)
+
+  clock += MIRROR_FALLBACK_COOLDOWN_MS
+  assert.equal(manager.tryFailover('edgeone'), 'cloudflare')
+  assert.equal(manager.getActive(), 'cloudflare')
+})
+
+test('globeStore hydrates, persists, and rolls back tileMirrorSource and applies active mirror status', async (t) => {
+  const originalWindow = globalThis.window
+  const updates = []
+  let failUpdates = false
+  globalThis.window = {
+    guEarth: {
+      settings: {
+        get: async () => ({
+          selectedImageryProviderId: 'osm',
+          selectedTerrainProviderId: 'arcgis-terrain',
+          terrainExaggeration: 2,
+          terrainLighting: false,
+          tileCacheEnabled: true,
+          tileMirrorMode: 'on',
+          tileMirrorSource: 'cloudflare',
+          mirrorConsentPrompted: true,
+          networkProxy: '',
+          providerStyles: { osm: 'standard' },
+          providerCredentials: {},
+          sceneMode: '3D',
+          setupGuideDismissed: null
+        }),
+        update: async (patch) => {
+          if (failUpdates) throw new Error('disk full')
+          updates.push(patch)
+          return patch
+        }
+      },
+      tiles: {
+        getMirrorStatus: async () => ({
+          mode: 'on',
+          sourcePreference: 'auto',
+          activeEndpoint: 'edgeone',
+          probingEndpoints: false,
+          endpointProbes: [{ endpoint: 'edgeone', ok: true, latencyMs: 90 }],
+          mirroredProviders: ['osm'],
+          fallenBackProviders: [],
+          notice: ''
+        })
+      }
+    }
+  }
+  t.after(() => {
+    globalThis.window = originalWindow
+  })
+  setActivePinia(createPinia())
+  const store = useGlobeStore()
+  await store.hydrateSettings()
+  assert.equal(store.tileMirrorSource, 'cloudflare')
+  assert.equal(store.activeMirrorEndpoint, 'cloudflare')
+
+  store.setTileMirrorSource('auto')
+  assert.equal(store.tileMirrorSource, 'auto')
+  assert.equal(updates.at(-1)?.tileMirrorSource, 'auto')
+
+  store.applyTileMirrorStatus({
+    mode: 'on',
+    sourcePreference: 'auto',
+    activeEndpoint: 'edgeone',
+    probingEndpoints: true,
+    endpointProbes: [
+      { endpoint: 'edgeone', ok: true, latencyMs: 88 },
+      { endpoint: 'cloudflare', ok: true, latencyMs: 160 }
+    ],
+    mirroredProviders: ['osm', 'esri-imagery'],
+    fallenBackProviders: [],
+    notice: ''
+  })
+  assert.equal(store.activeMirrorEndpoint, 'edgeone')
+  assert.equal(store.mirrorProbingEndpoints, true)
+  assert.equal(store.mirrorEndpointProbes.length, 2)
+
+  failUpdates = true
+  store.setTileMirrorSource('cloudflare')
+  assert.equal(store.tileMirrorSource, 'cloudflare')
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(store.tileMirrorSource, 'auto')
+  assert.equal(store.activeMirrorEndpoint, 'edgeone')
 })
 

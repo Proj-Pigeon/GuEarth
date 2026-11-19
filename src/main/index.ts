@@ -2,8 +2,26 @@ import * as Sentry from '@sentry/electron/main'
 import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, screen, session } from 'electron'
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
-import { edgeOneTileMirrorUrl, hasLegacyTileMirrorSetting, isMirrorCoverageNotFound, isTileMirrorMode, mirrorCacheStyleId, mirrorEligibleProviders, originProbeReachable, resolveStoredTileMirrorSettings, TileMirrorRouter } from '../common/tileMirror'
-import type { MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
+import {
+  hasLegacyTileMirrorSetting,
+  isMirrorCoverageNotFound,
+  isMirrorEndpointPreference,
+  isTileMirrorMode,
+  MIRROR_ENDPOINT_PROBE_TIMEOUT_MS,
+  mirrorCacheStyleId,
+  mirrorEligibleProviders,
+  mirrorEndpointIds,
+  mirrorEndpointLabel,
+  mirrorEndpointShortLabel,
+  MirrorEndpointManager,
+  mirrorProbeUrl,
+  mirrorTileUrl,
+  normalizeMirrorEndpointPreference,
+  originProbeReachable,
+  resolveStoredTileMirrorSettings,
+  TileMirrorRouter
+} from '../common/tileMirror'
+import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 import { describeTileFetchError, fetchTilePayloadWithRetry, sanitizeTileUrlForLog, serveTileResponse, TILE_FETCH_TIMEOUT_MS, type FetchedTilePayload } from '../common/tileProtocol'
 import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
@@ -42,8 +60,8 @@ import { registerAiIpcHandlers } from './ai/agent'
 import { poiStatistics, searchPlaces } from './ai/amap'
 import { searchBaiduPlaces } from './ai/baidu'
 import { beginPlacesRequest } from './ai/searchThrottle'
-import { setModelsDevMirrorEnabled } from './ai/modelImporter'
-import { initDatasets, loadProvinceGeometry, setDatasetMirrorEnabled } from './datasets'
+import { setModelsDevMirrorEndpoint } from './ai/modelImporter'
+import { initDatasets, loadProvinceGeometry, setDatasetMirrorEndpoint } from './datasets'
 import { ensureTyphoons, getOnlineData, getStartupEarthquakes, invalidateTyphoons, refreshEarthquakes, startOnlineData } from './onlineData'
 import { listLaboratoryProviders, removeLaboratoryProvider, saveLaboratoryProvider } from './laboratory'
 import { initUpdater } from './updater'
@@ -56,6 +74,7 @@ interface PersistedSettings {
   terrainLighting: boolean
   tileCacheEnabled: boolean
   tileMirrorMode: TileMirrorMode
+  tileMirrorSource: MirrorEndpointPreference
   mirrorConsentPrompted: boolean
   networkProxy: string
   providerStyles: Record<string, string>
@@ -72,6 +91,7 @@ const defaultSettings: PersistedSettings = {
   terrainLighting: false,
   tileCacheEnabled: true,
   tileMirrorMode: 'off',
+  tileMirrorSource: 'auto',
   mirrorConsentPrompted: false,
   networkProxy: '',
   providerStyles: {
@@ -159,6 +179,7 @@ async function readSettings(): Promise<PersistedSettings> {
       terrainLighting: parsed.terrainLighting === true,
       tileCacheEnabled: parsed.tileCacheEnabled !== false,
       tileMirrorMode: resolvedMirror.tileMirrorMode,
+      tileMirrorSource: normalizeMirrorEndpointPreference(parsed.tileMirrorSource),
       mirrorConsentPrompted: resolvedMirror.mirrorConsentPrompted,
       networkProxy: normalizeNetworkProxy(parsed.networkProxy),
       providerStyles: normalizedStyles,
@@ -373,9 +394,24 @@ function fetchTilePayload(url: string): Promise<FetchedTilePayload> {
 const mirrorLoggedProviders = new Set<string>()
 const mirrorFallenBackProviders = new Set<string>()
 const tileMirrorRouter = new TileMirrorRouter()
+const mirrorEndpointManager = new MirrorEndpointManager()
 
 const MIRROR_PROBE_TIMEOUT_MS = 4000
 const MIRROR_PROBE_INTERVAL_MS = 10 * 60 * 1000
+const STARTUP_MIRROR_PROBE_BUDGET_MS = 1_500
+
+let mirrorEndpointProbing = false
+let mirrorEndpointProbeSeq = 0
+
+function activeMirrorConsumerEndpoint(): MirrorEndpointId | null {
+  return settings.tileMirrorMode === 'on' ? mirrorEndpointManager.getActive() : null
+}
+
+function syncMirrorConsumers(): void {
+  const endpoint = activeMirrorConsumerEndpoint()
+  setDatasetMirrorEndpoint(endpoint)
+  setModelsDevMirrorEndpoint(endpoint)
+}
 
 function mirrorEligibleProviderIds(): string[] {
   return Object.keys(mirrorEligibleProviders)
@@ -389,6 +425,10 @@ function mirrorStatus(notice = ''): TileMirrorStatus {
   const eligible = mirrorEligibleProviderIds()
   return {
     mode: settings.tileMirrorMode,
+    sourcePreference: mirrorEndpointManager.getPreference(),
+    activeEndpoint: mirrorEndpointManager.getActive(),
+    probingEndpoints: mirrorEndpointProbing,
+    endpointProbes: mirrorEndpointManager.getProbeResults(),
     mirroredProviders: tileMirrorRouter.mirroredProviders(eligible),
     fallenBackProviders: tileMirrorRouter.fallenBackProviders(eligible),
     notice
@@ -400,6 +440,84 @@ function broadcastMirrorStatus(notice = ''): void {
   for (const window of BrowserWindow.getAllWindows()) {
     window.webContents.send('tiles:mirror-status', status)
   }
+}
+
+function formatMirrorProbeSummary(probes: readonly MirrorEndpointProbeResult[]): string {
+  return probes
+    .map((probe) => probe.ok
+      ? `${mirrorEndpointShortLabel(probe.endpoint)}=${probe.latencyMs}ms`
+      : `${mirrorEndpointShortLabel(probe.endpoint)}=失败(${probe.error ?? '未知错误'})`)
+    .join(', ')
+}
+
+async function probeSingleMirrorEndpoint(endpoint: MirrorEndpointId): Promise<MirrorEndpointProbeResult> {
+  const url = mirrorProbeUrl(endpoint)
+  const startedAt = Date.now()
+  try {
+    const response = await net.fetch(url, {
+      headers: TILE_FETCH_HEADERS,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(MIRROR_ENDPOINT_PROBE_TIMEOUT_MS)
+    })
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => undefined)
+      return { endpoint, ok: false, latencyMs: null, error: `HTTP ${response.status}` }
+    }
+    const buffer = await response.arrayBuffer()
+    if (buffer.byteLength === 0) {
+      return { endpoint, ok: false, latencyMs: null, error: '空响应' }
+    }
+    return { endpoint, ok: true, latencyMs: Math.max(1, Date.now() - startedAt) }
+  } catch (error) {
+    return { endpoint, ok: false, latencyMs: null, error: describeTileFetchError(error) }
+  }
+}
+
+async function probeMirrorEndpoints(
+  reason: 'startup' | 'settings' | 'network' | 'manual',
+  onFirstReachable?: () => void
+): Promise<void> {
+  if (reason !== 'manual' && (settings.tileMirrorMode !== 'on' || settings.tileMirrorSource !== 'auto')) return
+  const seq = ++mirrorEndpointProbeSeq
+  mirrorEndpointProbing = true
+  broadcastMirrorStatus('')
+  let resolvedFirst = false
+  const roundProbes: MirrorEndpointProbeResult[] = []
+  const probePromises = mirrorEndpointIds.map((endpoint) =>
+    probeSingleMirrorEndpoint(endpoint).then((result) => {
+      if (seq !== mirrorEndpointProbeSeq) return result
+      roundProbes.push(result)
+      if (result.ok && !resolvedFirst) {
+        resolvedFirst = true
+        const outcome = mirrorEndpointManager.applyProbeResults(roundProbes)
+        if (outcome.changed) {
+          mirrorLoggedProviders.clear()
+          mirrorFallenBackProviders.clear()
+          tileMirrorRouter.resetMirrorFallback()
+          syncMirrorConsumers()
+          broadcastMirrorStatus('')
+        }
+        onFirstReachable?.()
+      }
+      return result
+    })
+  )
+  const results = await Promise.all(probePromises)
+  if (seq !== mirrorEndpointProbeSeq) return
+  mirrorEndpointProbing = false
+  const outcome = mirrorEndpointManager.applyProbeResults(results)
+  if (outcome.changed) {
+    mirrorLoggedProviders.clear()
+    mirrorFallenBackProviders.clear()
+    tileMirrorRouter.resetMirrorFallback()
+    syncMirrorConsumers()
+  }
+  logger.info(
+    'tiles',
+    `镜像源测速（${reason}）完成，当前使用 ${mirrorEndpointLabel(outcome.active)}`,
+    formatMirrorProbeSummary(results)
+  )
+  broadcastMirrorStatus('')
 }
 
 async function clearProviderTileCache(providerId: string): Promise<void> {
@@ -500,8 +618,13 @@ type MirrorTileOutcome =
   | { failure: 'coverage' }
   | { failure: 'network'; detail: string }
 
-async function edgeOneMirrorTileResponse(providerId: string, key: TileKey, granuleDate: string): Promise<MirrorTileOutcome> {
-  const url = edgeOneTileMirrorUrl(providerId, key.level, key.x, key.y, granuleDate)
+async function mirrorTileResponse(
+  providerId: string,
+  key: TileKey,
+  granuleDate: string,
+  endpoint: MirrorEndpointId
+): Promise<MirrorTileOutcome> {
+  const url = mirrorTileUrl(providerId, key.level, key.x, key.y, granuleDate, endpoint)
   if (!url) return { failure: 'coverage' }
   try {
     const payload = await fetchTilePayload(url)
@@ -511,35 +634,57 @@ async function edgeOneMirrorTileResponse(providerId: string, key: TileKey, granu
     }
     const contentType = payload.headers.get('content-type') ?? (providerId === 'viirs-night' ? 'image/jpeg' : 'image/png')
     if (settings.tileCacheEnabled) void writeTile({ ...key, data: payload.data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
-    return { response: new Response(payload.data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'edgeone' } }) }
+    return { response: new Response(payload.data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': endpoint } }) }
   } catch (error) {
     return { failure: 'network', detail: `${describeTileFetchError(error)} ${describeTileTarget(key, url)}` }
   }
 }
 
 async function serveMirrorTile(providerId: string, _kind: MirrorTileKind, key: TileKey, granuleDate: string, modeGeneration: number): Promise<Response | null> {
-  if (!mirrorLoggedProviders.has(providerId)) {
-    mirrorLoggedProviders.add(providerId)
-    logger.info('tiles', `镜像瓦片源已启用，${providerId} 使用奈索星联 EdgeOne 镜像服务`)
+  const endpoint = mirrorEndpointManager.getActive()
+  const logKey = `${endpoint}:${providerId}`
+  if (!mirrorLoggedProviders.has(logKey)) {
+    mirrorLoggedProviders.add(logKey)
+    logger.info('tiles', `镜像瓦片源已启用，${providerId} 使用 ${mirrorEndpointLabel(endpoint)} 镜像服务`)
   }
-  const outcome = await edgeOneMirrorTileResponse(providerId, key, granuleDate)
+  const outcome = await mirrorTileResponse(providerId, key, granuleDate, endpoint)
   if ('response' in outcome) {
     tileMirrorRouter.noteMirrorSuccess(providerId, modeGeneration)
+    mirrorEndpointManager.noteEndpointSuccess(endpoint)
     if (mirrorFallenBackProviders.delete(providerId)) {
-      logger.info('tiles', `镜像瓦片源已恢复，${providerId} 重新使用奈索星联 EdgeOne 镜像服务`)
+      logger.info('tiles', `镜像瓦片源已恢复，${providerId} 重新使用 ${mirrorEndpointLabel(endpoint)} 镜像服务`)
       broadcastMirrorStatus('')
     }
     return outcome.response
   }
   if (outcome.failure !== 'network') return null
+  if (endpoint !== mirrorEndpointManager.getActive()) return null
   if (tileMirrorRouter.noteMirrorFailure(providerId, modeGeneration)) {
+    if (settings.tileMirrorMode === 'on') {
+      const failoverEndpoint = mirrorEndpointManager.tryFailover(endpoint)
+      if (failoverEndpoint) {
+        tileMirrorRouter.resetMirrorFallback()
+        mirrorFallenBackProviders.clear()
+        mirrorLoggedProviders.clear()
+        syncMirrorConsumers()
+        logger.warn('tiles', `镜像源 ${mirrorEndpointLabel(endpoint)} 连续失败，已自动切换至 ${mirrorEndpointLabel(failoverEndpoint)}`, outcome.detail)
+        broadcastMirrorStatus(`镜像源 ${mirrorEndpointShortLabel(endpoint)} 异常，已自动切换至 ${mirrorEndpointShortLabel(failoverEndpoint)}`)
+        const retryOutcome = await mirrorTileResponse(providerId, key, granuleDate, failoverEndpoint)
+        if ('response' in retryOutcome) {
+          tileMirrorRouter.noteMirrorSuccess(providerId, modeGeneration)
+          mirrorEndpointManager.noteEndpointSuccess(failoverEndpoint)
+          return retryOutcome.response
+        }
+        return null
+      }
+    }
     mirrorFallenBackProviders.add(providerId)
-    logger.warn('tiles', `镜像瓦片源连续失败，${providerId} 已临时回退到原影像源`, outcome.detail)
+    logger.warn('tiles', `镜像瓦片源（${mirrorEndpointLabel(endpoint)}）连续失败，${providerId} 已临时回退到原影像源`, outcome.detail)
     broadcastMirrorStatus(mirrorFallbackNotice())
     return null
   }
-  if (shouldLogTileFailure(`mirror:${providerId}`)) {
-    logger.warn('tiles', `镜像瓦片请求失败，${providerId} 本次改用原影像源`, outcome.detail)
+  if (shouldLogTileFailure(`mirror:${endpoint}:${providerId}`)) {
+    logger.warn('tiles', `镜像瓦片请求失败（${mirrorEndpointShortLabel(endpoint)}），${providerId} 本次改用原影像源`, outcome.detail)
   }
   return null
 }
@@ -590,7 +735,7 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   const mirrorKey: TileKey = { providerId, styleId: mirrorCacheStyleId(requestStyleId), level, x, y }
   const originKey: TileKey = { providerId, styleId: requestStyleId, level, x, y }
   const modeGeneration = tileMirrorRouter.currentModeGeneration()
-  const mirrored = Boolean(kind) && Boolean(edgeOneTileMirrorUrl(providerId, level, x, y, granuleDate)) && mirrorSource(providerId) === 'mirror'
+  const mirrored = Boolean(kind) && Boolean(mirrorTileUrl(providerId, level, x, y, granuleDate, mirrorEndpointManager.getActive())) && mirrorSource(providerId) === 'mirror'
   const key = mirrored ? mirrorKey : originKey
   const cached = await cachedTileResponse(key, false)
   if (cached) return cached
@@ -856,6 +1001,8 @@ function registerIpcHandlers(): void {
     if (!isRecord(patch)) throw new Error('无效的设置')
     let tileMirrorModeChanged = false
     let tileMirrorModeNow: TileMirrorMode = settings.tileMirrorMode
+    let tileMirrorSourceChanged = false
+    let tileMirrorSourceNow: MirrorEndpointPreference = settings.tileMirrorSource
     await saveSettings((settings) => {
       const nextSettings: PersistedSettings = {
         ...settings,
@@ -880,6 +1027,12 @@ function registerIpcHandlers(): void {
         tileMirrorModeChanged = patch.tileMirrorMode !== nextSettings.tileMirrorMode
         tileMirrorModeNow = patch.tileMirrorMode
         nextSettings.tileMirrorMode = patch.tileMirrorMode
+      }
+      if (patch.tileMirrorSource !== undefined) {
+        if (!isMirrorEndpointPreference(patch.tileMirrorSource)) throw new Error('无效的镜像源设置')
+        tileMirrorSourceChanged = patch.tileMirrorSource !== nextSettings.tileMirrorSource
+        tileMirrorSourceNow = patch.tileMirrorSource
+        nextSettings.tileMirrorSource = patch.tileMirrorSource
       }
       if (patch.mirrorConsentPrompted !== undefined) {
         if (typeof patch.mirrorConsentPrompted !== 'boolean') throw new Error('无效的镜像协议确认设置')
@@ -909,20 +1062,46 @@ function registerIpcHandlers(): void {
       void applyNetworkProxy().then(() => {
         const recovered = tileMirrorRouter.resetMirrorFallback()
         mirrorFallenBackProviders.clear()
-        if (recovered) broadcastMirrorStatus('')
+        mirrorEndpointManager.clearFailures()
+        if (settings.tileMirrorMode === 'on' && settings.tileMirrorSource === 'auto') {
+          void probeMirrorEndpoints('network')
+        } else if (recovered) {
+          broadcastMirrorStatus('')
+        }
         scheduleMirrorRefresh('network')
       })
     }
-    if (tileMirrorModeChanged) {
+    if (tileMirrorModeChanged || tileMirrorSourceChanged) {
+      if (tileMirrorSourceChanged) {
+        mirrorEndpointProbeSeq += 1
+        mirrorEndpointProbing = false
+        mirrorEndpointManager.setPreference(tileMirrorSourceNow)
+      }
+      if (tileMirrorModeChanged) {
+        tileMirrorRouter.setMode(tileMirrorModeNow)
+        if (tileMirrorModeNow !== 'on') {
+          mirrorEndpointProbeSeq += 1
+          mirrorEndpointProbing = false
+        }
+      }
       mirrorLoggedProviders.clear()
       mirrorFallenBackProviders.clear()
-      tileMirrorRouter.setMode(tileMirrorModeNow)
-      setDatasetMirrorEnabled(tileMirrorModeNow === 'on')
-      setModelsDevMirrorEnabled(tileMirrorModeNow === 'on')
-      logger.info('tiles', `镜像瓦片源模式已切换为「${tileMirrorModeNow}」`)
-      broadcastMirrorStatus(mirrorModeNotice(tileMirrorModeNow))
-      scheduleMirrorRefresh('settings')
-      if (tileMirrorModeNow === 'on') void refreshEarthquakes().catch(() => undefined)
+      mirrorEndpointManager.clearFailures()
+      tileMirrorRouter.resetMirrorFallback()
+      syncMirrorConsumers()
+      if (tileMirrorModeChanged) {
+        logger.info('tiles', `镜像瓦片源模式已切换为「${tileMirrorModeNow}」`)
+      }
+      if (tileMirrorSourceChanged) {
+        const sourceDesc = tileMirrorSourceNow === 'auto' ? '自动匹配' : mirrorEndpointLabel(tileMirrorSourceNow)
+        logger.info('tiles', `镜像服务源已切换为「${sourceDesc}」，当前使用 ${mirrorEndpointLabel(mirrorEndpointManager.getActive())}`)
+      }
+      broadcastMirrorStatus(tileMirrorModeChanged ? mirrorModeNotice(tileMirrorModeNow) : '')
+      if (tileMirrorModeChanged) scheduleMirrorRefresh('settings')
+      if (settings.tileMirrorMode === 'on' && settings.tileMirrorSource === 'auto') {
+        void probeMirrorEndpoints('settings')
+      }
+      if (tileMirrorModeChanged && tileMirrorModeNow === 'on') void refreshEarthquakes().catch(() => undefined)
     }
     return settingsSnapshot()
   })
@@ -1006,12 +1185,18 @@ function registerIpcHandlers(): void {
   ipcMain.handle('tiles:reset-mirror-fallback', (_event, providerId?: unknown, notify = true): TileMirrorStatus => {
     const id = typeof providerId === 'string' && providerId.trim() ? safeId(providerId) : undefined
     const recovered = tileMirrorRouter.resetMirrorFallback(id)
+    mirrorEndpointManager.clearFailures()
     if (id) mirrorFallenBackProviders.delete(id)
     else mirrorFallenBackProviders.clear()
     if (recovered) {
       logger.info('tiles', `已重置镜像回退状态，${id ?? '全部底图源'} 重新尝试镜像服务`)
       if (notify !== false) broadcastMirrorStatus('')
     }
+    return mirrorStatus()
+  })
+  ipcMain.handle('tiles:probe-mirror-endpoints', async (): Promise<TileMirrorStatus> => {
+    mirrorEndpointManager.clearFailures()
+    await probeMirrorEndpoints('manual')
     return mirrorStatus()
   })
   ipcMain.handle('tiles:clear', (_event, providerId?: string) => {
@@ -1639,8 +1824,8 @@ app.whenReady().then(async () => {
   await mkdir(tileCachePath, { recursive: true })
   settings = await readSettings()
   tileMirrorRouter.setMode(settings.tileMirrorMode)
-  setDatasetMirrorEnabled(settings.tileMirrorMode === 'on')
-  setModelsDevMirrorEnabled(settings.tileMirrorMode === 'on')
+  mirrorEndpointManager.setPreference(settings.tileMirrorSource)
+  syncMirrorConsumers()
   if (tileCacheNamespaceStale) {
     tileCacheNamespaceStale = false
     logger.info('tiles', '镜像瓦片源设置已升级为模式选择，正在重建底图瓦片缓存命名空间')
@@ -1648,11 +1833,18 @@ app.whenReady().then(async () => {
     await saveSettings((current) => current)
   }
   await applyNetworkProxy()
-  void startOnlineData(userDataPath, (snapshot) => {
-    for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('datasets:online-data-changed', snapshot)
-    }
-  })
+  let startupMirrorProbeReady: Promise<void> | undefined
+  if (settings.tileMirrorMode === 'on' && settings.tileMirrorSource === 'auto') {
+    let resolveReady: (() => void) | undefined
+    const firstOrAllReady = new Promise<void>((resolve) => {
+      resolveReady = resolve
+    })
+    void probeMirrorEndpoints('startup', () => resolveReady?.()).finally(() => resolveReady?.())
+    startupMirrorProbeReady = Promise.race([
+      firstOrAllReady,
+      new Promise<void>((resolve) => setTimeout(resolve, STARTUP_MIRROR_PROBE_BUDGET_MS))
+    ])
+  }
   const loaded = await Promise.all([
     readAnnotations(),
     readScenes(),
@@ -1660,6 +1852,12 @@ app.whenReady().then(async () => {
     aiChatHistory.init(join(userDataPath, 'ai-chat-history.json')),
     aiMemories.init(join(userDataPath, 'ai-memories.json'))
   ])
+  if (startupMirrorProbeReady) await startupMirrorProbeReady
+  void startOnlineData(userDataPath, (snapshot) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('datasets:online-data-changed', snapshot)
+    }
+  })
   ;[annotations, scenes] = loaded
   registerIpcHandlers()
   registerAiIpcHandlers(aiSettings, aiChatHistory, aiMemories)

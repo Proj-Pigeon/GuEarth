@@ -6,7 +6,7 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { captureError, captureWarning } from '@renderer/lib/crashReporter'
 import { advanceBufferGap, backingStoreSize, BUFFER_MISSING_REPORT_MS, classifyRenderFault, contextOptionsForAttempt, decideRenderFrame, glRendererName, isWebGlInitializationError, nudgedCanvasSize, RENDER_HALTED_DETAIL, RENDER_HALTED_MESSAGE, shouldStopRenderLoop, shouldUseSoftwareMsaaWorkaround, surfaceFailureCopy, WEBGL_CONTEXT_ATTEMPTS, WEBGL_RETRY_STAGE, WEBGL_UNAVAILABLE_DETAIL, WEBGL_UNAVAILABLE_MESSAGE, webGlRetryDelayMs, type BufferGapState, type GlRendererSource, type SurfaceFrameKind, type SurfaceSize, type WebGlContextAttempt } from '../../../common/globeSurface'
 import { logger, stringifyLogValue } from '../../../common/logger'
-import { isLikelyMainlandChinaEnv, mirrorEligibleProviders } from '../../../common/tileMirror'
+import { DEFAULT_MIRROR_ENDPOINT, isLikelyMainlandChinaEnv, mirrorEligibleProviders, type MirrorEndpointId } from '../../../common/tileMirror'
 import type { PlaceSuggestion, TileMirrorStatus } from '../../../preload'
 import { createPolarCaps } from './polarCaps'
 import { createBasemapImageryProvider } from './basemapImagery'
@@ -52,8 +52,9 @@ function normalizeHeading(radians: number): number {
   return degrees < 0 ? degrees + 360 : degrees
 }
 
-function mirrorRouteSignature(mirroredProviders: readonly string[]): string {
-  return [...mirroredProviders].sort().join(',')
+function mirrorRouteSignature(mirroredProviders: readonly string[], activeEndpoint: MirrorEndpointId): string {
+  const providers = [...mirroredProviders].sort().join(',')
+  return providers ? `${activeEndpoint}:${providers}` : ''
 }
 
 export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
@@ -87,7 +88,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   let polarCaps: Cesium.Primitive | undefined
   let mirrorListenerDisposer: (() => void) | undefined
   let lastMirrorRouteSignature: string | undefined
-  let terrainMirrorMode: 'on' | 'off' | undefined
+  let terrainMirrorState: 'off' | MirrorEndpointId | undefined
   let bootstrapGeneration = 0
   let renderLoopGeneration = 0
   let renderLoopRunning = false
@@ -371,7 +372,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   }
 
   async function setTerrain(id: string, expectedGeneration: number): Promise<void> {
-    terrainMirrorMode = id === 'arcgis-terrain' ? (store.tileMirrorMode === 'on' ? 'on' : 'off') : undefined
+    terrainMirrorState = id === 'arcgis-terrain' ? (store.tileMirrorMode === 'on' ? store.activeMirrorEndpoint : 'off') : undefined
     const create = terrainProviderFactory(id)
     terrainRequestSeq += 1
     const requestSeq = terrainRequestSeq
@@ -538,7 +539,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   }
 
   async function resolveInitialTerrain(id: string): Promise<{ provider: Cesium.TerrainProvider; id: string; deferred?: boolean }> {
-    terrainMirrorMode = id === 'arcgis-terrain' ? (store.tileMirrorMode === 'on' ? 'on' : 'off') : undefined
+    terrainMirrorState = id === 'arcgis-terrain' ? (store.tileMirrorMode === 'on' ? store.activeMirrorEndpoint : 'off') : undefined
     if (shouldDeferInitialTerrainForConsent(id)) {
       return { provider: await terrainRegistry.ellipsoid(), id: 'ellipsoid', deferred: true }
     }
@@ -1043,9 +1044,8 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     if (mirrorEligibleProviders[id] && typeof window.guEarth?.tiles?.resetMirrorFallback === 'function') {
       try {
         const status = await window.guEarth.tiles.resetMirrorFallback(id, false)
-        store.setMirroredProviders(status.mirroredProviders)
-        store.setMirrorFallenBackProviders(status.fallenBackProviders ?? [])
-        lastMirrorRouteSignature = mirrorRouteSignature(status.mirroredProviders)
+        store.applyTileMirrorStatus(status)
+        lastMirrorRouteSignature = mirrorRouteSignature(status.mirroredProviders, status.activeEndpoint ?? store.activeMirrorEndpoint)
       } catch {
         void 0
       }
@@ -1089,23 +1089,23 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   }
 
   function applyMirrorStatus(status: TileMirrorStatus): void {
-    store.setMirroredProviders(status.mirroredProviders)
-    store.setMirrorFallenBackProviders(status.fallenBackProviders ?? [])
-    const signature = mirrorRouteSignature(status.mirroredProviders)
-    const nextTerrainMirrorMode: 'on' | 'off' = status.mode === 'on' ? 'on' : 'off'
+    store.applyTileMirrorStatus(status)
+    const activeEndpoint = status.activeEndpoint ?? store.activeMirrorEndpoint ?? DEFAULT_MIRROR_ENDPOINT
+    const signature = mirrorRouteSignature(status.mirroredProviders, activeEndpoint)
+    const nextTerrainMirrorState: 'off' | MirrorEndpointId = status.mode === 'on' ? activeEndpoint : 'off'
     const routeChanged = lastMirrorRouteSignature !== undefined && lastMirrorRouteSignature !== signature
     const initialTerrainMirrorMismatch =
       lastMirrorRouteSignature === undefined &&
       store.terrainProviderId === 'arcgis-terrain' &&
-      terrainMirrorMode !== undefined &&
-      terrainMirrorMode !== nextTerrainMirrorMode
-    const terrainMatchesNextMode =
-      terrainMirrorMode === nextTerrainMirrorMode &&
+      terrainMirrorState !== undefined &&
+      terrainMirrorState !== nextTerrainMirrorState
+    const terrainMatchesNextState =
+      terrainMirrorState === nextTerrainMirrorState &&
       (store.activeTerrainId === 'arcgis-terrain' || terrainRequestInFlight)
     if (routeChanged) {
       reloadMirrorBasemapLayers()
-      if (store.terrainProviderId === 'arcgis-terrain' && !terrainMatchesNextMode) void retryTerrain()
-    } else if (initialTerrainMirrorMismatch && !terrainMatchesNextMode) {
+      if (store.terrainProviderId === 'arcgis-terrain' && !terrainMatchesNextState) void retryTerrain()
+    } else if (initialTerrainMirrorMismatch && !terrainMatchesNextState) {
       void retryTerrain()
     }
     lastMirrorRouteSignature = signature
@@ -1132,18 +1132,20 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
   })
 
   watch(
-    () => [store.mirrorConsentOpen, store.tileMirrorMode, store.activeTerrainId] as const,
-    ([open, mirrorMode, activeTerrainId], previous) => {
+    () => [store.mirrorConsentOpen, store.tileMirrorMode, store.activeMirrorEndpoint, store.activeTerrainId] as const,
+    ([open, mirrorMode, activeEndpoint, activeTerrainId], previous) => {
       const wasOpen = previous?.[0] ?? false
       const prevMirrorMode = previous?.[1]
+      const prevEndpoint = previous?.[2]
       if (open || store.terrainProviderId !== 'arcgis-terrain') return
-      if (activeTerrainId === 'arcgis-terrain') return
       if (!viewer.value || viewer.value.isDestroyed()) return
       const consentJustClosed = wasOpen && !open
       const mirrorModeChanged = prevMirrorMode !== undefined && prevMirrorMode !== mirrorMode
-      if (!consentJustClosed && !mirrorModeChanged) return
-      const desiredTerrainMode: 'on' | 'off' = mirrorMode === 'on' ? 'on' : 'off'
-      if (terrainRequestInFlight && terrainMirrorMode === desiredTerrainMode) return
+      const endpointChanged = prevEndpoint !== undefined && prevEndpoint !== activeEndpoint && mirrorMode === 'on'
+      if (activeTerrainId === 'arcgis-terrain' && !endpointChanged) return
+      if (!consentJustClosed && !mirrorModeChanged && !endpointChanged) return
+      const desiredTerrainState: 'off' | MirrorEndpointId = mirrorMode === 'on' ? activeEndpoint : 'off'
+      if (terrainMirrorState === desiredTerrainState && (activeTerrainId === 'arcgis-terrain' || terrainRequestInFlight)) return
       void retryTerrain()
     }
   )

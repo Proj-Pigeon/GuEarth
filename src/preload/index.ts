@@ -2,7 +2,7 @@ import '@sentry/electron/preload'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
 import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
-import type { TileMirrorMode } from '../common/tileMirror'
+import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, TileMirrorMode } from '../common/tileMirror'
 import type { EnsoPhase } from '../common/thematicState'
 import type { LaboratoryProvider, LaboratoryProviderInput, OnlineDataSnapshot } from '../common/onlineData'
 
@@ -18,6 +18,7 @@ export interface GuEarthSettings {
   terrainLighting: boolean
   tileCacheEnabled: boolean
   tileMirrorMode: TileMirrorMode
+  tileMirrorSource: MirrorEndpointPreference
   mirrorConsentPrompted: boolean
   networkProxy: string
   providerStyles: Record<string, string>
@@ -33,6 +34,7 @@ export interface GuEarthSettingsPatch {
   terrainLighting?: boolean
   tileCacheEnabled?: boolean
   tileMirrorMode?: TileMirrorMode
+  tileMirrorSource?: MirrorEndpointPreference
   mirrorConsentPrompted?: boolean
   networkProxy?: string
   providerStyles?: Record<string, string>
@@ -42,6 +44,10 @@ export interface GuEarthSettingsPatch {
 
 export interface TileMirrorStatus {
   mode: TileMirrorMode
+  sourcePreference?: MirrorEndpointPreference
+  activeEndpoint?: MirrorEndpointId
+  probingEndpoints?: boolean
+  endpointProbes?: MirrorEndpointProbeResult[]
   mirroredProviders: string[]
   fallenBackProviders?: string[]
   notice: string
@@ -472,6 +478,7 @@ const api = {
     stats: (): Promise<TileCacheStats> => ipcRenderer.invoke('tiles:stats'),
     getMirrorStatus: (): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:mirror-status'),
     resetMirrorFallback: (providerId?: string, notify?: boolean): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:reset-mirror-fallback', providerId, notify),
+    probeMirrorEndpoints: (): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:probe-mirror-endpoints'),
     onMirrorStatus: (listener: (status: TileMirrorStatus) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: TileMirrorStatus): void => listener(payload)
       ipcRenderer.on('tiles:mirror-status', wrapped)

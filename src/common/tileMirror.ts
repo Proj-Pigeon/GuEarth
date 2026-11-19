@@ -1,9 +1,110 @@
 export type MirrorTileKind = 'vector' | 'satellite' | 'night'
 
+export type MirrorEndpointId = 'edgeone' | 'cloudflare'
+
+export type MirrorEndpointPreference = 'auto' | MirrorEndpointId
+
+export interface MirrorEndpointMeta {
+  id: MirrorEndpointId
+  label: string
+  shortLabel: string
+  baseUrl: string
+}
+
+export interface MirrorEndpointProbeResult {
+  endpoint: MirrorEndpointId
+  ok: boolean
+  latencyMs: number | null
+  error?: string
+}
+
+export const DEFAULT_MIRROR_ENDPOINT: MirrorEndpointId = 'edgeone'
+
+export const mirrorEndpointIds: readonly MirrorEndpointId[] = ['edgeone', 'cloudflare']
+
+export const mirrorEndpointPreferences: readonly MirrorEndpointPreference[] = ['auto', 'edgeone', 'cloudflare']
+
 export const EDGEONE_MIRROR_BASE_URL = 'https://proxy.project-pigeon.com'
-export const EDGEONE_ARCGIS_TERRAIN_URL = `${EDGEONE_MIRROR_BASE_URL}/arcgis`
-export const EDGEONE_EARTHQUAKES_URL = `${EDGEONE_MIRROR_BASE_URL}/datasets/earthquakes`
-export const EDGEONE_MODELS_DEV_URL = `${EDGEONE_MIRROR_BASE_URL}/modelsdev`
+export const CLOUDFLARE_MIRROR_BASE_URL = 'https://cf.proxy.project-pigeon.com'
+
+export const mirrorEndpoints: Record<MirrorEndpointId, MirrorEndpointMeta> = {
+  edgeone: {
+    id: 'edgeone',
+    label: 'EdgeOne（奈索星联）',
+    shortLabel: 'EdgeOne',
+    baseUrl: EDGEONE_MIRROR_BASE_URL
+  },
+  cloudflare: {
+    id: 'cloudflare',
+    label: 'Cloudflare',
+    shortLabel: 'Cloudflare',
+    baseUrl: CLOUDFLARE_MIRROR_BASE_URL
+  }
+}
+
+export const MIRROR_ENDPOINT_PROBE_TIMEOUT_MS = 5_000
+
+export function isMirrorEndpointId(value: unknown): value is MirrorEndpointId {
+  return value === 'edgeone' || value === 'cloudflare'
+}
+
+export function isMirrorEndpointPreference(value: unknown): value is MirrorEndpointPreference {
+  return value === 'auto' || isMirrorEndpointId(value)
+}
+
+export function normalizeMirrorEndpointPreference(value: unknown): MirrorEndpointPreference {
+  return isMirrorEndpointPreference(value) ? value : 'auto'
+}
+
+export function mirrorBaseUrl(endpoint: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT): string {
+  return mirrorEndpoints[endpoint].baseUrl
+}
+
+export function mirrorEndpointLabel(endpoint: MirrorEndpointId): string {
+  return mirrorEndpoints[endpoint].label
+}
+
+export function mirrorEndpointShortLabel(endpoint: MirrorEndpointId): string {
+  return mirrorEndpoints[endpoint].shortLabel
+}
+
+export function mirrorArcGisTerrainUrl(endpoint: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT): string {
+  return `${mirrorBaseUrl(endpoint)}/arcgis`
+}
+
+export function mirrorEarthquakesUrl(endpoint: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT): string {
+  return `${mirrorBaseUrl(endpoint)}/datasets/earthquakes`
+}
+
+export function mirrorModelsDevUrl(endpoint: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT): string {
+  return `${mirrorBaseUrl(endpoint)}/modelsdev`
+}
+
+export function mirrorProbeUrl(endpoint: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT): string {
+  return `${mirrorBaseUrl(endpoint)}/tiles/esri/1/0/0`
+}
+
+export function alternateMirrorEndpoint(endpoint: MirrorEndpointId): MirrorEndpointId {
+  return endpoint === 'edgeone' ? 'cloudflare' : 'edgeone'
+}
+
+export function selectBestMirrorEndpoint(
+  probes: readonly MirrorEndpointProbeResult[],
+  fallback: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT
+): MirrorEndpointId {
+  const reachable = probes
+    .filter((probe) => probe.ok && typeof probe.latencyMs === 'number' && Number.isFinite(probe.latencyMs))
+    .sort((a, b) => {
+      const diff = (a.latencyMs as number) - (b.latencyMs as number)
+      if (diff !== 0) return diff
+      return mirrorEndpointIds.indexOf(a.endpoint) - mirrorEndpointIds.indexOf(b.endpoint)
+    })
+  return reachable[0]?.endpoint ?? fallback
+}
+
+export const EDGEONE_ARCGIS_TERRAIN_URL = mirrorArcGisTerrainUrl('edgeone')
+export const EDGEONE_EARTHQUAKES_URL = mirrorEarthquakesUrl('edgeone')
+export const EDGEONE_MODELS_DEV_URL = mirrorModelsDevUrl('edgeone')
 
 export const mirrorEligibleProviders: Record<string, MirrorTileKind> = {
   osm: 'vector',
@@ -46,6 +147,27 @@ export function isValidTileCoordinate(level: number, x: number, y: number, maxLe
   return x < span && y < span
 }
 
+export function mirrorTileUrl(
+  providerId: string,
+  level: number,
+  x: number,
+  y: number,
+  granuleDate?: string,
+  endpoint: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT
+): string | undefined {
+  const maxLevel = mirrorMaxZoomByProvider[providerId]
+  if (maxLevel === undefined || !isValidTileCoordinate(level, x, y, maxLevel)) return undefined
+  const baseUrl = mirrorBaseUrl(endpoint)
+  if (providerId === 'osm') return `${baseUrl}/tiles/osm/${level}/${x}/${y}.png`
+  if (providerId === 'esri-imagery') return `${baseUrl}/tiles/esri/${level}/${y}/${x}`
+  if (providerId === 'opentopomap') return `${baseUrl}/tiles/opentopo/${level}/${x}/${y}.png`
+  if (providerId === 'viirs-night') {
+    if (typeof granuleDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(granuleDate)) return undefined
+    return `${baseUrl}/tiles/viirs/${granuleDate}/${level}/${y}/${x}.jpeg`
+  }
+  return undefined
+}
+
 export function edgeOneTileMirrorUrl(
   providerId: string,
   level: number,
@@ -53,16 +175,7 @@ export function edgeOneTileMirrorUrl(
   y: number,
   granuleDate?: string
 ): string | undefined {
-  const maxLevel = mirrorMaxZoomByProvider[providerId]
-  if (maxLevel === undefined || !isValidTileCoordinate(level, x, y, maxLevel)) return undefined
-  if (providerId === 'osm') return `${EDGEONE_MIRROR_BASE_URL}/tiles/osm/${level}/${x}/${y}.png`
-  if (providerId === 'esri-imagery') return `${EDGEONE_MIRROR_BASE_URL}/tiles/esri/${level}/${y}/${x}`
-  if (providerId === 'opentopomap') return `${EDGEONE_MIRROR_BASE_URL}/tiles/opentopo/${level}/${x}/${y}.png`
-  if (providerId === 'viirs-night') {
-    if (typeof granuleDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(granuleDate)) return undefined
-    return `${EDGEONE_MIRROR_BASE_URL}/tiles/viirs/${granuleDate}/${level}/${y}/${x}.jpeg`
-  }
-  return undefined
+  return mirrorTileUrl(providerId, level, x, y, granuleDate, 'edgeone')
 }
 
 export function isLikelyMainlandChinaEnv(locale?: string, timeZone?: string): boolean {
@@ -264,5 +377,96 @@ export class TileMirrorRouter {
     this.mirrorFailures.clear()
     this.mirrorFallbackUntil.clear()
     return this.mode === 'on' && hadFallback
+  }
+}
+
+export class MirrorEndpointManager {
+  private preference: MirrorEndpointPreference = 'auto'
+  private active: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT
+  private probeResults: Partial<Record<MirrorEndpointId, MirrorEndpointProbeResult>> = {}
+  private readonly failedUntil = new Map<MirrorEndpointId, number>()
+  private readonly now: () => number
+
+  constructor(now: () => number = Date.now) {
+    this.now = now
+  }
+
+  private isEndpointFailed(endpoint: MirrorEndpointId): boolean {
+    const until = this.failedUntil.get(endpoint)
+    if (until === undefined) return false
+    if (this.now() >= until) {
+      this.failedUntil.delete(endpoint)
+      return false
+    }
+    return true
+  }
+
+  getPreference(): MirrorEndpointPreference {
+    return this.preference
+  }
+
+  getActive(): MirrorEndpointId {
+    return this.active
+  }
+
+  getProbeResults(): MirrorEndpointProbeResult[] {
+    return mirrorEndpointIds
+      .map((id) => this.probeResults[id])
+      .filter((item): item is MirrorEndpointProbeResult => item !== undefined)
+  }
+
+  setPreference(preference: MirrorEndpointPreference): boolean {
+    const previousActive = this.active
+    this.preference = preference
+    this.failedUntil.clear()
+    if (preference !== 'auto') {
+      this.active = preference
+    } else {
+      const probes = this.getProbeResults()
+      if (probes.length > 0) this.active = selectBestMirrorEndpoint(probes, this.active)
+    }
+    return this.active !== previousActive
+  }
+
+  applyProbeResult(probe: MirrorEndpointProbeResult): { changed: boolean; active: MirrorEndpointId } {
+    this.probeResults[probe.endpoint] = probe
+    if (probe.ok) this.failedUntil.delete(probe.endpoint)
+    if (this.preference !== 'auto' || !probe.ok) {
+      return { changed: false, active: this.active }
+    }
+    const previousActive = this.active
+    this.active = selectBestMirrorEndpoint(this.getProbeResults(), this.active)
+    return { changed: this.active !== previousActive, active: this.active }
+  }
+
+  applyProbeResults(probes: readonly MirrorEndpointProbeResult[]): { changed: boolean; active: MirrorEndpointId } {
+    for (const probe of probes) {
+      this.probeResults[probe.endpoint] = probe
+      if (probe.ok) this.failedUntil.delete(probe.endpoint)
+    }
+    if (this.preference !== 'auto') {
+      return { changed: false, active: this.active }
+    }
+    const previousActive = this.active
+    this.active = selectBestMirrorEndpoint(probes, this.active)
+    return { changed: this.active !== previousActive, active: this.active }
+  }
+
+  noteEndpointSuccess(endpoint: MirrorEndpointId): void {
+    this.failedUntil.delete(endpoint)
+  }
+
+  tryFailover(failedEndpoint: MirrorEndpointId): MirrorEndpointId | null {
+    if (this.preference !== 'auto') return null
+    if (this.active !== failedEndpoint) return null
+    this.failedUntil.set(failedEndpoint, this.now() + MIRROR_FALLBACK_COOLDOWN_MS)
+    const candidate = alternateMirrorEndpoint(failedEndpoint)
+    if (this.isEndpointFailed(candidate)) return null
+    this.active = candidate
+    return candidate
+  }
+
+  clearFailures(): void {
+    this.failedUntil.clear()
   }
 }
