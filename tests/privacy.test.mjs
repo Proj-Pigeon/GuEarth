@@ -215,3 +215,141 @@ test('privacy store persists changes and fails closed on IPC update errors', asy
   assert.equal(store.telemetryEnabled, false)
   assert.equal(getPrivacySettings().telemetryEnabled, false)
 })
+
+test('privacy store keeps error reporting disabled on hydrate failure and allows retry', async () => {
+  let failGet = true
+  let stored = {}
+
+  globalThis.window = {
+    guEarth: {
+      settings: {
+        get: async () => {
+          if (failGet) throw new Error('ipc unavailable')
+          return { ...stored }
+        },
+        update: async (patch) => {
+          stored = { ...stored, ...patch }
+          return { ...stored }
+        }
+      }
+    }
+  }
+
+  const { usePrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
+  const { applyRendererPrivacySettings, getPrivacySettings } = await import('../src/renderer/src/lib/privacyRuntime.ts')
+  applyRendererPrivacySettings({ errorReportingEnabled: false, telemetryEnabled: false, aiTelemetryEnabled: false })
+
+  setActivePinia(createPinia())
+  const store = usePrivacyStore()
+  assert.equal(store.hydrated, false)
+  assert.equal(store.errorReportingEnabled, false)
+
+  await store.hydrate()
+  assert.equal(store.hydrated, false)
+  assert.equal(store.errorReportingEnabled, false)
+  assert.equal(getPrivacySettings().errorReportingEnabled, false)
+
+  failGet = false
+  await store.hydrate()
+  assert.equal(store.hydrated, true)
+  assert.equal(store.errorReportingEnabled, true)
+  assert.equal(getPrivacySettings().errorReportingEnabled, true)
+})
+
+test('privacy store preserves pending disable when an earlier overlapping update resolves first', async () => {
+  const stored = { errorReportingEnabled: true, telemetryEnabled: false, aiTelemetryEnabled: false }
+  const resolvers = []
+
+  globalThis.window = {
+    guEarth: {
+      settings: {
+        get: async () => ({ ...stored }),
+        update: (patch) => new Promise((resolve) => {
+          resolvers.push({ patch, resolve })
+        })
+      }
+    }
+  }
+
+  const { usePrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
+  const { getPrivacySettings } = await import('../src/renderer/src/lib/privacyRuntime.ts')
+
+  setActivePinia(createPinia())
+  const store = usePrivacyStore()
+  await store.hydrate()
+  assert.equal(store.errorReportingEnabled, true)
+  assert.equal(store.telemetryEnabled, false)
+
+  const enableTelemetry = store.setPrivacySetting('telemetryEnabled', true)
+  const disableErrorReporting = store.setPrivacySetting('errorReportingEnabled', false)
+
+  assert.equal(store.errorReportingEnabled, false)
+  assert.equal(getPrivacySettings().errorReportingEnabled, false)
+  assert.equal(resolvers.length, 2)
+
+  resolvers[0].resolve({ errorReportingEnabled: true, telemetryEnabled: true, aiTelemetryEnabled: false })
+  assert.equal(await enableTelemetry, true)
+  assert.equal(store.telemetryEnabled, true)
+  assert.equal(store.errorReportingEnabled, false)
+  assert.equal(getPrivacySettings().errorReportingEnabled, false)
+
+  resolvers[1].resolve({ errorReportingEnabled: false, telemetryEnabled: true, aiTelemetryEnabled: false })
+  assert.equal(await disableErrorReporting, true)
+  assert.equal(store.telemetryEnabled, true)
+  assert.equal(store.errorReportingEnabled, false)
+  assert.equal(getPrivacySettings().errorReportingEnabled, false)
+
+  const enableAi = store.setPrivacySetting('aiTelemetryEnabled', true)
+  resolvers[2].resolve({ errorReportingEnabled: false, telemetryEnabled: true, aiTelemetryEnabled: true })
+  assert.equal(await enableAi, true)
+  assert.equal(store.aiTelemetryEnabled, true)
+  assert.equal(store.errorReportingEnabled, false)
+})
+
+test('gated log record exporter suppresses queued BatchLogRecordProcessor logs after disable', async () => {
+  const { BatchLogRecordProcessor, LoggerProvider } = await import('@opentelemetry/sdk-logs')
+  const { createGatedLogRecordExporter } = await import('../src/main/posthogLogs.ts')
+
+  let enabled = true
+  const exportedBodies = []
+  let shutdownCalled = 0
+  const baseExporter = {
+    export(logs, resultCallback) {
+      for (const record of logs) exportedBodies.push(record.body)
+      resultCallback({ code: 0 })
+    },
+    async forceFlush() {},
+    async shutdown() {
+      shutdownCalled += 1
+    }
+  }
+
+  const gatedProvider = new LoggerProvider({
+    processors: [
+      new BatchLogRecordProcessor({
+        exporter: createGatedLogRecordExporter(baseExporter, () => enabled),
+        scheduledDelayMillis: 60_000
+      })
+    ]
+  })
+  const log = gatedProvider.getLogger('test')
+  log.emit({ severityText: 'info', body: 'queued_before_disable' })
+  enabled = false
+  await gatedProvider.shutdown()
+  assert.deepEqual(exportedBodies, [])
+  assert.equal(shutdownCalled, 1)
+
+  enabled = true
+  const activeProvider = new LoggerProvider({
+    processors: [
+      new BatchLogRecordProcessor({
+        exporter: createGatedLogRecordExporter(baseExporter, () => enabled),
+        scheduledDelayMillis: 60_000
+      })
+    ]
+  })
+  activeProvider.getLogger('test').emit({ severityText: 'info', body: 'exported_while_enabled' })
+  await activeProvider.shutdown()
+  assert.deepEqual(exportedBodies, ['exported_while_enabled'])
+  assert.equal(shutdownCalled, 2)
+})

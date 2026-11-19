@@ -13,11 +13,27 @@ import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../common/priv
 
 attachConsoleLogTee('main')
 
-let errorReportingEnabled = false
+function readInitialErrorReportingEnabled(): boolean {
+  try {
+    const raw = readFileSync(join(app.getPath('userData'), 'settings.json'), 'utf8')
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return DEFAULT_PRIVACY_SETTINGS.errorReportingEnabled
+    }
+    return resolvePrivacySettings(parsed as Record<string, unknown>).errorReportingEnabled
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | null)?.code
+    if (code === 'ENOENT') return DEFAULT_PRIVACY_SETTINGS.errorReportingEnabled
+    return false
+  }
+}
+
+let errorReportingEnabled = readInitialErrorReportingEnabled()
+let sentryIntegrationsInstalled = errorReportingEnabled
 
 Sentry.init({
   dsn: 'https://28239780e3a5ede424bde1114849f448@o4509333304573952.ingest.us.sentry.io/4512192370769920',
-  enabled: false,
+  enabled: errorReportingEnabled,
   sendClientReports: false,
   beforeSend(event) {
     if (!errorReportingEnabled) return null
@@ -26,7 +42,7 @@ Sentry.init({
   }
 })
 import { execFileSync, spawn } from 'child_process'
-import { rmSync } from 'fs'
+import { readFileSync, rmSync } from 'fs'
 import { dirname, join } from 'path'
 import { flushJsonWrites, readJson, serialQueue, writeAtomic, writeJson } from './jsonStore'
 import { listTileFiles, pruneTileFiles } from './tileCacheFiles'
@@ -234,7 +250,13 @@ async function usableRecordingDirectory(): Promise<string | null> {
 function applyPrivacySettings(current: PersistedSettings): void {
   errorReportingEnabled = current.errorReportingEnabled
   const sentryClient = Sentry.getClient()
-  if (sentryClient) sentryClient.getOptions().enabled = current.errorReportingEnabled
+  if (sentryClient) {
+    sentryClient.getOptions().enabled = current.errorReportingEnabled
+    if (current.errorReportingEnabled && !sentryIntegrationsInstalled) {
+      sentryIntegrationsInstalled = true
+      sentryClient.init()
+    }
+  }
   setPosthogLogsEnabled(current.errorReportingEnabled)
   setAiPosthogEnabled(current.aiTelemetryEnabled)
 }

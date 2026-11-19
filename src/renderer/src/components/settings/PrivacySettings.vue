@@ -23,7 +23,7 @@ function isEnabled(key: PrivacySettingKey): boolean {
 }
 
 async function handleSwitchChange(key: PrivacySettingKey, checked: string | number | boolean): Promise<void> {
-  if (savingKey.value || confirmLoading.value) return
+  if (!privacyStore.hydrated || savingKey.value || confirmLoading.value) return
   if (checked === true) {
     pendingKey.value = key
     return
@@ -79,7 +79,7 @@ async function confirmEnable(): Promise<void> {
         <a-switch
           :checked="isEnabled(item.key)"
           :loading="savingKey === item.key"
-          :disabled="confirmLoading"
+          :disabled="!privacyStore.hydrated || confirmLoading"
           :aria-label="item.title"
           @change="(checked: string | number | boolean) => handleSwitchChange(item.key, checked)"
         />

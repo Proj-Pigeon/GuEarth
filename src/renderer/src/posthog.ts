@@ -34,6 +34,7 @@ function ensureInitialized(): boolean {
     opt_out_persistence_by_default: true,
     disable_external_dependency_loading: true,
     disable_session_recording: true,
+    request_batching: false,
     autocapture: false,
     capture_pageview: false,
     capture_pageleave: false,
