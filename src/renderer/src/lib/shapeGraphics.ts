@@ -61,19 +61,38 @@ export function pathDistance(cartesians: Cesium.Cartesian3[]): number {
   return total
 }
 
-export function triangleArea(first: Cesium.Cartesian3, second: Cesium.Cartesian3, third: Cesium.Cartesian3): number {
-  const ab = geodesicDistance(first, second)
-  const bc = geodesicDistance(second, third)
-  const ca = geodesicDistance(third, first)
-  const semi = (ab + bc + ca) / 2
-  const product = semi * (semi - ab) * (semi - bc) * (semi - ca)
-  return product > 0 ? Math.sqrt(product) : 0
+const EARTH_RADIUS_M = Cesium.Ellipsoid.WGS84.maximumRadius
+
+function tangentToward(origin: Cesium.Cartesian3, point: Cesium.Cartesian3): Cesium.Cartesian3 {
+  const projected = Cesium.Cartesian3.subtract(
+    point,
+    Cesium.Cartesian3.multiplyByScalar(origin, Cesium.Cartesian3.dot(origin, point), new Cesium.Cartesian3()),
+    new Cesium.Cartesian3()
+  )
+  return Cesium.Cartesian3.normalize(projected, new Cesium.Cartesian3())
 }
 
 export function polygonArea(cartesians: Cesium.Cartesian3[]): number {
-  let total = 0
-  for (let index = 1; index < cartesians.length - 1; index += 1) total += triangleArea(cartesians[0], cartesians[index], cartesians[index + 1])
-  return total
+  const ring = dedupe(cartesians.filter(isUsablePosition))
+  if (ring.length > 1 && Cesium.Cartesian3.equalsEpsilon(ring[0], ring[ring.length - 1], 0, 0.5)) ring.pop()
+  if (ring.length < 3) return 0
+  const directions = ring.map((cartesian) => Cesium.Cartesian3.normalize(cartesian, new Cesium.Cartesian3()))
+  // 高斯-博内定理：球面多边形面积只取决于各顶点处的有向转角，凹多边形同样成立
+  let turnSum = 0
+  for (let index = 0; index < directions.length; index += 1) {
+    const current = directions[index]
+    const incoming = Cesium.Cartesian3.negate(tangentToward(current, directions[(index + directions.length - 1) % directions.length]), new Cesium.Cartesian3())
+    const outgoing = tangentToward(current, directions[(index + 1) % directions.length])
+    const turn = Math.atan2(
+      Cesium.Cartesian3.dot(Cesium.Cartesian3.cross(incoming, outgoing, new Cesium.Cartesian3()), current),
+      Cesium.Cartesian3.dot(incoming, outgoing)
+    )
+    turnSum += turn
+  }
+  let solidAngle = 2 * Math.PI - turnSum
+  if (solidAngle < 0) solidAngle = -solidAngle
+  if (solidAngle > 2 * Math.PI) solidAngle = 4 * Math.PI - solidAngle
+  return solidAngle * EARTH_RADIUS_M * EARTH_RADIUS_M
 }
 
 export function textOutlineColor(color: Cesium.Color): Cesium.Color {
