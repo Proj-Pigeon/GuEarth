@@ -4,6 +4,8 @@ import type { AiChatEvent, AiChatTurn, AiContextCompressionResult, AiContextEntr
 import { defaultAiSettings } from '../../../shared/aiSettings'
 import { ipcErrorMessage } from '../lib/ipcError'
 import { useFlightStopsStore } from './flightStops'
+import { useAccountStore } from './account'
+import posthog from '../posthog'
 
 export interface ToolStep {
   callId: string
@@ -528,6 +530,7 @@ export const useAiStore = defineStore('ai', () => {
   async function send(text: string): Promise<void> {
     const question = text.trim()
     if (!question || isStreaming.value) return
+    posthog.capture('ai_prompt_submitted', { prompt_length: question.length })
     conversationLoadSequence += 1
     modelRetryNotice.value = ''
     await hydrate()
@@ -553,8 +556,9 @@ export const useAiStore = defineStore('ai', () => {
     isStreaming.value = true
     armIdleWatchdog()
     const turns = conversationTurns()
+    const distinctId = useAccountStore().profile?.sub.trim() ?? ''
     try {
-      await window.guEarth.ai.chat(sessionId, turns, toolDefinitions())
+      await window.guEarth.ai.chat(sessionId, turns, toolDefinitions(), currentConversationId.value, distinctId)
     } catch (error) {
       flushDeltas()
       const assistant = currentAssistant()
@@ -616,7 +620,8 @@ export const useAiStore = defineStore('ai', () => {
     if (isStreaming.value || !window.guEarth?.ai) return
     setContextNotice('正在整理对话…', 'compressing')
     try {
-      const result = await window.guEarth.ai.compressContext(contextEntries())
+      const distinctId = useAccountStore().profile?.sub.trim() ?? ''
+      const result = await window.guEarth.ai.compressContext(contextEntries(), currentConversationId.value, distinctId)
       applyCompressedContext(result)
       setContextNotice(`已精简对话 ${formatContextTokens(result.afterTokens)}`, 'idle')
     } catch {

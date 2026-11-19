@@ -48,6 +48,8 @@ import { ensureTyphoons, getOnlineData, getStartupEarthquakes, invalidateTyphoon
 import { listLaboratoryProviders, removeLaboratoryProvider, saveLaboratoryProvider } from './laboratory'
 import { initUpdater } from './updater'
 import { initAccount } from './account'
+import { shutdownPosthog } from './ai/posthog'
+import { capturePosthogLog, shutdownPosthogLogs } from './posthogLogs'
 
 interface PersistedSettings {
   selectedImageryProviderId: string
@@ -1621,6 +1623,7 @@ app.whenReady().then(async () => {
   initUpdater(join(userDataPath, 'updates'))
   initAccount()
   logger.info('app', '主进程服务就绪')
+  capturePosthogLog('info', 'main_process_ready')
   protocol.handle('guearth-tile', async (request) => {
     const response = await serveTileResponse(
       () => handleTileProtocol(request),
@@ -1642,7 +1645,7 @@ app.on('before-quit', (event) => {
   if (quitting) return
   event.preventDefault()
   quitting = true
-  void flushJsonWrites().finally(() => app.quit())
+  void Promise.all([flushJsonWrites(), shutdownPosthog(), shutdownPosthogLogs()]).finally(() => app.quit())
 })
 
 app.on('will-quit', () => {
@@ -1662,6 +1665,10 @@ let gpuCrashReportedAt = 0
 app.on('child-process-gone', (_event, details) => {
   if (details.type !== 'GPU') return
   logger.error('gpu', `GPU 进程退出（${details.reason}）`, `exitCode=${details.exitCode}`)
+  capturePosthogLog('error', 'gpu_process_exited', {
+    exit_code: details.exitCode,
+    reason: details.reason
+  })
   if (Date.now() - gpuCrashReportedAt < 60_000) return
   gpuCrashReportedAt = Date.now()
   Sentry.captureMessage(`GPU 进程退出：${details.reason}`, { level: 'error', extra: { exitCode: details.exitCode } })

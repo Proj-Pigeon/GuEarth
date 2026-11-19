@@ -1,6 +1,8 @@
+import { randomUUID } from 'crypto'
 import { net } from 'electron'
 import type { AiModelTestRequest, AiModelTestResult, AiProtocol } from '../../preload'
 import { readProviderKey } from '../keyVault'
+import { captureAiGeneration } from './posthog'
 import { readResponseText, ResponseTooLargeError } from './responseReader'
 
 const TEST_TIMEOUT_MS = 30_000
@@ -87,9 +89,11 @@ export async function testModel(value: unknown): Promise<AiModelTestResult> {
     timedOut = true
     controller.abort()
   }, TEST_TIMEOUT_MS)
+  const traceId = randomUUID()
   const startedAt = Date.now()
+  const requestUrl = endpoint(request.baseUrl, request.protocol)
   try {
-    const response = await net.fetch(endpoint(request.baseUrl, request.protocol), {
+    const response = await net.fetch(requestUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -104,12 +108,44 @@ export async function testModel(value: unknown): Promise<AiModelTestResult> {
     const payload: unknown = JSON.parse(text)
     if (!isRecord(payload)) throw new Error('响应格式错误')
     if (extractPayloadError(payload)) throw new Error(failureMessage(response.status, text, apiKey))
+    captureAiGeneration({
+      distinctId: `ai-model-test:${traceId}`,
+      traceId,
+      sessionId: null,
+      model: request.modelId,
+      provider: request.id,
+      input: body.messages,
+      output: payload,
+      baseUrl: request.baseUrl,
+      requestUrl,
+      latencyMs: Date.now() - startedAt,
+      stream: false
+    })
     return { latencyMs: Date.now() - startedAt }
   } catch (error) {
-    if (error instanceof ResponseTooLargeError) throw error
-    if (timedOut || controller.signal.aborted) throw new Error('响应超时')
-    if (error instanceof SyntaxError) throw new Error('响应格式错误')
-    throw error instanceof Error ? error : new Error('响应测试失败')
+    const failure = error instanceof ResponseTooLargeError
+      ? error
+      : timedOut || controller.signal.aborted
+        ? new Error('响应超时')
+        : error instanceof SyntaxError
+          ? new Error('响应格式错误')
+          : error instanceof Error
+            ? error
+            : new Error('响应测试失败')
+    captureAiGeneration({
+      distinctId: `ai-model-test:${traceId}`,
+      traceId,
+      sessionId: null,
+      model: request.modelId,
+      provider: request.id,
+      input: body.messages,
+      baseUrl: request.baseUrl,
+      requestUrl,
+      latencyMs: Date.now() - startedAt,
+      stream: false,
+      error: failure.message
+    })
+    throw failure
   } finally {
     clearTimeout(timer)
   }

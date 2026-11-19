@@ -45,5 +45,13 @@
     "vue": "^3.5.43",
     "vue-echarts": "^8.3.1",
     "vue-tsc": "^3.3.11"
+  },
+  "dependencies": {
+    "@opentelemetry/api-logs": "^0.223.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.301.2",
+    "@opentelemetry/resources": "^3.1.1",
+    "@opentelemetry/sdk-logs": "^3.1.1",
+    "posthog-js": "^1.451.2",
+    "posthog-node": "^5.74.0"
   }
 }

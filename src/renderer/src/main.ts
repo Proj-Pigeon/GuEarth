@@ -11,6 +11,7 @@ import { attachConsoleLogTee, logger } from '../../common/logger'
 import { surfaceFailureAlreadyShown } from '../../common/globeSurface'
 import { requestErrorRejectionLabel } from '../../common/resourceFailure'
 import { installGlobalErrorListeners, notifyCrashMessage } from './lib/crashReporter'
+import posthog from './posthog'
 
 attachConsoleLogTee('renderer')
 
@@ -35,6 +36,7 @@ dayjs.locale('zh-cn')
 
 const app = createApp(App)
 app.config.errorHandler = (error, _instance, info) => {
+  posthog.captureException(error)
   Sentry.captureException(error, { extra: { info } })
   console.error(error)
 }

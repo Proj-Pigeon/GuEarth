@@ -571,9 +571,9 @@ const api = {
     updateSettings: (settings: AiSettings): Promise<AiSettings> => ipcRenderer.invoke('ai:update-settings', settings),
     importModels: (request: AiModelImportRequest): Promise<AiModelImportResult> => ipcRenderer.invoke('ai:import-models', request),
     testModel: (request: AiModelTestRequest): Promise<AiModelTestResult> => ipcRenderer.invoke('ai:test-model', request),
-    chat: (sessionId: string, turns: AiChatTurn[], tools: AiToolDefinition[]): Promise<void> => ipcRenderer.invoke('ai:chat', sessionId, turns, tools),
+    chat: (sessionId: string, turns: AiChatTurn[], tools: AiToolDefinition[], conversationId: string, distinctId: string): Promise<void> => ipcRenderer.invoke('ai:chat', sessionId, turns, tools, conversationId, distinctId),
     getContextStats: (entries: AiContextEntry[]): Promise<AiContextStats> => ipcRenderer.invoke('ai:context-stats', entries),
-    compressContext: (entries: AiContextEntry[]): Promise<AiContextCompressionResult> => ipcRenderer.invoke('ai:compress-context', entries),
+    compressContext: (entries: AiContextEntry[], conversationId: string, distinctId: string): Promise<AiContextCompressionResult> => ipcRenderer.invoke('ai:compress-context', entries, conversationId, distinctId),
     stop: (sessionId: string): Promise<void> => ipcRenderer.invoke('ai:stop', sessionId),
     toolResult: (sessionId: string, callId: string, ok: boolean, result: unknown): Promise<void> => ipcRenderer.invoke('ai:tool-result', sessionId, callId, ok, result),
     chatHistory: {

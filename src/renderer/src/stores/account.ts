@@ -3,8 +3,10 @@ import { defineStore } from 'pinia'
 import type { AccountPhase, AccountProfile, AccountState } from '../../../preload'
 import { accountPhaseLabel } from '../../../common/passport'
 import { ipcErrorMessage } from '../lib/ipcError'
+import posthog from '../posthog'
 
 let bound = false
+let identifiedSub: string | null = null
 
 export const useAccountStore = defineStore('account', () => {
   const phase = ref<AccountPhase>('signed-out')
@@ -34,6 +36,20 @@ export const useAccountStore = defineStore('account', () => {
   const phaseLabel = computed(() => accountPhaseLabel(phase.value))
 
   function applyState(state: AccountState): void {
+    const nextSub = state.phase === 'signed-in' ? state.profile?.sub.trim() : ''
+
+    if (nextSub && nextSub !== identifiedSub) {
+      if (identifiedSub) posthog.reset()
+      const personProperties: Record<string, string> = {}
+      if (state.profile?.email) personProperties.email = state.profile.email
+      if (state.profile?.name) personProperties.name = state.profile.name
+      posthog.identify(nextSub, personProperties)
+      identifiedSub = nextSub
+    } else if (!nextSub && identifiedSub) {
+      posthog.reset()
+      identifiedSub = null
+    }
+
     phase.value = state.phase
     profile.value = state.profile
     userCode.value = state.challenge?.userCode ?? ''

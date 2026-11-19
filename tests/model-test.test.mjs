@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { compileFunction } from 'node:vm'
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
@@ -18,8 +19,10 @@ const { outputText } = transpileModule(source, {
 function loadTester(respond, key = 'secret-key') {
   const requests = []
   const dependencies = new Map([
+    ['crypto', { randomUUID }],
     ['electron', { net: { fetch: async (url, options) => { requests.push({ url, options }); return respond(url, options) } } }],
     ['../keyVault', { readProviderKey: () => key }],
+    ['./posthog', { captureAiGeneration: () => {} }],
     ['./responseReader', responseReaderApi]
   ])
   const load = compileFunction(`${outputText}\nreturn { testModel: exports.testModel }`, ['require', 'exports'])
