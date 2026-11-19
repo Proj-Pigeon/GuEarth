@@ -12,6 +12,13 @@ import {
   parsePolicyMarkdown
 } from '../src/common/mirrorPolicies.ts'
 import {
+  describeTileFetchError,
+  fetchTilePayloadWithRetry,
+  isRetryableTileStatus,
+  sanitizeTileUrlForLog,
+  tileRetryDelayMs
+} from '../src/common/tileProtocol.ts'
+import {
   EDGEONE_ARCGIS_TERRAIN_URL,
   EDGEONE_EARTHQUAKES_URL,
   EDGEONE_MIRROR_BASE_URL,
@@ -21,6 +28,8 @@ import {
   isLikelyMainlandChinaEnv,
   isMirrorCoverageNotFound,
   isMirrorSatelliteProvider,
+  MIRROR_FALLBACK_COOLDOWN_MS,
+  MIRROR_FAILURES_BEFORE_FALLBACK,
   mirrorCacheStyleId,
   mirrorEligibleProviders,
   normalizeTileMirrorMode,
@@ -250,11 +259,15 @@ test('auto mode follows the network probe in both directions', () => {
   assert.equal(router.sourceFor('esri-imagery'), 'origin')
 })
 
-test('auto mode recovers to the origin when the mirror itself fails', () => {
+test('auto mode recovers to the origin only after consecutive mirror failures reach threshold', () => {
   const router = new TileMirrorRouter()
   router.setMode('auto')
   router.noteProbeResult('opentopomap', false)
   assert.equal(router.sourceFor('opentopomap'), 'mirror')
+  for (let attempt = 1; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {
+    assert.equal(router.noteMirrorFailure('opentopomap'), false)
+    assert.equal(router.sourceFor('opentopomap'), 'mirror')
+  }
   assert.equal(router.noteMirrorFailure('opentopomap'), true)
   assert.equal(router.sourceFor('opentopomap'), 'origin')
   assert.equal(router.noteMirrorFailure('opentopomap'), false)
@@ -265,23 +278,53 @@ test('auto mode restarts the origin failure streak after the mirror itself fails
   router.setMode('auto')
   for (let attempt = 0; attempt < ORIGIN_FAILURES_BEFORE_MIRROR; attempt += 1) router.noteOriginFailure('osm')
   assert.equal(router.sourceFor('osm'), 'mirror')
+  for (let attempt = 1; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {
+    assert.equal(router.noteMirrorFailure('osm'), false)
+  }
   assert.equal(router.noteMirrorFailure('osm'), true)
   assert.equal(router.sourceFor('osm'), 'origin')
   for (let attempt = 1; attempt < ORIGIN_FAILURES_BEFORE_MIRROR; attempt += 1) assert.equal(router.noteOriginFailure('osm'), false)
   assert.equal(router.sourceFor('osm'), 'origin')
 })
 
-test('on mode mirrors every source until a mirror failure falls back to the origin for the session', () => {
+test('on mode tolerates transient mirror failures and resets streak on success', () => {
   const router = new TileMirrorRouter()
   router.setMode('on')
+  for (let round = 0; round < 3; round += 1) {
+    for (let attempt = 1; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {
+      assert.equal(router.noteMirrorFailure('esri-imagery'), false)
+    }
+    router.noteMirrorSuccess('esri-imagery')
+    assert.equal(router.sourceFor('esri-imagery'), 'mirror')
+  }
+  assert.deepEqual(router.fallenBackProviders(['esri-imagery']), [])
+})
+
+test('on mode trips fallback after consecutive failures, recovers after cooldown, and supports manual reset', () => {
+  let clock = 10_000
+  const router = new TileMirrorRouter(() => clock)
+  router.setMode('on')
   for (const providerId of Object.keys(mirrorEligibleProviders)) assert.equal(router.sourceFor(providerId), 'mirror')
+  for (let attempt = 1; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {
+    assert.equal(router.noteMirrorFailure('osm'), false)
+  }
   assert.equal(router.noteMirrorFailure('osm'), true)
   assert.equal(router.sourceFor('osm'), 'origin')
   assert.equal(router.sourceFor('esri-imagery'), 'mirror')
+  assert.deepEqual(router.fallenBackProviders(['osm', 'esri-imagery']), ['osm'])
   assert.equal(router.noteMirrorFailure('osm'), false)
-  assert.equal(router.noteMirrorFailure('osm'), false)
-  router.setMode('on')
+
+  clock += MIRROR_FALLBACK_COOLDOWN_MS - 1
+  assert.equal(router.sourceFor('osm'), 'origin')
+  clock += 1
   assert.equal(router.sourceFor('osm'), 'mirror')
+  assert.deepEqual(router.fallenBackProviders(['osm', 'esri-imagery']), [])
+
+  for (let attempt = 0; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) router.noteMirrorFailure('esri-imagery')
+  assert.equal(router.sourceFor('esri-imagery'), 'origin')
+  assert.equal(router.resetMirrorFallback('esri-imagery'), true)
+  assert.equal(router.sourceFor('esri-imagery'), 'mirror')
+  assert.equal(router.resetMirrorFallback('esri-imagery'), false)
 })
 
 test('off mode never routes a tile through the mirror even when the origin is unreachable', () => {
@@ -473,6 +516,9 @@ test('TileMirrorRouter ignores stale mirror failures after a mode switch', () =>
   assert.equal(router.noteMirrorFailure('osm', autoGen), false)
   assert.equal(router.sourceFor('osm'), 'mirror')
 
+  for (let attempt = 1; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {
+    assert.equal(router.noteMirrorFailure('osm', onGen), false)
+  }
   assert.equal(router.noteMirrorFailure('osm', onGen), true)
   assert.equal(router.sourceFor('osm'), 'origin')
 })
@@ -525,5 +571,67 @@ test('globeStore syncs mirror mode back to actual status when consent persistenc
   assert.equal(store.tileMirrorMode, 'off')
   assert.deepEqual(store.mirroredProviders, [])
   assert.equal(failureStore.degradations.length, 1)
+})
+
+test('fetchTilePayloadWithRetry retries 5xx, 429, network errors, and mid-body stream failures with backoff', async () => {
+  assert.equal(isRetryableTileStatus(408), true)
+  assert.equal(isRetryableTileStatus(429), true)
+  assert.equal(isRetryableTileStatus(502), true)
+  assert.equal(isRetryableTileStatus(503), true)
+  assert.equal(isRetryableTileStatus(404), false)
+  assert.equal(isRetryableTileStatus(403), false)
+  assert.equal(tileRetryDelayMs(0, 250), 250)
+  assert.equal(tileRetryDelayMs(1, 250), 500)
+
+  const delays = []
+  let calls = 0
+  const okResult = await fetchTilePayloadWithRetry(
+    async () => {
+      calls += 1
+      if (calls === 1) return new Response('bad gateway', { status: 502 })
+      if (calls === 2) {
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ 'content-type': 'image/jpeg' }),
+          arrayBuffer: async () => {
+            throw new Error('stream timeout')
+          }
+        }
+      }
+      return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'image/jpeg' } })
+    },
+    { attempts: 3, baseDelayMs: 100, sleep: async (ms) => { delays.push(ms) } }
+  )
+  assert.equal(okResult.ok, true)
+  assert.equal(okResult.status, 200)
+  assert.equal(okResult.data.byteLength, 3)
+  assert.equal(calls, 3)
+  assert.deepEqual(delays, [100, 200])
+
+  let nonRetryCalls = 0
+  const notFound = await fetchTilePayloadWithRetry(
+    async () => {
+      nonRetryCalls += 1
+      return new Response('not found', { status: 404 })
+    },
+    { attempts: 3, sleep: async () => undefined }
+  )
+  assert.equal(notFound.ok, false)
+  assert.equal(notFound.status, 404)
+  assert.equal(nonRetryCalls, 1)
+})
+
+test('tile log helpers strip query secrets and include error cause', () => {
+  assert.equal(
+    sanitizeTileUrlForLog('https://online0.map.bdimg.com/tile/?x=1&y=2&ak=SECRET&sn=SIGN'),
+    'https://online0.map.bdimg.com/tile/'
+  )
+  assert.equal(
+    sanitizeTileUrlForLog('https://proxy.project-pigeon.com/tiles/esri/1/0/0'),
+    'https://proxy.project-pigeon.com/tiles/esri/1/0/0'
+  )
+  const err = new Error('fetch failed', { cause: new Error('net::ERR_CONNECTION_REFUSED') })
+  assert.match(describeTileFetchError(err), /Error: fetch failed \(Error: net::ERR_CONNECTION_REFUSED\)/)
 })
 

@@ -89,6 +89,10 @@ export const tileMirrorModes: readonly TileMirrorMode[] = ['auto', 'on', 'off']
 
 export const ORIGIN_FAILURES_BEFORE_MIRROR = 2
 
+export const MIRROR_FAILURES_BEFORE_FALLBACK = 4
+
+export const MIRROR_FALLBACK_COOLDOWN_MS = 60_000
+
 const MIRROR_CACHE_STYLE_SUFFIX = '-mirror'
 
 export function isTileMirrorMode(value: unknown): value is TileMirrorMode {
@@ -139,13 +143,31 @@ export class TileMirrorRouter {
   private modeGeneration = 0
   private readonly reachability = new Map<string, OriginReachability>()
   private readonly originFailures = new Map<string, number>()
-  private readonly originFallbacks = new Set<string>()
+  private readonly mirrorFailures = new Map<string, number>()
+  private readonly mirrorFallbackUntil = new Map<string, number>()
+  private readonly now: () => number
+
+  constructor(now: () => number = Date.now) {
+    this.now = now
+  }
+
+  private isMirrorFallbackActive(providerId: string): boolean {
+    const until = this.mirrorFallbackUntil.get(providerId)
+    if (until === undefined) return false
+    if (this.now() >= until) {
+      this.mirrorFallbackUntil.delete(providerId)
+      this.mirrorFailures.delete(providerId)
+      return false
+    }
+    return true
+  }
 
   setMode(mode: TileMirrorMode): void {
     this.mode = mode
     this.modeGeneration += 1
     this.originFailures.clear()
-    this.originFallbacks.clear()
+    this.mirrorFailures.clear()
+    this.mirrorFallbackUntil.clear()
   }
 
   currentModeGeneration(): number {
@@ -154,12 +176,17 @@ export class TileMirrorRouter {
 
   sourceFor(providerId: string): TileSource {
     if (this.mode === 'off') return 'origin'
-    if (this.mode === 'on') return this.originFallbacks.has(providerId) ? 'origin' : 'mirror'
+    if (this.mode === 'on') return this.isMirrorFallbackActive(providerId) ? 'origin' : 'mirror'
     return this.reachability.get(providerId) === 'blocked' ? 'mirror' : 'origin'
   }
 
   mirroredProviders(providerIds: readonly string[]): string[] {
     return providerIds.filter((providerId) => this.sourceFor(providerId) === 'mirror')
+  }
+
+  fallenBackProviders(providerIds: readonly string[]): string[] {
+    if (this.mode !== 'on') return []
+    return providerIds.filter((providerId) => this.isMirrorFallbackActive(providerId))
   }
 
   reachabilityFor(providerId: string): OriginReachability {
@@ -181,11 +208,13 @@ export class TileMirrorRouter {
     if (failures < ORIGIN_FAILURES_BEFORE_MIRROR) return false
     if (this.reachability.get(providerId) === 'blocked') return false
     this.reachability.set(providerId, 'blocked')
+    this.mirrorFailures.set(providerId, 0)
     return true
   }
 
   noteProbeResult(providerId: string, reachable: boolean): boolean {
     this.originFailures.set(providerId, 0)
+    this.mirrorFailures.set(providerId, 0)
     const next: OriginReachability = reachable ? 'reachable' : 'blocked'
     const previous = this.reachability.get(providerId) ?? 'unknown'
     this.reachability.set(providerId, next)
@@ -193,17 +222,47 @@ export class TileMirrorRouter {
     return previous !== next
   }
 
+  noteMirrorSuccess(providerId: string, expectedGeneration?: number): void {
+    if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) return
+    this.mirrorFailures.set(providerId, 0)
+    this.mirrorFallbackUntil.delete(providerId)
+  }
+
   noteMirrorFailure(providerId: string, expectedGeneration?: number): boolean {
     if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) return false
     if (this.mode === 'on') {
-      if (this.originFallbacks.has(providerId)) return false
-      this.originFallbacks.add(providerId)
+      if (this.isMirrorFallbackActive(providerId)) return false
+      const failures = (this.mirrorFailures.get(providerId) ?? 0) + 1
+      this.mirrorFailures.set(providerId, failures)
+      if (failures < MIRROR_FAILURES_BEFORE_FALLBACK) return false
+      this.mirrorFailures.set(providerId, 0)
+      this.mirrorFallbackUntil.set(providerId, this.now() + MIRROR_FALLBACK_COOLDOWN_MS)
       return true
     }
     if (this.mode !== 'auto') return false
     if (this.reachability.get(providerId) !== 'blocked') return false
+    const failures = (this.mirrorFailures.get(providerId) ?? 0) + 1
+    this.mirrorFailures.set(providerId, failures)
+    if (failures < MIRROR_FAILURES_BEFORE_FALLBACK) return false
+    this.mirrorFailures.set(providerId, 0)
     this.originFailures.set(providerId, 0)
     this.reachability.set(providerId, 'reachable')
     return true
+  }
+
+  resetMirrorFallback(providerId?: string): boolean {
+    if (providerId !== undefined) {
+      const hadFallback = this.isMirrorFallbackActive(providerId)
+      this.mirrorFailures.delete(providerId)
+      this.mirrorFallbackUntil.delete(providerId)
+      return this.mode === 'on' && hadFallback
+    }
+    let hadFallback = false
+    for (const id of [...this.mirrorFallbackUntil.keys()]) {
+      if (this.isMirrorFallbackActive(id)) hadFallback = true
+    }
+    this.mirrorFailures.clear()
+    this.mirrorFallbackUntil.clear()
+    return this.mode === 'on' && hadFallback
   }
 }

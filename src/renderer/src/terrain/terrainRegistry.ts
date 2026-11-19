@@ -1,4 +1,5 @@
 import * as Cesium from 'cesium'
+import { logger } from '../../../common/logger'
 import { attachOriginTerrainFallback, withoutTileAvailability } from '../../../common/terrainAvailability'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
 import { EDGEONE_ARCGIS_TERRAIN_URL } from '../../../common/tileMirror'
@@ -25,7 +26,8 @@ async function createArcGisTerrain(): Promise<Cesium.ArcGISTiledElevationTerrain
         Cesium.Request,
         Cesium.ArcGISTiledElevationTerrainProvider
       >(mirrorProvider, createOrigin)
-    } catch {
+    } catch (error) {
+      logger.warn('terrain', '全球 3D 地形镜像源不可用，已回退到原地形源', error)
       return createOrigin()
     }
   }

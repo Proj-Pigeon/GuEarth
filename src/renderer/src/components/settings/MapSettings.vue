@@ -7,10 +7,29 @@ import { credentialOnlyProviders, providerCatalog, useGlobeStore } from '@render
 import { networkProxyMode, normalizeNetworkProxy, type NetworkProxyMode } from '../../../../common/networkProxy'
 
 const globeStore = useGlobeStore()
-const { networkProxy, tileCacheEnabled, tileMirrorMode, mirroredProviders, providerCredentials } = storeToRefs(globeStore)
+const { networkProxy, selectedLayerId, tileCacheEnabled, tileMirrorMode, mirroredProviders, mirrorFallenBackProviders, providerCredentials } = storeToRefs(globeStore)
 
 const tileMirrorEnabled = computed(() => tileMirrorMode.value === 'on')
 const tileMirrorRouteActive = computed(() => tileMirrorEnabled.value || mirroredProviders.value.length > 0)
+const tileMirrorFallenBack = computed(() =>
+  tileMirrorEnabled.value
+  && mirrorFallenBackProviders.value.length > 0
+  && (mirrorFallenBackProviders.value.includes(selectedLayerId.value) || mirroredProviders.value.length === 0)
+)
+const tileMirrorStatusColor = computed(() => (tileMirrorFallenBack.value ? 'orange' : tileMirrorRouteActive.value ? 'blue' : undefined))
+const tileMirrorStatusLabel = computed(() => (tileMirrorFallenBack.value ? '镜像异常，已回退直连' : tileMirrorRouteActive.value ? '已启用镜像' : '直连原服务'))
+
+async function retryTileMirror(): Promise<void> {
+  if (typeof window.guEarth?.tiles?.resetMirrorFallback !== 'function') return
+  try {
+    const status = await window.guEarth.tiles.resetMirrorFallback()
+    globeStore.setMirroredProviders(status.mirroredProviders)
+    globeStore.setMirrorFallenBackProviders(status.fallenBackProviders ?? [])
+    message.info('已重新尝试镜像线路')
+  } catch {
+    message.error('重置镜像状态失败，请重试')
+  }
+}
 
 function handleTileMirrorSwitchChange(checked: string | number | boolean): void {
   if (checked === true) {
@@ -189,9 +208,10 @@ async function testProxy(): Promise<void> {
         <div class="setting-copy">
           <div class="setting-title-row">
             <span class="setting-title">海外资源镜像服务</span>
-            <a-tag :color="tileMirrorRouteActive ? 'blue' : undefined">
-              {{ tileMirrorRouteActive ? '已启用镜像' : '直连原服务' }}
+            <a-tag :color="tileMirrorStatusColor">
+              {{ tileMirrorStatusLabel }}
             </a-tag>
+            <a-button v-if="tileMirrorFallenBack" type="link" class="policy-inline-link" @click="retryTileMirror">重试镜像</a-button>
           </div>
           <p class="setting-desc">
             由咕咕地球携手奈索星联团队提供加速服务，加速海外底图、3D 地形与教学数据加载。启用即表示同意<a-button type="link" class="policy-inline-link" @click="globeStore.openMirrorPolicy('agreement')">《咕咕地球镜像服务使用协议》</a-button>与<a-button type="link" class="policy-inline-link" @click="globeStore.openMirrorPolicy('acceptable-use')">《可接受使用政策》</a-button>。

@@ -5,7 +5,7 @@ import { normalizeNetworkProxy } from '../common/networkProxy'
 import { edgeOneTileMirrorUrl, hasLegacyTileMirrorSetting, isMirrorCoverageNotFound, isTileMirrorMode, mirrorCacheStyleId, mirrorEligibleProviders, originProbeReachable, resolveStoredTileMirrorSettings, TileMirrorRouter } from '../common/tileMirror'
 import type { MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
-import { serveTileResponse } from '../common/tileProtocol'
+import { describeTileFetchError, fetchTilePayloadWithRetry, sanitizeTileUrlForLog, serveTileResponse, TILE_FETCH_TIMEOUT_MS, type FetchedTilePayload } from '../common/tileProtocol'
 import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
 import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
 import { ENSO_PHASE_SET, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS, type EnsoPhase } from '../common/thematicState'
@@ -347,26 +347,31 @@ function tileRemoteUrl(providerId: string, styleId: string, level: number, x: nu
   return undefined
 }
 
-const TILE_FETCH_TIMEOUT_MS = 8000
-const TILE_FETCH_ATTEMPTS = 2
 const TILE_FETCH_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
 }
+const TILE_ERROR_LOG_INTERVAL_MS = 5_000
+const tileErrorLogTimestamps = new Map<string, number>()
 
-async function fetchTileWithRetry(url: string): Promise<Response> {
-  let lastError: unknown
-  for (let attempt = 0; attempt < TILE_FETCH_ATTEMPTS; attempt++) {
-    try {
-      return await net.fetch(url, { headers: TILE_FETCH_HEADERS, signal: AbortSignal.timeout(TILE_FETCH_TIMEOUT_MS) })
-    } catch (error) {
-      lastError = error
-    }
-  }
-  throw lastError
+function shouldLogTileFailure(key: string): boolean {
+  const now = Date.now()
+  const last = tileErrorLogTimestamps.get(key) ?? 0
+  if (now - last < TILE_ERROR_LOG_INTERVAL_MS) return false
+  tileErrorLogTimestamps.set(key, now)
+  return true
+}
+
+function describeTileTarget(key: TileKey, url: string): string {
+  return `z=${key.level} x=${key.x} y=${key.y} url=${sanitizeTileUrlForLog(url)}`
+}
+
+function fetchTilePayload(url: string): Promise<FetchedTilePayload> {
+  return fetchTilePayloadWithRetry((signal) => net.fetch(url, { headers: TILE_FETCH_HEADERS, signal }))
 }
 
 const mirrorLoggedProviders = new Set<string>()
+const mirrorFallenBackProviders = new Set<string>()
 const tileMirrorRouter = new TileMirrorRouter()
 
 const MIRROR_PROBE_TIMEOUT_MS = 4000
@@ -381,9 +386,11 @@ function mirrorSource(providerId: string): TileSource {
 }
 
 function mirrorStatus(notice = ''): TileMirrorStatus {
+  const eligible = mirrorEligibleProviderIds()
   return {
     mode: settings.tileMirrorMode,
-    mirroredProviders: tileMirrorRouter.mirroredProviders(mirrorEligibleProviderIds()),
+    mirroredProviders: tileMirrorRouter.mirroredProviders(eligible),
+    fallenBackProviders: tileMirrorRouter.fallenBackProviders(eligible),
     notice
   }
 }
@@ -412,7 +419,7 @@ function mirrorRouteNotice(previous: readonly string[], next: readonly string[])
 
 function mirrorFallbackNotice(): string {
   return settings.tileMirrorMode === 'on'
-    ? '加速线路异常，已自动切回原地图源'
+    ? '镜像线路异常，已临时切回原地图源，稍后将自动重试'
     : '加速线路异常，已恢复直连原地图源'
 }
 
@@ -488,20 +495,25 @@ function startMirrorProbeTimer(): void {
   mirrorProbeTimer.unref()
 }
 
-type MirrorTileOutcome = { response: Response } | { failure: 'coverage' | 'network' }
+type MirrorTileOutcome =
+  | { response: Response }
+  | { failure: 'coverage' }
+  | { failure: 'network'; detail: string }
 
 async function edgeOneMirrorTileResponse(providerId: string, key: TileKey, granuleDate: string): Promise<MirrorTileOutcome> {
   const url = edgeOneTileMirrorUrl(providerId, key.level, key.x, key.y, granuleDate)
   if (!url) return { failure: 'coverage' }
   try {
-    const response = await fetchTileWithRetry(url)
-    if (!response.ok) return { failure: isMirrorCoverageNotFound(response.status, response.headers) ? 'coverage' : 'network' }
-    const data = await response.arrayBuffer()
-    const contentType = response.headers.get('content-type') ?? (providerId === 'viirs-night' ? 'image/jpeg' : 'image/png')
-    if (settings.tileCacheEnabled) void writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
-    return { response: new Response(data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'edgeone' } }) }
-  } catch {
-    return { failure: 'network' }
+    const payload = await fetchTilePayload(url)
+    if (!payload.ok || !payload.data) {
+      if (isMirrorCoverageNotFound(payload.status, payload.headers)) return { failure: 'coverage' }
+      return { failure: 'network', detail: `HTTP ${payload.status} ${describeTileTarget(key, url)}` }
+    }
+    const contentType = payload.headers.get('content-type') ?? (providerId === 'viirs-night' ? 'image/jpeg' : 'image/png')
+    if (settings.tileCacheEnabled) void writeTile({ ...key, data: payload.data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
+    return { response: new Response(payload.data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': 'edgeone' } }) }
+  } catch (error) {
+    return { failure: 'network', detail: `${describeTileFetchError(error)} ${describeTileTarget(key, url)}` }
   }
 }
 
@@ -510,39 +522,53 @@ async function serveMirrorTile(providerId: string, _kind: MirrorTileKind, key: T
     mirrorLoggedProviders.add(providerId)
     logger.info('tiles', `镜像瓦片源已启用，${providerId} 使用奈索星联 EdgeOne 镜像服务`)
   }
-  const outcome = await edgeOneMirrorTileResponse(providerId, key, granuleDate).catch((error: unknown) => {
-    logger.warn('tiles', `镜像瓦片请求异常，${providerId} 本次改用原影像源`, error)
-    return null
-  })
-  if (!outcome) return null
-  if ('response' in outcome) return outcome.response
+  const outcome = await edgeOneMirrorTileResponse(providerId, key, granuleDate)
+  if ('response' in outcome) {
+    tileMirrorRouter.noteMirrorSuccess(providerId, modeGeneration)
+    if (mirrorFallenBackProviders.delete(providerId)) {
+      logger.info('tiles', `镜像瓦片源已恢复，${providerId} 重新使用奈索星联 EdgeOne 镜像服务`)
+      broadcastMirrorStatus('')
+    }
+    return outcome.response
+  }
   if (outcome.failure !== 'network') return null
-  if (!tileMirrorRouter.noteMirrorFailure(providerId, modeGeneration)) return null
-  logger.warn('tiles', `镜像瓦片源请求失败，${providerId} 已回退到原影像源`)
-  broadcastMirrorStatus(mirrorFallbackNotice())
+  if (tileMirrorRouter.noteMirrorFailure(providerId, modeGeneration)) {
+    mirrorFallenBackProviders.add(providerId)
+    logger.warn('tiles', `镜像瓦片源连续失败，${providerId} 已临时回退到原影像源`, outcome.detail)
+    broadcastMirrorStatus(mirrorFallbackNotice())
+    return null
+  }
+  if (shouldLogTileFailure(`mirror:${providerId}`)) {
+    logger.warn('tiles', `镜像瓦片请求失败，${providerId} 本次改用原影像源`, outcome.detail)
+  }
   return null
 }
 
 async function serveOriginTile(providerId: string, key: TileKey, remoteUrl: string): Promise<Response> {
   const previous = tileMirrorRouter.mirroredProviders(mirrorEligibleProviderIds())
   try {
-    const response = await fetchTileWithRetry(remoteUrl)
-    if (response.ok) {
-      const data = await response.arrayBuffer()
-      const contentType = response.headers.get('content-type') ?? 'image/png'
-      if (settings.tileCacheEnabled) void writeTile({ ...key, data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
+    const payload = await fetchTilePayload(remoteUrl)
+    if (payload.ok && payload.data) {
+      const contentType = payload.headers.get('content-type') ?? 'image/png'
+      if (settings.tileCacheEnabled) void writeTile({ ...key, data: payload.data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
       if (tileMirrorRouter.noteOriginSuccess(providerId)) notifyMirrorRouteChange(previous)
-      return new Response(data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss' } })
+      return new Response(payload.data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss' } })
     }
-    if (response.status === 429 || response.status >= 500) {
+    if (shouldLogTileFailure(`origin:${providerId}`)) {
+      logger.warn('tiles', `原影像瓦片请求失败，${providerId}`, `HTTP ${payload.status} ${describeTileTarget(key, remoteUrl)}`)
+    }
+    if (payload.status === 429 || payload.status >= 500) {
       if (tileMirrorRouter.noteOriginFailure(providerId)) notifyMirrorRouteChange(previous)
       const stale = await cachedTileResponse(key, true)
       if (stale) return stale
     } else {
       if (tileMirrorRouter.noteOriginSuccess(providerId)) notifyMirrorRouteChange(previous)
     }
-    return new Response(`Tile request failed: ${response.status}`, { status: response.status })
-  } catch {
+    return new Response(`Tile request failed: ${payload.status}`, { status: payload.status })
+  } catch (error) {
+    if (shouldLogTileFailure(`origin:${providerId}`)) {
+      logger.warn('tiles', `原影像瓦片请求异常，${providerId}`, `${describeTileFetchError(error)} ${describeTileTarget(key, remoteUrl)}`)
+    }
     if (tileMirrorRouter.noteOriginFailure(providerId)) notifyMirrorRouteChange(previous)
     const stale = await cachedTileResponse(key, true)
     if (stale) return stale
@@ -879,9 +905,17 @@ function registerIpcHandlers(): void {
       }
       return nextSettings
     })
-    if (patch.networkProxy !== undefined) void applyNetworkProxy().then(() => scheduleMirrorRefresh('network'))
+    if (patch.networkProxy !== undefined) {
+      void applyNetworkProxy().then(() => {
+        const recovered = tileMirrorRouter.resetMirrorFallback()
+        mirrorFallenBackProviders.clear()
+        if (recovered) broadcastMirrorStatus('')
+        scheduleMirrorRefresh('network')
+      })
+    }
     if (tileMirrorModeChanged) {
       mirrorLoggedProviders.clear()
+      mirrorFallenBackProviders.clear()
       tileMirrorRouter.setMode(tileMirrorModeNow)
       setDatasetMirrorEnabled(tileMirrorModeNow === 'on')
       setModelsDevMirrorEnabled(tileMirrorModeNow === 'on')
@@ -969,6 +1003,17 @@ function registerIpcHandlers(): void {
   ipcMain.handle('tiles:get', (_event, key: TileKey) => readTile(key))
   ipcMain.handle('tiles:put', (_event, entry: TileCacheEntry) => writeTile(entry))
   ipcMain.handle('tiles:mirror-status', (): TileMirrorStatus => mirrorStatus())
+  ipcMain.handle('tiles:reset-mirror-fallback', (_event, providerId?: unknown, notify = true): TileMirrorStatus => {
+    const id = typeof providerId === 'string' && providerId.trim() ? safeId(providerId) : undefined
+    const recovered = tileMirrorRouter.resetMirrorFallback(id)
+    if (id) mirrorFallenBackProviders.delete(id)
+    else mirrorFallenBackProviders.clear()
+    if (recovered) {
+      logger.info('tiles', `已重置镜像回退状态，${id ?? '全部底图源'} 重新尝试镜像服务`)
+      if (notify !== false) broadcastMirrorStatus('')
+    }
+    return mirrorStatus()
+  })
   ipcMain.handle('tiles:clear', (_event, providerId?: string) => {
     const target = providerId === undefined ? tileCachePath : storageChildPath(tileCachePath, safeId(providerId))
     return enqueueTileMutation(async () => {

@@ -35,7 +35,7 @@ const providerName = (id: string): string => layerRegistry[id]?.meta.name ?? id
 
 const GLOBE_LOAD_TIMEOUT_MS = 20_000
 const TILE_RECOVERY_GRACE_MS = 3_000
-const TERRAIN_RESOLVE_BUDGET_MS = 4_000
+const TERRAIN_RESOLVE_BUDGET_MS = 10_000
 
 type LayerLoadResult =
   | { ok: true }
@@ -1040,6 +1040,16 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
     store.setGlobeError('')
     store.setGlobeLoadStage('正在重新加载地图…')
     startLoadTimeout()
+    if (mirrorEligibleProviders[id] && typeof window.guEarth?.tiles?.resetMirrorFallback === 'function') {
+      try {
+        const status = await window.guEarth.tiles.resetMirrorFallback(id, false)
+        store.setMirroredProviders(status.mirroredProviders)
+        store.setMirrorFallenBackProviders(status.fallenBackProviders ?? [])
+        lastMirrorRouteSignature = mirrorRouteSignature(status.mirroredProviders)
+      } catch {
+        void 0
+      }
+    }
     const existing = imageryLayers.get(id)
     if (existing) {
       retireImageryLayer(existing)
@@ -1080,6 +1090,7 @@ export function useCesiumViewer(container: Ref<HTMLDivElement | undefined>) {
 
   function applyMirrorStatus(status: TileMirrorStatus): void {
     store.setMirroredProviders(status.mirroredProviders)
+    store.setMirrorFallenBackProviders(status.fallenBackProviders ?? [])
     const signature = mirrorRouteSignature(status.mirroredProviders)
     const nextTerrainMirrorMode: 'on' | 'off' = status.mode === 'on' ? 'on' : 'off'
     const routeChanged = lastMirrorRouteSignature !== undefined && lastMirrorRouteSignature !== signature

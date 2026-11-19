@@ -128,6 +128,7 @@ export const useGlobeStore = defineStore('globe', () => {
   const mirrorPolicyOpen = ref(false)
   const mirrorPolicyActiveId = ref<MirrorPolicyId>('agreement')
   const mirroredProviders = ref<string[]>([])
+  const mirrorFallenBackProviders = ref<string[]>([])
   const networkProxy = ref('')
   const providerCredentials = ref<Record<string, { configured: boolean; updatedAt: number | null }>>({})
   const isLayerPanelOpen = ref(false)
@@ -191,11 +192,13 @@ export const useGlobeStore = defineStore('globe', () => {
   async function syncMirrorSettingsAfterFailure(previousMode: TileMirrorMode, seq: number): Promise<void> {
     let nextMode: TileMirrorMode = previousMode
     let nextProviders: string[] | undefined
+    let nextFallenBack: string[] | undefined
     if (apiAvailable() && typeof window.guEarth.tiles?.getMirrorStatus === 'function') {
       try {
         const status = await window.guEarth.tiles.getMirrorStatus()
         nextMode = status.mode === 'on' ? 'on' : 'off'
         nextProviders = [...status.mirroredProviders]
+        nextFallenBack = [...(status.fallenBackProviders ?? [])]
       } catch {
         nextMode = previousMode
       }
@@ -203,6 +206,7 @@ export const useGlobeStore = defineStore('globe', () => {
     if (seq !== mirrorPersistSeq) return
     tileMirrorMode.value = nextMode
     if (nextProviders) mirroredProviders.value = nextProviders
+    if (nextFallenBack) mirrorFallenBackProviders.value = nextFallenBack
     failureStore.reportDegrade('镜像服务设置保存失败，已恢复原网络设置')
   }
 
@@ -291,6 +295,7 @@ export const useGlobeStore = defineStore('globe', () => {
     mirrorPolicyOpen.value = false
   }
   function setMirroredProviders(providerIds: string[]): void { mirroredProviders.value = [...providerIds] }
+  function setMirrorFallenBackProviders(providerIds: string[]): void { mirrorFallenBackProviders.value = [...providerIds] }
   function isMirrorActive(providerId: string): boolean { return mirroredProviders.value.includes(providerId) }
   function setNetworkProxy(value: string): void { networkProxy.value = value; void persistSettings() }
   function setCredentialStatus(id: string, status: { configured: boolean; updatedAt: number | null }): void { providerCredentials.value = { ...providerCredentials.value, [id]: status } }
@@ -299,10 +304,10 @@ export const useGlobeStore = defineStore('globe', () => {
 
   return {
     layers, selectedLayerId, providerStyles, terrainProviderId, terrainExaggeration, terrainLighting, tileCacheEnabled, tileMirrorMode, mirrorConsentPrompted, settingsHydrated,
-    mirrorConsentOpen, mirrorConsentReason, mirrorPolicyOpen, mirrorPolicyActiveId, mirroredProviders, networkProxy,
+    mirrorConsentOpen, mirrorConsentReason, mirrorPolicyOpen, mirrorPolicyActiveId, mirroredProviders, mirrorFallenBackProviders, networkProxy,
     providerCredentials, isLayerPanelOpen, isGlobeReady, globeLoadTimedOut, globeLoadStage, activeTerrainId, globeError, terrainError, camera, sceneMode, levelViewActive, hydrateSettings,
     setLayerPanelOpen, setGlobeReady, setGlobeLoadTimedOut, setGlobeLoadStage, setActiveTerrainId, setGlobeError, setTerrainError, setCameraReadout, selectBasemap, setLayerOpacity,
     setProviderStyle, setTerrainProvider, setTerrainExaggeration, setTerrainLighting, setTileCacheEnabled, setTileMirrorMode, openMirrorConsent, closeMirrorConsent, acceptMirrorConsent, declineMirrorConsent,
-    openMirrorPolicy, closeMirrorPolicy, setMirroredProviders, isMirrorActive, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
+    openMirrorPolicy, closeMirrorPolicy, setMirroredProviders, setMirrorFallenBackProviders, isMirrorActive, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
   }
 })

@@ -43,6 +43,7 @@ export interface GuEarthSettingsPatch {
 export interface TileMirrorStatus {
   mode: TileMirrorMode
   mirroredProviders: string[]
+  fallenBackProviders?: string[]
   notice: string
 }
 
@@ -470,6 +471,7 @@ const api = {
     clear: (providerId?: string): Promise<void> => ipcRenderer.invoke('tiles:clear', providerId),
     stats: (): Promise<TileCacheStats> => ipcRenderer.invoke('tiles:stats'),
     getMirrorStatus: (): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:mirror-status'),
+    resetMirrorFallback: (providerId?: string, notify?: boolean): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:reset-mirror-fallback', providerId, notify),
     onMirrorStatus: (listener: (status: TileMirrorStatus) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: TileMirrorStatus): void => listener(payload)
       ipcRenderer.on('tiles:mirror-status', wrapped)
