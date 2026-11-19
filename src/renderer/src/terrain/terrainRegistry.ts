@@ -1,31 +1,35 @@
 import * as Cesium from 'cesium'
+import { logger } from '../../../common/logger'
 import { attachOriginTerrainFallback, withoutTileAvailability } from '../../../common/terrainAvailability'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
-import { EDGEONE_ARCGIS_TERRAIN_URL } from '../../../common/tileMirror'
+import { mirrorArcGisTerrainUrl, mirrorEndpointLabel, type MirrorEndpointId } from '../../../common/tileMirror'
 import { useGlobeStore } from '@renderer/stores/globe'
 
 const arcgisTerrainUrl = 'https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'
 
-function isTerrainMirrorEnabled(): boolean {
+function activeTerrainMirrorEndpoint(): MirrorEndpointId | null {
   try {
-    return useGlobeStore().tileMirrorMode === 'on'
+    const store = useGlobeStore()
+    return store.tileMirrorMode === 'on' ? store.activeMirrorEndpoint : null
   } catch {
-    return false
+    return null
   }
 }
 
 async function createArcGisTerrain(): Promise<Cesium.ArcGISTiledElevationTerrainProvider> {
   const createOrigin = (): Promise<Cesium.ArcGISTiledElevationTerrainProvider> =>
     Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(arcgisTerrainUrl)
-  if (isTerrainMirrorEnabled()) {
+  const mirrorEndpoint = activeTerrainMirrorEndpoint()
+  if (mirrorEndpoint) {
     try {
-      const mirrorProvider = await Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(EDGEONE_ARCGIS_TERRAIN_URL)
+      const mirrorProvider = await Cesium.ArcGISTiledElevationTerrainProvider.fromUrl(mirrorArcGisTerrainUrl(mirrorEndpoint))
       return attachOriginTerrainFallback<
         Cesium.TerrainData,
         Cesium.Request,
         Cesium.ArcGISTiledElevationTerrainProvider
       >(mirrorProvider, createOrigin)
-    } catch {
+    } catch (error) {
+      logger.warn('terrain', `全球 3D 地形镜像源（${mirrorEndpointLabel(mirrorEndpoint)}）不可用，已回退到原地形源`, error)
       return createOrigin()
     }
   }

@@ -1,8 +1,18 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { MirrorPolicyId } from '../../../common/mirrorPolicies'
-import { normalizeTileMirrorMode, type TileMirrorMode } from '../../../common/tileMirror'
+import {
+  DEFAULT_MIRROR_ENDPOINT,
+  isMirrorEndpointId,
+  normalizeMirrorEndpointPreference,
+  normalizeTileMirrorMode,
+  type MirrorEndpointId,
+  type MirrorEndpointPreference,
+  type MirrorEndpointProbeResult,
+  type TileMirrorMode
+} from '../../../common/tileMirror'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
+import type { GuEarthSettingsPatch, TileMirrorStatus } from '../../../preload'
 import { useFailureStore } from './failure'
 
 export type MirrorConsentReason = 'china' | 'slow' | 'settings'
@@ -119,15 +129,22 @@ export const useGlobeStore = defineStore('globe', () => {
   const terrainLighting = ref(false)
   const tileCacheEnabled = ref(true)
   const tileMirrorMode = ref<TileMirrorMode>('off')
+  const tileMirrorSource = ref<MirrorEndpointPreference>('auto')
+  const activeMirrorEndpoint = ref<MirrorEndpointId>(DEFAULT_MIRROR_ENDPOINT)
+  const mirrorProbingEndpoints = ref(false)
+  const mirrorEndpointProbes = ref<MirrorEndpointProbeResult[]>([])
   const mirrorConsentPrompted = ref(true)
   let mirrorConsentKnown = false
   let mirrorPersistSeq = 0
+  let mirrorSourcePersistSeq = 0
+  let mirrorSourceSettledSeq = 0
   const settingsHydrated = ref(false)
   const mirrorConsentOpen = ref(false)
   const mirrorConsentReason = ref<MirrorConsentReason>('china')
   const mirrorPolicyOpen = ref(false)
   const mirrorPolicyActiveId = ref<MirrorPolicyId>('agreement')
   const mirroredProviders = ref<string[]>([])
+  const mirrorFallenBackProviders = ref<string[]>([])
   const networkProxy = ref('')
   const providerCredentials = ref<Record<string, { configured: boolean; updatedAt: number | null }>>({})
   const isLayerPanelOpen = ref(false)
@@ -154,6 +171,8 @@ export const useGlobeStore = defineStore('globe', () => {
       mirrorConsentPrompted.value = settings.mirrorConsentPrompted === true
       mirrorConsentKnown = true
       tileMirrorMode.value = settings.mirrorConsentPrompted === true && normalizeTileMirrorMode(settings.tileMirrorMode) === 'on' ? 'on' : 'off'
+      tileMirrorSource.value = normalizeMirrorEndpointPreference(settings.tileMirrorSource)
+      if (tileMirrorSource.value !== 'auto') activeMirrorEndpoint.value = tileMirrorSource.value
       networkProxy.value = settings.networkProxy ?? ''
       providerStyles.value = Object.fromEntries(providerCatalog.map((provider) => [provider.id, styleFor(provider.id, settings.providerStyles?.[provider.id] ?? provider.defaultStyleId)]))
       providerCredentials.value = settings.providerCredentials
@@ -167,35 +186,43 @@ export const useGlobeStore = defineStore('globe', () => {
     }
   }
 
-  async function persistSettings(): Promise<boolean> {
+  async function persistSettingsPatch(patch: GuEarthSettingsPatch): Promise<boolean> {
     if (!apiAvailable()) return true
     try {
-      await window.guEarth.settings.update({
-        selectedImageryProviderId: selectedLayerId.value,
-        selectedTerrainProviderId: terrainProviderId.value,
-        terrainExaggeration: terrainExaggeration.value,
-        terrainLighting: terrainLighting.value,
-        tileCacheEnabled: tileCacheEnabled.value,
-        tileMirrorMode: tileMirrorMode.value,
-        ...(mirrorConsentKnown ? { mirrorConsentPrompted: mirrorConsentPrompted.value } : {}),
-        networkProxy: networkProxy.value,
-        providerStyles: { ...providerStyles.value },
-        sceneMode: sceneMode.value
-      })
+      await window.guEarth.settings.update(patch)
       return true
     } catch {
       return false
     }
   }
 
-  async function syncMirrorSettingsAfterFailure(previousMode: TileMirrorMode, seq: number): Promise<void> {
+  async function persistSettings(): Promise<boolean> {
+    return persistSettingsPatch({
+      selectedImageryProviderId: selectedLayerId.value,
+      selectedTerrainProviderId: terrainProviderId.value,
+      terrainExaggeration: terrainExaggeration.value,
+      terrainLighting: terrainLighting.value,
+      tileCacheEnabled: tileCacheEnabled.value,
+      networkProxy: networkProxy.value,
+      providerStyles: { ...providerStyles.value },
+      sceneMode: sceneMode.value
+    })
+  }
+
+  async function syncMirrorModeAfterFailure(previousMode: TileMirrorMode, seq: number): Promise<void> {
     let nextMode: TileMirrorMode = previousMode
     let nextProviders: string[] | undefined
+    let nextFallenBack: string[] | undefined
+    let nextProbing: boolean | undefined
+    let nextProbes: MirrorEndpointProbeResult[] | undefined
     if (apiAvailable() && typeof window.guEarth.tiles?.getMirrorStatus === 'function') {
       try {
         const status = await window.guEarth.tiles.getMirrorStatus()
         nextMode = status.mode === 'on' ? 'on' : 'off'
         nextProviders = [...status.mirroredProviders]
+        nextFallenBack = [...(status.fallenBackProviders ?? [])]
+        if (typeof status.probingEndpoints === 'boolean') nextProbing = status.probingEndpoints
+        if (Array.isArray(status.endpointProbes)) nextProbes = status.endpointProbes.map((probe) => ({ ...probe }))
       } catch {
         nextMode = previousMode
       }
@@ -203,14 +230,71 @@ export const useGlobeStore = defineStore('globe', () => {
     if (seq !== mirrorPersistSeq) return
     tileMirrorMode.value = nextMode
     if (nextProviders) mirroredProviders.value = nextProviders
+    if (nextFallenBack) mirrorFallenBackProviders.value = nextFallenBack
+    if (nextProbing !== undefined) mirrorProbingEndpoints.value = nextProbing
+    if (nextProbes) mirrorEndpointProbes.value = nextProbes
     failureStore.reportDegrade('镜像服务设置保存失败，已恢复原网络设置')
   }
 
   async function persistMirrorSettings(previousMode: TileMirrorMode): Promise<void> {
     const seq = ++mirrorPersistSeq
-    const saved = await persistSettings()
+    const saved = await persistSettingsPatch({
+      tileMirrorMode: tileMirrorMode.value,
+      ...(mirrorConsentKnown ? { mirrorConsentPrompted: mirrorConsentPrompted.value } : {})
+    })
     if (saved || seq !== mirrorPersistSeq) return
-    await syncMirrorSettingsAfterFailure(previousMode, seq)
+    await syncMirrorModeAfterFailure(previousMode, seq)
+  }
+
+  async function syncMirrorSourceAfterFailure(
+    previousSource: MirrorEndpointPreference,
+    previousActive: MirrorEndpointId,
+    seq: number
+  ): Promise<void> {
+    let nextSource: MirrorEndpointPreference = previousSource
+    let nextActive: MirrorEndpointId = previousActive
+    let nextProviders: string[] | undefined
+    let nextFallenBack: string[] | undefined
+    let nextProbing: boolean | undefined
+    let nextProbes: MirrorEndpointProbeResult[] | undefined
+    if (apiAvailable() && typeof window.guEarth.tiles?.getMirrorStatus === 'function') {
+      try {
+        const status = await window.guEarth.tiles.getMirrorStatus()
+        if (status.sourcePreference) nextSource = normalizeMirrorEndpointPreference(status.sourcePreference)
+        if (isMirrorEndpointId(status.activeEndpoint)) nextActive = status.activeEndpoint
+        nextProviders = [...status.mirroredProviders]
+        nextFallenBack = [...(status.fallenBackProviders ?? [])]
+        if (typeof status.probingEndpoints === 'boolean') nextProbing = status.probingEndpoints
+        if (Array.isArray(status.endpointProbes)) nextProbes = status.endpointProbes.map((probe) => ({ ...probe }))
+      } catch {
+        nextSource = previousSource
+        nextActive = previousActive
+      }
+    }
+    if (seq !== mirrorSourcePersistSeq) return
+    mirrorSourceSettledSeq = seq
+    tileMirrorSource.value = nextSource
+    activeMirrorEndpoint.value = nextActive
+    if (nextProviders) mirroredProviders.value = nextProviders
+    if (nextFallenBack) mirrorFallenBackProviders.value = nextFallenBack
+    if (nextProbing !== undefined) mirrorProbingEndpoints.value = nextProbing
+    if (nextProbes) mirrorEndpointProbes.value = nextProbes
+    failureStore.reportDegrade('镜像服务设置保存失败，已恢复原网络设置')
+  }
+
+  async function persistMirrorSourceSetting(
+    source: MirrorEndpointPreference,
+    previousSource: MirrorEndpointPreference,
+    previousActive: MirrorEndpointId
+  ): Promise<void> {
+    const seq = ++mirrorSourcePersistSeq
+    const saved = await persistSettingsPatch({ tileMirrorSource: source })
+    if (seq !== mirrorSourcePersistSeq) return
+    if (saved) {
+      mirrorSourceSettledSeq = seq
+      return
+    }
+    await syncMirrorSourceAfterFailure(previousSource, previousActive, seq)
   }
 
   function setLayerPanelOpen(value: boolean): void { isLayerPanelOpen.value = value }
@@ -259,6 +343,32 @@ export const useGlobeStore = defineStore('globe', () => {
     tileMirrorMode.value = mode
     void persistMirrorSettings(previousMode)
   }
+  function setTileMirrorSource(value: unknown): void {
+    const source = normalizeMirrorEndpointPreference(value)
+    if (source === tileMirrorSource.value) return
+    const previousSource = tileMirrorSource.value
+    const previousActive = activeMirrorEndpoint.value
+    tileMirrorSource.value = source
+    if (source !== 'auto') activeMirrorEndpoint.value = source
+    void persistMirrorSourceSetting(source, previousSource, previousActive)
+  }
+  function applyTileMirrorStatus(status: TileMirrorStatus): void {
+    mirroredProviders.value = [...status.mirroredProviders]
+    mirrorFallenBackProviders.value = [...(status.fallenBackProviders ?? [])]
+    const sourcePending = mirrorSourcePersistSeq !== mirrorSourceSettledSeq
+    if (!sourcePending && status.sourcePreference) {
+      tileMirrorSource.value = normalizeMirrorEndpointPreference(status.sourcePreference)
+    }
+    if (isMirrorEndpointId(status.activeEndpoint)) {
+      if (!sourcePending || tileMirrorSource.value === 'auto' || status.activeEndpoint === tileMirrorSource.value) {
+        activeMirrorEndpoint.value = status.activeEndpoint
+      }
+    }
+    if (typeof status.probingEndpoints === 'boolean') mirrorProbingEndpoints.value = status.probingEndpoints
+    if (Array.isArray(status.endpointProbes)) {
+      mirrorEndpointProbes.value = status.endpointProbes.map((probe) => ({ ...probe }))
+    }
+  }
   function openMirrorConsent(reason: MirrorConsentReason): void {
     mirrorConsentReason.value = reason
     mirrorConsentOpen.value = true
@@ -291,6 +401,7 @@ export const useGlobeStore = defineStore('globe', () => {
     mirrorPolicyOpen.value = false
   }
   function setMirroredProviders(providerIds: string[]): void { mirroredProviders.value = [...providerIds] }
+  function setMirrorFallenBackProviders(providerIds: string[]): void { mirrorFallenBackProviders.value = [...providerIds] }
   function isMirrorActive(providerId: string): boolean { return mirroredProviders.value.includes(providerId) }
   function setNetworkProxy(value: string): void { networkProxy.value = value; void persistSettings() }
   function setCredentialStatus(id: string, status: { configured: boolean; updatedAt: number | null }): void { providerCredentials.value = { ...providerCredentials.value, [id]: status } }
@@ -298,11 +409,11 @@ export const useGlobeStore = defineStore('globe', () => {
   function setLevelViewActive(value: boolean): void { levelViewActive.value = value }
 
   return {
-    layers, selectedLayerId, providerStyles, terrainProviderId, terrainExaggeration, terrainLighting, tileCacheEnabled, tileMirrorMode, mirrorConsentPrompted, settingsHydrated,
-    mirrorConsentOpen, mirrorConsentReason, mirrorPolicyOpen, mirrorPolicyActiveId, mirroredProviders, networkProxy,
+    layers, selectedLayerId, providerStyles, terrainProviderId, terrainExaggeration, terrainLighting, tileCacheEnabled, tileMirrorMode, tileMirrorSource, activeMirrorEndpoint, mirrorProbingEndpoints, mirrorEndpointProbes, mirrorConsentPrompted, settingsHydrated,
+    mirrorConsentOpen, mirrorConsentReason, mirrorPolicyOpen, mirrorPolicyActiveId, mirroredProviders, mirrorFallenBackProviders, networkProxy,
     providerCredentials, isLayerPanelOpen, isGlobeReady, globeLoadTimedOut, globeLoadStage, activeTerrainId, globeError, terrainError, camera, sceneMode, levelViewActive, hydrateSettings,
     setLayerPanelOpen, setGlobeReady, setGlobeLoadTimedOut, setGlobeLoadStage, setActiveTerrainId, setGlobeError, setTerrainError, setCameraReadout, selectBasemap, setLayerOpacity,
-    setProviderStyle, setTerrainProvider, setTerrainExaggeration, setTerrainLighting, setTileCacheEnabled, setTileMirrorMode, openMirrorConsent, closeMirrorConsent, acceptMirrorConsent, declineMirrorConsent,
-    openMirrorPolicy, closeMirrorPolicy, setMirroredProviders, isMirrorActive, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
+    setProviderStyle, setTerrainProvider, setTerrainExaggeration, setTerrainLighting, setTileCacheEnabled, setTileMirrorMode, setTileMirrorSource, applyTileMirrorStatus, openMirrorConsent, closeMirrorConsent, acceptMirrorConsent, declineMirrorConsent,
+    openMirrorPolicy, closeMirrorPolicy, setMirroredProviders, setMirrorFallenBackProviders, isMirrorActive, setNetworkProxy, setCredentialStatus, setSceneMode, setLevelViewActive
   }
 })
