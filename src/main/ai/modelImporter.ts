@@ -6,21 +6,24 @@ import type {
   AiProtocol,
   AiProviderConfig
 } from '../../preload'
-import { EDGEONE_MODELS_DEV_URL } from '../../common/tileMirror'
+import { DEFAULT_MIRROR_ENDPOINT, mirrorModelsDevUrl, type MirrorEndpointId } from '../../common/tileMirror'
 import { readProviderKey } from '../keyVault'
 import { readResponseText, ResponseTooLargeError } from './responseReader'
 
 const MODELS_DEV_URL = 'https://models.dev/api.json'
-const MODELS_DEV_MIRROR_URL = EDGEONE_MODELS_DEV_URL
 const REQUEST_TIMEOUT_MS = 20_000
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 const MAX_PROVIDER_MODELS = 2_000
 const MAX_ANTHROPIC_PAGES = 100
 const modelsDevCache: { expiresAt: number; value: Record<string, unknown> | null } = { expiresAt: 0, value: null }
-let modelsDevMirrorEnabled = false
+let modelsDevMirrorEndpoint: MirrorEndpointId | null = null
+
+export function setModelsDevMirrorEndpoint(endpoint: MirrorEndpointId | null): void {
+  modelsDevMirrorEndpoint = endpoint
+}
 
 export function setModelsDevMirrorEnabled(enabled: boolean): void {
-  modelsDevMirrorEnabled = enabled
+  modelsDevMirrorEndpoint = enabled ? DEFAULT_MIRROR_ENDPOINT : null
 }
 
 interface ProviderMetadata {
@@ -154,9 +157,9 @@ async function fetchProviderIds(provider: AiProviderConfig, apiKey: string): Pro
 async function modelsDev(): Promise<Record<string, unknown>> {
   if (modelsDevCache.value && modelsDevCache.expiresAt > Date.now()) return modelsDevCache.value
   let payload: Record<string, unknown>
-  if (modelsDevMirrorEnabled) {
+  if (modelsDevMirrorEndpoint) {
     try {
-      payload = parseJson(await fetchText(MODELS_DEV_MIRROR_URL, {}))
+      payload = parseJson(await fetchText(mirrorModelsDevUrl(modelsDevMirrorEndpoint), {}))
     } catch {
       payload = parseJson(await fetchText(MODELS_DEV_URL, {}))
     }
@@ -380,4 +383,4 @@ export async function importModels(value: unknown): Promise<AiModelImportResult>
   return { models: rows, source: MODELS_DEV_URL }
 }
 
-export const modelImporterInternals = { endpoint, effortLevel, providersFromCatalog, matchMetadata, metadataFor, toRow, setModelsDevMirrorEnabled }
+export const modelImporterInternals = { endpoint, effortLevel, providersFromCatalog, matchMetadata, metadataFor, toRow, setModelsDevMirrorEnabled, setModelsDevMirrorEndpoint }

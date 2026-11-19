@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ControlOutlined, ExperimentOutlined, GlobalOutlined, InfoCircleOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { ControlOutlined, ExperimentOutlined, GlobalOutlined, InfoCircleOutlined, RobotOutlined, SafetyCertificateOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { useSettingsWindowStore, type SettingsSection } from '@renderer/stores/settingsWindow'
 import AccountSettings from './settings/AccountSettings.vue'
 import GeneralSettings from './settings/GeneralSettings.vue'
 import MapSettings from './settings/MapSettings.vue'
 import AiSettingsSection from './settings/AiSettingsSection.vue'
+import PrivacySettings from './settings/PrivacySettings.vue'
 import LaboratorySettings from './settings/LaboratorySettings.vue'
 import AboutSettings from './settings/AboutSettings.vue'
 import UnsavedChangesBar from './settings/UnsavedChangesBar.vue'
@@ -50,6 +51,7 @@ const navGroups: NavGroup[] = [
   {
     caption: '系统',
     items: [
+      { id: 'privacy', label: '隐私', icon: SafetyCertificateOutlined },
       { id: 'laboratory', label: '实验室', icon: ExperimentOutlined },
       { id: 'about', label: '关于', icon: InfoCircleOutlined }
     ]
@@ -172,6 +174,7 @@ async function handleConfirmSave(): Promise<void> {
           :active="settingsWindow.activeSection === 'ai'"
           @request-close="requestClose"
         />
+        <PrivacySettings v-show="settingsWindow.activeSection === 'privacy'" />
         <LaboratorySettings v-show="settingsWindow.activeSection === 'laboratory'" :active="settingsWindow.activeSection === 'laboratory'" @busy-change="laboratoryBusy = $event" />
         <AboutSettings v-show="settingsWindow.activeSection === 'about'" />
         <UnsavedChangesBar :open="unsavedBarOpen" :saving="barSaving" @save="handleBarSave" @discard="handleBarDiscard" />

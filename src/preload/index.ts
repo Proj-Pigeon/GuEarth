@@ -2,7 +2,7 @@ import '@sentry/electron/preload'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
 import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
-import type { TileMirrorMode } from '../common/tileMirror'
+import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, TileMirrorMode } from '../common/tileMirror'
 import type { EnsoPhase } from '../common/thematicState'
 import type { LaboratoryProvider, LaboratoryProviderInput, OnlineDataSnapshot } from '../common/onlineData'
 
@@ -18,12 +18,16 @@ export interface GuEarthSettings {
   terrainLighting: boolean
   tileCacheEnabled: boolean
   tileMirrorMode: TileMirrorMode
+  tileMirrorSource: MirrorEndpointPreference
   mirrorConsentPrompted: boolean
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
   sceneMode: '2D' | '3D'
   setupGuideDismissed: boolean | null
+  errorReportingEnabled: boolean
+  telemetryEnabled: boolean
+  aiTelemetryEnabled: boolean
 }
 
 export interface GuEarthSettingsPatch {
@@ -33,16 +37,25 @@ export interface GuEarthSettingsPatch {
   terrainLighting?: boolean
   tileCacheEnabled?: boolean
   tileMirrorMode?: TileMirrorMode
+  tileMirrorSource?: MirrorEndpointPreference
   mirrorConsentPrompted?: boolean
   networkProxy?: string
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'
   setupGuideDismissed?: boolean
+  errorReportingEnabled?: boolean
+  telemetryEnabled?: boolean
+  aiTelemetryEnabled?: boolean
 }
 
 export interface TileMirrorStatus {
   mode: TileMirrorMode
+  sourcePreference?: MirrorEndpointPreference
+  activeEndpoint?: MirrorEndpointId
+  probingEndpoints?: boolean
+  endpointProbes?: MirrorEndpointProbeResult[]
   mirroredProviders: string[]
+  fallenBackProviders?: string[]
   notice: string
 }
 
@@ -478,6 +491,8 @@ const api = {
     clear: (providerId?: string): Promise<void> => ipcRenderer.invoke('tiles:clear', providerId),
     stats: (): Promise<TileCacheStats> => ipcRenderer.invoke('tiles:stats'),
     getMirrorStatus: (): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:mirror-status'),
+    resetMirrorFallback: (providerId?: string, notify?: boolean): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:reset-mirror-fallback', providerId, notify),
+    probeMirrorEndpoints: (): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:probe-mirror-endpoints'),
     onMirrorStatus: (listener: (status: TileMirrorStatus) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: TileMirrorStatus): void => listener(payload)
       ipcRenderer.on('tiles:mirror-status', wrapped)
@@ -579,9 +594,9 @@ const api = {
     updateSettings: (settings: AiSettings): Promise<AiSettings> => ipcRenderer.invoke('ai:update-settings', settings),
     importModels: (request: AiModelImportRequest): Promise<AiModelImportResult> => ipcRenderer.invoke('ai:import-models', request),
     testModel: (request: AiModelTestRequest): Promise<AiModelTestResult> => ipcRenderer.invoke('ai:test-model', request),
-    chat: (sessionId: string, turns: AiChatTurn[], tools: AiToolDefinition[]): Promise<void> => ipcRenderer.invoke('ai:chat', sessionId, turns, tools),
+    chat: (sessionId: string, turns: AiChatTurn[], tools: AiToolDefinition[], conversationId: string, distinctId: string): Promise<void> => ipcRenderer.invoke('ai:chat', sessionId, turns, tools, conversationId, distinctId),
     getContextStats: (entries: AiContextEntry[]): Promise<AiContextStats> => ipcRenderer.invoke('ai:context-stats', entries),
-    compressContext: (entries: AiContextEntry[]): Promise<AiContextCompressionResult> => ipcRenderer.invoke('ai:compress-context', entries),
+    compressContext: (entries: AiContextEntry[], conversationId: string, distinctId: string): Promise<AiContextCompressionResult> => ipcRenderer.invoke('ai:compress-context', entries, conversationId, distinctId),
     stop: (sessionId: string): Promise<void> => ipcRenderer.invoke('ai:stop', sessionId),
     toolResult: (sessionId: string, callId: string, ok: boolean, result: unknown): Promise<void> => ipcRenderer.invoke('ai:tool-result', sessionId, callId, ok, result),
     chatHistory: {

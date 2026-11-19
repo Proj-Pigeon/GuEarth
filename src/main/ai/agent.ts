@@ -25,6 +25,8 @@ import type { AiSettingsStore } from './settingsStore'
 import type { AiMemoryStore } from './memoryStore'
 import type { EoqHawdbClient } from './hawdb/client'
 import { createTurnFlightGuard, evaluateFlightToolGuard, type TurnFlightGuard } from '../../common/flightStops'
+import { formatTelemetryToolCalls, redactApiKey, sanitizeTelemetryMessages, sanitizeTelemetryToolSpan } from '../../common/aiTelemetry'
+import { captureAiGeneration, captureAiSpan } from './posthog'
 
 const SYSTEM_PROMPT = [
   '你是咕咕地球（GuEarth）数字地球上的地理教学助手 EOQ，面向中学与高校地理教学场景。',
@@ -540,6 +542,68 @@ interface RequestResult {
   toolCalls: WireToolCall[]
 }
 
+interface AiObservabilityContext {
+  traceId: string
+  sessionId: string | null
+  distinctId: string
+}
+
+function observabilityProvider(provider: AiProviderConfig): string {
+  const hostname = (() => {
+    try {
+      return new URL(provider.baseUrl).hostname.toLowerCase()
+    } catch {
+      return ''
+    }
+  })()
+  const knownProviders: [RegExp, string][] = [
+    [/openai\.com$/, 'openai'],
+    [/anthropic\.com$/, 'anthropic'],
+    [/deepseek\.com$/, 'deepseek'],
+    [/(dashscope|qwen)\./, 'qwen'],
+    [/groq\.com$/, 'groq'],
+    [/openrouter\.ai$/, 'openrouter'],
+    [/together\.xyz$/, 'together'],
+    [/mistral\.ai$/, 'mistral'],
+    [/x\.ai$/, 'xai'],
+    [/ollama\.com$/, 'ollama'],
+    [/perplexity\.ai$/, 'perplexity'],
+    [/cerebras\.ai$/, 'cerebras']
+  ]
+  const known = knownProviders.find(([pattern]) => pattern.test(hostname))
+  if (known) return known[1]
+  const configuredName = provider.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  return configuredName || provider.id
+}
+
+function captureModelGeneration(observability: AiObservabilityContext, provider: AiProviderConfig, model: AiModelConfig, apiKey: string, messages: WireMessage[], tools: AiToolDefinition[], startedAt: number, result?: RequestResult, error?: unknown): void {
+  const rawFailure = error instanceof Error ? error.message : error === undefined ? '' : String(error)
+  const failure = redactApiKey(rawFailure, apiKey)
+  captureAiGeneration({
+    ...observability,
+    model: model.id,
+    provider: observabilityProvider(provider),
+    input: sanitizeTelemetryMessages(messages),
+    ...(result
+      ? {
+          output: [
+            {
+              role: 'assistant',
+              content: result.text,
+              ...(result.toolCalls.length ? { tool_calls: formatTelemetryToolCalls(result.toolCalls) } : {})
+            }
+          ]
+        }
+      : {}),
+    baseUrl: provider.baseUrl,
+    requestUrl: apiEndpoint(provider.baseUrl, provider.protocol, provider.protocol === 'anthropic' ? '/messages' : '/chat/completions'),
+    latencyMs: Date.now() - startedAt,
+    stream: model.streaming,
+    ...(tools.length ? { tools } : {}),
+    ...(failure ? { error: failure } : {})
+  })
+}
+
 function httpFailureError(provider: AiProviderConfig, model: AiModelConfig, url: string, response: Response, body: string): Error {
   const parts = [
     `请求失败 HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`,
@@ -818,21 +882,32 @@ async function runModelTurn(options: {
   signal: AbortSignal
   sender: WebContents
   sessionId: string
+  observability: AiObservabilityContext
   onRetry?: (attempt: number, maxRetries: number, reason: string) => void
 }): Promise<RequestResult> {
-  const { provider, model, apiKey, messages, tools, signal, sender, sessionId, onRetry } = options
+  const { provider, model, apiKey, messages, tools, signal, sender, sessionId, observability, onRetry } = options
   const runTurn = provider.protocol === 'anthropic' ? runAnthropicTurn : runOpenAiTurn
-  const invoke = (requestMessages: WireMessage[]) => runTurn({
-    provider,
-    model,
-    apiKey,
-    messages: requestMessages,
-    tools,
-    signal,
-    onTextDelta: (text) => emit(sender, { sessionId, type: 'text-delta', text }),
-    onReasoningDelta: (text) => emit(sender, { sessionId, type: 'reasoning-delta', text }),
-    onRetry
-  })
+  const invoke = async (requestMessages: WireMessage[]): Promise<RequestResult> => {
+    const startedAt = Date.now()
+    try {
+      const result = await runTurn({
+        provider,
+        model,
+        apiKey,
+        messages: requestMessages,
+        tools,
+        signal,
+        onTextDelta: (text) => emit(sender, { sessionId, type: 'text-delta', text }),
+        onReasoningDelta: (text) => emit(sender, { sessionId, type: 'reasoning-delta', text }),
+        onRetry
+      })
+      captureModelGeneration(observability, provider, model, apiKey, requestMessages, tools, startedAt, result)
+      return result
+    } catch (error) {
+      captureModelGeneration(observability, provider, model, apiKey, requestMessages, tools, startedAt, undefined, error)
+      throw error
+    }
+  }
   try {
     return await invoke(messages)
   } catch (error) {
@@ -858,12 +933,14 @@ async function executeTool(
   name: string,
   argsJson: string,
   signal: AbortSignal,
+  observability: AiObservabilityContext,
   searchProvider?: AiSearchProviderConfig,
   memory?: MemoryRuntime,
   flightGuard?: TurnFlightGuard,
   chatHistoryStore?: AiChatHistoryStore,
   hawdb?: EoqHawdbClient
 ): Promise<ToolOutcome & { callId: string; summary: string }> {
+  const startedAt = Date.now()
   const args = safeParseJson(argsJson)
   if (name === 'web_search') args.query = typeof args.query === 'string' ? args.query.trim().slice(0, 500) : ''
   const callId = `${name}:${Date.now()}:${randomUUID()}`
@@ -975,6 +1052,16 @@ async function executeTool(
   } catch (error) {
     outcome = { ok: false, content: JSON.stringify({ error: error instanceof Error ? error.message : '工具执行失败' }) }
   }
+  const sanitizedSpan = sanitizeTelemetryToolSpan(name, args, safeParseJson(outcome.content))
+  captureAiSpan({
+    ...observability,
+    spanId: callId,
+    name,
+    input: sanitizedSpan.input,
+    output: sanitizedSpan.output,
+    latencyMs: Date.now() - startedAt,
+    ...(!outcome.ok ? { error: summarizeToolResult(outcome.content) } : {})
+  })
   return { ...outcome, callId, summary: summarizeToolResult(outcome.content) }
 }
 
@@ -989,9 +1076,10 @@ async function compressMessages(options: {
   apiKey: string
   messages: WireMessage[]
   signal: AbortSignal
+  observability: AiObservabilityContext
   onRetry?: (attempt: number, maxRetries: number, reason: string) => void
 }): Promise<CompressedContext> {
-  const { provider, model, apiKey, messages, signal, onRetry } = options
+  const { provider, model, apiKey, messages, signal, observability, onRetry } = options
   const beforeStats = contextStatsForMessages(messages, model.contextWindow)
   const system = messages.find((message) => message.role === 'system')
   const rest = messages.filter((message) => message.role !== 'system')
@@ -1008,17 +1096,26 @@ async function compressMessages(options: {
     { role: 'user', content: `请压缩下面的历史对话，供后续继续回答时使用：\n\n${transcript}` }
   ]
   const runTurn = provider.protocol === 'anthropic' ? runAnthropicTurn : runOpenAiTurn
-  const summaryResult = await runTurn({
-    provider,
-    model: { ...model, thinking: false },
-    apiKey,
-    messages: compressionMessages,
-    tools: [],
-    signal,
-    onTextDelta: () => void 0,
-    onReasoningDelta: () => void 0,
-    onRetry
-  })
+  const compressionModel = { ...model, thinking: false }
+  const startedAt = Date.now()
+  let summaryResult: RequestResult
+  try {
+    summaryResult = await runTurn({
+      provider,
+      model: compressionModel,
+      apiKey,
+      messages: compressionMessages,
+      tools: [],
+      signal,
+      onTextDelta: () => void 0,
+      onReasoningDelta: () => void 0,
+      onRetry
+    })
+    captureModelGeneration(observability, provider, compressionModel, apiKey, compressionMessages, [], startedAt, summaryResult)
+  } catch (error) {
+    captureModelGeneration(observability, provider, compressionModel, apiKey, compressionMessages, [], startedAt, undefined, error)
+    throw error
+  }
   const summary = summaryResult.text.trim()
   if (!summary) throw new Error('无法压缩上下文')
   const summaryMessage: WireMessage = { role: 'assistant', content: `[上下文摘要]\n${summary}` }
@@ -1048,11 +1145,14 @@ async function runAgent(options: {
   apiKey: string
   sender: WebContents
   sessionId: string
+  aiSessionId: string
+  distinctId: string
   signal: AbortSignal
   turns: AiChatTurn[]
   tools: AiToolDefinition[]
 }): Promise<void> {
-  const { provider, searchProvider, memory, chatHistoryStore, hawdb, socratic, model, apiKey, sender, sessionId, signal, turns, tools } = options
+  const { provider, searchProvider, memory, chatHistoryStore, hawdb, socratic, model, apiKey, sender, sessionId, aiSessionId, distinctId, signal, turns, tools } = options
+  const observability: AiObservabilityContext = { traceId: randomUUID(), sessionId: aiSessionId, distinctId: distinctId || `ai-session:${aiSessionId}` }
   const send = (event: AiChatEvent) => emit(sender, event)
   const onRetry = (attempt: number, maxRetries: number, reason: string): void => send({ sessionId, type: 'model-retry', attempt, maxRetries, reason })
   let lastUserMessage = ''
@@ -1078,7 +1178,7 @@ async function runAgent(options: {
     if (currentStats.usagePercent >= 80) {
       send({ sessionId, type: 'context-compression-start' })
       try {
-        const compressed = await compressMessages({ provider, model, apiKey, messages, signal, onRetry })
+        const compressed = await compressMessages({ provider, model, apiKey, messages, signal, observability, onRetry })
         messages.splice(0, messages.length, ...compressed.messages)
         send({ sessionId, type: 'context-compressed', ...compressed.result })
         send({ sessionId, type: 'context-stats', stats: compressed.result.stats })
@@ -1096,6 +1196,7 @@ async function runAgent(options: {
       signal,
       sender,
       sessionId,
+      observability,
       onRetry
     })
     signal.throwIfAborted()
@@ -1112,7 +1213,7 @@ async function runAgent(options: {
     messages.push({ role: 'assistant', content: result.text, toolCalls: result.toolCalls, thinkingBlocks: result.thinkingBlocks })
     for (const call of result.toolCalls) {
       signal.throwIfAborted()
-      const outcome = await executeTool(sender, sessionId, call.name, call.arguments, signal, searchProvider, memory, flightGuard, chatHistoryStore, hawdb)
+      const outcome = await executeTool(sender, sessionId, call.name, call.arguments, signal, observability, searchProvider, memory, flightGuard, chatHistoryStore, hawdb)
       send({ sessionId, type: 'tool-end', callId: outcome.callId, ok: outcome.ok, summary: outcome.summary, result: outcome.content, references: outcome.references })
       signal.throwIfAborted()
       messages.push({ role: 'tool', content: outcome.content, callId: call.id, name: call.name, isError: !outcome.ok, image: model.vision ? outcome.image : undefined })
@@ -1132,6 +1233,7 @@ async function runAgent(options: {
     signal,
     sender,
     sessionId,
+    observability,
     onRetry
   })
   signal.throwIfAborted()
@@ -1214,8 +1316,10 @@ function validateContextEntries(entries: unknown): AiContextEntry[] {
   })
 }
 
-function validateChatRequest(sessionId: unknown, turns: unknown, tools: unknown): { sessionId: string; turns: AiChatTurn[]; tools: AiToolDefinition[] } {
+function validateChatRequest(sessionId: unknown, turns: unknown, tools: unknown, aiSessionId: unknown, distinctId: unknown): { sessionId: string; aiSessionId: string; distinctId: string; turns: AiChatTurn[]; tools: AiToolDefinition[] } {
   if (typeof sessionId !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(sessionId)) throw new Error('无效的会话标识')
+  const normalizedAiSessionId = typeof aiSessionId === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(aiSessionId) ? aiSessionId : sessionId
+  const normalizedDistinctId = typeof distinctId === 'string' ? distinctId.trim().slice(0, 256) : ''
   const normalizedTurns = validateTurns(turns)
   const normalizedTools = Array.isArray(tools) ? tools.flatMap((tool): AiToolDefinition[] => {
     if (typeof tool !== 'object' || tool === null) return []
@@ -1223,7 +1327,7 @@ function validateChatRequest(sessionId: unknown, turns: unknown, tools: unknown)
     if (typeof record.name !== 'string' || !/^[a-z0-9_]{1,64}$/i.test(record.name) || typeof record.description !== 'string') return []
     return [{ name: record.name, description: record.description.slice(0, 2_000), parameters: typeof record.parameters === 'object' && record.parameters !== null ? record.parameters as Record<string, unknown> : { type: 'object', properties: {} } }]
   }) : []
-  return { sessionId, turns: normalizedTurns, tools: normalizedTools }
+  return { sessionId, aiSessionId: normalizedAiSessionId, distinctId: normalizedDistinctId, turns: normalizedTurns, tools: normalizedTools }
 }
 
 export function registerAiIpcHandlers(
@@ -1284,7 +1388,7 @@ export function registerAiIpcHandlers(
     const model = provider?.models.find((item) => item.id === settings.activeModelId)
     return contextStatsForMessages(contextMessagesForEntries(validateContextEntries(turns), buildSystemPrompt(memoryRuntime(), socraticRuntime())), model?.contextWindow ?? 128_000)
   })
-  ipcMain.handle('ai:compress-context', async (_event, entries: unknown): Promise<AiContextCompressionResult> => {
+  ipcMain.handle('ai:compress-context', async (_event, entries: unknown, aiSessionId: unknown, distinctId: unknown): Promise<AiContextCompressionResult> => {
     const settings = settingsStore.snapshot()
     const provider = settings.providers.find((item) => item.id === settings.activeProviderId)
     const model = provider?.models.find((item) => item.id === settings.activeModelId)
@@ -1292,17 +1396,25 @@ export function registerAiIpcHandlers(
     const apiKey = readProviderKey(`ai-${provider.id}`)
     if (!apiKey) throw new Error(`未配置「${provider.name}」的 API Key，请在 AI 设置中保存`)
     const controller = new AbortController()
+    const normalizedAiSessionId = typeof aiSessionId === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(aiSessionId) ? aiSessionId : null
+    const normalizedDistinctId = typeof distinctId === 'string' ? distinctId.trim().slice(0, 256) : ''
+    const observability: AiObservabilityContext = {
+      traceId: randomUUID(),
+      sessionId: normalizedAiSessionId,
+      distinctId: normalizedDistinctId || (normalizedAiSessionId ? `ai-session:${normalizedAiSessionId}` : `ai-context-compression:${randomUUID()}`)
+    }
     const compressed = await compressMessages({
       provider,
       model,
       apiKey,
       messages: contextMessagesForEntries(validateContextEntries(entries), SYSTEM_PROMPT),
-      signal: controller.signal
+      signal: controller.signal,
+      observability
     })
     return compressed.result
   })
-  ipcMain.handle('ai:chat', (event: IpcMainInvokeEvent, sessionId: unknown, turns: unknown, tools: unknown) => {
-    const request = validateChatRequest(sessionId, turns, tools)
+  ipcMain.handle('ai:chat', (event: IpcMainInvokeEvent, sessionId: unknown, turns: unknown, tools: unknown, aiSessionId: unknown, distinctId: unknown) => {
+    const request = validateChatRequest(sessionId, turns, tools, aiSessionId, distinctId)
     searchFailuresBySession.delete(request.sessionId)
     const settings = settingsStore.snapshot()
     const searchProvider = settings.searchProviders.find((item) => item.id === settings.activeSearchProviderId)
@@ -1317,7 +1429,7 @@ export function registerAiIpcHandlers(
     const sender = event.sender
     watchSenderLifecycle(sender)
     sessions.set(request.sessionId, { controller, sender })
-    void runAgent({ provider, searchProvider, memory: memoryRuntime(), chatHistoryStore, hawdb, socratic: socraticRuntime(), model, apiKey, sender, sessionId: request.sessionId, signal: controller.signal, turns: request.turns, tools: request.tools })
+    void runAgent({ provider, searchProvider, memory: memoryRuntime(), chatHistoryStore, hawdb, socratic: socraticRuntime(), model, apiKey, sender, sessionId: request.sessionId, aiSessionId: request.aiSessionId, distinctId: request.distinctId, signal: controller.signal, turns: request.turns, tools: request.tools })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') {
           emit(sender, { sessionId: request.sessionId, type: 'error', message: '已停止生成' })
