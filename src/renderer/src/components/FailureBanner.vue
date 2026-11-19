@@ -40,7 +40,8 @@ function alertType(notice: FailureNotice): 'error' | 'warning' {
           :loading="Boolean(store.retrying[notice.scope])"
           @click="store.retry(notice.scope)"
         >
-          <ReloadOutlined />重试
+          <template #icon><ReloadOutlined /></template>
+          重试
         </a-button>
         <a-tooltip title="忽略">
           <a-button type="text" size="small" aria-label="忽略提示" @click="store.clearFailure(notice.scope)">

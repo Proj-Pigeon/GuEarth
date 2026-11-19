@@ -105,8 +105,14 @@ async function clearKey(): Promise<void> {
           </a-form-item>
         </a-form>
         <div class="search-key-actions">
-          <a-button :loading="saving" :disabled="!apiKeyDraft.trim() || clearing || loading" @click="saveKey"><SaveOutlined />保存密钥</a-button>
-          <a-button :loading="clearing" :disabled="!credential.configured || saving || loading" @click="clearKey"><DeleteOutlined />清除密钥</a-button>
+          <a-button :loading="saving" :disabled="!apiKeyDraft.trim() || clearing || loading" @click="saveKey">
+            <template #icon><SaveOutlined /></template>
+            保存密钥
+          </a-button>
+          <a-button :loading="clearing" :disabled="!credential.configured || saving || loading" @click="clearKey">
+            <template #icon><DeleteOutlined /></template>
+            清除密钥
+          </a-button>
         </div>
       </a-spin>
     </a-card>

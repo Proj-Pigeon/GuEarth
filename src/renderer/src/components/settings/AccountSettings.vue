@@ -126,7 +126,8 @@ function confirmSignOut(): void {
           </div>
         </div>
         <a-button danger :loading="account.phase === 'signing-out'" :disabled="account.busy" @click="confirmSignOut">
-          <LogoutOutlined />退出登录
+          <template #icon><LogoutOutlined /></template>
+          退出登录
         </a-button>
       </div>
 
@@ -175,7 +176,8 @@ function confirmSignOut(): void {
           :disabled="account.busy || account.phase === 'restoring'"
           @click="account.login()"
         >
-          <LoginOutlined v-if="!loginLoading" />登录
+          <template #icon><LoginOutlined /></template>
+          登录
         </a-button>
       </div>
     </div>
