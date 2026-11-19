@@ -158,3 +158,31 @@ test('polygon area ignores adjacent vertices that share a direction but differ i
   const area = polygonArea(ring)
   assert.ok(Number.isFinite(area) && area > 0, String(area))
 })
+
+const HALF_EARTH_M2 = 2 * Math.PI * Cesium.Ellipsoid.WGS84.maximumRadius ** 2
+
+test('self-intersecting rings fall back to the algebraic area instead of half the globe', () => {
+  const crossed = [[0, 0], [1, 0], [0, 1], [1, 1]]
+  const square = [[0, 0], [1, 0], [1, 1], [0, 1]]
+  const crossedArea = polygonArea(ringCartesians(crossed))
+  const squareArea = polygonArea(ringCartesians(square))
+  assert.ok(crossedArea < HALF_EARTH_M2 * 0.001, `crossed ring reported ${crossedArea}`)
+  assert.ok(crossedArea < squareArea, `${crossedArea} vs ${squareArea}`)
+
+  const star = polygonArea(ringCartesians([[0, 0], [2, -1], [0.5, -3], [-1.5, -1], [0.5, -0.2]]))
+  assert.ok(star < HALF_EARTH_M2 * 0.001, `star ring reported ${star}`)
+  assert.ok(Number.isFinite(star) && star > 0, String(star))
+})
+
+test('rings that revisit a vertex keep a bounded area', () => {
+  const pinched = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0], [0, 1]]
+  const area = polygonArea(ringCartesians(pinched))
+  assert.ok(area < HALF_EARTH_M2 * 0.001, `pinched ring reported ${area}`)
+  assert.ok(Math.abs(area - polygonArea(ringCartesians([[0, 0], [1, 0], [1, 1], [0, 1]]))) < 1e4, String(area))
+})
+
+test('polygon area stays exact for rings that cross the antimeridian', () => {
+  const area = polygonArea(ringCartesians([[179, 0], [-179, 0], [-179, 1], [179, 1]]))
+  const planar = planarAreaM2([[179, 0], [-179, 0], [-179, 1], [179, 1]].map(([longitude, latitude]) => [longitude > 0 ? longitude - 360 : longitude, latitude]))
+  assert.ok(Math.abs(area - planar) / planar < 0.01, `${area} vs ${planar}`)
+})

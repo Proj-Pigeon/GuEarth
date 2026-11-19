@@ -72,6 +72,19 @@ function tangentToward(origin: Cesium.Cartesian3, point: Cesium.Cartesian3): Ces
   return Cesium.Cartesian3.normalize(projected, new Cesium.Cartesian3())
 }
 
+function signedTriangleSolidAngle(first: Cesium.Cartesian3, second: Cesium.Cartesian3, third: Cesium.Cartesian3): number {
+  const numerator = Cesium.Cartesian3.dot(first, Cesium.Cartesian3.cross(second, third, new Cesium.Cartesian3()))
+  const denominator =
+    1 + Cesium.Cartesian3.dot(first, second) + Cesium.Cartesian3.dot(second, third) + Cesium.Cartesian3.dot(third, first)
+  return 2 * Math.atan2(numerator, denominator)
+}
+
+function algebraicSolidAngle(directions: Cesium.Cartesian3[]): number {
+  let total = 0
+  for (let index = 1; index < directions.length - 1; index += 1) total += signedTriangleSolidAngle(directions[0], directions[index], directions[index + 1])
+  return Math.abs(total)
+}
+
 export function polygonArea(cartesians: Cesium.Cartesian3[]): number {
   const directions: Cesium.Cartesian3[] = []
   for (const cartesian of cartesians) {
@@ -95,6 +108,8 @@ export function polygonArea(cartesians: Cesium.Cartesian3[]): number {
     )
     turnSum += turn
   }
+  const winding = turnSum / (2 * Math.PI)
+  if (Math.abs(Math.abs(winding) - 1) > 0.5) return algebraicSolidAngle(directions) * EARTH_RADIUS_M * EARTH_RADIUS_M
   let solidAngle = 2 * Math.PI - turnSum
   if (solidAngle < 0) solidAngle = -solidAngle
   if (solidAngle > 2 * Math.PI) solidAngle = 4 * Math.PI - solidAngle
