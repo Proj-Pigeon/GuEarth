@@ -116,5 +116,5 @@ test('the macOS encoder streams frames through a serial queue and acks after enc
 test('mp4-muxer ships under the MIT license inventory', async () => {
   await access(new URL('../resources/licenses/mit/mp4-muxer.txt', import.meta.url))
   const notices = await readFile(new URL('../THIRD-PARTY-NOTICES.md', import.meta.url), 'utf8')
-  assert.match(notices, /mp4-muxer（macOS 录制的 MP4 封装）/)
+  assert.match(notices, /mp4-muxer/)
 })

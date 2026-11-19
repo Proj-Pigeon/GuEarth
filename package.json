@@ -10,10 +10,11 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "build:win": "npm run fetch:ffmpeg && npm run build && electron-builder --win --publish never",
-    "build:mac": "npm run build && electron-builder --mac --publish never",
-    "build:linux": "node scripts/fetch-ffmpeg.mjs --arch all && npm run build && electron-builder --linux --publish never",
+    "build:win": "npm run fetch:ffmpeg && npm run fetch:hawdb && npm run build && electron-builder --win --publish never",
+    "build:mac": "node scripts/fetch-hawdb.mjs --arch all && npm run build && electron-builder --mac --publish never",
+    "build:linux": "node scripts/fetch-ffmpeg.mjs --arch all && node scripts/fetch-hawdb.mjs --arch all && npm run build && npm install --no-save --force @koromix/koffi-linux-x64@3.3.8 @koromix/koffi-linux-arm64@3.3.8 && electron-builder --linux --publish never",
     "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
+    "fetch:hawdb": "node scripts/fetch-hawdb.mjs",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json",
     "test": "node --test \"tests/*.test.mjs\""
@@ -51,6 +52,7 @@
     "@opentelemetry/exporter-logs-otlp-http": "^0.301.2",
     "@opentelemetry/resources": "^3.1.1",
     "@opentelemetry/sdk-logs": "^3.1.1",
+    "koffi": "^3.3.8",
     "posthog-js": "^1.451.2",
     "posthog-node": "^5.74.0"
   }

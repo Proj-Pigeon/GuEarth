@@ -9,8 +9,15 @@ files:
   - resources/**
   - '!resources/bin/**'
   - '!node_modules/**'
+  - node_modules/koffi/**
+  - '!node_modules/koffi/src/**'
+  - '!node_modules/koffi/doc/**'
+  - '!node_modules/koffi/vendor/**'
+  - node_modules/@koromix/koffi-*/**
 asarUnpack:
   - out/renderer/cesium/**
+  - node_modules/@koromix/koffi-*/**/*.node
+  - node_modules/koffi/build/**/*.node
 extraResources:
   - from: resources/licenses
     to: licenses
@@ -24,6 +31,9 @@ mac:
     - target: dmg
       arch:
         - arm64
+  extraResources:
+    - from: resources/bin/${arch}/libhawdb_ffi.dylib
+      to: bin/libhawdb_ffi.dylib
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
 win:
@@ -31,6 +41,8 @@ win:
   extraResources:
     - from: resources/bin/ffmpeg.exe
       to: bin/ffmpeg.exe
+    - from: resources/bin/hawdb_ffi.dll
+      to: bin/hawdb_ffi.dll
 linux:
   executableName: guearth
   icon: icon.png
@@ -57,6 +69,8 @@ linux:
   extraResources:
     - from: resources/bin/${arch}/ffmpeg
       to: bin/ffmpeg
+    - from: resources/bin/${arch}/libhawdb_ffi.so
+      to: bin/libhawdb_ffi.so
 deb:
   packageCategory: education
 nsis:

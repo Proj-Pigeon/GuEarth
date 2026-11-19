@@ -296,6 +296,14 @@ export interface StoredAiConversation extends StoredAiConversationSummary {
   compression?: StoredAiCompression
 }
 
+import type { ConversationSearchHit, HawdbStatusInfo, MemoryRecallMatch } from '../main/ai/hawdb/protocol'
+
+export type { ConversationSearchHit as AiConversationSearchHit, HawdbStatusInfo as AiHawdbStatus, MemoryRecallMatch as AiMemoryRecallMatch }
+
+type AiConversationSearchHit = ConversationSearchHit
+type AiMemoryRecallMatch = MemoryRecallMatch
+type AiHawdbStatus = HawdbStatusInfo
+
 export interface PlaceSuggestion {
   name: string
   province: string
@@ -595,13 +603,16 @@ const api = {
       list: (): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-list'),
       get: (id: string): Promise<StoredAiConversation | null> => ipcRenderer.invoke('ai:history-get', id),
       save: (conversation: StoredAiConversation): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-save', conversation),
-      delete: (id: string): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-delete', id)
+      delete: (id: string): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-delete', id),
+      search: (query: string, limit?: number, excludeId?: string): Promise<AiConversationSearchHit[]> => ipcRenderer.invoke('ai:history-search', query, limit, excludeId)
     },
     memory: {
       list: (): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-list'),
       add: (content: string): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-add', content),
-      delete: (id: string): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-delete', id)
+      delete: (id: string): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-delete', id),
+      recall: (query: string, limit?: number): Promise<AiMemoryRecallMatch[]> => ipcRenderer.invoke('ai:memory-recall', query, limit)
     },
+    hawdbStatus: (): Promise<AiHawdbStatus> => ipcRenderer.invoke('ai:hawdb-status'),
     onEvent: (listener: (event: AiChatEvent) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: AiChatEvent): void => listener(payload)
       ipcRenderer.on('ai:event', wrapped)
