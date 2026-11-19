@@ -65,6 +65,9 @@ jobs:
           key: windows-electron-${{ hashFiles('package-lock.json') }}
       - name: Package Windows build
         if: steps.version.outputs.bumped == 'true'
+        env:
+          VITE_POSTHOG_PROJECT_TOKEN: ${{ secrets.VITE_POSTHOG_PROJECT_TOKEN }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST || vars.VITE_POSTHOG_HOST }}
         run: npm run build:win
       - name: Upload build artifact
         if: steps.version.outputs.bumped == 'true'
@@ -113,6 +116,9 @@ jobs:
           key: linux-electron-${{ hashFiles('package-lock.json') }}
       - name: Package Linux build
         if: steps.version.outputs.bumped == 'true'
+        env:
+          VITE_POSTHOG_PROJECT_TOKEN: ${{ secrets.VITE_POSTHOG_PROJECT_TOKEN }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST || vars.VITE_POSTHOG_HOST }}
         run: npm run build:linux
       - name: Upload build artifact
         if: steps.version.outputs.bumped == 'true'
