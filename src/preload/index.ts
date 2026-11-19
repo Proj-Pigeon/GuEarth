@@ -24,6 +24,9 @@ export interface GuEarthSettings {
   providerCredentials: Record<string, ProviderCredentialStatus>
   sceneMode: '2D' | '3D'
   setupGuideDismissed: boolean | null
+  errorReportingEnabled: boolean
+  telemetryEnabled: boolean
+  aiTelemetryEnabled: boolean
 }
 
 export interface GuEarthSettingsPatch {
@@ -38,6 +41,9 @@ export interface GuEarthSettingsPatch {
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'
   setupGuideDismissed?: boolean
+  errorReportingEnabled?: boolean
+  telemetryEnabled?: boolean
+  aiTelemetryEnabled?: boolean
 }
 
 export interface TileMirrorStatus {
@@ -571,9 +577,9 @@ const api = {
     updateSettings: (settings: AiSettings): Promise<AiSettings> => ipcRenderer.invoke('ai:update-settings', settings),
     importModels: (request: AiModelImportRequest): Promise<AiModelImportResult> => ipcRenderer.invoke('ai:import-models', request),
     testModel: (request: AiModelTestRequest): Promise<AiModelTestResult> => ipcRenderer.invoke('ai:test-model', request),
-    chat: (sessionId: string, turns: AiChatTurn[], tools: AiToolDefinition[]): Promise<void> => ipcRenderer.invoke('ai:chat', sessionId, turns, tools),
+    chat: (sessionId: string, turns: AiChatTurn[], tools: AiToolDefinition[], conversationId: string, distinctId: string): Promise<void> => ipcRenderer.invoke('ai:chat', sessionId, turns, tools, conversationId, distinctId),
     getContextStats: (entries: AiContextEntry[]): Promise<AiContextStats> => ipcRenderer.invoke('ai:context-stats', entries),
-    compressContext: (entries: AiContextEntry[]): Promise<AiContextCompressionResult> => ipcRenderer.invoke('ai:compress-context', entries),
+    compressContext: (entries: AiContextEntry[], conversationId: string, distinctId: string): Promise<AiContextCompressionResult> => ipcRenderer.invoke('ai:compress-context', entries, conversationId, distinctId),
     stop: (sessionId: string): Promise<void> => ipcRenderer.invoke('ai:stop', sessionId),
     toolResult: (sessionId: string, callId: string, ok: boolean, result: unknown): Promise<void> => ipcRenderer.invoke('ai:tool-result', sessionId, callId, ok, result),
     chatHistory: {

@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { compileFunction } from 'node:vm'
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 import { test } from 'node:test'
+
+const aiTelemetrySource = readFileSync(new URL('../src/common/aiTelemetry.ts', import.meta.url), 'utf8')
+const aiTelemetryOutput = transpileModule(aiTelemetrySource, {
+  compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 }
+}).outputText
+const aiTelemetryApi = compileFunction(`${aiTelemetryOutput}\nreturn exports`, ['exports'])({})
 
 const responseReaderSource = readFileSync(new URL('../src/main/ai/responseReader.ts', import.meta.url), 'utf8')
 const responseReaderOutput = transpileModule(responseReaderSource, {
@@ -17,9 +24,13 @@ const { outputText } = transpileModule(source, {
 
 function loadTester(respond, key = 'secret-key') {
   const requests = []
+  const captures = []
   const dependencies = new Map([
+    ['crypto', { randomUUID }],
     ['electron', { net: { fetch: async (url, options) => { requests.push({ url, options }); return respond(url, options) } } }],
+    ['../../common/aiTelemetry', aiTelemetryApi],
     ['../keyVault', { readProviderKey: () => key }],
+    ['./posthog', { captureAiGeneration: (payload) => { captures.push(payload) } }],
     ['./responseReader', responseReaderApi]
   ])
   const load = compileFunction(`${outputText}\nreturn { testModel: exports.testModel }`, ['require', 'exports'])
@@ -28,7 +39,7 @@ function loadTester(respond, key = 'secret-key') {
     if (!dependency) throw new Error(`Unexpected module dependency: ${id}`)
     return dependency
   }, {})
-  return { ...api, requests }
+  return { ...api, requests, captures }
 }
 
 const request = (overrides = {}) => ({
@@ -127,4 +138,25 @@ test('oversized streaming responses abort immediately while reading', async () =
   assert.ok(pulls < 10)
   assert.equal(canceled, true)
   assert.equal(aborted, true)
+})
+
+test('model test telemetry normalizes OpenAI and Anthropic outputs and redacts API keys on failure', async () => {
+  const openAiTester = loadTester(() => Response.json({
+    id: 'chatcmpl-1',
+    choices: [{ index: 0, message: { role: 'assistant', content: 'pong' } }]
+  }))
+  await openAiTester.testModel(request())
+  assert.deepEqual(openAiTester.captures[0].output, [{ role: 'assistant', content: 'pong' }])
+
+  const anthropicTester = loadTester(() => Response.json({
+    id: 'msg-1',
+    content: [{ type: 'text', text: 'pong-anthropic' }]
+  }))
+  await anthropicTester.testModel(request({ protocol: 'anthropic', baseUrl: 'https://api.anthropic.com' }))
+  assert.deepEqual(anthropicTester.captures[0].output, [{ role: 'assistant', content: 'pong-anthropic' }])
+
+  const failingTester = loadTester(() => new Response('upstream echoed secret-key', { status: 500 }))
+  await assert.rejects(failingTester.testModel(request()))
+  assert.doesNotMatch(failingTester.captures[0].error, /secret-key/)
+  assert.match(failingTester.captures[0].error, /\[redacted\]/)
 })

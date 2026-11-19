@@ -8,3 +8,4 @@ resources/bin
 *.tsbuildinfo
 csdn-blog.md
 updater-server/.vercel
+.env
