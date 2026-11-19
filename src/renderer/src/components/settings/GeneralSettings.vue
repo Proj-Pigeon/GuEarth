@@ -48,7 +48,10 @@ async function restartGuide(): Promise<void> {
         <div class="setting-copy">
           <div class="setting-title">录制保存目录</div>
         </div>
-        <a-button :loading="choosing" @click="chooseDirectory"><FolderOpenOutlined />更改目录</a-button>
+        <a-button :loading="choosing" @click="chooseDirectory">
+          <template #icon><FolderOpenOutlined /></template>
+          更改目录
+        </a-button>
       </div>
       <div v-if="directory" class="directory-path">{{ directory }}</div>
       <div v-else class="directory-path directory-empty">未设置</div>

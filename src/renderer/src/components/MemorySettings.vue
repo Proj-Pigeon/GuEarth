@@ -97,7 +97,10 @@ async function toggleEnabled(value: boolean): Promise<void> {
         :maxlength="300"
         @press-enter="addMemory"
       />
-      <a-button type="primary" :loading="adding" :disabled="!draft.trim()" @click="addMemory"><PlusOutlined />添加</a-button>
+      <a-button type="primary" :loading="adding" :disabled="!draft.trim()" @click="addMemory">
+        <template #icon><PlusOutlined /></template>
+        添加
+      </a-button>
     </div>
 
     <a-spin :spinning="loading">

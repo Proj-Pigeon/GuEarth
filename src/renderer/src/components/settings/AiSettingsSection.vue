@@ -728,7 +728,10 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
               <template #prefix><SearchOutlined /></template>
             </a-input>
             <div class="models-actions">
-              <a-button :disabled="!canImport(selectedProvider)" :loading="importLoading && importProviderId === selectedProvider.id" @click="openImport"><SyncOutlined v-if="!(importLoading && importProviderId === selectedProvider.id)" />刷新模型</a-button>
+              <a-button :disabled="!canImport(selectedProvider)" :loading="importLoading && importProviderId === selectedProvider.id" @click="openImport">
+                <template #icon><SyncOutlined /></template>
+                刷新模型
+              </a-button>
               <a-button @click="addModel"><PlusOutlined />添加模型</a-button>
             </div>
           </div>
@@ -761,13 +764,19 @@ defineExpose({ isDirty: () => dirty.value, saveDrafts, discardDrafts })
                     :disabled="Boolean(testingModelKey) && testingModelKey !== model.key"
                     aria-label="测试连接"
                     @click="testModel(model)"
-                  ><ThunderboltOutlined v-if="testingModelKey !== model.key" /></a-button>
+                  >
+                    <template #icon><ThunderboltOutlined /></template>
+                  </a-button>
                 </a-tooltip>
                 <a-tooltip title="设置">
-                  <a-button type="text" aria-label="模型设置" @click="editModel(model)"><SettingOutlined /></a-button>
+                  <a-button type="text" aria-label="模型设置" @click="editModel(model)">
+                    <template #icon><SettingOutlined /></template>
+                  </a-button>
                 </a-tooltip>
                 <a-tooltip title="删除">
-                  <a-button type="text" danger aria-label="删除模型" @click="removeModel(model.key)"><DeleteOutlined /></a-button>
+                  <a-button type="text" danger aria-label="删除模型" @click="removeModel(model.key)">
+                    <template #icon><DeleteOutlined /></template>
+                  </a-button>
                 </a-tooltip>
               </div>
             </div>

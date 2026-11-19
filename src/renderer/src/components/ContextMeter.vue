@@ -93,7 +93,8 @@ function compress(): void {
           </div>
         </div>
         <a-button type="primary" size="small" block :loading="status === 'compressing'" :disabled="disabled || stats.usedTokens === 0" @click="compress">
-          <CompressOutlined v-if="status !== 'compressing'" />精简对话
+          <template #icon><CompressOutlined /></template>
+          精简对话
         </a-button>
       </div>
     </template>

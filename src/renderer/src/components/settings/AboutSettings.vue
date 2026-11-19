@@ -34,7 +34,10 @@ async function copyDiagnostics(): Promise<void> {
           <div class="setting-title">当前版本</div>
           <p class="setting-desc version-text">{{ versionText }}</p>
         </div>
-        <a-button :loading="updaterStore.checking" @click="updaterStore.checkNow()"><ReloadOutlined />检查更新</a-button>
+        <a-button :loading="updaterStore.checking" @click="updaterStore.checkNow()">
+          <template #icon><ReloadOutlined /></template>
+          检查更新
+        </a-button>
       </div>
     </div>
 
@@ -43,7 +46,10 @@ async function copyDiagnostics(): Promise<void> {
         <div class="setting-copy">
           <div class="setting-title">诊断信息</div>
         </div>
-        <a-button :loading="copying" @click="copyDiagnostics"><CopyOutlined />复制</a-button>
+        <a-button :loading="copying" @click="copyDiagnostics">
+          <template #icon><CopyOutlined /></template>
+          复制
+        </a-button>
       </div>
     </div>
   </section>
