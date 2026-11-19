@@ -28,7 +28,8 @@ import { useTransportStore } from '@renderer/stores/transport'
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useDecisionStore } from '@renderer/stores/decision'
 import { useZonationStore } from '@renderer/stores/zonation'
-import posthog from '@renderer/posthog'
+import { usePrivacyStore } from '@renderer/stores/privacy'
+import { captureTelemetryEvent } from '@renderer/posthog'
 import type { PlaceSuggestion } from '../../preload'
 import { registerPopulationTools } from '@renderer/ai/populationTools'
 import { useCesiumViewer } from '@renderer/composables/useCesiumViewer'
@@ -153,6 +154,7 @@ const aiStore = useAiStore()
 const flightStopsStore = useFlightStopsStore()
 const updaterStore = useUpdaterStore()
 const accountStore = useAccountStore()
+const privacyStore = usePrivacyStore()
 const onlineData = useOnlineDataStore()
 const failureStore = useFailureStore()
 const scenesStore = useScenesStore()
@@ -1226,7 +1228,9 @@ onMounted(async () => {
   void onlineData.load()
   void updaterStore.hydrate()
   void scenesStore.hydrate()
-  void accountStore.hydrate()
+  void privacyStore.hydrate().finally(() => {
+    void accountStore.hydrate()
+  })
   try {
     const installedFonts = await window.guEarth.system.fonts()
     const existingFonts = shapes.value.map((shape) => shape.fontFamily)
@@ -1334,7 +1338,7 @@ async function handleSaveScene(name: string, narration: string): Promise<void> {
   try {
     const scene = scenePlayer.captureScene(name, narration)
     await scenesStore.addScene(scene)
-    if (!scenesStore.saveError) posthog.capture('scene_saved', { scene_count: scenesStore.scenes.length })
+    if (!scenesStore.saveError) captureTelemetryEvent('scene_saved', { scene_count: scenesStore.scenes.length })
   } catch (error) {
     message.warning(error instanceof Error ? error.message : '地球尚未就绪，暂时无法保存场景')
   }
@@ -1358,12 +1362,12 @@ function handlePlayScenes(mode: 'manual' | 'auto'): void {
   drawingStore.setActiveTool(null)
   drawingStore.setSelectedShapeId(null)
   isScenesPanelOpen.value = false
-  posthog.capture('scene_playback_started', { mode, scene_count: scenesStore.scenes.length })
+  captureTelemetryEvent('scene_playback_started', { mode, scene_count: scenesStore.scenes.length })
   void scenePlayer.play({ scenes: scenesStore.scenes, mode, title: '教学演示' })
 }
 
 function handlePlaceSelect(place: PlaceSuggestion): void {
-  posthog.capture('place_selected')
+  captureTelemetryEvent('place_selected')
   flyToPlace(place)
 }
 

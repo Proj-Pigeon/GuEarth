@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import { net } from 'electron'
 import type { AiModelTestRequest, AiModelTestResult, AiProtocol } from '../../preload'
+import { normalizeModelTestOutput, redactApiKey } from '../../common/aiTelemetry'
 import { readProviderKey } from '../keyVault'
 import { captureAiGeneration } from './posthog'
 import { readResponseText, ResponseTooLargeError } from './responseReader'
@@ -115,7 +116,7 @@ export async function testModel(value: unknown): Promise<AiModelTestResult> {
       model: request.modelId,
       provider: request.id,
       input: body.messages,
-      output: payload,
+      output: normalizeModelTestOutput(request.protocol, payload),
       baseUrl: request.baseUrl,
       requestUrl,
       latencyMs: Date.now() - startedAt,
@@ -143,7 +144,7 @@ export async function testModel(value: unknown): Promise<AiModelTestResult> {
       requestUrl,
       latencyMs: Date.now() - startedAt,
       stream: false,
-      error: failure.message
+      error: redactApiKey(failure.message, apiKey)
     })
     throw failure
   } finally {

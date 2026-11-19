@@ -5,7 +5,7 @@ import { defaultAiSettings } from '../../../shared/aiSettings'
 import { ipcErrorMessage } from '../lib/ipcError'
 import { useFlightStopsStore } from './flightStops'
 import { useAccountStore } from './account'
-import posthog from '../posthog'
+import { captureAiUsageEvent } from '../posthog'
 
 export interface ToolStep {
   callId: string
@@ -530,7 +530,7 @@ export const useAiStore = defineStore('ai', () => {
   async function send(text: string): Promise<void> {
     const question = text.trim()
     if (!question || isStreaming.value) return
-    posthog.capture('ai_prompt_submitted', { prompt_length: question.length })
+    captureAiUsageEvent('ai_prompt_submitted', { prompt_length: question.length })
     conversationLoadSequence += 1
     modelRetryNotice.value = ''
     await hydrate()

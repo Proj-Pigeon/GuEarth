@@ -24,6 +24,7 @@ import type { AiChatHistoryStore } from './chatHistoryStore'
 import type { AiSettingsStore } from './settingsStore'
 import type { AiMemoryStore } from './memoryStore'
 import { createTurnFlightGuard, evaluateFlightToolGuard, type TurnFlightGuard } from '../../common/flightStops'
+import { formatTelemetryToolCalls, redactApiKey, sanitizeTelemetryMessages, sanitizeTelemetryToolSpan } from '../../common/aiTelemetry'
 import { captureAiGeneration, captureAiSpan } from './posthog'
 
 const SYSTEM_PROMPT = [
@@ -530,14 +531,25 @@ function observabilityProvider(provider: AiProviderConfig): string {
   return configuredName || provider.id
 }
 
-function captureModelGeneration(observability: AiObservabilityContext, provider: AiProviderConfig, model: AiModelConfig, messages: WireMessage[], tools: AiToolDefinition[], startedAt: number, result?: RequestResult, error?: unknown): void {
-  const failure = error instanceof Error ? error.message : error === undefined ? '' : String(error)
+function captureModelGeneration(observability: AiObservabilityContext, provider: AiProviderConfig, model: AiModelConfig, apiKey: string, messages: WireMessage[], tools: AiToolDefinition[], startedAt: number, result?: RequestResult, error?: unknown): void {
+  const rawFailure = error instanceof Error ? error.message : error === undefined ? '' : String(error)
+  const failure = redactApiKey(rawFailure, apiKey)
   captureAiGeneration({
     ...observability,
     model: model.id,
     provider: observabilityProvider(provider),
-    input: messages,
-    ...(result ? { output: [{ role: 'assistant', content: result.text, tool_calls: result.toolCalls }] } : {}),
+    input: sanitizeTelemetryMessages(messages),
+    ...(result
+      ? {
+          output: [
+            {
+              role: 'assistant',
+              content: result.text,
+              ...(result.toolCalls.length ? { tool_calls: formatTelemetryToolCalls(result.toolCalls) } : {})
+            }
+          ]
+        }
+      : {}),
     baseUrl: provider.baseUrl,
     requestUrl: apiEndpoint(provider.baseUrl, provider.protocol, provider.protocol === 'anthropic' ? '/messages' : '/chat/completions'),
     latencyMs: Date.now() - startedAt,
@@ -844,10 +856,10 @@ async function runModelTurn(options: {
         onReasoningDelta: (text) => emit(sender, { sessionId, type: 'reasoning-delta', text }),
         onRetry
       })
-      captureModelGeneration(observability, provider, model, requestMessages, tools, startedAt, result)
+      captureModelGeneration(observability, provider, model, apiKey, requestMessages, tools, startedAt, result)
       return result
     } catch (error) {
-      captureModelGeneration(observability, provider, model, requestMessages, tools, startedAt, undefined, error)
+      captureModelGeneration(observability, provider, model, apiKey, requestMessages, tools, startedAt, undefined, error)
       throw error
     }
   }
@@ -970,12 +982,13 @@ async function executeTool(sender: WebContents, sessionId: string, name: string,
   } catch (error) {
     outcome = { ok: false, content: JSON.stringify({ error: error instanceof Error ? error.message : '工具执行失败' }) }
   }
+  const sanitizedSpan = sanitizeTelemetryToolSpan(name, args, safeParseJson(outcome.content))
   captureAiSpan({
     ...observability,
     spanId: callId,
     name,
-    input: args,
-    output: safeParseJson(outcome.content),
+    input: sanitizedSpan.input,
+    output: sanitizedSpan.output,
     latencyMs: Date.now() - startedAt,
     ...(!outcome.ok ? { error: summarizeToolResult(outcome.content) } : {})
   })
@@ -1028,9 +1041,9 @@ async function compressMessages(options: {
       onReasoningDelta: () => void 0,
       onRetry
     })
-    captureModelGeneration(observability, provider, compressionModel, compressionMessages, [], startedAt, summaryResult)
+    captureModelGeneration(observability, provider, compressionModel, apiKey, compressionMessages, [], startedAt, summaryResult)
   } catch (error) {
-    captureModelGeneration(observability, provider, compressionModel, compressionMessages, [], startedAt, undefined, error)
+    captureModelGeneration(observability, provider, compressionModel, apiKey, compressionMessages, [], startedAt, undefined, error)
     throw error
   }
   const summary = summaryResult.text.trim()

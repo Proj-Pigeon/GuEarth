@@ -4,7 +4,7 @@ import { DEFAULT_DRAW_STYLE, useDrawingStore, type DrawTool, type DrawnShape, ty
 import { thematicLayerCatalog } from '@renderer/stores/climate'
 import { useFeatureFocusStore, type FocusedFeature } from '@renderer/stores/featureFocus'
 import { useGlobeStore } from '@renderer/stores/globe'
-import posthog from '@renderer/posthog'
+import { captureTelemetryEvent } from '@renderer/posthog'
 import { formatArea, formatDistance, isUsablePosition, pathDistance, polygonArea, textOutlineColor, terrainPath, dedupe, LABEL_STYLE, SHAPE_COLOR, centroidOf, isGroundPolylineSupported, measurementFor, pointGraphics, polygonGraphics, polylineOptions, ringOf, sanitizePositions, shapeColorOf, shapeLabelOptions, surfacePosition, terrainSurfacePositions, toCartesian } from '@renderer/lib/shapeGraphics'
 
 type EllipsoidalOccluderLike = { cameraPosition: Cesium.Cartesian3; isPointVisible: (point: Cesium.Cartesian3) => boolean }
@@ -282,7 +282,7 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
     if (positions.length < minimum) return
     const id = crypto.randomUUID()
     store.addShape({ ...DEFAULT_DRAW_STYLE, id, kind, positions: positions.map(toGeo), annotation: '', textFrame: kind === 'text', createdAt: Date.now() })
-    posthog.capture('annotation_created', { annotation_type: kind, vertex_count: positions.length })
+    captureTelemetryEvent('annotation_created', { annotation_type: kind, vertex_count: positions.length })
     store.setSelectedShapeId(id)
     tool = null
     store.setActiveTool(null)

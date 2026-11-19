@@ -11,7 +11,7 @@ import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useDecisionStore } from '@renderer/stores/decision'
 import { useZonationStore } from '@renderer/stores/zonation'
 import { useDrawingStore } from '@renderer/stores/drawing'
-import posthog from '@renderer/posthog'
+import { captureTelemetryEvent } from '@renderer/posthog'
 
 interface LabEntry {
   key: string
@@ -362,7 +362,7 @@ const chapters: LabChapter[] = [
 
 function selectEntry(entry: LabEntry): void {
   entry.toggle()
-  posthog.capture('teaching_module_selected', { module_id: entry.key, enabled: entry.active() })
+  captureTelemetryEvent('teaching_module_selected', { module_id: entry.key, enabled: entry.active() })
   emit('close')
 }
 </script>

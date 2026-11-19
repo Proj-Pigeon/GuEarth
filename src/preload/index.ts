@@ -24,6 +24,9 @@ export interface GuEarthSettings {
   providerCredentials: Record<string, ProviderCredentialStatus>
   sceneMode: '2D' | '3D'
   setupGuideDismissed: boolean | null
+  errorReportingEnabled: boolean
+  telemetryEnabled: boolean
+  aiTelemetryEnabled: boolean
 }
 
 export interface GuEarthSettingsPatch {
@@ -38,6 +41,9 @@ export interface GuEarthSettingsPatch {
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'
   setupGuideDismissed?: boolean
+  errorReportingEnabled?: boolean
+  telemetryEnabled?: boolean
+  aiTelemetryEnabled?: boolean
 }
 
 export interface TileMirrorStatus {

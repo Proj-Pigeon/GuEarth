@@ -4,20 +4,23 @@ import { BatchLogRecordProcessor, LoggerProvider } from '@opentelemetry/sdk-logs
 
 const projectToken = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || process.env.VITE_POSTHOG_PROJECT_TOKEN
 const host = import.meta.env.VITE_POSTHOG_HOST || process.env.VITE_POSTHOG_HOST
-const missingConfiguration = !projectToken
-  ? 'VITE_POSTHOG_PROJECT_TOKEN'
-  : !host
-    ? 'VITE_POSTHOG_HOST'
-    : null
 
-if (missingConfiguration && import.meta.env.DEV) {
-  console.warn(`${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`)
-}
-
+let posthogLogsEnabled = false
 let provider: LoggerProvider | null = null
 let posthogLogger: ReturnType<LoggerProvider['getLogger']> | null = null
+let missingWarned = false
 
-if (projectToken && host) {
+function ensureLogger(): ReturnType<LoggerProvider['getLogger']> | null {
+  if (!posthogLogsEnabled) return null
+  if (posthogLogger) return posthogLogger
+  if (!projectToken || !host) {
+    if (!missingWarned && import.meta.env.DEV) {
+      missingWarned = true
+      const missingConfiguration = !projectToken ? 'VITE_POSTHOG_PROJECT_TOKEN' : 'VITE_POSTHOG_HOST'
+      console.warn(`${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`)
+    }
+    return null
+  }
   try {
     provider = new LoggerProvider({
       resource: resourceFromAttributes({
@@ -36,6 +39,12 @@ if (projectToken && host) {
   } catch (error) {
     if (import.meta.env.DEV) console.warn('PostHog log export could not be initialized', error)
   }
+  return posthogLogger
+}
+
+export function setPosthogLogsEnabled(enabled: boolean): void {
+  posthogLogsEnabled = enabled
+  if (enabled) ensureLogger()
 }
 
 export function capturePosthogLog(
@@ -43,10 +52,12 @@ export function capturePosthogLog(
   body: string,
   attributes?: Record<string, string | number | boolean>
 ): void {
+  const activeLogger = ensureLogger()
+  if (!activeLogger) return
   try {
-    posthogLogger?.emit({ severityText, body, attributes })
+    activeLogger.emit({ severityText, body, attributes })
   } catch {
-    // Log delivery must never affect the Electron main process.
+    return
   }
 }
 
@@ -62,7 +73,7 @@ export async function shutdownPosthogLogs(): Promise<void> {
       })
     ])
   } catch {
-    // Log delivery must never block application exit.
+    return
   } finally {
     if (timeout) clearTimeout(timeout)
   }

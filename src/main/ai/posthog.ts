@@ -2,23 +2,38 @@ import { PostHog } from 'posthog-node'
 
 const projectToken = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || process.env.VITE_POSTHOG_PROJECT_TOKEN
 const host = import.meta.env.VITE_POSTHOG_HOST || process.env.VITE_POSTHOG_HOST
-const missingConfiguration = !projectToken
-  ? 'VITE_POSTHOG_PROJECT_TOKEN'
-  : !host
-    ? 'VITE_POSTHOG_HOST'
-    : null
 
-if (missingConfiguration && import.meta.env.DEV) {
-  console.warn(`${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`)
+let aiPosthogEnabled = false
+let posthogClient: PostHog | null = null
+let missingWarned = false
+
+function ensureClient(): PostHog | null {
+  if (!aiPosthogEnabled) return null
+  if (posthogClient) return posthogClient
+  if (!projectToken || !host) {
+    if (!missingWarned && import.meta.env.DEV) {
+      missingWarned = true
+      const missingConfiguration = !projectToken ? 'VITE_POSTHOG_PROJECT_TOKEN' : 'VITE_POSTHOG_HOST'
+      console.warn(`${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`)
+    }
+    return null
+  }
+  posthogClient = new PostHog(projectToken, {
+    host,
+    privacyMode: false,
+    enableExceptionAutocapture: false
+  })
+  return posthogClient
 }
 
-const posthog = projectToken && host
-  ? new PostHog(projectToken, {
-      host,
-      privacyMode: false,
-      enableExceptionAutocapture: false
-    })
-  : null
+export function setAiPosthogEnabled(enabled: boolean): void {
+  aiPosthogEnabled = enabled
+  if (enabled) ensureClient()
+}
+
+export function isAiPosthogEnabled(): boolean {
+  return aiPosthogEnabled
+}
 
 interface AiCaptureBase {
   distinctId: string
@@ -48,8 +63,10 @@ interface AiSpanCapture extends AiCaptureBase {
 }
 
 export function captureAiGeneration(capture: AiGenerationCapture): void {
+  const client = ensureClient()
+  if (!client) return
   try {
-    posthog?.capture({
+    client.capture({
       distinctId: capture.distinctId,
       event: '$ai_generation',
       properties: {
@@ -68,13 +85,15 @@ export function captureAiGeneration(capture: AiGenerationCapture): void {
       }
     })
   } catch {
-    // AI observability must not affect the model request.
+    return
   }
 }
 
 export function captureAiSpan(capture: AiSpanCapture): void {
+  const client = ensureClient()
+  if (!client) return
   try {
-    posthog?.capture({
+    client.capture({
       distinctId: capture.distinctId,
       event: '$ai_span',
       properties: {
@@ -89,23 +108,23 @@ export function captureAiSpan(capture: AiSpanCapture): void {
       }
     })
   } catch {
-    // AI observability must not affect tool execution.
+    return
   }
 }
 
 export async function shutdownPosthog(): Promise<void> {
-  if (!posthog) return
+  if (!posthogClient) return
   let timeout: NodeJS.Timeout | undefined
   try {
     await Promise.race([
-      posthog.shutdown(),
+      posthogClient.shutdown(),
       new Promise<void>((resolve) => {
         timeout = setTimeout(resolve, 1_000)
         timeout.unref()
       })
     ])
   } catch {
-    // Shutdown telemetry failures must not block application exit.
+    return
   } finally {
     if (timeout) clearTimeout(timeout)
   }
