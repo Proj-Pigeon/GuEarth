@@ -5,6 +5,7 @@ import {
   archiveRedirectTarget,
   archiveSources,
   assertArchiveSource,
+  assertFetchableUrl,
   defaultHawdbBinaryPath,
   HAWDB_BUILDS,
   HAWDB_VERSION,
@@ -13,7 +14,8 @@ import {
   isApprovedArchiveUrl,
   matchesPinnedArchivePath,
   normalizeHawdbArch,
-  packagedHawdbBinaryPath
+  packagedHawdbBinaryPath,
+  parseCliArgs
 } from '../scripts/fetch-hawdb.mjs'
 
 test('pinned hawdb builds define valid hashes and expected binaries across platforms', () => {
@@ -50,6 +52,28 @@ test('hawdb fetch accepts only pinned GitHub release URLs and approved redirect 
   assert.ok(isApprovedArchiveRedirectUrl(redirect))
   assert.equal(archiveRedirectTarget(redirect, sources[0]), redirect)
   assert.throws(() => archiveRedirectTarget('https://untrusted.example.com/file.zip', sources[0]))
+})
+
+test('hawdb fetch revalidates every request URL against the approved hosts', () => {
+  const winBuild = hawdbBuildFor('win32', 'x64')
+  const source = archiveSources(undefined, winBuild)[0]
+  const redirect = 'https://release-assets.githubusercontent.com/github-production-release-asset/1/2?sp=r'
+  assert.equal(assertFetchableUrl(source), source)
+  assert.equal(assertFetchableUrl(redirect), redirect)
+  for (const rejected of ['http://github.com/file.zip', 'https://evil.example.com/file.zip', 'file:///tmp/file.zip']) {
+    assert.throws(() => assertFetchableUrl(rejected), /拒绝请求未经验证的地址/)
+  }
+})
+
+test('hawdb CLI parser reads flags and values without depending on argv order', () => {
+  assert.deepEqual(parseCliArgs([]), { force: false, platform: process.platform, archArg: process.arch })
+  assert.deepEqual(parseCliArgs(['--force', '--arch', 'all', '--platform', 'linux']), {
+    force: true,
+    platform: 'linux',
+    archArg: 'all'
+  })
+  assert.deepEqual(parseCliArgs(['--arch']), { force: false, platform: process.platform, archArg: process.arch })
+  assert.deepEqual(parseCliArgs(['--unknown', 'value']), { force: false, platform: process.platform, archArg: process.arch })
 })
 
 test('hawdb output paths place Windows binary flat and POSIX binaries under arch folder', () => {

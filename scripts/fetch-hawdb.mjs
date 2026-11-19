@@ -168,6 +168,13 @@ export function assertArchiveSource(url) {
   return url
 }
 
+export function assertFetchableUrl(url) {
+  if (!isApprovedArchiveRedirectUrl(url)) {
+    throw new Error(`拒绝请求未经验证的地址：${rejectedArchiveLabel(url)}`)
+  }
+  return url
+}
+
 export function archiveSources(overrideUrl, build = hostHawdbBuild()) {
   const pinned = pinnedArchiveUrls(build)
   if (!overrideUrl) return [...pinned]
@@ -240,10 +247,9 @@ function tarCommand() {
 }
 
 async function fetchArchive(url) {
-  assertArchiveSource(url)
-  let current = url
+  let current = assertArchiveSource(url)
   for (let hop = 0; hop <= maxArchiveRedirects; hop += 1) {
-    const response = await fetch(current, { redirect: 'manual', headers: { 'user-agent': 'GuEarth-HawDB-Fetch' } })
+    const response = await fetch(assertFetchableUrl(current), { redirect: 'manual', headers: { 'user-agent': 'GuEarth-HawDB-Fetch' } })
     if (response.status < 300 || response.status >= 400) return response
     if (hop === maxArchiveRedirects) break
     current = archiveRedirectTarget(response.headers.get('location'), current)
@@ -344,22 +350,30 @@ export async function fetchHawdb({ repoRoot, force = false, platform = process.p
   }
 }
 
-function parseCliArgs(argv) {
-  let force = false
-  let platform = process.platform
-  let archArg = process.arch
+const BOOLEAN_FLAGS = new Set(['--force'])
+
+const VALUE_FLAGS = new Map([
+  ['--platform', 'platform'],
+  ['--arch', 'archArg']
+])
+
+const ALL_ARCH_PLATFORMS = new Set(['linux', 'darwin'])
+
+export function parseCliArgs(argv) {
+  const options = { force: false, platform: process.platform, archArg: process.arch }
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i]
-    if (token === '--force') force = true
-    else if (token === '--platform' && argv[i + 1]) {
-      platform = argv[i + 1]
-      i += 1
-    } else if (token === '--arch' && argv[i + 1]) {
-      archArg = argv[i + 1]
+    if (BOOLEAN_FLAGS.has(token)) {
+      options.force = true
+      continue
+    }
+    const target = VALUE_FLAGS.get(token)
+    if (target && argv[i + 1]) {
+      options[target] = argv[i + 1]
       i += 1
     }
   }
-  return { force, platform, archArg }
+  return options
 }
 
 const isEntrypoint = process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url
@@ -368,7 +382,7 @@ if (isEntrypoint) {
   const repoRoot = fileURLToPath(new URL('..', import.meta.url))
   const { force, platform, archArg } = parseCliArgs(process.argv.slice(2))
   const arches = archArg === 'all'
-    ? (platform === 'linux' || platform === 'darwin' ? ['x64', 'arm64'] : ['x64'])
+    ? (ALL_ARCH_PLATFORMS.has(platform) ? ['x64', 'arm64'] : ['x64'])
     : [archArg]
   for (const arch of arches) {
     await fetchHawdb({ repoRoot, force, platform, arch })

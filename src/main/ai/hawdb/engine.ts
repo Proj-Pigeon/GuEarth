@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -468,7 +469,7 @@ export class EoqHawdbEngine {
     const count = Number(db.querySQL('SELECT COUNT(*) AS cnt FROM eoq_memories').dicts()[0]?.cnt ?? 0)
     if (count >= MAX_MEMORIES) throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)
     const memory: AgentMemory = {
-      id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+      id: `m${randomUUID()}`,
       content: trimmed,
       source: source === 'agent' ? 'agent' : 'user',
       createdAt: Date.now()

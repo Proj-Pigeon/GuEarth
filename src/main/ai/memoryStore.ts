@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { readJson, serialQueue, writeJson } from '../jsonStore'
 import type { AgentMemory } from '../../preload'
 import type { EoqHawdbClient } from './hawdb/client'
@@ -75,7 +76,7 @@ export class AiMemoryStore {
       if (!trimmed) throw new Error('记忆内容不能为空')
       if (this.memories.length >= MAX_MEMORIES) throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)
       const memory: AgentMemory = {
-        id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+        id: `m${randomUUID()}`,
         content: trimmed,
         source,
         createdAt: Date.now()

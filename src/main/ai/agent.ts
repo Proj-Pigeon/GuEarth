@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { ipcMain, net, type IpcMainInvokeEvent, type WebContents } from 'electron'
 import type {
   AgentMemory,
@@ -865,7 +866,7 @@ async function executeTool(
 ): Promise<ToolOutcome & { callId: string; summary: string }> {
   const args = safeParseJson(argsJson)
   if (name === 'web_search') args.query = typeof args.query === 'string' ? args.query.trim().slice(0, 500) : ''
-  const callId = `${name}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`
+  const callId = `${name}:${Date.now()}:${randomUUID()}`
   emit(sender, { sessionId, type: 'tool-start', callId, name, args })
   let outcome: ToolOutcome
   try {
