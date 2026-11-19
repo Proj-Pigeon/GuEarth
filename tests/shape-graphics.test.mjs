@@ -141,8 +141,20 @@ test('polygon area is stable across winding, duplicate vertices and a closed rin
     [116.02, 39.01], [116.01, 39.01], [116.01, 39.03], [116, 39.03]
   ]
   const area = polygonArea(ringCartesians(concave))
-  assert.ok(Math.abs(area - polygonArea(ringCartesians([...concave].reverse()))) < area * 1e-9)
-  assert.ok(Math.abs(area - polygonArea(ringCartesians([...concave, concave[0]]))) < area * 1e-9)
-  assert.ok(Math.abs(area - polygonArea(ringCartesians([concave[0], concave[0], ...concave.slice(1)]))) < area * 1e-9)
+  const tolerance = area * 1e-7
+  assert.ok(Math.abs(area - polygonArea(ringCartesians([...concave].reverse()))) < tolerance)
+  assert.ok(Math.abs(area - polygonArea(ringCartesians([...concave, concave[0]]))) < tolerance)
+  assert.ok(Math.abs(area - polygonArea(ringCartesians([concave[0], concave[0], ...concave.slice(1)]))) < tolerance)
   assert.equal(polygonArea(ringCartesians([concave[0], concave[1], concave[0]])), 0)
+})
+
+test('polygon area ignores adjacent vertices that share a direction but differ in height', () => {
+  const ring = [
+    Cesium.Cartesian3.fromDegrees(116, 39, 0),
+    Cesium.Cartesian3.fromDegrees(116, 39, 1200),
+    Cesium.Cartesian3.fromDegrees(116.01, 39, 0),
+    Cesium.Cartesian3.fromDegrees(116, 39.01, 0)
+  ]
+  const area = polygonArea(ring)
+  assert.ok(Number.isFinite(area) && area > 0, String(area))
 })

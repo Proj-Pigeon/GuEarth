@@ -73,10 +73,16 @@ function tangentToward(origin: Cesium.Cartesian3, point: Cesium.Cartesian3): Ces
 }
 
 export function polygonArea(cartesians: Cesium.Cartesian3[]): number {
-  const ring = dedupe(cartesians.filter(isUsablePosition))
-  if (ring.length > 1 && Cesium.Cartesian3.equalsEpsilon(ring[0], ring[ring.length - 1], 0, 0.5)) ring.pop()
-  if (ring.length < 3) return 0
-  const directions = ring.map((cartesian) => Cesium.Cartesian3.normalize(cartesian, new Cesium.Cartesian3()))
+  const directions: Cesium.Cartesian3[] = []
+  for (const cartesian of cartesians) {
+    if (!isUsablePosition(cartesian)) continue
+    const direction = Cesium.Cartesian3.normalize(cartesian, new Cesium.Cartesian3())
+    const previous = directions[directions.length - 1]
+    if (previous && Cesium.Cartesian3.equalsEpsilon(previous, direction, 0, Cesium.Math.EPSILON12)) continue
+    directions.push(direction)
+  }
+  if (directions.length > 1 && Cesium.Cartesian3.equalsEpsilon(directions[0], directions[directions.length - 1], 0, Cesium.Math.EPSILON12)) directions.pop()
+  if (directions.length < 3) return 0
   // 高斯-博内定理：球面多边形面积只取决于各顶点处的有向转角，凹多边形同样成立
   let turnSum = 0
   for (let index = 0; index < directions.length; index += 1) {
