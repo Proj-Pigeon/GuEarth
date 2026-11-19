@@ -19,6 +19,7 @@ export const HAWDB_BUILDS = {
     arch: 'x64',
     triple: 'x86_64-pc-windows-msvc',
     archiveName: `hawdb-ffi-${HAWDB_VERSION}-x86_64-pc-windows-msvc.zip`,
+    archiveUrl: `https://github.com/nowledge-co/hawdb/releases/download/v${HAWDB_VERSION}/hawdb-ffi-${HAWDB_VERSION}-x86_64-pc-windows-msvc.zip`,
     archiveSha256: 'd3351d72b2717bc7fdf45ed697d670b457ced247de9d3728ecde92eb727d7357',
     binaryMemberPath: `hawdb-ffi-${HAWDB_VERSION}-x86_64-pc-windows-msvc/bin/hawdb_ffi.dll`,
     manifestMemberPath: `hawdb-ffi-${HAWDB_VERSION}-x86_64-pc-windows-msvc/manifest.json`,
@@ -30,6 +31,7 @@ export const HAWDB_BUILDS = {
     arch: 'x64',
     triple: 'x86_64-unknown-linux-gnu',
     archiveName: `hawdb-ffi-${HAWDB_VERSION}-x86_64-unknown-linux-gnu.tar.gz`,
+    archiveUrl: `https://github.com/nowledge-co/hawdb/releases/download/v${HAWDB_VERSION}/hawdb-ffi-${HAWDB_VERSION}-x86_64-unknown-linux-gnu.tar.gz`,
     archiveSha256: 'ac4cf5d1696ac307c74e8edbb886968f25d258e3e09cebc300fc7dd339a287bb',
     binaryMemberPath: `hawdb-ffi-${HAWDB_VERSION}-x86_64-unknown-linux-gnu/lib/libhawdb_ffi.so`,
     manifestMemberPath: `hawdb-ffi-${HAWDB_VERSION}-x86_64-unknown-linux-gnu/manifest.json`,
@@ -41,6 +43,7 @@ export const HAWDB_BUILDS = {
     arch: 'arm64',
     triple: 'aarch64-unknown-linux-gnu',
     archiveName: `hawdb-ffi-${HAWDB_VERSION}-aarch64-unknown-linux-gnu.tar.gz`,
+    archiveUrl: `https://github.com/nowledge-co/hawdb/releases/download/v${HAWDB_VERSION}/hawdb-ffi-${HAWDB_VERSION}-aarch64-unknown-linux-gnu.tar.gz`,
     archiveSha256: 'ffd93cea5fc399014ffe2fde1231f8a5c14ea8e1d0012ab3a7c1492ded72ff0a',
     binaryMemberPath: `hawdb-ffi-${HAWDB_VERSION}-aarch64-unknown-linux-gnu/lib/libhawdb_ffi.so`,
     manifestMemberPath: `hawdb-ffi-${HAWDB_VERSION}-aarch64-unknown-linux-gnu/manifest.json`,
@@ -52,6 +55,7 @@ export const HAWDB_BUILDS = {
     arch: 'arm64',
     triple: 'aarch64-apple-darwin',
     archiveName: `hawdb-ffi-${HAWDB_VERSION}-aarch64-apple-darwin.tar.gz`,
+    archiveUrl: `https://github.com/nowledge-co/hawdb/releases/download/v${HAWDB_VERSION}/hawdb-ffi-${HAWDB_VERSION}-aarch64-apple-darwin.tar.gz`,
     archiveSha256: '55d06dcd0be08f1278363e09cc95c39c213d360a075c5bcad123f24205ee7c6b',
     binaryMemberPath: `hawdb-ffi-${HAWDB_VERSION}-aarch64-apple-darwin/lib/libhawdb_ffi.dylib`,
     manifestMemberPath: `hawdb-ffi-${HAWDB_VERSION}-aarch64-apple-darwin/manifest.json`,
@@ -63,6 +67,7 @@ export const HAWDB_BUILDS = {
     arch: 'x64',
     triple: 'x86_64-apple-darwin',
     archiveName: `hawdb-ffi-${HAWDB_VERSION}-x86_64-apple-darwin.tar.gz`,
+    archiveUrl: `https://github.com/nowledge-co/hawdb/releases/download/v${HAWDB_VERSION}/hawdb-ffi-${HAWDB_VERSION}-x86_64-apple-darwin.tar.gz`,
     archiveSha256: 'afd874c4de16684d6752991a390720396c42b0e06677e7f4289c89c1062a25db',
     binaryMemberPath: `hawdb-ffi-${HAWDB_VERSION}-x86_64-apple-darwin/lib/libhawdb_ffi.dylib`,
     manifestMemberPath: `hawdb-ffi-${HAWDB_VERSION}-x86_64-apple-darwin/manifest.json`,
@@ -95,8 +100,8 @@ export function hostHawdbBuild() {
   return HAWDB_BUILDS[`${process.platform}-${normalizeHawdbArch(process.arch)}`] ?? HAWDB_BUILDS['win32-x64']
 }
 
-function pinnedArchiveUrls(build) {
-  return [`https://github.com/nowledge-co/hawdb/releases/download/v${build.version}/${build.archiveName}`]
+export function pinnedArchiveUrl(build = hostHawdbBuild()) {
+  return build.archiveUrl
 }
 
 function parseArchiveUrl(value) {
@@ -144,23 +149,6 @@ export function matchesPinnedArchivePath(url) {
   return pinnedArchiveNames.has(name) && parsed.pathname.endsWith(`/v${HAWDB_VERSION}/${name}`)
 }
 
-export function approvedArchiveSource(overrideUrl) {
-  if (!isApprovedArchiveUrl(overrideUrl)) {
-    throw new Error(
-      `HAWDB_FETCH_URL 来源不受信任：${rejectedArchiveLabel(overrideUrl)}；仅允许主机为 ${APPROVED_ARCHIVE_HOSTS.join('、')} 的 HTTPS 地址，离线安装请将 HAWDB_FETCH_FILE 指向本地归档`
-    )
-  }
-  const parsed = parseArchiveUrl(overrideUrl)
-  if (!matchesPinnedArchivePath(parsed.href)) {
-    const allowed = [...pinnedArchiveNames].join('、')
-    throw new Error(
-      `HAWDB_FETCH_URL 归档路径不受信任：${parsed.pathname}${parsed.search}；仅允许指向 v${HAWDB_VERSION} 的 ${allowed}`
-    )
-  }
-  const approvedHost = APPROVED_ARCHIVE_HOSTS.find((host) => host === parsed.hostname)
-  return new URL(parsed.pathname, `https://${approvedHost}/`).href
-}
-
 export function assertArchiveSource(url) {
   if (!isApprovedArchiveUrl(url) || !matchesPinnedArchivePath(url)) {
     throw new Error(`拒绝下载未经验证的来源：${rejectedArchiveLabel(url)}`)
@@ -173,12 +161,6 @@ export function assertFetchableUrl(url) {
     throw new Error(`拒绝请求未经验证的地址：${rejectedArchiveLabel(url)}`)
   }
   return url
-}
-
-export function archiveSources(overrideUrl, build = hostHawdbBuild()) {
-  const pinned = pinnedArchiveUrls(build)
-  if (!overrideUrl) return [...pinned]
-  return [approvedArchiveSource(overrideUrl), ...pinned]
 }
 
 export function defaultHawdbBinaryPath(repoRoot, platform = process.platform, arch = process.arch) {
@@ -305,20 +287,9 @@ export async function fetchHawdb({ repoRoot, force = false, platform = process.p
       const localCheck = await verifyFile(archivePath, { sha256: build.archiveSha256 })
       if (!localCheck.ok) throw new Error(`归档校验失败：${localCheck.reason}`)
     } else {
-      let lastError = null
-      for (const source of archiveSources(process.env.HAWDB_FETCH_URL, build)) {
-        try {
-          await download(source, archivePath)
-          const sourceCheck = await verifyFile(archivePath, { sha256: build.archiveSha256 })
-          if (!sourceCheck.ok) throw new Error(`归档校验失败：${sourceCheck.reason}`)
-          lastError = null
-          break
-        } catch (error) {
-          lastError = error
-          await rm(archivePath, { force: true })
-        }
-      }
-      if (lastError) throw lastError
+      await download(pinnedArchiveUrl(build), archivePath)
+      const sourceCheck = await verifyFile(archivePath, { sha256: build.archiveSha256 })
+      if (!sourceCheck.ok) throw new Error(`归档校验失败：${sourceCheck.reason}`)
     }
     await extractMembers(archivePath, [build.binaryMemberPath, build.manifestMemberPath], workDirectory)
     const extractedBinary = join(workDirectory, ...build.binaryMemberPath.split('/'))

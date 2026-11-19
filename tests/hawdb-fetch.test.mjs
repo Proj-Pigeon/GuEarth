@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  approvedArchiveSource,
   archiveRedirectTarget,
-  archiveSources,
   assertArchiveSource,
   assertFetchableUrl,
   defaultHawdbBinaryPath,
@@ -15,7 +13,8 @@ import {
   matchesPinnedArchivePath,
   normalizeHawdbArch,
   packagedHawdbBinaryPath,
-  parseCliArgs
+  parseCliArgs,
+  pinnedArchiveUrl
 } from '../scripts/fetch-hawdb.mjs'
 
 test('pinned hawdb builds define valid hashes and expected binaries across platforms', () => {
@@ -35,28 +34,32 @@ test('pinned hawdb builds define valid hashes and expected binaries across platf
   assert.equal(hawdbBuildFor('darwin', 'arm64').binaryName, 'libhawdb_ffi.dylib')
 })
 
-test('hawdb fetch accepts only pinned GitHub release URLs and approved redirect hosts', () => {
+test('hawdb download URLs come from the pinned release constant, not from input', () => {
   const winBuild = hawdbBuildFor('win32', 'x64')
-  const sources = archiveSources(undefined, winBuild)
-  assert.equal(sources.length, 1)
-  assert.ok(isApprovedArchiveUrl(sources[0]))
-  assert.ok(matchesPinnedArchivePath(sources[0]))
-  assert.equal(approvedArchiveSource(sources[0]), sources[0])
-  assertArchiveSource(sources[0])
+  const source = pinnedArchiveUrl(winBuild)
+  assert.equal(source, `https://github.com/nowledge-co/hawdb/releases/download/v${HAWDB_VERSION}/${winBuild.archiveName}`)
+  assert.ok(isApprovedArchiveUrl(source))
+  assert.ok(matchesPinnedArchivePath(source))
+  assertArchiveSource(source)
+  for (const build of Object.values(HAWDB_BUILDS)) {
+    assert.equal(
+      pinnedArchiveUrl(build),
+      `https://github.com/nowledge-co/hawdb/releases/download/v${HAWDB_VERSION}/${build.archiveName}`
+    )
+  }
 
-  assert.throws(() => approvedArchiveSource(`https://evil.example.com/v${HAWDB_VERSION}/${winBuild.archiveName}`))
-  assert.throws(() => approvedArchiveSource(`https://github.com/nowledge-co/hawdb/releases/download/v${HAWDB_VERSION}/other.zip`))
-  assert.throws(() => approvedArchiveSource(`${sources[0]}?token=1`))
+  assert.throws(() => assertArchiveSource(`https://evil.example.com/v${HAWDB_VERSION}/${winBuild.archiveName}`), /拒绝下载未经验证的来源/)
+  assert.throws(() => assertArchiveSource(`https://github.com/nowledge-co/hawdb/releases/download/v${HAWDB_VERSION}/other.zip`), /拒绝下载未经验证的来源/)
+  assert.throws(() => assertArchiveSource(`${source}?token=1`), /拒绝下载未经验证的来源/)
 
   const redirect = 'https://release-assets.githubusercontent.com/github-production-release-asset/1/2?sp=r'
   assert.ok(isApprovedArchiveRedirectUrl(redirect))
-  assert.equal(archiveRedirectTarget(redirect, sources[0]), redirect)
-  assert.throws(() => archiveRedirectTarget('https://untrusted.example.com/file.zip', sources[0]))
+  assert.equal(archiveRedirectTarget(redirect, source), redirect)
+  assert.throws(() => archiveRedirectTarget('https://untrusted.example.com/file.zip', source))
 })
 
 test('hawdb fetch revalidates every request URL against the approved hosts', () => {
-  const winBuild = hawdbBuildFor('win32', 'x64')
-  const source = archiveSources(undefined, winBuild)[0]
+  const source = pinnedArchiveUrl(hawdbBuildFor('win32', 'x64'))
   const redirect = 'https://release-assets.githubusercontent.com/github-production-release-asset/1/2?sp=r'
   assert.equal(assertFetchableUrl(source), source)
   assert.equal(assertFetchableUrl(redirect), redirect)
