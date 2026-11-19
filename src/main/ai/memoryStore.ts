@@ -65,10 +65,18 @@ export class AiMemoryStore {
     return this.memories
   }
 
+  private assertBackend(): 'hawdb' | 'json' {
+    if (this.hawdb) {
+      if (!this.hawdb.isReady()) throw new Error('EOQ HawDB 后端不可用，请重启应用后重试')
+      return 'hawdb'
+    }
+    return 'json'
+  }
+
   add(content: string, source: AgentMemory['source']): Promise<AgentMemory> {
     return this.enqueue(async () => {
-      if (this.hawdb?.isReady()) {
-        const memory = await this.hawdb.addMemory(content, source)
+      if (this.assertBackend() === 'hawdb') {
+        const memory = await this.hawdb!.addMemory(content, source)
         this.memories = [...this.memories, memory]
         return memory
       }
@@ -90,8 +98,8 @@ export class AiMemoryStore {
 
   delete(id: string): Promise<boolean> {
     return this.enqueue(async () => {
-      if (this.hawdb?.isReady()) {
-        const deleted = await this.hawdb.deleteMemory(id)
+      if (this.assertBackend() === 'hawdb') {
+        const deleted = await this.hawdb!.deleteMemory(id)
         if (deleted) this.memories = this.memories.filter((memory) => memory.id !== id)
         return deleted
       }
@@ -106,8 +114,8 @@ export class AiMemoryStore {
   async recall(query: string, limit = 8): Promise<MemoryRecallMatch[]> {
     const clean = typeof query === 'string' ? query.trim() : ''
     if (!clean) return []
-    if (this.hawdb?.isReady()) {
-      return this.hawdb.recallMemories(clean, limit)
+    if (this.assertBackend() === 'hawdb') {
+      return this.hawdb!.recallMemories(clean, limit)
     }
     const terms = extractQueryTerms(clean)
     return this.memories

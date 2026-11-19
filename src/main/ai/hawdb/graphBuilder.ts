@@ -51,25 +51,35 @@ export function buildKnowledgeSearchText(entry: KnowledgeEntry): string {
 }
 
 export function buildConversationSearchText(conversation: StoredAiConversation): string {
-  const chunks: string[] = [conversation.title]
-  if (conversation.compression?.summary) {
-    chunks.push(conversation.compression.summary)
-  }
-  for (const message of conversation.messages) {
-    if (message.content.trim()) {
-      chunks.push(message.content.trim())
-    } else if (message.parts.length > 0) {
-      const textParts = message.parts
+  const summary = conversation.compression?.summary
+  const summaryBudget = summary ? Math.min(summary.length, 4_000) : 0
+  let messageBudget = MAX_CONVERSATION_SEARCH_CHARS
+    - conversation.title.length
+    - (summaryBudget > 0 ? summaryBudget + 1 : 0)
+  if (messageBudget <= 0) messageBudget = 0
+  const messageChunks: string[] = []
+  for (let i = conversation.messages.length - 1; i >= 0 && messageBudget > 0; i -= 1) {
+    const message = conversation.messages[i]
+    let text = message.content.trim()
+    if (!text && message.parts.length > 0) {
+      text = message.parts
         .filter((part): part is { kind: 'text'; text: string } => part.kind === 'text' && Boolean(part.text.trim()))
         .map((part) => part.text.trim())
-      if (textParts.length > 0) chunks.push(textParts.join(' '))
+        .join(' ')
     }
+    if (!text) continue
+    const chunk = text.length > messageBudget ? text.slice(0, messageBudget) : text
+    messageChunks.unshift(chunk)
+    messageBudget -= chunk.length + 1
   }
+  const chunks: string[] = [conversation.title]
+  if (summary && summaryBudget > 0) chunks.push(summary.slice(0, summaryBudget))
+  chunks.push(...messageChunks)
   return chunks.join('\n').slice(0, MAX_CONVERSATION_SEARCH_CHARS)
 }
 
 export function buildConversationSnippet(conversation: StoredAiConversation, query: string): string {
-  const candidates: string[] = []
+  const candidates: string[] = [conversation.title]
   if (conversation.compression?.summary) candidates.push(conversation.compression.summary)
   for (let i = conversation.messages.length - 1; i >= 0; i -= 1) {
     const msg = conversation.messages[i]

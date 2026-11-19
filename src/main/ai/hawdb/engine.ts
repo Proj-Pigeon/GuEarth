@@ -73,10 +73,12 @@ async function loadLegacyConversations(path?: string): Promise<StoredAiConversat
   if (!path) return []
   const directory = `${path}.d`
   const byId = new Map<string, StoredAiConversation>()
+  let indexValid = false
   const indexPath = join(directory, 'index.json')
   if (existsSync(indexPath)) {
     const indexDoc = await readJsonSafe(indexPath)
     if (isRecord(indexDoc) && Array.isArray(indexDoc.conversations)) {
+      indexValid = true
       for (const entry of indexDoc.conversations) {
         if (!isRecord(entry) || typeof entry.file !== 'string' || !entry.file) continue
         try {
@@ -90,7 +92,7 @@ async function loadLegacyConversations(path?: string): Promise<StoredAiConversat
       }
     }
   }
-  if (byId.size === 0 && existsSync(path)) {
+  if (!indexValid && byId.size === 0 && existsSync(path)) {
     const parsed = await readJsonSafe(path)
     if (Array.isArray(parsed)) {
       for (const item of parsed) {
@@ -302,6 +304,7 @@ export class EoqHawdbEngine {
       return
     }
     const db = this.requireDb()
+    this.writeMeta('knowledge_hash', '')
     const existingIds = db.querySQL('SELECT id FROM eoq_knowledge').dicts().map((row) => String(row.id))
     db.transaction((tx) => {
       for (const id of existingIds) {
@@ -352,27 +355,37 @@ export class EoqHawdbEngine {
     await mkdir(this.dbRoot, { recursive: true })
     const lib = new HawdbLibrary(payload.libraryPath)
     let db: HawdbDatabase
+    let dbOwned = false
     if (process.platform === 'win32') {
       db = lib.openInMemory()
+      dbOwned = true
+      try {
+        ensureEoqSchema(db)
+      } catch (error) {
+        db.close()
+        lib.close()
+        throw error
+      }
       this.storageMode = 'memory-snapshot'
-      ensureEoqSchema(db)
     } else {
       let diskDb: HawdbDatabase | null = null
+      let schemaReady = false
       try {
         diskDb = lib.open(join(this.dbRoot, 'db'), { durability: 'sync_on_every_write' })
         ensureEoqSchema(diskDb)
-        db = diskDb
-        this.storageMode = 'disk'
+        schemaReady = true
       } catch (error) {
         diskDb?.close()
-        if (!(error instanceof HawdbError)) {
-          lib.close()
-          throw error
-        }
-        db = lib.openInMemory()
-        this.storageMode = 'memory-snapshot'
-        ensureEoqSchema(db)
+        lib.close()
+        throw error
       }
+      db = diskDb
+      dbOwned = schemaReady
+      this.storageMode = 'disk'
+    }
+    if (!dbOwned) {
+      lib.close()
+      throw new HawdbError('open_failed', 'HawDB 数据库初始化失败')
     }
     this.lib = lib
     this.db = db
@@ -478,17 +491,45 @@ export class EoqHawdbEngine {
       'INSERT INTO eoq_memories (id, content, source, created_at) VALUES ($1, $2, $3, $4)',
       [memory.id, memory.content, memory.source, memory.createdAt]
     )
-    await this.persistSnapshotIfNeeded()
+    try {
+      await this.persistSnapshotIfNeeded()
+    } catch (error) {
+      if (this.storageMode === 'memory-snapshot') {
+        try {
+          db.querySQL('DELETE FROM eoq_memories WHERE id = $1', [memory.id])
+        } catch {
+          void 0
+        }
+      }
+      throw error
+    }
     return memory
   }
 
   async deleteMemory(id: string): Promise<boolean> {
     const db = this.requireDb()
-    const existing = db.querySQL('SELECT id FROM eoq_memories WHERE id = $1', [id]).dicts()
+    const existing = db.querySQL('SELECT id, content, source, created_at FROM eoq_memories WHERE id = $1', [id]).dicts()
     if (!existing.length) return false
     db.querySQL('DELETE FROM eoq_memories WHERE id = $1', [id])
-    await this.persistSnapshotIfNeeded()
-    return true
+    try {
+      await this.persistSnapshotIfNeeded()
+      return true
+    } catch (error) {
+      if (this.storageMode === 'memory-snapshot') {
+        try {
+          const row = existing[0]
+          if (db.querySQL('SELECT id FROM eoq_memories WHERE id = $1', [id]).dicts().length === 0) {
+            db.querySQL(
+              'INSERT INTO eoq_memories (id, content, source, created_at) VALUES ($1, $2, $3, $4)',
+              [id, String(row.content), row.source === 'agent' ? 'agent' : 'user', Number(row.created_at)]
+            )
+          }
+        } catch {
+          void 0
+        }
+      }
+      throw error
+    }
   }
 
   recallMemories(query: string, limit = 8): MemoryRecallMatch[] {

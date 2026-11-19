@@ -295,10 +295,18 @@ export class AiChatHistoryStore {
     return this.hawdb ? this.hawdbSummaries.map(summary) : this.conversations.map(summary)
   }
 
+  private assertBackend(): 'hawdb' | 'json' {
+    if (this.hawdb) {
+      if (!this.hawdb.isReady()) throw new Error('EOQ HawDB 后端不可用，请重启应用后重试')
+      return 'hawdb'
+    }
+    return 'json'
+  }
+
   get(id: string): Promise<StoredAiConversation | null> {
     return this.enqueue(async () => {
-      if (this.hawdb?.isReady()) {
-        return this.hawdb.getConversation(id)
+      if (this.assertBackend() === 'hawdb') {
+        return this.hawdb!.getConversation(id)
       }
       const entry = this.conversations.find((item) => item.id === id)
       if (!entry) return null
@@ -310,8 +318,8 @@ export class AiChatHistoryStore {
     const conversation = normalizeConversation(value)
     if (!conversation) return Promise.reject(new Error('无效的会话数据'))
     return this.enqueue(async () => {
-      if (this.hawdb?.isReady()) {
-        this.hawdbSummaries = (await this.hawdb.saveConversation(conversation)).map(summary)
+      if (this.assertBackend() === 'hawdb') {
+        this.hawdbSummaries = (await this.hawdb!.saveConversation(conversation)).map(summary)
         return this.list()
       }
       const entry = { ...summary(conversation), file: `${conversation.id}.${randomUUID()}.json` }
@@ -332,8 +340,8 @@ export class AiChatHistoryStore {
 
   delete(id: string): Promise<StoredAiConversationSummary[]> {
     return this.enqueue(async () => {
-      if (this.hawdb?.isReady()) {
-        this.hawdbSummaries = (await this.hawdb.deleteConversation(id)).map(summary)
+      if (this.assertBackend() === 'hawdb') {
+        this.hawdbSummaries = (await this.hawdb!.deleteConversation(id)).map(summary)
         return this.list()
       }
       const removed = this.conversations.find((item) => item.id === id)
@@ -347,8 +355,8 @@ export class AiChatHistoryStore {
   async search(query: string, limit = 5, excludeId?: string): Promise<ConversationSearchHit[]> {
     const clean = typeof query === 'string' ? query.trim() : ''
     if (!clean) return []
-    if (this.hawdb?.isReady()) {
-      return this.hawdb.searchConversations(clean, limit, excludeId)
+    if (this.assertBackend() === 'hawdb') {
+      return this.hawdb!.searchConversations(clean, limit, excludeId)
     }
     return []
   }

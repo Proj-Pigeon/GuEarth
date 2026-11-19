@@ -1679,7 +1679,10 @@ app.on('before-quit', (event) => {
   if (quitting) return
   event.preventDefault()
   quitting = true
-  void Promise.allSettled([flushJsonWrites(), eoqHawdb.close()]).finally(() => app.quit())
+  void flushJsonWrites()
+    .then(() => eoqHawdb.close())
+    .catch(() => undefined)
+    .finally(() => app.quit())
 })
 
 app.on('will-quit', () => {

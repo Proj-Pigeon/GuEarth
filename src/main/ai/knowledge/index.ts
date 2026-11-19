@@ -138,7 +138,12 @@ export function retrieveKnowledge(query: string, module?: string, topK = DEFAULT
   }
 }
 
-const datasetHash = createHash('sha256').update(JSON.stringify(knowledgeEntries)).digest('hex')
+const KNOWLEDGE_RULES_VERSION = 1
+
+const datasetHash = createHash('sha256')
+  .update(`${KNOWLEDGE_RULES_VERSION}\n`)
+  .update(JSON.stringify(knowledgeEntries))
+  .digest('hex')
 
 export function knowledgeEntryCount(): number {
   return knowledgeEntries.length

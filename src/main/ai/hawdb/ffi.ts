@@ -300,7 +300,12 @@ export class HawdbLibrary {
     return new HawdbError('ffi', text)
   }
 
+  private assertOpen(): void {
+    if (this.closed) throw new HawdbError('library_closed', 'HawDB 动态库已卸载，不可继续调用')
+  }
+
   version(): string {
+    this.assertOpen()
     const out = emptyBuffer()
     this.symbols.hawdb_version(out)
     const text = this.takeBuffer(out)
@@ -309,14 +314,17 @@ export class HawdbLibrary {
   }
 
   formatVersion(): number {
+    this.assertOpen()
     return this.symbols.hawdb_format_version()
   }
 
   dumpFormatVersion(): number {
+    this.assertOpen()
     return this.symbols.hawdb_dump_format_version()
   }
 
   open(path: string, options?: HawdbOpenOptions): HawdbDatabase {
+    this.assertOpen()
     const pathBytes = encodeUtf8(path)
     const optionBytes = encodeUtf8(serializeOpenOptions(options))
     const errOut = emptyBuffer()
@@ -332,6 +340,7 @@ export class HawdbLibrary {
   }
 
   openInMemory(): HawdbDatabase {
+    this.assertOpen()
     const errOut = emptyBuffer()
     const handle = this.symbols.hawdb_open_in_memory(errOut)
     if (!handle) throw this.errorFrom(errOut, '无法创建内存 HawDB 数据库')
@@ -351,6 +360,7 @@ export class HawdbLibrary {
   }
 
   runQuery(handle: unknown, statement: string, params: unknown, inTransaction: boolean, sql: boolean): HawdbQueryResult {
+    this.assertOpen()
     const stmtBytes = encodeUtf8(statement)
     const paramBytes = encodeUtf8(stringifyParameters(params))
     const resultOut = emptyBuffer()
@@ -373,6 +383,7 @@ export class HawdbLibrary {
   }
 
   beginTransaction(handle: unknown): void {
+    this.assertOpen()
     const errOut = emptyBuffer()
     if (!this.symbols.hawdb_begin_transaction(handle, errOut)) {
       throw this.errorFrom(errOut, '无法开启 HawDB 事务')
@@ -382,6 +393,7 @@ export class HawdbLibrary {
   }
 
   commitTransaction(handle: unknown): void {
+    this.assertOpen()
     const resultOut = emptyBuffer()
     const errOut = emptyBuffer()
     const ok = this.symbols.hawdb_commit_transaction(handle, resultOut, errOut)
@@ -392,6 +404,7 @@ export class HawdbLibrary {
   }
 
   rollbackTransaction(handle: unknown): void {
+    this.assertOpen()
     const errOut = emptyBuffer()
     const ok = this.symbols.hawdb_rollback_transaction(handle, errOut)
     if (!ok) throw this.errorFrom(errOut, '回滚 HawDB 事务失败')
@@ -400,6 +413,7 @@ export class HawdbLibrary {
   }
 
   private parseReport(reportOut: RawHawdbBuffer, errOut: RawHawdbBuffer, ok: boolean, fallback: string): Record<string, unknown> {
+    this.assertOpen()
     if (!ok) {
       this.takeBuffer(reportOut)
       throw this.errorFrom(errOut, fallback)

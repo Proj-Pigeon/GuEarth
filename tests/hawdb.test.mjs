@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, chmod, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
@@ -185,6 +185,11 @@ test('EoqHawdbEngine falls back cleanly to memory-snapshot under restricted dire
   const baseDir = await mkdtemp(join(tmpdir(), 'guearth-hawdb-snap-'))
   t.after(() => rm(baseDir, { recursive: true, force: true }))
   const dbRoot = join(baseDir, 'eoq-hawdb')
+  if (process.platform !== 'win32') {
+    await mkdir(join(dbRoot, 'db'), { recursive: true })
+    await chmod(join(dbRoot, 'db'), 0o500).catch(() => undefined)
+    t.after(() => chmod(join(dbRoot, 'db'), 0o700).catch(() => undefined))
+  }
   const entries = loadKnowledgeFixtures().slice(0, 12)
 
   const engine = new EoqHawdbEngine()
@@ -196,11 +201,10 @@ test('EoqHawdbEngine falls back cleanly to memory-snapshot under restricted dire
       knowledgeHash: 'snap-v1'
     })
     assert.equal(opened.status.ready, true)
+    assert.equal(opened.status.storageMode, 'memory-snapshot')
     await engine.addMemory('偏好地图对比教学法', 'user')
     await engine.saveConversation(sampleConversation('snap-c1', 5000, '板块边界', '喜马拉雅山脉的板块成因'))
-    if (opened.status.storageMode === 'memory-snapshot') {
-      assert.ok(existsSync(join(dbRoot, 'snapshot.json')))
-    }
+    assert.ok(existsSync(join(dbRoot, 'snapshot.json')))
   } finally {
     engine.close()
   }

@@ -283,28 +283,13 @@ export interface StoredAiConversation extends StoredAiConversationSummary {
   compression?: StoredAiCompression
 }
 
-export interface AiConversationSearchHit {
-  id: string
-  title: string
-  updatedAt: number
-  score: number
-  snippet: string
-  compressionSummary?: string
-}
+import type { ConversationSearchHit, HawdbStatusInfo, MemoryRecallMatch } from '../main/ai/hawdb/protocol'
 
-export interface AiMemoryRecallMatch extends AgentMemory {
-  score: number
-}
+export type { ConversationSearchHit as AiConversationSearchHit, HawdbStatusInfo as AiHawdbStatus, MemoryRecallMatch as AiMemoryRecallMatch }
 
-export interface AiHawdbStatus {
-  ready: boolean
-  storageMode: 'disk' | 'memory-snapshot'
-  hawdbVersion: string
-  formatVersion: number
-  knowledgeCount: number
-  memoryCount: number
-  conversationCount: number
-}
+type AiConversationSearchHit = ConversationSearchHit
+type AiMemoryRecallMatch = MemoryRecallMatch
+type AiHawdbStatus = HawdbStatusInfo
 
 export interface PlaceSuggestion {
   name: string
