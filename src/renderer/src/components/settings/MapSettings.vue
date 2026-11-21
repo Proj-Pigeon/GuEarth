@@ -120,9 +120,9 @@ const touchInteractionModeLabels: Record<TouchInteractionMode, string> = {
 }
 
 const touchInteractionModeDescriptions: Record<TouchInteractionMode, string> = {
-  auto: '检测到触摸屏或触控设备时自动放大按钮、禁用文字选中，并为绘图提供触摸收尾按钮；桌面键鼠操作不受影响。',
-  on: '无论是否检测到触摸设备，始终启用触摸交互界面。',
-  off: '始终使用桌面键鼠界面，即使设备带有触摸屏。'
+  auto: '软件自动识别触控情况，在特定情况下启用触屏模式。',
+  on: '始终启用触摸交互界面。',
+  off: '始终使用桌面键鼠界面。'
 }
 
 const touchInteractionModeOptions = touchInteractionModes.map((mode) => ({ value: mode, label: touchInteractionModeLabels[mode] }))
