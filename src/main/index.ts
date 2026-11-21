@@ -26,6 +26,7 @@ import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
 import { describeTileFetchError, fetchTilePayloadWithRetry, isRetryableTileStatus, sanitizeTileUrlForLog, serveTileResponse, TILE_FETCH_TIMEOUT_MS, type FetchedTilePayload } from '../common/tileProtocol'
 import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
 import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
+import { isTouchInteractionMode, normalizeTouchInteractionMode, type TouchInteractionMode } from '../common/touchInteraction'
 import { ENSO_PHASE_SET, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS, type EnsoPhase } from '../common/thematicState'
 import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../common/privacy'
 
@@ -103,6 +104,7 @@ interface PersistedSettings {
   tileMirrorMode: TileMirrorMode
   tileMirrorSource: MirrorEndpointPreference
   mirrorConsentPrompted: boolean
+  touchInteractionMode: TouchInteractionMode
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -123,6 +125,7 @@ const defaultSettings: PersistedSettings = {
   tileMirrorMode: 'off',
   tileMirrorSource: 'auto',
   mirrorConsentPrompted: false,
+  touchInteractionMode: 'auto',
   networkProxy: '',
   providerStyles: {
     osm: 'standard',
@@ -214,6 +217,7 @@ async function readSettings(): Promise<PersistedSettings> {
       tileMirrorMode: resolvedMirror.tileMirrorMode,
       tileMirrorSource: normalizeMirrorEndpointPreference(parsed.tileMirrorSource),
       mirrorConsentPrompted: resolvedMirror.mirrorConsentPrompted,
+      touchInteractionMode: normalizeTouchInteractionMode(parsed.touchInteractionMode),
       networkProxy: normalizeNetworkProxy(parsed.networkProxy),
       providerStyles: normalizedStyles,
       providerCredentials,
@@ -1141,6 +1145,10 @@ function registerIpcHandlers(): void {
       if (patch.mirrorConsentPrompted !== undefined) {
         if (typeof patch.mirrorConsentPrompted !== 'boolean') throw new Error('无效的镜像协议确认设置')
         nextSettings.mirrorConsentPrompted = patch.mirrorConsentPrompted
+      }
+      if (patch.touchInteractionMode !== undefined) {
+        if (!isTouchInteractionMode(patch.touchInteractionMode)) throw new Error('无效的触摸操作设置')
+        nextSettings.touchInteractionMode = patch.touchInteractionMode
       }
       if (patch.networkProxy !== undefined) {
         if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')

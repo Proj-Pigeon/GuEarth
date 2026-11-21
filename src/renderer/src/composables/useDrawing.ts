@@ -1,4 +1,4 @@
-import { onBeforeUnmount, onMounted, watch, type Ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import * as Cesium from 'cesium'
 import { DEFAULT_DRAW_STYLE, useDrawingStore, type DrawTool, type DrawnShape, type GeoPosition } from '@renderer/stores/drawing'
 import { thematicLayerCatalog } from '@renderer/stores/climate'
@@ -58,6 +58,7 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
   let drapeRefreshTimer: number | undefined
   let handler: Cesium.ScreenSpaceEventHandler | undefined
   let draft: Cesium.Cartesian3[] = []
+  const draftCount = ref(0)
   let cursor: Cesium.Cartesian3 | undefined
   let previewEntity: Cesium.Entity | undefined
   let tool: DrawTool | null = null
@@ -207,6 +208,30 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
   function cancelDraft(): void {
     clearPreview()
     draft = []
+    draftCount.value = 0
+  }
+
+  function finishDraft(): void {
+    if (!tool || tool === 'point' || tool === 'text' || tool === 'arrow') return
+    handleDoubleClick()
+  }
+
+  function undoDraftPoint(): void {
+    if (!draft.length) return
+    draft = dedupe(draft)
+    draft.pop()
+    draftCount.value = dedupe(draft).length
+    if (draft.length) createPreview()
+    else clearPreview()
+  }
+
+  function cancelActiveTool(): void {
+    cancelDraft()
+    if (tool) {
+      tool = null
+      store.setActiveTool(null)
+    }
+    store.setSelectedShapeId(null)
   }
 
   function pickAt(screenPosition: Cesium.Cartesian2): Cesium.Cartesian3 | undefined {
@@ -335,6 +360,7 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
       return
     }
     draft.push(position)
+    draftCount.value = dedupe(draft).length
     if (draft.length === 1) createPreview()
   }
 
@@ -361,12 +387,7 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return
-    cancelDraft()
-    if (tool) {
-      tool = null
-      store.setActiveTool(null)
-    }
-    store.setSelectedShapeId(null)
+    cancelActiveTool()
   }
 
   function flyToShape(shape: DrawnShape): void {
@@ -424,5 +445,5 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
     handler = undefined
   })
 
-  return { flyToShape }
+  return { flyToShape, draftCount, finishDraft, undoDraftPoint, cancelActiveTool }
 }

@@ -10,6 +10,7 @@ import {
   mirrorEndpointShortLabel,
   type MirrorEndpointPreference
 } from '../../../../common/tileMirror'
+import { normalizeTouchInteractionMode, touchInteractionModes, type TouchInteractionMode } from '../../../../common/touchInteraction'
 
 const globeStore = useGlobeStore()
 const {
@@ -23,7 +24,9 @@ const {
   mirrorEndpointProbes,
   mirroredProviders,
   mirrorFallenBackProviders,
-  providerCredentials
+  providerCredentials,
+  touchInteractionMode,
+  touchInteractionActive
 } = storeToRefs(globeStore)
 
 const tileMirrorEnabled = computed(() => tileMirrorMode.value === 'on')
@@ -108,6 +111,25 @@ function handleTileMirrorSwitchChange(checked: string | number | boolean): void 
     return
   }
   globeStore.setTileMirrorMode('off')
+}
+
+const touchInteractionModeLabels: Record<TouchInteractionMode, string> = {
+  auto: '自动',
+  on: '始终开启',
+  off: '关闭'
+}
+
+const touchInteractionModeDescriptions: Record<TouchInteractionMode, string> = {
+  auto: '软件自动识别触控情况，在特定情况下启用触屏模式。',
+  on: '始终启用触摸交互界面。',
+  off: '始终使用桌面键鼠界面。'
+}
+
+const touchInteractionModeOptions = touchInteractionModes.map((mode) => ({ value: mode, label: touchInteractionModeLabels[mode] }))
+const touchInteractionModeDescription = computed(() => touchInteractionModeDescriptions[touchInteractionMode.value])
+
+function handleTouchInteractionModeChange(value: unknown): void {
+  globeStore.setTouchInteractionMode(normalizeTouchInteractionMode(value))
 }
 
 const keyProviders = computed(() => [...providerCatalog, ...credentialOnlyProviders].filter((provider) => provider.requiresKey))
@@ -324,6 +346,26 @@ async function testProxy(): Promise<void> {
             {{ entry.label }}：{{ entry.text }}
           </span>
         </div>
+      </div>
+    </section>
+    <section class="settings-block">
+      <div class="setting-row">
+        <div class="setting-copy">
+          <div class="setting-title-row">
+            <span class="setting-title">触摸操作</span>
+            <a-tag v-if="touchInteractionMode !== 'off'" :color="touchInteractionActive ? 'blue' : undefined">
+              {{ touchInteractionActive ? '触摸交互已启用' : '未检测到触摸设备' }}
+            </a-tag>
+          </div>
+          <p class="setting-desc">{{ touchInteractionModeDescription }}</p>
+        </div>
+        <a-select
+          class="mirror-mode-select"
+          :value="touchInteractionMode"
+          :options="touchInteractionModeOptions"
+          aria-label="触摸操作"
+          @change="handleTouchInteractionModeChange"
+        />
       </div>
     </section>
   </section>
