@@ -22,7 +22,7 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 
 **Pinned versions — do not bump casually:**
 
-- `vite@^7` — electron-vite@5 peer range tops out at vite 7.
+- `vite@^7` — the project uses Vite 7 with electron-vite@6.
 - `typescript@5.9.x` — pinned TypeScript version (`tsconfig.node.json` + `tsconfig.web.json`).
 - `antd@6.6.5` — Ant Design v6 (React 19 native, CSS Variables + `@ant-design/cssinjs` `StyleProvider layer` to isolate Tailwind v4 `@layer`). Follow [DESIGN.md](./DESIGN.md) tokens and Ant Design v6 API (`Alert` `title`, `Modal`/`Drawer` `styles`, `App.useApp()`).
 - Electron binaries must be installed manually with the npmmirror mirror:
