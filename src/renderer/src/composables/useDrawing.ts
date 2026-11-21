@@ -218,10 +218,11 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
 
   function undoDraftPoint(): void {
     if (!draft.length) return
+    draft = dedupe(draft)
     draft.pop()
+    draftCount.value = dedupe(draft).length
     if (draft.length) createPreview()
     else clearPreview()
-    draftCount.value = dedupe(draft).length
   }
 
   function cancelActiveTool(): void {
