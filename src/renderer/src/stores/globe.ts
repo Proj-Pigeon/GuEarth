@@ -232,7 +232,6 @@ export const useGlobeStore = defineStore('globe', () => {
       terrainExaggeration: terrainExaggeration.value,
       terrainLighting: terrainLighting.value,
       tileCacheEnabled: tileCacheEnabled.value,
-      touchInteractionMode: touchInteractionMode.value,
       networkProxy: networkProxy.value,
       providerStyles: { ...providerStyles.value },
       sceneMode: sceneMode.value
