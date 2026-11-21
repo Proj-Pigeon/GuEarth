@@ -446,6 +446,7 @@ export const useGlobeStore = defineStore('globe', () => {
     } catch {
       restored = previousMode
     }
+    if (seq !== touchModePersistSeq) return
     if (touchInteractionMode.value === mode) touchInteractionMode.value = restored
     failureStore.reportDegrade('触摸操作设置保存失败，已恢复原设置')
   }
