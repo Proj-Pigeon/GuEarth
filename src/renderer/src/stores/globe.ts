@@ -430,11 +430,24 @@ export const useGlobeStore = defineStore('globe', () => {
   function closeMirrorPolicy(): void {
     mirrorPolicyOpen.value = false
   }
-  function setTouchInteractionMode(value: unknown): void {
+  let touchModePersistSeq = 0
+  async function setTouchInteractionMode(value: unknown): Promise<void> {
     const mode = normalizeTouchInteractionMode(value)
     if (mode === touchInteractionMode.value) return
+    const previousMode = touchInteractionMode.value
     touchInteractionMode.value = mode
-    void persistSettings()
+    const seq = ++touchModePersistSeq
+    const saved = await persistSettingsPatch({ touchInteractionMode: mode })
+    if (saved || seq !== touchModePersistSeq) return
+    let restored = previousMode
+    try {
+      const settings = await window.guEarth.settings.get()
+      restored = normalizeTouchInteractionMode(settings.touchInteractionMode)
+    } catch {
+      restored = previousMode
+    }
+    if (touchInteractionMode.value === mode) touchInteractionMode.value = restored
+    failureStore.reportDegrade('触摸操作设置保存失败，已恢复原设置')
   }
   function setMirroredProviders(providerIds: string[]): void { mirroredProviders.value = [...providerIds] }
   function setMirrorFallenBackProviders(providerIds: string[]): void { mirrorFallenBackProviders.value = [...providerIds] }
