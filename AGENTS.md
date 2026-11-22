@@ -98,8 +98,10 @@ npm run build:linux    # AppImage + deb for Linux x64 and arm64
 npm run lint       # Vite+ lint checks
 npm run fmt:check  # check formatting with the @liangmi/vp-config formatter preset
 npm run typecheck  # tsc (node) + tsc (web)
-npm test           # node:test unit tests (tests/*.test.mjs), run by CI
+npm test           # Vitest unit tests (tests/*.test.mjs), run by CI
 ```
+
+Vitest uses native Node.js imports so the existing `module.registerHooks` fixtures can load React components and simulate filesystem failures.
 
 ## Docs
 

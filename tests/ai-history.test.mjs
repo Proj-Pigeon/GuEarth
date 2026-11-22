@@ -3,7 +3,8 @@ import { mkdtemp, readFile, writeFile, readdir, rename, mkdir, rm } from 'node:f
 import { registerHooks } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { test } from 'node:test'
+
+import { test } from 'vite-plus/test'
 
 const historyFsUrl = `data:text/javascript,${encodeURIComponent(`
   import { rename as move } from 'node:fs/promises'
@@ -66,7 +67,7 @@ function conversation(id, updatedAt = 1, content = '地理问题') {
 
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), 'guearth-history-'))
-  t.after(() => rm(directory, { recursive: true, force: true }))
+  t.onTestFinished(() => rm(directory, { recursive: true, force: true }))
   return { path: join(directory, 'history.json'), directory }
 }
 

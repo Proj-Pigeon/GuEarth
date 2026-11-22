@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
-import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
 
 import * as Cesium from 'cesium'
+import { test } from 'vite-plus/test'
 
 registerHooks({
   resolve(specifier, context, nextResolve) {

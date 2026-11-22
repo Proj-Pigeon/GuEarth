@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from 'node:f
 import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
-import { test } from 'node:test'
+
+import { test } from 'vite-plus/test'
 
 import { assertOffscreenRecordingSupported, resolveFfmpegBinary } from '../src/main/ffmpeg.ts'
 import { resolveOffscreenEntry } from '../src/main/offscreenPaths.ts'

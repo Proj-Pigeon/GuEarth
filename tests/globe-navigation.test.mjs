@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
 
 import {
   Cartographic,
@@ -10,6 +9,7 @@ import {
   UrlTemplateImageryProvider,
   WebMercatorTilingScheme
 } from 'cesium'
+import { test, vi } from 'vite-plus/test'
 
 import { createBasemapImageryProvider } from '../src/renderer/src/composables/basemapImagery.ts'
 import { resolveFlightDestination } from '../src/renderer/src/composables/terrainFlight.ts'
@@ -152,9 +152,10 @@ test('non-finite terrain samples use the conservative altitude', async () => {
 })
 
 test('terrain lookup timeout still allows flight', async context => {
-  context.mock.timers.enable({ apis: ['setTimeout'] })
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  context.onTestFinished(() => vi.useRealTimers())
   const flight = flightHeight(terrainScene(() => new Promise(() => {})))
-  context.mock.timers.tick(4000)
+  vi.advanceTimersByTime(4000)
   assert.ok(Math.abs((await flight) - 10000) < 1e-5)
 })
 
@@ -257,7 +258,8 @@ test('already cancelled flight does not sample terrain', async () => {
 })
 
 test('cancelled flight does not adopt the timeout altitude', async context => {
-  context.mock.timers.enable({ apis: ['setTimeout'] })
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  context.onTestFinished(() => vi.useRealTimers())
   let cancelled = false
   const flight = resolveFlightDestination(
     terrainScene(() => new Promise(() => {})),
@@ -267,7 +269,7 @@ test('cancelled flight does not adopt the timeout altitude', async context => {
     { isCancelled: () => cancelled }
   )
   cancelled = true
-  context.mock.timers.tick(4000)
+  vi.advanceTimersByTime(4000)
   assert.equal(await flight, undefined)
 })
 

@@ -2,13 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
-import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
 
 import { JSDOM } from 'jsdom'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { test } from 'vite-plus/test'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -174,7 +174,7 @@ test('EoqWebSearch filters unsafe links, toggles extra sources, and exposes retr
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
   const root = createRoot(container)
-  t.after(() => {
+  t.onTestFinished(() => {
     act(() => root.unmount())
     container.remove()
   })
@@ -248,7 +248,7 @@ test('EoqWelcome renders suggestions, cycles on refresh, and submits clicked pro
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
   const root = createRoot(container)
-  t.after(() => {
+  t.onTestFinished(() => {
     act(() => root.unmount())
     container.remove()
   })

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { test } from 'node:test'
 
 import ts from 'typescript'
+import { test } from 'vite-plus/test'
 
 const RENDERER_ROOT = resolve('src/renderer/src')
 const BUTTON_TAGS = new Set(['Button', 'AButton'])

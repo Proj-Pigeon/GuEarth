@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { test } from 'node:test'
 import { setImmediate as nextTurn } from 'node:timers/promises'
 import { compileFunction } from 'node:vm'
 
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { test, vi } from 'vite-plus/test'
 
 import * as passport from '../src/common/passport.ts'
 import { serialQueue } from '../src/main/jsonStore.ts'
@@ -23,7 +23,8 @@ const tokenPayload = {
 const json = (payload, status = 200, headers) => Response.json(payload, { status, headers })
 
 function fixture(t, respond, refreshToken = '') {
-  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 })
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], now: 1000 })
+  t.onTestFinished(() => vi.useRealTimers())
   const secrets = new Map(refreshToken ? [['passport-refresh-token', refreshToken]] : [])
   const requests = []
   const timeoutDurations = []
@@ -81,7 +82,7 @@ function fixture(t, respond, refreshToken = '') {
     signals
   )
   const tick = async ms => {
-    t.mock.timers.tick(ms)
+    vi.advanceTimersByTime(ms)
     await nextTurn()
   }
   return { ...api, requests, secrets, timeoutDurations, tick }

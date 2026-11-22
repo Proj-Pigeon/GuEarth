@@ -3,11 +3,11 @@ import { mkdtemp, readFile, writeFile, readdir, mkdir, rm, utimes } from 'node:f
 import { registerHooks } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import { test } from 'node:test'
 import { setImmediate as nextTurn } from 'node:timers/promises'
 import { pathToFileURL } from 'node:url'
 
 import { transpileModule } from 'typescript'
+import { test, vi } from 'vite-plus/test'
 
 const tileFsUrl = `data:text/javascript,${encodeURIComponent(`
   import { readdir, stat, unlink as remove } from 'node:fs/promises'
@@ -56,7 +56,7 @@ const {
 
 async function directory(t) {
   const path = await mkdtemp(join(tmpdir(), 'guearth-review-'))
-  t.after(() => rm(path, { recursive: true, force: true }))
+  t.onTestFinished(() => rm(path, { recursive: true, force: true }))
   return path
 }
 
@@ -84,7 +84,7 @@ test('failed cache deletions remain in quota and orphan metadata is pruned', asy
   await writeFile(join(path, 'locked.json'), Buffer.alloc(10))
   await writeFile(join(path, 'orphan.json'), Buffer.alloc(10))
   blocked.add(locked)
-  t.after(() => blocked.delete(locked))
+  t.onTestFinished(() => blocked.delete(locked))
   assert.equal(await pruneTileFiles(path, 0), 10)
   assert.deepEqual(await readdir(path), ['locked.bin'])
 })
@@ -176,7 +176,8 @@ function playerFixture(t) {
   resetSolarStore()
   resetGlobeStore()
   resetTransportStore()
-  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 })
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], now: 1000 })
+  t.onTestFinished(() => vi.useRealTimers())
   let requests = 0
   const viewer = {
     isDestroyed: () => false,
@@ -202,7 +203,7 @@ function playerFixture(t) {
     () => {}
   )
   const unmount = player.mount()
-  t.after(unmount)
+  t.onTestFinished(unmount)
   const scene = {
     name: 'Sky',
     narration: '',
@@ -217,7 +218,7 @@ function playerFixture(t) {
     }
   }
   const tick = async ms => {
-    t.mock.timers.tick(ms)
+    vi.advanceTimersByTime(ms)
     await nextTurn()
   }
   return { viewer, player, scene, tick, requests: () => requests }

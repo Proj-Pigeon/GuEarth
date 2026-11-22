@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
 
 import * as Cesium from 'cesium'
+import { test } from 'vite-plus/test'
 
 import { sanitizeCamera, sceneCameraView } from '../src/renderer/src/lib/sceneCamera.ts'
 

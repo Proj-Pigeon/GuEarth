@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { randomBytes } from 'node:crypto'
-import { test } from 'node:test'
+
+import { test } from 'vite-plus/test'
 
 import {
   accountPhaseLabel,

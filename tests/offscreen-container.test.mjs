@@ -3,8 +3,9 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
+
+import { test } from 'vite-plus/test'
 
 import { findFfmpegBinary } from '../src/main/ffmpeg.ts'
 import { offscreenConcatPlaylist, offscreenFrameDurations } from '../src/main/offscreenTiming.ts'

@@ -2,8 +2,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
-import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
+
+import { test } from 'vite-plus/test'
 
 import {
   MIRROR_POLICY_FALLBACK_TITLES,
@@ -456,7 +457,7 @@ test('globeStore mirror consent workflow gates enabling on consent and persists 
       }
     }
   }
-  t.after(() => {
+  t.onTestFinished(() => {
     globalThis.window = originalWindow
   })
   resetGlobeStore()
@@ -509,7 +510,7 @@ test('globeStore does not persist mirrorConsentPrompted after settings.get failu
       }
     }
   }
-  t.after(() => {
+  t.onTestFinished(() => {
     globalThis.window = originalWindow
   })
   resetGlobeStore()
@@ -632,7 +633,7 @@ test('globeStore syncs mirror mode back to actual status when consent persistenc
       }
     }
   }
-  t.after(() => {
+  t.onTestFinished(() => {
     globalThis.window = originalWindow
   })
   resetGlobeStore()
@@ -873,7 +874,7 @@ test('globeStore hydrates, persists, and rolls back tileMirrorSource and applies
       }
     }
   }
-  t.after(() => {
+  t.onTestFinished(() => {
     globalThis.window = originalWindow
   })
   resetGlobeStore()
@@ -1109,7 +1110,7 @@ test('globeStore preserves pending tileMirrorSource across stale broadcasts and 
       }
     }
   }
-  t.after(() => {
+  t.onTestFinished(() => {
     globalThis.window = originalWindow
   })
   resetGlobeStore()

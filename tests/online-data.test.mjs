@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { test } from 'node:test'
 import { compileFunction } from 'node:vm'
 
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { test } from 'vite-plus/test'
 
 import * as shared from '../src/common/onlineData.ts'
 import * as tileMirror from '../src/common/tileMirror.ts'

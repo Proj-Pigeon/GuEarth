@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { test } from 'node:test'
+
+import { test } from 'vite-plus/test'
 
 import { gcj02ToWgs84, outsideChina, wgs84ToGcj02 } from '../src/main/geo/gcj02.ts'
 

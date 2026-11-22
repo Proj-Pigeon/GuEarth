@@ -11,7 +11,8 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
-import { test } from 'node:test'
+
+import { test } from 'vite-plus/test'
 
 import {
   DEB_INSTALL_EXECUTABLE,

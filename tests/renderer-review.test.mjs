@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
-import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
 
 import { DataSourceCollection } from 'cesium'
@@ -10,6 +9,7 @@ import { JSDOM } from 'jsdom'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { test, vi } from 'vite-plus/test'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -87,11 +87,12 @@ function ThematicHarness({ viewer }) {
 
 test('streaming Markdown coalesces updates for 50ms, settles idle tail and cancels unmount work', async t => {
   installDomGlobals()
-  t.mock.timers.enable({ apis: ['setTimeout'] })
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  t.onTestFinished(() => vi.useRealTimers())
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
   const root = createRoot(container)
-  t.after(() => {
+  t.onTestFinished(() => {
     act(() => root.unmount())
     container.remove()
   })
@@ -123,18 +124,18 @@ test('streaming Markdown coalesces updates for 50ms, settles idle tail and cance
   assert.equal(renders, 1)
 
   act(() => {
-    t.mock.timers.tick(49)
+    vi.advanceTimersByTime(49)
   })
   assert.equal(renders, 1)
 
   act(() => {
-    t.mock.timers.tick(1)
+    vi.advanceTimersByTime(1)
   })
   assert.equal(renders, 2)
   assert.equal(hasStreamingArtifacts(), true)
 
   act(() => {
-    t.mock.timers.tick(260)
+    vi.advanceTimersByTime(260)
   })
   assert.equal(renders, 2)
   assert.equal(hasStreamingArtifacts(), false)
@@ -148,7 +149,7 @@ test('streaming Markdown coalesces updates for 50ms, settles idle tail and cance
   assert.equal(hasStreamingArtifacts(), false)
 
   act(() => {
-    t.mock.timers.tick(50)
+    vi.advanceTimersByTime(50)
   })
   assert.equal(renders, 4)
 
@@ -157,7 +158,7 @@ test('streaming Markdown coalesces updates for 50ms, settles idle tail and cance
     root.unmount()
   })
   act(() => {
-    t.mock.timers.tick(500)
+    vi.advanceTimersByTime(500)
   })
   assert.equal(renders, 4)
 })
@@ -203,7 +204,7 @@ test('thematic sources clean up across viewer changes, delayed additions and unm
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
   const root = createRoot(container)
-  t.after(() => {
+  t.onTestFinished(() => {
     act(() => root.unmount())
     container.remove()
     resetOnlineDataStore()
@@ -284,7 +285,7 @@ test('earthquake failures stay retryable and retry refreshes the feed', async t 
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
   const root = createRoot(container)
-  t.after(() => {
+  t.onTestFinished(() => {
     act(() => root.unmount())
     container.remove()
     resetOnlineDataStore()
@@ -360,7 +361,7 @@ test('stale earthquake cache keeps a retryable failure until a fresh feed arrive
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
   const root = createRoot(container)
-  t.after(() => {
+  t.onTestFinished(() => {
     act(() => root.unmount())
     container.remove()
     resetOnlineDataStore()
@@ -434,7 +435,7 @@ test('typhoon layers fetch newly configured data on demand and ignore obsolete I
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
   const root = createRoot(container)
-  t.after(() => {
+  t.onTestFinished(() => {
     act(() => root.unmount())
     container.remove()
     resetOnlineDataStore()

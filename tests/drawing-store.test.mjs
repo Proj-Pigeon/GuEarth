@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
-import { test } from 'node:test'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { pathToFileURL } from 'node:url'
+
+import { test } from 'vite-plus/test'
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -50,7 +51,7 @@ function storeFixture(t) {
       }
     }
   }
-  t.after(() => {
+  t.onTestFinished(() => {
     delete globalThis.window
   })
   return { store: () => useDrawingStore.getState(), saved }

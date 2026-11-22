@@ -2,13 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
-import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
 
 import { JSDOM } from 'jsdom'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { test } from 'vite-plus/test'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -146,7 +146,7 @@ test('UpdateDialog renders markdown release notes, hides blank notes, and falls 
   const root = createRoot(container)
   const originalConsoleError = console.error
   console.error = () => {}
-  t.after(() => {
+  t.onTestFinished(() => {
     console.error = originalConsoleError
     act(() => root.unmount())
     container.remove()
