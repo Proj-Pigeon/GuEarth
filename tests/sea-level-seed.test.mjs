@@ -46,7 +46,10 @@ test('seeded heights ignore non finite entries and short arrays', () => {
 })
 
 test('the main window hands its sampled heights to the offscreen recorder', () => {
-  assert.match(scenePlayerSource, /seaLevelHeights: recordsSeaLevel \? seaLevelGridPoints\(\)\.map/)
+  assert.match(
+    scenePlayerSource,
+    /seaLevelHeights: recordsSeaLevel\s+\? seaLevelGridPoints\(\)\.map/
+  )
   assert.match(mainSource, /seaLevelHeights: Array\.isArray\(value\.seaLevelHeights\)/)
 })
 

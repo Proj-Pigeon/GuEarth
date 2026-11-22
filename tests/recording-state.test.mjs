@@ -62,9 +62,9 @@ test('capture, playback and the offscreen mirror all apply the thematic state', 
 })
 
 test('AI recording scripts can set the thematic state per step', () => {
-  assert.match(appSource, /ensoPhase: \{ type: 'string'/)
-  assert.match(appSource, /seaLevelRise: \{ type: 'number'/)
-  assert.match(appSource, /transportYear: \{ type: 'number'/)
+  assert.match(appSource, /ensoPhase: \{\s+type: 'string'/)
+  assert.match(appSource, /seaLevelRise: \{\s+type: 'number'/)
+  assert.match(appSource, /transportYear: \{\s+type: 'number'/)
   assert.match(appSource, /ensoPhase,\r?\n\s+seaLevelRise,\r?\n\s+transportYear,/)
   assert.match(scenePlayerSource, /seaLevelRise: step\.seaLevelRise/)
 })
@@ -76,10 +76,9 @@ test('an omitted or null transportYear falls back to the current year instead of
     )
   )
   assert.ok(appSource.includes('const requestedYear = optionalFiniteNumber(record.transportYear)'))
-  assert.ok(
-    appSource.includes(
-      'const transportYear = requestedYear === undefined ? transportStore.year : Math.round(Math.min(HSR_END_YEAR, Math.max(HSR_START_YEAR, requestedYear)))'
-    )
+  assert.match(
+    appSource,
+    /const transportYear =\s+requestedYear === undefined\s+\? transportStore\.year\s+: Math\.round\(Math\.min\(HSR_END_YEAR, Math\.max\(HSR_START_YEAR, requestedYear\)\)\)/
   )
   assert.ok(!appSource.includes('const requestedYear = Number(record.transportYear)'))
   assert.ok(!appSource.includes('Number.isFinite(requestedYear)'))

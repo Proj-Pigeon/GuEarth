@@ -17,7 +17,7 @@ test('the offscreen recorder suppresses thematic layer auto focus', () => {
   assert.match(layersSource, /const autoFocusRef = useRef\(options\?\.autoFocus !== false\)/)
   assert.match(
     layersSource,
-    /const view = autoFocusRef\.current \? \(layer\.id === 'functional-zones' \? functionalZoneView\(\) : enableViews\[layer\.id\]\) : undefined/
+    /const view = autoFocusRef\.current\s+\? layer\.id === 'functional-zones'\s+\? functionalZoneView\(\)\s+: enableViews\[layer\.id\]\s+: undefined/
   )
   assert.match(appSource, /useThematicLayers\(viewer\)/)
 })

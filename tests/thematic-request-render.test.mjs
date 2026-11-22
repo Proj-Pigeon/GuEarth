@@ -10,19 +10,16 @@ const layersSource = await readFile(
 test('the HSR network repaints when the timeline year changes', () => {
   assert.match(
     layersSource,
-    /const opened = new Cesium\.CallbackProperty\(\(\) => line\.openedYear <= Math\.floor\(useTransportStore\.getState\(\)\.year\), false\)/
+    /const opened = new Cesium\.CallbackProperty\(\s*\(\) => line\.openedYear <= Math\.floor\(useTransportStore\.getState\(\)\.year\),\s+false\s*\)/
   )
-  assert.match(
-    layersSource,
-    /useTransportStore\.subscribe\(\(state\) => state\.year, requestRender\)/
-  )
-  assert.doesNotMatch(layersSource, /useTransportStore\.subscribe\(\(state\) => state\.isPlaying/)
+  assert.match(layersSource, /useTransportStore\.subscribe\(state => state\.year, requestRender\)/)
+  assert.doesNotMatch(layersSource, /useTransportStore\.subscribe\(state => state\.isPlaying/)
 })
 
 test('animated thematic layers repaint through the same requestRender helper', () => {
   assert.match(layersSource, /function requestRender\(\): void \{/)
   assert.match(
     layersSource,
-    /useSolarStore\.subscribe\(\r?\n\s*\(state\) => state\.utcMs,\r?\n\s*\(\) => \{\r?\n\s*refreshSubsolarPoint\(\)\r?\n\s*requestRender\(\)\r?\n\s*\}\r?\n\s*\)/
+    /useSolarStore\.subscribe\(\r?\n\s*state => state\.utcMs,\r?\n\s*\(\) => \{\r?\n\s*refreshSubsolarPoint\(\)\r?\n\s*requestRender\(\)\r?\n\s*\}\r?\n\s*\)/
   )
 })

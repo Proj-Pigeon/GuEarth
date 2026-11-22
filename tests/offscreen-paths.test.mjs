@@ -78,16 +78,15 @@ test('directory entries that are symlinks never pass the sweep directory filter'
 
 test('the stale sweep resolves every candidate through the shared path guard', () => {
   assert.ok(mainSource.includes("import { resolveOffscreenEntry } from './offscreenPaths'"))
-  assert.ok(
-    mainSource.includes(
-      'async function offscreenFrameDirectoryActive(directory: string, entryName: string): Promise<boolean> {'
-    )
+  assert.match(
+    mainSource,
+    /async function offscreenFrameDirectoryActive\(\s*directory: string,\s+entryName: string\s*\): Promise<boolean> \{/
   )
   assert.ok(mainSource.includes('const path = resolveOffscreenEntry(directory, entryName)'))
   assert.ok(mainSource.includes('if (!path) return true'))
   assert.ok(
     mainSource.includes(
-      '.filter((entry) => entry.isDirectory() && entry.name.startsWith(OFFSCREEN_TEMP_PREFIX))'
+      '.filter(entry => entry.isDirectory() && entry.name.startsWith(OFFSCREEN_TEMP_PREFIX))'
     )
   )
   assert.ok(
@@ -158,6 +157,6 @@ test('a development build still points the developer at the fetch command', () =
 })
 
 test('the encode IPC entry rejects unsupported platforms before touching the recorder', () => {
-  assert.ok(mainSource.includes("ipcMain.handle('recordings:offscreen-encode'"))
+  assert.match(mainSource, /ipcMain\.handle\(\s*'recordings:offscreen-encode'/)
   assert.ok(mainSource.includes('assertOffscreenRecordingSupported(process.platform)'))
 })

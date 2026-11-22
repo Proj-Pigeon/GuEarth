@@ -25,7 +25,11 @@ test('every shared layer id has a catalog entry and an overlay default', () => {
   for (const id of THEMATIC_LAYER_IDS) {
     assert.ok(THEMATIC_LAYER_ID_SET.has(id))
     assert.ok(climateSource.includes(`id: '${id}'`), `catalog entry missing for ${id}`)
-    assert.ok(climateSource.includes(`'${id}':`), `overlay default missing for ${id}`)
+    assert.match(
+      climateSource,
+      new RegExp(`^\\s*(?:'${id}'|${id}):\\s*(?:true|false)\\b`, 'm'),
+      `overlay default missing for ${id}`
+    )
   }
 })
 

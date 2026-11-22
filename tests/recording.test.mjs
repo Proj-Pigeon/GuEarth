@@ -27,7 +27,7 @@ test('offscreen recording has an isolated Cesium entry', () => {
   assert.match(offscreenSource, /viewer\.camera\.flyTo/)
   assert.match(
     offscreenSource,
-    /guEarthOffscreenRecorder: \{ play, prepare, next, skipPrewarm: requestSkipPrewarm, setPrewarmQuality \}/
+    /guEarthOffscreenRecorder: \{\s+play,\s+prepare,\s+next,\s+skipPrewarm: requestSkipPrewarm,\s+setPrewarmQuality\s+\}/
   )
   assert.match(offscreenSource, /createRoot\(overlayLayer\)/)
 })
@@ -50,7 +50,7 @@ test('AI lesson recording encodes through the main-process offscreen encoder', (
 
 test('the visible window mirrors the recorded lesson without breaking annotation saves', () => {
   assert.match(scenePlayerSource, /current\.camera\.cancelFlight\(\)/)
-  assert.match(scenePlayerSource, /addTransientShape\(transientMirrorShape\(/)
+  assert.match(scenePlayerSource, /addTransientShape\(\s*transientMirrorShape\(/)
   assert.match(
     scenePlayerSource,
     /clearMirrorShapes\(\)\r?\n\s+scenesStore\.setPresenting\(false\)/
@@ -58,7 +58,7 @@ test('the visible window mirrors the recorded lesson without breaking annotation
   assert.match(scenePlayerSource, /const mirrored = scenes\[progress\.sceneIndex\]/)
   assert.match(
     scenePlayerSource,
-    /if \(mirrored\) mirrorScene\(mirrored, script\.annotations, progress\.sceneIndex, script\.centerTarget\)/
+    /if \(mirrored\)\s+mirrorScene\(mirrored, script\.annotations, progress\.sceneIndex, script\.centerTarget\)/
   )
   assert.doesNotMatch(scenePlayerSource, /function referencedShapeIds\(/)
 })
@@ -66,7 +66,7 @@ test('the visible window mirrors the recorded lesson without breaking annotation
 test('the visible window keeps the ordinary render policy during recording', () => {
   assert.match(
     scenePlayerSource,
-    /recording: true\s*\}\)\r?\n\s+scenesStore\.setPresenting\(true\)\r?\n\s+scenesStore\.setRecording\(\{ state: 'preparing'/
+    /recording: true\s*\}\)\r?\n\s+scenesStore\.setPresenting\(true\)\r?\n\s+scenesStore\.setRecording\(\{\s+state: 'preparing'/
   )
   const recordVideoBody = scenePlayerSource.slice(
     scenePlayerSource.indexOf('async function recordVideo'),
@@ -79,7 +79,7 @@ test('the visible window keeps the ordinary render policy during recording', () 
 test('offscreen recording keeps the captured aspect ratio instead of stretching', () => {
   assert.match(
     mainSource,
-    /const capture = offscreenCaptureSize\(script\.width, script\.height, workArea\.width, workArea\.height\)/
+    /const capture = offscreenCaptureSize\(\s*script\.width,\s+script\.height,\s+workArea\.width,\s+workArea\.height\s*\)/
   )
   assert.match(mainSource, /width: capture\.width,/)
   assert.doesNotMatch(mainSource, /image\.resize\(/)
@@ -88,7 +88,7 @@ test('offscreen recording keeps the captured aspect ratio instead of stretching'
     mainSource,
     /scale=\$\{script\.width\}:\$\{script\.height\}:force_original_aspect_ratio=decrease:flags=lanczos,pad=\$\{script\.width\}:\$\{script\.height\}:\(ow-iw\)\/2:\(oh-ih\)\/2:color=black,fps=\$\{outputFps\}/
   )
-  assert.match(mainSource, /logger\.info\('recording', `离屏采集/)
+  assert.match(mainSource, /logger\.info\(\s*'recording',\s+`离屏采集/)
 })
 
 test('offscreen recording encodes the captured frames through ffmpeg', () => {
@@ -98,7 +98,7 @@ test('offscreen recording encodes the captured frames through ffmpeg', () => {
   )
   assert.match(mainSource, /await frameWrite/)
   assert.match(mainSource, /image\.isEmpty\(\)/)
-  assert.match(mainSource, /'-f', 'concat', '-safe', '0', '-i', 'frames\.txt'/)
+  assert.match(mainSource, /'-f',\s+'concat',\s+'-safe',\s+'0',\s+'-i',\s+'frames\.txt'/)
   assert.match(mainSource, /cwd: frameDirectory/)
   assert.doesNotMatch(mainSource, /image2pipe/)
 })
@@ -107,10 +107,10 @@ test('offscreen recording gates capture without stalling the paint stream and re
   assert.match(mainSource, /const OFFSCREEN_MAX_PENDING_FRAMES = 24/)
   assert.match(
     mainSource,
-    /if \(settled \|\| !capturing \|\| image\.isEmpty\(\) \|\| pendingFrames >= OFFSCREEN_MAX_PENDING_FRAMES\) return/
+    /if \(\s*settled \|\|\s+!capturing \|\|\s+image\.isEmpty\(\) \|\|\s+pendingFrames >= OFFSCREEN_MAX_PENDING_FRAMES\s*\)\s+return/
   )
   assert.match(mainSource, /pendingFrames \+= 1/)
-  assert.match(mainSource, /\.finally\(\(\) => \{ pendingFrames -= 1 \}\)/)
+  assert.match(mainSource, /\.finally\(\(\) => \{\s+pendingFrames -= 1\s+\}\)/)
   assert.doesNotMatch(mainSource, /frameWriting/)
   assert.match(mainSource, /frameTimes\.push\(Date\.now\(\) - recordingStartedAt\)/)
   assert.match(
@@ -132,7 +132,7 @@ test('offscreen rendering cannot hang the recorder forever', () => {
   )
   assert.match(
     mainSource,
-    /await withOffscreenTimeout\(\s*window\.webContents\.executeJavaScript\(`window\.guEarthOffscreenRecorder\.prepare/
+    /await withOffscreenTimeout\(\s*window\.webContents\.executeJavaScript\(\s*`window\.guEarthOffscreenRecorder\.prepare/
   )
   assert.match(mainSource, /offscreenSceneDurationMs\(script\) \+ OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS/)
   assert.match(mainSource, /离屏渲染超时，已中止录制/)
@@ -160,7 +160,7 @@ test('offscreen recording cleans stale temporary directories', () => {
 test('offscreen recording resolves the bundled LGPL encoder without the retired installer package', () => {
   assert.match(
     mainSource,
-    /import \{ assertOffscreenRecordingSupported, offscreenVideoEncoderArgs, resolveFfmpegBinary \} from '\.\/ffmpeg'/
+    /import \{\s+assertOffscreenRecordingSupported,\s+offscreenVideoEncoderArgs,\s+resolveFfmpegBinary\s+\} from '\.\/ffmpeg'/
   )
   assert.match(
     mainSource,
@@ -177,7 +177,7 @@ test('the bundled encoder encodes H.264 with libopenh264 and keeps libx264 out',
   )
   assert.match(
     ffmpegSource,
-    /export function resolveFfmpegBinary\(appPath: string, resourcesPath: string, packaged: boolean, platform: string = process\.platform\): string/
+    /export function resolveFfmpegBinary\(\s*appPath: string,\s+resourcesPath: string,\s+packaged: boolean,\s+platform: string = process\.platform\s*\): string/
   )
   assert.doesNotMatch(ffmpegSource, /libx264/)
   assert.match(
@@ -186,7 +186,7 @@ test('the bundled encoder encodes H.264 with libopenh264 and keeps libx264 out',
   )
   assert.match(
     mainSource,
-    /'-t', recordingSeconds\.toFixed\(6\), '-an', \.\.\.offscreenVideoEncoderArgs, '-pix_fmt', 'yuv420p'/
+    /'-t',\s+recordingSeconds\.toFixed\(6\),\s+'-an',\s+\.\.\.offscreenVideoEncoderArgs,\s+'-pix_fmt',\s+'yuv420p'/
   )
 })
 
@@ -203,7 +203,7 @@ test('offscreen recording applies the authored terrain and scene state', () => {
   assert.match(offscreenSource, /solarStore\.setDate/)
   assert.match(
     scenePlayerSource,
-    /terrain: \{ providerId: globeStore\.terrainProviderId, exaggeration: globeStore\.terrainExaggeration, lighting: globeStore\.terrainLighting \}/
+    /terrain: \{\s+providerId: globeStore\.terrainProviderId,\s+exaggeration: globeStore\.terrainExaggeration,\s+lighting: globeStore\.terrainLighting\s+\}/
   )
   assert.match(mainSource, /terrain: normalizeOffscreenTerrain\(value\.terrain\)/)
 })
@@ -321,7 +321,7 @@ test('recording failures surface through the built-in failure banner', () => {
   assert.match(scenePlayerSource, /failureStore\.registerRetry\('recording', async \(\) => \{/)
   assert.match(scenePlayerSource, /failureStore\.clearFailure\('recording'\)/)
   assert.match(scenePlayerSource, /failureStore\.clearFailure\('recording-quality'\)/)
-  assert.match(scenePlayerSource, /failureStore\.reportDegrade\(`录制画面帧率偏低/)
+  assert.match(scenePlayerSource, /failureStore\.reportDegrade\(\s*`录制画面帧率偏低/)
   assert.match(scenePlayerSource, /raw\.replace\(\/\^Error invoking remote method/)
 })
 
@@ -333,7 +333,7 @@ test('offscreen degradations reach the recording renderer as notices', () => {
   )
   assert.match(offscreenSource, /reportNotice\(`录制画面使用的地形/)
   assert.match(offscreenSource, /reportNotice\(`录制画面的底图/)
-  assert.match(scenePlayerSource, /onOffscreenNotice\(\(notice\) => \{/)
+  assert.match(scenePlayerSource, /onOffscreenNotice\(notice => \{/)
 })
 
 test('the recording script carries the annotation styling', () => {
@@ -348,9 +348,9 @@ test('the recording script carries the annotation styling', () => {
   assert.match(mainSource, /lineWidth: normalizeNumber\(entry\.lineWidth, 1, 20, 3\)/)
   assert.match(
     scenePlayerSource,
-    /positions: \[\{ longitude: marker\.longitude, latitude: marker\.latitude, height: 0 \}\], \.\.\.DEFAULT_DRAW_STYLE/
+    /positions: \[\{ longitude: marker\.longitude, latitude: marker\.latitude, height: 0 \}\],\s+\.\.\.DEFAULT_DRAW_STYLE/
   )
-  assert.match(scenePlayerSource, /positions: shape\.positions, \.\.\.DEFAULT_DRAW_STYLE/)
+  assert.match(scenePlayerSource, /positions: shape\.positions,\s+\.\.\.DEFAULT_DRAW_STYLE/)
 })
 
 test('offscreen annotations reuse the in-app shape styling', () => {
@@ -359,7 +359,7 @@ test('offscreen annotations reuse the in-app shape styling', () => {
   assert.match(offscreenSource, /options\.polygon = polygonGraphics\(color, hierarchy\)/)
   assert.match(
     offscreenSource,
-    /const polyline = polylineOptions\(viewer, shape\.kind === 'polygon' \? ringOf\(cartesians\) : cartesians, shape\.lineWidth, color\)/
+    /const polyline = polylineOptions\(\s*viewer,\s+shape\.kind === 'polygon' \? ringOf\(cartesians\) : cartesians,\s+shape\.lineWidth,\s+color\s*\)/
   )
   assert.match(offscreenSource, /if \(label\) options\.label = label/)
   assert.match(
@@ -435,7 +435,7 @@ test('the stale sweep never removes frame directories owned by a live process', 
   assert.match(mainSource, /const OFFSCREEN_OWNER_FILE = '\.owner'/)
   assert.match(
     mainSource,
-    /async function offscreenFrameDirectoryActive\(directory: string, entryName: string\): Promise<boolean>/
+    /async function offscreenFrameDirectoryActive\(\s*directory: string,\s+entryName: string\s*\): Promise<boolean>/
   )
   assert.match(mainSource, /process\.kill\(owner, 0\)/)
   assert.match(
@@ -446,7 +446,10 @@ test('the stale sweep never removes frame directories owned by a live process', 
     mainSource,
     /writeFile\(join\(tempDir, OFFSCREEN_OWNER_FILE\), String\(process\.pid\), 'utf8'\)/
   )
-  assert.doesNotMatch(mainSource, /map\(\(entry\) => rm\(join\(directory, entry\.name\)/)
+  assert.doesNotMatch(
+    mainSource,
+    /map\(\s*(?:entry|\(entry\)) => rm\(join\(directory, entry\.name\)/
+  )
 })
 
 test('a cancelled session removes a frame directory created after the cancel', () => {
@@ -464,15 +467,15 @@ test('a cancelled session removes a frame directory created after the cancel', (
 test('offscreen recording refuses a new session while another one is busy', () => {
   assert.match(
     mainSource,
-    /function assertOffscreenRecordingIdle\(\): void \{\r?\n\s+if \(!offscreenRecordingWindow && !cancelOffscreenRecording && !teardownOffscreenRecording && !offscreenRecordRequester\) return\r?\n\s+throw new Error\('已有离屏录制任务正在进行，请稍后再试'\)\r?\n\}/
+    /function assertOffscreenRecordingIdle\(\): void \{\r?\n\s+if \(\s*!offscreenRecordingWindow &&\s+!cancelOffscreenRecording &&\s+!teardownOffscreenRecording &&\s+!offscreenRecordRequester\s*\)\s+return\r?\n\s+throw new Error\('已有离屏录制任务正在进行，请稍后再试'\)\r?\n\}/
   )
   const probeBody = mainSource.slice(
-    mainSource.indexOf("ipcMain.handle('recordings:offscreen-probe'"),
-    mainSource.indexOf("ipcMain.handle('recordings:offscreen-encode'")
+    mainSource.search(/ipcMain\.handle\(\s*'recordings:offscreen-probe'/),
+    mainSource.search(/ipcMain\.handle\(\s*'recordings:offscreen-encode'/)
   )
   assert.match(probeBody, /assertOffscreenRecordingIdle\(\)/)
   const encodeBody = mainSource.slice(
-    mainSource.indexOf("ipcMain.handle('recordings:offscreen-encode'"),
+    mainSource.search(/ipcMain\.handle\(\s*'recordings:offscreen-encode'/),
     mainSource.indexOf("ipcMain.on('recordings:offscreen-progress'")
   )
   assert.match(encodeBody, /assertOffscreenRecordingIdle\(\)/)

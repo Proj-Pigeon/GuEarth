@@ -31,8 +31,11 @@ test('capture, playback and the offscreen renderer all apply the night rule', ()
     toolsSource,
     /overlays: visibleThematicLayers\(store\.selectedLayerId, knownOverlays\)/
   )
-  assert.match(toolsSource, /if \(args\.enabled && nightActive\) return \{ error:/)
-  assert.match(scenePlayerSource, /overlays: visibleThematicLayers\(globeStore\.selectedLayerId,/)
+  assert.match(toolsSource, /if \(args\.enabled && nightActive\)\s+return \{\s+error:/)
+  assert.match(
+    scenePlayerSource,
+    /overlays: visibleThematicLayers\(\s*globeStore\.selectedLayerId,/
+  )
   assert.match(
     scenePlayerSource,
     /const overlays = visibleThematicLayers\(snapshot\.basemapId, snapshot\.overlays\)/

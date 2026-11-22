@@ -17,13 +17,13 @@ const agentSource = await readFile(new URL('../src/main/ai/agent.ts', import.met
 
 test('darwin encodes through the WebCodecs path while Windows keeps the ffmpeg path', () => {
   const encodeBody = mainSource.slice(
-    mainSource.indexOf("ipcMain.handle('recordings:offscreen-encode'"),
+    mainSource.search(/ipcMain\.handle\(\s*'recordings:offscreen-encode'/),
     mainSource.indexOf("ipcMain.on('recordings:offscreen-progress'")
   )
   assert.match(encodeBody, /if \(process\.platform === 'darwin'\) \{/)
   assert.match(
     encodeBody,
-    /encodeMacOffscreenRecording\(normalizeOffscreenRecordingScript\(script\), macRecordingHost\)/
+    /encodeMacOffscreenRecording\(\s*normalizeOffscreenRecordingScript\(script\),\s+macRecordingHost\s*\)/
   )
   assert.match(encodeBody, /assertOffscreenRecordingSupported\(process\.platform\)/)
   assert.match(encodeBody, /assertOffscreenRecordingIdle\(\)/)
@@ -51,16 +51,16 @@ test('the macOS muxer mirrors the ffmpeg faststart and wall-clock frame timing',
 test('the offscreen frame channel is appended to the shared preload', () => {
   assert.match(
     preloadSource,
-    /onOffscreenFrame: \(listener: \(index: number, captureTimeMs: number, jpeg: Uint8Array\) => void\): \(\(\) => void\) => \{/
+    /onOffscreenFrame: \(\s*listener: \(index: number, captureTimeMs: number, jpeg: Uint8Array\) => void\s*\): \(\(\) => void\) => \{/
   )
   assert.match(preloadSource, /ipcRenderer\.on\('recordings:offscreen-frame', wrapped\)/)
   assert.match(
     preloadSource,
-    /sendOffscreenFrameAck: \(count: number\): void => ipcRenderer\.send\('recordings:offscreen-frame-ack', count\)/
+    /sendOffscreenFrameAck: \(count: number\): void =>\s+ipcRenderer\.send\('recordings:offscreen-frame-ack', count\)/
   )
   assert.match(
     preloadSource,
-    /sendOffscreenVideoChunk: \(bytes: Uint8Array, position: number\): void => ipcRenderer\.send\('recordings:offscreen-video-chunk', bytes, position\)/
+    /sendOffscreenVideoChunk: \(bytes: Uint8Array, position: number\): void =>\s+ipcRenderer\.send\('recordings:offscreen-video-chunk', bytes, position\)/
   )
   assert.match(
     preloadSource,
@@ -79,7 +79,7 @@ test('main forwards frame acks and encoded video only from the offscreen window'
   )
   assert.match(
     mainSource,
-    /ipcMain\.on\('recordings:offscreen-video-chunk', \(event, bytes: unknown, position: unknown\): void => \{/
+    /ipcMain\.on\(\s*'recordings:offscreen-video-chunk',\s+\(event, bytes: unknown, position: unknown\): void => \{/
   )
   assert.match(
     mainSource,
@@ -137,7 +137,7 @@ test('the macOS encode deadline scales with the captured frame count', () => {
   assert.match(macSource, /const OFFSCREEN_ENCODE_MS_PER_FRAME = 50/)
   assert.match(
     macSource,
-    /const encodeBudgetMs = Math\.max\(OFFSCREEN_ENCODE_TIMEOUT_MS, frameIndex \* OFFSCREEN_ENCODE_MS_PER_FRAME\)/
+    /const encodeBudgetMs = Math\.max\(\s*OFFSCREEN_ENCODE_TIMEOUT_MS,\s+frameIndex \* OFFSCREEN_ENCODE_MS_PER_FRAME\s*\)/
   )
 })
 

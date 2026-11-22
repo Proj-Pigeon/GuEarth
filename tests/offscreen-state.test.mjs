@@ -80,7 +80,7 @@ test('a failed basemap does not abort the rest of the scene snapshot and is not 
   }
   assert.match(
     applySnapshotBody,
-    /imageryLayers\.forEach\(\(layer, id\) => \{ layer\.show = id === imageryKey \}\)/
+    /imageryLayers\.forEach\(\(layer, id\) => \{\s+layer\.show = id === imageryKey\s+\}\)/
   )
 
   const prepareBody = sliceBetween(
