@@ -20,7 +20,7 @@ export function createInitialLandformState(): LandformState {
 }
 
 export const useLandformStore = create<LandformStore>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector(set => ({
     ...createInitialLandformState(),
     setPanel(value: LandformPanel | null): void {
       set({ panel: value })

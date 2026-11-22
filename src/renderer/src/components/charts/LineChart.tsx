@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
-import { use, type EChartsCoreOption } from 'echarts/core'
 import { LineChart as EChartsLineChart } from 'echarts/charts'
 import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
+import { use, type EChartsCoreOption } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
+import { useMemo } from 'react'
+
 import EChartBase from './EChartBase'
+
 import styles from './LineChart.module.css'
 
 use([EChartsLineChart, GridComponent, TooltipComponent, MarkLineComponent, SVGRenderer])
@@ -60,7 +62,7 @@ export function LineChart({
           if (!list.length) return ''
           const head = xFormatter ? xFormatter(list[0].value[0]) : String(list[0].value[0])
           const rows = list
-            .map((item) => `${item.marker}${item.seriesName} ${Math.round(item.value[1] * 10) / 10}`)
+            .map(item => `${item.marker}${item.seriesName} ${Math.round(item.value[1] * 10) / 10}`)
             .join('<br/>')
           return `${head}<br/>${rows}`
         }
@@ -98,7 +100,7 @@ export function LineChart({
         axisTick: { show: false },
         splitLine: { lineStyle: { color: 'rgba(5, 5, 5, 0.06)' } }
       },
-      series: series.map((item) => ({
+      series: series.map(item => ({
         type: 'line',
         name: item.name,
         data: item.points,
@@ -113,7 +115,7 @@ export function LineChart({
               symbol: ['none', 'none'],
               label: { show: false },
               lineStyle: { color: 'rgba(0, 0, 0, 0.25)', type: 'dashed', width: 1 },
-              data: item.markY.map((y) => ({ yAxis: y }))
+              data: item.markY.map(y => ({ yAxis: y }))
             }
           : undefined
       }))
@@ -121,7 +123,9 @@ export function LineChart({
     [series, xName, xMin, xMax, xFormatter, yName, yMin, yMax]
   )
 
-  return <EChartBase className={styles.lineChart} option={option} style={{ height: `${height}px` }} />
+  return (
+    <EChartBase className={styles.lineChart} option={option} style={{ height: `${height}px` }} />
+  )
 }
 
 export default LineChart

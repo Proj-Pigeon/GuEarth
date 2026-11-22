@@ -1,7 +1,9 @@
-import { useMemo } from 'react'
 import { CloseOutlined } from '@ant-design/icons'
 import { Button } from 'antd'
+import { useMemo } from 'react'
+
 import LineChart, { type ChartSeries } from './charts/LineChart'
+
 import styles from './AtmosphereLayersPanel.module.css'
 
 export interface AtmosphereLayersPanelProps {
@@ -44,31 +46,39 @@ const layers = [
 
 export function AtmosphereLayersPanel({ onClose }: AtmosphereLayersPanelProps) {
   const series = useMemo<ChartSeries[]>(
-    () => [{ name: '大气垂直温度廓线', color: TEMP_COLOR, points: profilePoints, markY: [12, 50, 85] }],
+    () => [
+      { name: '大气垂直温度廓线', color: TEMP_COLOR, points: profilePoints, markY: [12, 50, 85] }
+    ],
     []
   )
 
   return (
-    <div className={styles.layersPanel} role="group" aria-label="大气垂直分层">
+    <div className={styles.layersPanel} role='group' aria-label='大气垂直分层'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>大气垂直分层</span>
-        <Button type="text" size="small" aria-label="关闭大气垂直分层" icon={<CloseOutlined />} onClick={onClose} />
+        <Button
+          type='text'
+          size='small'
+          aria-label='关闭大气垂直分层'
+          icon={<CloseOutlined />}
+          onClick={onClose}
+        />
       </div>
       <div className={styles.chartTitle}>气温随高度的分布（横轴：气温，纵轴：高度）</div>
       <LineChart
         series={series}
         xMin={-100}
         xMax={20}
-        xName="气温(℃)"
-        yName="高度(千米)"
+        xName='气温(℃)'
+        yName='高度(千米)'
         yMin={0}
         yMax={100}
         height={210}
       />
-      {layers.map((layer) => (
+      {layers.map(layer => (
         <div key={layer.name} className={styles.layerItem}>
           <div className={styles.layerName}>{layer.name}</div>
-          {layer.facts.map((fact) => (
+          {layer.facts.map(fact => (
             <div key={fact} className={styles.layerFact}>
               · {fact}
             </div>
@@ -76,7 +86,8 @@ export function AtmosphereLayersPanel({ onClose }: AtmosphereLayersPanelProps) {
         </div>
       ))}
       <div className={styles.panelNote}>
-        曲线折点即分层界线：对流层顶约 12 千米、平流层顶约 50 千米、中间层顶约 85 千米；气温在界线处变化趋势反转。
+        曲线折点即分层界线：对流层顶约 12 千米、平流层顶约 50 千米、中间层顶约 85
+        千米；气温在界线处变化趋势反转。
       </div>
     </div>
   )

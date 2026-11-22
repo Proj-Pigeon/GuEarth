@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
-import * as Cesium from 'cesium'
 import { useClimateStore } from '@renderer/stores/climate'
 import { sampleWind, windRampStops, WIND_RAMP_MAX_SPEED } from '@renderer/thematic/windField'
+import * as Cesium from 'cesium'
+import { useEffect, useRef } from 'react'
+
 import styles from './WindParticles.module.css'
 
 export interface WindParticlesProps {
@@ -56,7 +57,7 @@ function buildBinColors(): string[] {
 const binColorPrefixes = buildBinColors()
 
 function wrapLon(lon: number): number {
-  return (((lon + 180) % 360) + 360) % 360 - 180
+  return ((((lon + 180) % 360) + 360) % 360) - 180
 }
 
 export function WindParticles({ viewer }: WindParticlesProps) {
@@ -103,7 +104,11 @@ export function WindParticles({ viewer }: WindParticlesProps) {
         Cesium.Cartesian3.subtract(currentViewer.camera.positionWC, position, scratchToCamera)
         if (Cesium.Cartesian3.dot(scratchNormal, scratchToCamera) <= 0) return false
       }
-      const projected = Cesium.SceneTransforms.worldToWindowCoordinates(currentViewer.scene, position, result)
+      const projected = Cesium.SceneTransforms.worldToWindowCoordinates(
+        currentViewer.scene,
+        position,
+        result
+      )
       return Boolean(projected && Number.isFinite(projected.x) && Number.isFinite(projected.y))
     }
 
@@ -134,19 +139,27 @@ export function WindParticles({ viewer }: WindParticlesProps) {
       for (let attempt = 0; attempt < 8 && spawnCells.length; attempt += 1) {
         const cell = spawnCells[Math.floor(Math.random() * spawnCells.length)]
         scratchScreen.x = (((cell % SPAWN_COLUMNS) + Math.random()) * cssWidth) / SPAWN_COLUMNS
-        scratchScreen.y = ((Math.floor(cell / SPAWN_COLUMNS) + Math.random()) * cssHeight) / SPAWN_ROWS
+        scratchScreen.y =
+          ((Math.floor(cell / SPAWN_COLUMNS) + Math.random()) * cssHeight) / SPAWN_ROWS
         const position = currentViewer.camera.pickEllipsoid(
           scratchScreen,
           currentViewer.scene.globe.ellipsoid,
           scratchPosition
         )
         if (!position) continue
-        const location = currentViewer.scene.globe.ellipsoid.cartesianToCartographic(position, scratchCartographic)
+        const location = currentViewer.scene.globe.ellipsoid.cartesianToCartographic(
+          position,
+          scratchCartographic
+        )
         particle.lon = Cesium.Math.toDegrees(location.longitude)
         particle.lat = Cesium.Math.toDegrees(location.latitude)
         particle.height = 0
         updatePosition(particle, currentViewer)
-        if (!projectToScreen(particle.position, currentViewer, scratchHead) || !isOnscreen(scratchHead)) continue
+        if (
+          !projectToScreen(particle.position, currentViewer, scratchHead) ||
+          !isOnscreen(scratchHead)
+        )
+          continue
         particle.trail.push(Cesium.Cartesian3.clone(particle.position))
         particle.trailScreens.push(scratchHead.x, scratchHead.y)
         return true
@@ -173,14 +186,23 @@ export function WindParticles({ viewer }: WindParticlesProps) {
         for (let column = 0; column < SPAWN_COLUMNS; column += 1) {
           scratchScreen.x = ((column + 0.5) * cssWidth) / SPAWN_COLUMNS
           scratchScreen.y = ((row + 0.5) * cssHeight) / SPAWN_ROWS
-          if (camera.pickEllipsoid(scratchScreen, currentViewer.scene.globe.ellipsoid, scratchPosition)) {
+          if (
+            camera.pickEllipsoid(
+              scratchScreen,
+              currentViewer.scene.globe.ellipsoid,
+              scratchPosition
+            )
+          ) {
             spawnCells.push(row * SPAWN_COLUMNS + column)
           }
         }
       }
       const visibleArea = (cssWidth * cssHeight * spawnCells.length) / (SPAWN_COLUMNS * SPAWN_ROWS)
       const target = spawnCells.length
-        ? Math.min(MAX_PARTICLES, Math.max(MIN_PARTICLES, Math.round(visibleArea / AREA_PER_PARTICLE)))
+        ? Math.min(
+            MAX_PARTICLES,
+            Math.max(MIN_PARTICLES, Math.round(visibleArea / AREA_PER_PARTICLE))
+          )
         : 0
       if (particles.length > target) particles.length = target
       while (particles.length < target) {
@@ -202,7 +224,12 @@ export function WindParticles({ viewer }: WindParticlesProps) {
     function resizeCanvas(): void {
       if (!canvas) return
       const dpr = Math.min(2, window.devicePixelRatio || 1)
-      if (cssWidth === canvas.clientWidth && cssHeight === canvas.clientHeight && pixelRatio === dpr) return
+      if (
+        cssWidth === canvas.clientWidth &&
+        cssHeight === canvas.clientHeight &&
+        pixelRatio === dpr
+      )
+        return
       cssWidth = canvas.clientWidth
       cssHeight = canvas.clientHeight
       pixelRatio = dpr
@@ -221,7 +248,8 @@ export function WindParticles({ viewer }: WindParticlesProps) {
       v: number,
       metersPerPixel: number
     ): void {
-      const degreesPerMeter = Cesium.Math.DEGREES_PER_RADIAN / currentViewer.scene.globe.ellipsoid.maximumRadius
+      const degreesPerMeter =
+        Cesium.Math.DEGREES_PER_RADIAN / currentViewer.scene.globe.ellipsoid.maximumRadius
       const step = SPEED_PIXELS_PER_SEC_PER_UNIT * metersPerPixel * degreesPerMeter * dt
       particle.lon = wrapLon(
         particle.lon + (u * step) / Math.max(0.02, Math.cos(Cesium.Math.toRadians(particle.lat)))
@@ -229,8 +257,12 @@ export function WindParticles({ viewer }: WindParticlesProps) {
       particle.lat = Math.min(89.9, Math.max(-89.9, particle.lat + v * step))
       updatePosition(particle, currentViewer)
       const last = particle.trail[particle.trail.length - 1]
-      if (!last || Cesium.Cartesian3.distance(last, particle.position) >= metersPerPixel * TRAIL_SAMPLE_PIXELS) {
-        const recycled = particle.trail.length >= TRAIL_MAX_POINTS ? particle.trail.shift() : undefined
+      if (
+        !last ||
+        Cesium.Cartesian3.distance(last, particle.position) >= metersPerPixel * TRAIL_SAMPLE_PIXELS
+      ) {
+        const recycled =
+          particle.trail.length >= TRAIL_MAX_POINTS ? particle.trail.shift() : undefined
         if (recycled) particle.trailScreens.splice(0, 2)
         particle.trail.push(Cesium.Cartesian3.clone(particle.position, recycled))
         if (projectToScreen(particle.position, currentViewer, scratchTrail)) {
@@ -245,7 +277,8 @@ export function WindParticles({ viewer }: WindParticlesProps) {
       const screens = particle.trailScreens
       screens.length = 0
       for (const point of particle.trail) {
-        if (projectToScreen(point, currentViewer, scratchTrail)) screens.push(scratchTrail.x, scratchTrail.y)
+        if (projectToScreen(point, currentViewer, scratchTrail))
+          screens.push(scratchTrail.x, scratchTrail.y)
         else screens.push(Number.NaN, Number.NaN)
       }
     }
@@ -341,8 +374,13 @@ export function WindParticles({ viewer }: WindParticlesProps) {
         }
         const wind = sampleWind(particle.lon, particle.lat, month)
         const speed = Math.hypot(wind.u, wind.v)
-        if (metersPerPixel > 0) advanceParticle(particle, currentViewer, dt, wind.u, wind.v, metersPerPixel)
-        if (!projectToScreen(particle.position, currentViewer, scratchHead) || !isOnscreen(scratchHead)) continue
+        if (metersPerPixel > 0)
+          advanceParticle(particle, currentViewer, dt, wind.u, wind.v, metersPerPixel)
+        if (
+          !projectToScreen(particle.position, currentViewer, scratchHead) ||
+          !isOnscreen(scratchHead)
+        )
+          continue
         const bin = Math.min(COLOR_BINS - 1, Math.floor((speed / WIND_RAMP_MAX_SPEED) * COLOR_BINS))
         collectTrail(particle, bin)
       }
@@ -415,7 +453,7 @@ export function WindParticles({ viewer }: WindParticlesProps) {
     }
   }, [viewer])
 
-  return <canvas ref={canvasRef} className={styles.windCanvas} aria-hidden="true" />
+  return <canvas ref={canvasRef} className={styles.windCanvas} aria-hidden='true' />
 }
 
 export default WindParticles

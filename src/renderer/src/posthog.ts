@@ -1,4 +1,5 @@
 import posthog from 'posthog-js/no-external'
+
 import { filterPosthogEvent, type PrivacySettings } from '../../common/privacy'
 
 const posthogToken = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN
@@ -23,7 +24,9 @@ function ensureInitialized(): boolean {
     if (!missingWarned && import.meta.env.DEV) {
       missingWarned = true
       const missingVariable = posthogToken ? 'VITE_POSTHOG_HOST' : 'VITE_POSTHOG_PROJECT_TOKEN'
-      console.warn(`${missingVariable} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingVariable} is configured`)
+      console.warn(
+        `${missingVariable} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingVariable} is configured`
+      )
     }
     return false
   }
@@ -39,7 +42,7 @@ function ensureInitialized(): boolean {
     capture_pageview: false,
     capture_pageleave: false,
     capture_exceptions: false,
-    before_send: (event) => filterPosthogEvent(event, currentPrivacy)
+    before_send: event => filterPosthogEvent(event, currentPrivacy)
   })
   initialized = true
   posthog.stopExceptionAutocapture()
@@ -82,7 +85,10 @@ export function capturePosthogException(error: unknown): void {
   posthog.captureException(error)
 }
 
-export function identifyTelemetryUser(distinctId: string, properties?: Record<string, string>): void {
+export function identifyTelemetryUser(
+  distinctId: string,
+  properties?: Record<string, string>
+): void {
   if (!currentPrivacy.telemetryEnabled || !ensureInitialized()) return
   posthog.identify(distinctId, properties)
 }

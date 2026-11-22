@@ -5,7 +5,8 @@ export type DayState = 'normal' | 'polar-day' | 'polar-night'
 
 export function dayOfYear(month: number, day: number): number {
   let total = 0
-  for (let index = 0; index < Math.min(12, Math.max(0, month - 1)); index += 1) total += MONTH_DAYS[index]
+  for (let index = 0; index < Math.min(12, Math.max(0, month - 1)); index += 1)
+    total += MONTH_DAYS[index]
   return total + day
 }
 
@@ -16,7 +17,7 @@ export function monthStartDayOfYear(): number[] {
 }
 
 export function solarDeclinationDeg(dayOfYearValue: number): number {
-  return 23.45 * Math.sin((360 * (284 + dayOfYearValue) / 365) * DEG)
+  return 23.45 * Math.sin(((360 * (284 + dayOfYearValue)) / 365) * DEG)
 }
 
 export function declinationForDate(month: number, day: number): number {
@@ -75,14 +76,20 @@ export interface HorizontalPosition {
   azimuthDeg: number
 }
 
-export function solarHorizontalPositionDeg(latitudeDeg: number, declinationDeg: number, localSolarHour: number): HorizontalPosition {
+export function solarHorizontalPositionDeg(
+  latitudeDeg: number,
+  declinationDeg: number,
+  localSolarHour: number
+): HorizontalPosition {
   const phi = latitudeDeg * DEG
   const delta = declinationDeg * DEG
   const hourAngle = (localSolarHour - 12) * 15 * DEG
-  const sinAltitude = Math.sin(phi) * Math.sin(delta) + Math.cos(phi) * Math.cos(delta) * Math.cos(hourAngle)
+  const sinAltitude =
+    Math.sin(phi) * Math.sin(delta) + Math.cos(phi) * Math.cos(delta) * Math.cos(hourAngle)
   const altitudeDeg = Math.asin(Math.max(-1, Math.min(1, sinAltitude))) / DEG
   const east = -Math.cos(delta) * Math.sin(hourAngle)
-  const north = Math.cos(phi) * Math.sin(delta) - Math.sin(phi) * Math.cos(delta) * Math.cos(hourAngle)
+  const north =
+    Math.cos(phi) * Math.sin(delta) - Math.sin(phi) * Math.cos(delta) * Math.cos(hourAngle)
   const azimuthDeg = (((Math.atan2(east, north) / DEG) % 360) + 360) % 360
   return { altitudeDeg, azimuthDeg }
 }
@@ -98,7 +105,7 @@ export function horizonCrossingsDeg(latitudeDeg: number, declinationDeg: number)
   if (result.state !== 'normal') return { state: result.state }
   const cosAzimuth = Math.sin(declinationDeg * DEG) / Math.cos(latitudeDeg * DEG)
   const clamped = Math.max(-1, Math.min(1, cosAzimuth))
-  const sunrise = (Math.acos(clamped) / DEG)
+  const sunrise = Math.acos(clamped) / DEG
   return { state: 'normal', sunriseAzimuthDeg: sunrise, sunsetAzimuthDeg: 360 - sunrise }
 }
 
@@ -132,7 +139,11 @@ export function shiftDate(dateStr: string, days: number): string {
   return new Date(ms + days * 86400000).toISOString().slice(0, 10)
 }
 
-export type SolarPreset = 'spring-equinox' | 'summer-solstice' | 'autumn-equinox' | 'winter-solstice'
+export type SolarPreset =
+  | 'spring-equinox'
+  | 'summer-solstice'
+  | 'autumn-equinox'
+  | 'winter-solstice'
 
 const PRESET_DATE_SUFFIX: Record<SolarPreset, string> = {
   'spring-equinox': '03-21',

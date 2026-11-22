@@ -28,7 +28,7 @@ export function hashFile(path: string): Promise<string> {
     const hash = createHash('sha256')
     const stream = createReadStream(path)
     stream.on('error', reject)
-    stream.on('data', (chunk) => hash.update(chunk))
+    stream.on('data', chunk => hash.update(chunk))
     stream.on('end', () => resolve(hash.digest('hex')))
   })
 }
@@ -68,7 +68,7 @@ function splitVersion(version: string): [number[], string] {
   const hyphen = withoutBuild.indexOf('-')
   const core = hyphen >= 0 ? withoutBuild.slice(0, hyphen) : withoutBuild
   const prerelease = hyphen >= 0 ? withoutBuild.slice(hyphen + 1) : ''
-  const numbers = core.split('.').map((part) => Number.parseInt(part, 10) || 0)
+  const numbers = core.split('.').map(part => Number.parseInt(part, 10) || 0)
   return [numbers, prerelease]
 }
 

@@ -1,28 +1,48 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+
 import {
-  censusAgeStructure, densityBins, densityColor, densityOf, densityRank, huComparison, huLineEndpoints,
-  migrationFlows, nationalPopulation, populationRank, provincePopulation, provinceSummary, pyramid2020, pyramidAgeGroups,
+  censusAgeStructure,
+  densityBins,
+  densityColor,
+  densityOf,
+  densityRank,
+  huComparison,
+  huLineEndpoints,
+  migrationFlows,
+  nationalPopulation,
+  populationRank,
+  provincePopulation,
+  provinceSummary,
+  pyramid2020,
+  pyramidAgeGroups,
   urbanizationSeries
 } from '../src/renderer/src/thematic/populationCensus.ts'
 
 test('vendored province GeoJSON names match the census table exactly', () => {
-  const geo = JSON.parse(readFileSync(new URL('../resources/geo/china-provinces.geojson', import.meta.url), 'utf8'))
+  const geo = JSON.parse(
+    readFileSync(new URL('../resources/geo/china-provinces.geojson', import.meta.url), 'utf8')
+  )
   assert.equal(geo.type, 'FeatureCollection')
-  const geoNames = geo.features.map((feature) => feature.properties.name).sort()
-  const censusNames = provincePopulation.map((province) => province.name).sort()
+  const geoNames = geo.features.map(feature => feature.properties.name).sort()
+  const censusNames = provincePopulation.map(province => province.name).sort()
   assert.deepEqual(geoNames, censusNames)
   for (const feature of geo.features) {
-    assert.ok(Array.isArray(feature.geometry.coordinates) && feature.geometry.coordinates.length > 0)
+    assert.ok(
+      Array.isArray(feature.geometry.coordinates) && feature.geometry.coordinates.length > 0
+    )
   }
 })
 
 test('density bins cover the full density range in ascending order', () => {
-  const colors = new Set(densityBins.map((bin) => bin.color))
+  const colors = new Set(densityBins.map(bin => bin.color))
   assert.equal(colors.size, densityBins.length)
-  const openBins = densityBins.filter((bin) => bin.max !== null).map((bin) => bin.max)
-  assert.deepEqual([...openBins].sort((a, b) => a - b), openBins)
+  const openBins = densityBins.filter(bin => bin.max !== null).map(bin => bin.max)
+  assert.deepEqual(
+    [...openBins].sort((a, b) => a - b),
+    openBins
+  )
   assert.equal(densityBins[densityBins.length - 1].max, null)
 })
 
@@ -39,15 +59,25 @@ test('densityColor maps values to the correct bins', () => {
 
 test('province census table is complete and internally consistent', () => {
   assert.equal(provincePopulation.length, 34)
-  const names = new Set(provincePopulation.map((province) => province.name))
+  const names = new Set(provincePopulation.map(province => province.name))
   assert.equal(names.size, 34)
   for (const province of provincePopulation) {
     assert.ok(province.populationWan > 0)
     assert.ok(province.areaWanKm2 > 0)
-    assert.ok(province.urbanizationPct === null || (province.urbanizationPct > 0 && province.urbanizationPct <= 100))
+    assert.ok(
+      province.urbanizationPct === null ||
+        (province.urbanizationPct > 0 && province.urbanizationPct <= 100)
+    )
     assert.ok(['east', 'west', 'cross'].includes(province.huSide))
   }
-  const westNames = ['内蒙古自治区', '宁夏回族自治区', '甘肃省', '青海省', '新疆维吾尔自治区', '西藏自治区']
+  const westNames = [
+    '内蒙古自治区',
+    '宁夏回族自治区',
+    '甘肃省',
+    '青海省',
+    '新疆维吾尔自治区',
+    '西藏自治区'
+  ]
   const crossNames = ['四川省', '云南省', '陕西省']
   for (const province of provincePopulation) {
     assert.equal(westNames.includes(province.name), province.huSide === 'west')
@@ -56,7 +86,7 @@ test('province census table is complete and internally consistent', () => {
 })
 
 test('density matches population divided by area and ranks follow the order', () => {
-  const guangdong = provincePopulation.find((province) => province.name === '广东省')
+  const guangdong = provincePopulation.find(province => province.name === '广东省')
   assert.ok(Math.abs(densityOf(guangdong) - 12601.25 / 17.97) < 0.01)
   assert.equal(populationRank('广东省'), 1)
   assert.equal(populationRank('澳门特别行政区'), 34)
@@ -89,12 +119,19 @@ test('census age structure rows sum to 100 percent', () => {
     const total = row.youngPct + row.workingPct + row.elderlyPct
     assert.ok(Math.abs(total - 100) < 0.02, `year ${row.year} sums to ${total}`)
   }
-  assert.deepEqual(censusAgeStructure.map((row) => row.year), [1953, 1964, 1982, 1990, 2000, 2010, 2020])
+  assert.deepEqual(
+    censusAgeStructure.map(row => row.year),
+    [1953, 1964, 1982, 1990, 2000, 2010, 2020]
+  )
 })
 
 test('national population and urbanization series are sane', () => {
-  assert.deepEqual(nationalPopulation.map((row) => row.year), [1953, 1964, 1982, 1990, 2000, 2010, 2020])
-  for (const row of nationalPopulation) assert.ok(row.populationWan > 50000 && row.populationWan < 150000)
+  assert.deepEqual(
+    nationalPopulation.map(row => row.year),
+    [1953, 1964, 1982, 1990, 2000, 2010, 2020]
+  )
+  for (const row of nationalPopulation)
+    assert.ok(row.populationWan > 50000 && row.populationWan < 150000)
   assert.equal(urbanizationSeries[0][0], 1949)
   for (const [year, pct] of urbanizationSeries) {
     assert.ok(year >= 1949 && year <= 2023)

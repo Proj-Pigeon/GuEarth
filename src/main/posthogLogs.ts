@@ -1,10 +1,17 @@
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http'
 import { resourceFromAttributes } from '@opentelemetry/resources'
-import { BatchLogRecordProcessor, LoggerProvider, type LogRecordExporter } from '@opentelemetry/sdk-logs'
+import {
+  BatchLogRecordProcessor,
+  LoggerProvider,
+  type LogRecordExporter
+} from '@opentelemetry/sdk-logs'
 
 const viteEnv = import.meta.env as Partial<ImportMetaEnv> | undefined
-const projectToken = (viteEnv ? import.meta.env.VITE_POSTHOG_PROJECT_TOKEN : undefined) || process.env.VITE_POSTHOG_PROJECT_TOKEN
-const host = (viteEnv ? import.meta.env.VITE_POSTHOG_HOST : undefined) || process.env.VITE_POSTHOG_HOST
+const projectToken =
+  (viteEnv ? import.meta.env.VITE_POSTHOG_PROJECT_TOKEN : undefined) ||
+  process.env.VITE_POSTHOG_PROJECT_TOKEN
+const host =
+  (viteEnv ? import.meta.env.VITE_POSTHOG_HOST : undefined) || process.env.VITE_POSTHOG_HOST
 const isDev = viteEnv ? import.meta.env.DEV : false
 
 let posthogLogsEnabled = false
@@ -41,8 +48,12 @@ function ensureLogger(): ReturnType<LoggerProvider['getLogger']> | null {
   if (!projectToken || !host) {
     if (!missingWarned && isDev) {
       missingWarned = true
-      const missingConfiguration = !projectToken ? 'VITE_POSTHOG_PROJECT_TOKEN' : 'VITE_POSTHOG_HOST'
-      console.warn(`${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`)
+      const missingConfiguration = !projectToken
+        ? 'VITE_POSTHOG_PROJECT_TOKEN'
+        : 'VITE_POSTHOG_HOST'
+      console.warn(
+        `${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`
+      )
     }
     return null
   }
@@ -58,7 +69,10 @@ function ensureLogger(): ReturnType<LoggerProvider['getLogger']> | null {
       }),
       processors: [
         new BatchLogRecordProcessor({
-          exporter: createGatedLogRecordExporter(otlpExporter, () => controller.active && posthogLogsEnabled)
+          exporter: createGatedLogRecordExporter(
+            otlpExporter,
+            () => controller.active && posthogLogsEnabled
+          )
         })
       ]
     })
@@ -111,7 +125,7 @@ export async function shutdownPosthogLogs(): Promise<void> {
   try {
     await Promise.race([
       activeProvider.shutdown(),
-      new Promise<void>((resolve) => {
+      new Promise<void>(resolve => {
         timeout = setTimeout(resolve, 1_000)
         timeout.unref()
       })

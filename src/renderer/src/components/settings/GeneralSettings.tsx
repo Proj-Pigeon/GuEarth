@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
-import { App as AntdApp, Button } from 'antd'
 import { FolderOpenOutlined, QuestionCircleOutlined } from '@ant-design/icons'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
+import { App as AntdApp, Button } from 'antd'
+import { useEffect, useState } from 'react'
+
 import styles from './GeneralSettings.module.css'
 
 export interface GeneralSettingsProps {
@@ -10,7 +11,7 @@ export interface GeneralSettingsProps {
 
 export function GeneralSettings({ onRestartGuide }: GeneralSettingsProps) {
   const { message } = AntdApp.useApp()
-  const closeSettingsWindow = useSettingsWindowStore((state) => state.close)
+  const closeSettingsWindow = useSettingsWindowStore(state => state.close)
 
   const [directory, setDirectory] = useState<string | null>(null)
   const [choosing, setChoosing] = useState(false)
@@ -19,7 +20,7 @@ export function GeneralSettings({ onRestartGuide }: GeneralSettingsProps) {
     let cancelled = false
     window.guEarth.recordings
       .getDirectory()
-      .then((value) => {
+      .then(value => {
         if (!cancelled) setDirectory(value)
       })
       .catch(() => undefined)
@@ -51,7 +52,7 @@ export function GeneralSettings({ onRestartGuide }: GeneralSettingsProps) {
   }
 
   return (
-    <section className={styles.settingsSection} data-settings-section="" aria-label="通用设置">
+    <section className={styles.settingsSection} data-settings-section='' aria-label='通用设置'>
       <h3 className={styles.sectionTitle}>通用</h3>
 
       <div className={styles.settingsBlock}>
@@ -59,7 +60,11 @@ export function GeneralSettings({ onRestartGuide }: GeneralSettingsProps) {
           <div className={styles.settingCopy}>
             <div className={styles.settingTitle}>录制保存目录</div>
           </div>
-          <Button loading={choosing} icon={<FolderOpenOutlined />} onClick={() => void chooseDirectory()}>
+          <Button
+            loading={choosing}
+            icon={<FolderOpenOutlined />}
+            onClick={() => void chooseDirectory()}
+          >
             更改目录
           </Button>
         </div>

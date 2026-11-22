@@ -1,7 +1,29 @@
 import * as Sentry from '@sentry/electron/main'
-import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, screen, session } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  clipboard,
+  dialog,
+  ipcMain,
+  net,
+  protocol,
+  screen,
+  session
+} from 'electron'
+
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
+import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../common/privacy'
+import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
+import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
+import {
+  ENSO_PHASE_SET,
+  HSR_END_YEAR,
+  HSR_START_YEAR,
+  SEA_LEVEL_SCENARIOS,
+  type EnsoPhase
+} from '../common/thematicState'
 import {
   hasLegacyTileMirrorSetting,
   isMirrorCoverageNotFound,
@@ -21,14 +43,29 @@ import {
   resolveStoredTileMirrorSettings,
   TileMirrorRouter
 } from '../common/tileMirror'
-import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, MirrorTileKind, TileMirrorMode, TileSource } from '../common/tileMirror'
+import type {
+  MirrorEndpointId,
+  MirrorEndpointPreference,
+  MirrorEndpointProbeResult,
+  MirrorTileKind,
+  TileMirrorMode,
+  TileSource
+} from '../common/tileMirror'
+import {
+  describeTileFetchError,
+  fetchTilePayloadWithRetry,
+  isRetryableTileStatus,
+  sanitizeTileUrlForLog,
+  serveTileResponse,
+  TILE_FETCH_TIMEOUT_MS,
+  type FetchedTilePayload
+} from '../common/tileProtocol'
+import {
+  isTouchInteractionMode,
+  normalizeTouchInteractionMode,
+  type TouchInteractionMode
+} from '../common/touchInteraction'
 import { viirsCacheStyleId, viirsGranuleDate } from '../common/viirs'
-import { describeTileFetchError, fetchTilePayloadWithRetry, isRetryableTileStatus, sanitizeTileUrlForLog, serveTileResponse, TILE_FETCH_TIMEOUT_MS, type FetchedTilePayload } from '../common/tileProtocol'
-import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
-import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
-import { isTouchInteractionMode, normalizeTouchInteractionMode, type TouchInteractionMode } from '../common/touchInteraction'
-import { ENSO_PHASE_SET, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS, type EnsoPhase } from '../common/thematicState'
-import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../common/privacy'
 
 attachConsoleLogTee('main')
 
@@ -61,39 +98,108 @@ Sentry.init({
   }
 })
 import { execFileSync, spawn } from 'child_process'
-import { readFileSync, rmSync } from 'fs'
-import { dirname, join } from 'path'
-import { flushJsonWrites, readJson, serialQueue, writeAtomic, writeJson } from './jsonStore'
-import { listTileFiles, pruneTileFiles } from './tileCacheFiles'
-import { storageChildPath } from './storagePath'
-import { access, constants, mkdtemp, mkdir, readFile, readdir, rename as renameFile, stat, rm, writeFile } from 'fs/promises'
 import { createHash, randomUUID } from 'crypto'
+import { readFileSync, rmSync } from 'fs'
+import {
+  access,
+  constants,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rename as renameFile,
+  stat,
+  rm,
+  writeFile
+} from 'fs/promises'
+import { dirname, join } from 'path'
+
 import icon from '../../resources/icon.png?asset'
-import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, OffscreenRecordingProbeResult, OffscreenRecordingScript, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey, TileMirrorStatus } from '../preload'
-import { assertOffscreenRecordingSupported, offscreenVideoEncoderArgs, resolveFfmpegBinary } from './ffmpeg'
-import { resolveOffscreenEntry } from './offscreenPaths'
-import { offscreenCaptureSize, offscreenConcatPlaylist, offscreenFrameDurations, offscreenFrameRate, offscreenScriptDurationMs } from './offscreenTiming'
-import { deliverMacOffscreenVideo, deliverMacOffscreenVideoComplete, encodeMacOffscreenRecording, noteMacOffscreenFrameAck, type OffscreenMacSessionHost } from './offscreenMac'
-import { assertEncryptionAvailable, assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
-import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
-import { AiSettingsStore } from './ai/settingsStore'
-import { AiChatHistoryStore } from './ai/chatHistoryStore'
-import { AiMemoryStore } from './ai/memoryStore'
-import { EoqHawdbClient } from './ai/hawdb/client'
-import { findHawdbBinary } from './ai/hawdb/paths'
-import { getAllKnowledgeEntries, knowledgeDatasetHash } from './ai/knowledge'
+import type {
+  AnnotationDocument,
+  AnnotationEntry,
+  GeoPosition,
+  GuEarthSettings,
+  GuEarthSettingsPatch,
+  NetworkProxyTestResult,
+  OffscreenRecordingProbeResult,
+  OffscreenRecordingScript,
+  PlaceSearchProvider,
+  ProviderCredentialStatus,
+  RecordingSaveResult,
+  SceneCamera,
+  SceneDocument,
+  SceneSnapshot,
+  SceneSimTime,
+  StoredShape,
+  TeachingScene,
+  TileCacheEntry,
+  TileCacheStats,
+  TileKey,
+  TileMirrorStatus
+} from '../preload'
+import { initAccount } from './account'
 import { registerAiIpcHandlers } from './ai/agent'
 import { poiStatistics, searchPlaces } from './ai/amap'
 import { searchBaiduPlaces } from './ai/baidu'
-import { beginPlacesRequest } from './ai/searchThrottle'
+import { AiChatHistoryStore } from './ai/chatHistoryStore'
+import { EoqHawdbClient } from './ai/hawdb/client'
+import { findHawdbBinary } from './ai/hawdb/paths'
+import { getAllKnowledgeEntries, knowledgeDatasetHash } from './ai/knowledge'
+import { AiMemoryStore } from './ai/memoryStore'
 import { setModelsDevMirrorEndpoint } from './ai/modelImporter'
-import { initDatasets, loadProvinceGeometry, setDatasetMirrorEndpoint } from './datasets'
-import { ensureTyphoons, getOnlineData, getStartupEarthquakes, invalidateTyphoons, refreshEarthquakes, startOnlineData } from './onlineData'
-import { listLaboratoryProviders, removeLaboratoryProvider, saveLaboratoryProvider } from './laboratory'
-import { initUpdater } from './updater'
-import { initAccount } from './account'
 import { setAiPosthogEnabled, shutdownPosthog } from './ai/posthog'
+import { beginPlacesRequest } from './ai/searchThrottle'
+import { AiSettingsStore } from './ai/settingsStore'
+import { initDatasets, loadProvinceGeometry, setDatasetMirrorEndpoint } from './datasets'
+import {
+  assertOffscreenRecordingSupported,
+  offscreenVideoEncoderArgs,
+  resolveFfmpegBinary
+} from './ffmpeg'
+import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
+import { flushJsonWrites, readJson, serialQueue, writeAtomic, writeJson } from './jsonStore'
+import {
+  assertEncryptionAvailable,
+  assertSafeId,
+  clearProviderKey,
+  hasProviderKey,
+  initKeyVault,
+  readProviderKey,
+  writeProviderKey
+} from './keyVault'
+import {
+  listLaboratoryProviders,
+  removeLaboratoryProvider,
+  saveLaboratoryProvider
+} from './laboratory'
+import {
+  deliverMacOffscreenVideo,
+  deliverMacOffscreenVideoComplete,
+  encodeMacOffscreenRecording,
+  noteMacOffscreenFrameAck,
+  type OffscreenMacSessionHost
+} from './offscreenMac'
+import { resolveOffscreenEntry } from './offscreenPaths'
+import {
+  offscreenCaptureSize,
+  offscreenConcatPlaylist,
+  offscreenFrameDurations,
+  offscreenFrameRate,
+  offscreenScriptDurationMs
+} from './offscreenTiming'
+import {
+  ensureTyphoons,
+  getOnlineData,
+  getStartupEarthquakes,
+  invalidateTyphoons,
+  refreshEarthquakes,
+  startOnlineData
+} from './onlineData'
 import { capturePosthogLog, setPosthogLogsEnabled, shutdownPosthogLogs } from './posthogLogs'
+import { storageChildPath } from './storagePath'
+import { listTileFiles, pruneTileFiles } from './tileCacheFiles'
+import { initUpdater } from './updater'
 
 interface PersistedSettings {
   selectedImageryProviderId: string
@@ -174,7 +280,16 @@ const aiMemories = new AiMemoryStore()
 const eoqHawdb = new EoqHawdbClient()
 
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'guearth-tile', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
+  {
+    scheme: 'guearth-tile',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true,
+      corsEnabled: true
+    }
+  }
 ])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -200,18 +315,46 @@ async function readSettings(): Promise<PersistedSettings> {
     const providerStyles = isRecord(parsed.providerStyles) ? parsed.providerStyles : {}
     const normalizedStyles: Record<string, string> = { ...defaultSettings.providerStyles }
     for (const [providerId, styleId] of Object.entries(providerStyles)) {
-      if (/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(providerId) && typeof styleId === 'string' && /^[a-z0-9][a-z0-9_-]{0,63}$/i.test(styleId)) normalizedStyles[providerId] = styleId
+      if (
+        /^[a-z0-9][a-z0-9_-]{0,63}$/i.test(providerId) &&
+        typeof styleId === 'string' &&
+        /^[a-z0-9][a-z0-9_-]{0,63}$/i.test(styleId)
+      )
+        normalizedStyles[providerId] = styleId
     }
     const legacyTerrain = parsed.terrainExaggeration === undefined
-    const storedTerrainProviderId = typeof parsed.selectedTerrainProviderId === 'string' ? parsed.selectedTerrainProviderId : defaultSettings.selectedTerrainProviderId
-    const terrainProviderId = storedTerrainProviderId === 'mapbox-terrain' ? 'cesium-world-terrain' : storedTerrainProviderId
-    const resolvedMirror = resolveStoredTileMirrorSettings(parsed.tileMirrorMode, parsed.tileMirrorEnabled, parsed.mirrorConsentPrompted)
+    const storedTerrainProviderId =
+      typeof parsed.selectedTerrainProviderId === 'string'
+        ? parsed.selectedTerrainProviderId
+        : defaultSettings.selectedTerrainProviderId
+    const terrainProviderId =
+      storedTerrainProviderId === 'mapbox-terrain'
+        ? 'cesium-world-terrain'
+        : storedTerrainProviderId
+    const resolvedMirror = resolveStoredTileMirrorSettings(
+      parsed.tileMirrorMode,
+      parsed.tileMirrorEnabled,
+      parsed.mirrorConsentPrompted
+    )
     const resolvedPrivacy = resolvePrivacySettings(parsed)
-    tileCacheNamespaceStale = hasLegacyTileMirrorSetting(parsed.tileMirrorMode, parsed.tileMirrorEnabled)
+    tileCacheNamespaceStale = hasLegacyTileMirrorSetting(
+      parsed.tileMirrorMode,
+      parsed.tileMirrorEnabled
+    )
     return {
-      selectedImageryProviderId: typeof parsed.selectedImageryProviderId === 'string' ? parsed.selectedImageryProviderId : defaultSettings.selectedImageryProviderId,
-      selectedTerrainProviderId: legacyTerrain && terrainProviderId === 'ellipsoid' ? defaultSettings.selectedTerrainProviderId : terrainProviderId,
-      terrainExaggeration: typeof parsed.terrainExaggeration === 'number' && Number.isFinite(parsed.terrainExaggeration) ? Math.min(5, Math.max(1, parsed.terrainExaggeration)) : defaultSettings.terrainExaggeration,
+      selectedImageryProviderId:
+        typeof parsed.selectedImageryProviderId === 'string'
+          ? parsed.selectedImageryProviderId
+          : defaultSettings.selectedImageryProviderId,
+      selectedTerrainProviderId:
+        legacyTerrain && terrainProviderId === 'ellipsoid'
+          ? defaultSettings.selectedTerrainProviderId
+          : terrainProviderId,
+      terrainExaggeration:
+        typeof parsed.terrainExaggeration === 'number' &&
+        Number.isFinite(parsed.terrainExaggeration)
+          ? Math.min(5, Math.max(1, parsed.terrainExaggeration))
+          : defaultSettings.terrainExaggeration,
       terrainLighting: parsed.terrainLighting === true,
       tileCacheEnabled: parsed.tileCacheEnabled !== false,
       tileMirrorMode: resolvedMirror.tileMirrorMode,
@@ -222,9 +365,13 @@ async function readSettings(): Promise<PersistedSettings> {
       providerStyles: normalizedStyles,
       providerCredentials,
       sceneMode: parsed.sceneMode === '2D' ? '2D' : '3D',
-      setupGuideDismissed: typeof parsed.setupGuideDismissed === 'boolean' ? parsed.setupGuideDismissed : null,
+      setupGuideDismissed:
+        typeof parsed.setupGuideDismissed === 'boolean' ? parsed.setupGuideDismissed : null,
       ...resolvedPrivacy,
-      recordingDirectory: typeof parsed.recordingDirectory === 'string' && parsed.recordingDirectory.trim() ? parsed.recordingDirectory : null
+      recordingDirectory:
+        typeof parsed.recordingDirectory === 'string' && parsed.recordingDirectory.trim()
+          ? parsed.recordingDirectory
+          : null
     }
   } catch (error) {
     logger.error('settings', '读取设置失败，已使用默认设置', error)
@@ -293,7 +440,8 @@ function applyPrivacySettings(current: PersistedSettings): void {
 function settingsSnapshot(): GuEarthSettings {
   const providerCredentials: Record<string, ProviderCredentialStatus> = {}
   const providerIds = new Set([...Object.keys(settings.providerCredentials), 'amap', 'baidu'])
-  for (const providerId of providerIds) providerCredentials[providerId] = credentialStatus(providerId)
+  for (const providerId of providerIds)
+    providerCredentials[providerId] = credentialStatus(providerId)
   return { ...settings, providerCredentials }
 }
 
@@ -303,7 +451,14 @@ function pathPart(value: number): string {
 }
 
 function tileBasePath(key: TileKey): string {
-  return storageChildPath(tileCachePath, safeId(key.providerId), safeId(key.styleId), pathPart(key.level), pathPart(key.x), pathPart(key.y))
+  return storageChildPath(
+    tileCachePath,
+    safeId(key.providerId),
+    safeId(key.styleId),
+    pathPart(key.level),
+    pathPart(key.x),
+    pathPart(key.y)
+  )
 }
 
 function tileDataPath(key: TileKey): string {
@@ -338,7 +493,9 @@ async function cachedTileResponse(key: TileKey, allowExpired: boolean): Promise<
   const cached = await readTile(key, allowExpired)
   if (!cached) return null
   const expired = cached.expiresAt !== null && cached.expiresAt <= Date.now()
-  return new Response(cached.data, { headers: { 'content-type': cached.contentType, 'x-guearth-cache': expired ? 'stale' : 'hit' } })
+  return new Response(cached.data, {
+    headers: { 'content-type': cached.contentType, 'x-guearth-cache': expired ? 'stale' : 'hit' }
+  })
 }
 
 let tilePruneAt = 0
@@ -363,12 +520,21 @@ let quitting = false
 function writeTile(entry: TileCacheEntry): Promise<void> {
   if (quitting) return Promise.resolve()
   return enqueueTileMutation(async () => {
-    const key: TileKey = { providerId: entry.providerId, styleId: entry.styleId, level: entry.level, x: entry.x, y: entry.y }
+    const key: TileKey = {
+      providerId: entry.providerId,
+      styleId: entry.styleId,
+      level: entry.level,
+      x: entry.x,
+      y: entry.y
+    }
     const basePath = tileBasePath(key)
     try {
       await mkdir(dirname(basePath), { recursive: true })
       await writeAtomic(`${basePath}.bin`, Buffer.from(entry.data))
-      await writeJson(`${basePath}.json`, { contentType: entry.contentType, expiresAt: entry.expiresAt })
+      await writeJson(`${basePath}.json`, {
+        contentType: entry.contentType,
+        expiresAt: entry.expiresAt
+      })
       void enqueueTileMutation(enforceTileCacheLimit).catch(() => undefined)
     } catch {
       void 0
@@ -378,11 +544,14 @@ function writeTile(entry: TileCacheEntry): Promise<void> {
 
 async function cacheStats(): Promise<TileCacheStats> {
   const files = await listTileFiles(tileCachePath)
-  return files.reduce<TileCacheStats>((result, file) => {
-    if (file.path.endsWith('.bin')) result.files += 1
-    result.bytes += file.size
-    return result
-  }, { files: 0, bytes: 0 })
+  return files.reduce<TileCacheStats>(
+    (result, file) => {
+      if (file.path.endsWith('.bin')) result.files += 1
+      result.bytes += file.size
+      return result
+    },
+    { files: 0, bytes: 0 }
+  )
 }
 
 function computeBaiduSn(path: string, queryString: string, sk: string): string {
@@ -390,19 +559,31 @@ function computeBaiduSn(path: string, queryString: string, sk: string): string {
   return createHash('md5').update(plaintext).digest('hex')
 }
 
-function tileRemoteUrl(providerId: string, styleId: string, level: number, x: number, y: number, granuleDate?: string): string | undefined {
+function tileRemoteUrl(
+  providerId: string,
+  styleId: string,
+  level: number,
+  x: number,
+  y: number,
+  granuleDate?: string
+): string | undefined {
   if (providerId === 'osm') return `https://tile.openstreetmap.org/${level}/${x}/${y}.png`
   if (providerId === 'viirs-night') {
     if (level > 8) return undefined
     return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_DayNightBand_AtSensor_M15/default/${granuleDate ?? viirsGranuleDate()}/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`
   }
-  if (providerId === 'esri-imagery') return `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${level}/${y}/${x}`
-  if (providerId === 'opentopomap') return `https://${['a', 'b', 'c'][((x % 3) + 3) % 3]}.tile.opentopomap.org/${level}/${x}/${y}.png`
+  if (providerId === 'esri-imagery')
+    return `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${level}/${y}/${x}`
+  if (providerId === 'opentopomap')
+    return `https://${['a', 'b', 'c'][((x % 3) + 3) % 3]}.tile.opentopomap.org/${level}/${x}/${y}.png`
   if (providerId === 'baidu') {
     const key = readProviderKey(providerId)
     if (!key) return undefined
     const subdomain = String(((x % 4) + 4) % 4)
-    const [translatedX, translatedY] = baiduLngLatToTile(level, ...wgs84ToBd09(...tileCenter(level, x, y)))
+    const [translatedX, translatedY] = baiduLngLatToTile(
+      level,
+      ...wgs84ToBd09(...tileCenter(level, x, y))
+    )
     const ak = key
     const sk = readProviderKey(`${providerId}-sk`)
     if (styleId === 'satellite') {
@@ -412,17 +593,23 @@ function tileRemoteUrl(providerId: string, styleId: string, level: number, x: nu
       return `https://maponline${subdomain}.bdimg.com/tile/?${baseQueryString}&sn=${sn}`
     }
     const baseQueryString = `x=${translatedX}&y=${translatedY}&z=${level}&ak=${encodeURIComponent(ak)}`
-    if (!sk) return `https://online${subdomain}.map.bdimg.com/onlinelabel/?qt=tile&${baseQueryString}&styles=pl&scaler=1&udt=20230101`
+    if (!sk)
+      return `https://online${subdomain}.map.bdimg.com/onlinelabel/?qt=tile&${baseQueryString}&styles=pl&scaler=1&udt=20230101`
     const pathWithQuery = `/onlinelabel/?qt=tile&${baseQueryString}&styles=pl&scaler=1&udt=20230101`
-    const sn = computeBaiduSn('/onlinelabel/', `qt=tile&${baseQueryString}&styles=pl&scaler=1&udt=20230101`, sk)
+    const sn = computeBaiduSn(
+      '/onlinelabel/',
+      `qt=tile&${baseQueryString}&styles=pl&scaler=1&udt=20230101`,
+      sk
+    )
     return `https://online${subdomain}.map.bdimg.com${pathWithQuery}&sn=${sn}`
   }
   return undefined
 }
 
 const TILE_FETCH_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  Accept: 'image/webp,image/apng,image/*,*/*;q=0.8'
 }
 const TILE_ERROR_LOG_INTERVAL_MS = 5_000
 const tileErrorLogTimestamps = new Map<string, number>()
@@ -440,7 +627,9 @@ function describeTileTarget(key: TileKey, url: string): string {
 }
 
 function fetchTilePayload(url: string): Promise<FetchedTilePayload> {
-  return fetchTilePayloadWithRetry((signal) => net.fetch(url, { headers: TILE_FETCH_HEADERS, signal }))
+  return fetchTilePayloadWithRetry(signal =>
+    net.fetch(url, { headers: TILE_FETCH_HEADERS, signal })
+  )
 }
 
 const mirrorLoggedProviders = new Set<string>()
@@ -472,7 +661,9 @@ function scheduleMirrorFallbackExpirySync(): void {
   const delayMs = Math.max(1, nextExpiryAt - Date.now() + 20)
   mirrorFallbackExpiryTimer = setTimeout(() => {
     mirrorFallbackExpiryTimer = undefined
-    const activeFallbacks = new Set(tileMirrorRouter.fallenBackProviders(mirrorEligibleProviderIds()))
+    const activeFallbacks = new Set(
+      tileMirrorRouter.fallenBackProviders(mirrorEligibleProviderIds())
+    )
     for (const providerId of [...mirrorFallenBackProviders]) {
       if (!activeFallbacks.has(providerId)) mirrorFallenBackProviders.delete(providerId)
     }
@@ -523,13 +714,17 @@ function broadcastMirrorStatus(notice = ''): void {
 
 function formatMirrorProbeSummary(probes: readonly MirrorEndpointProbeResult[]): string {
   return probes
-    .map((probe) => probe.ok
-      ? `${mirrorEndpointShortLabel(probe.endpoint)}=${probe.latencyMs}ms`
-      : `${mirrorEndpointShortLabel(probe.endpoint)}=失败(${probe.error ?? '未知错误'})`)
+    .map(probe =>
+      probe.ok
+        ? `${mirrorEndpointShortLabel(probe.endpoint)}=${probe.latencyMs}ms`
+        : `${mirrorEndpointShortLabel(probe.endpoint)}=失败(${probe.error ?? '未知错误'})`
+    )
     .join(', ')
 }
 
-async function probeSingleMirrorEndpoint(endpoint: MirrorEndpointId): Promise<MirrorEndpointProbeResult> {
+async function probeSingleMirrorEndpoint(
+  endpoint: MirrorEndpointId
+): Promise<MirrorEndpointProbeResult> {
   const url = mirrorProbeUrl(endpoint)
   const startedAt = Date.now()
   try {
@@ -540,15 +735,32 @@ async function probeSingleMirrorEndpoint(endpoint: MirrorEndpointId): Promise<Mi
     })
     if (!response.ok) {
       void response.body?.cancel().catch(() => undefined)
-      return { endpoint, ok: false, latencyMs: null, error: `HTTP ${response.status}`, checkedAt: startedAt }
+      return {
+        endpoint,
+        ok: false,
+        latencyMs: null,
+        error: `HTTP ${response.status}`,
+        checkedAt: startedAt
+      }
     }
     const buffer = await response.arrayBuffer()
     if (buffer.byteLength === 0) {
       return { endpoint, ok: false, latencyMs: null, error: '空响应', checkedAt: startedAt }
     }
-    return { endpoint, ok: true, latencyMs: Math.max(1, Date.now() - startedAt), checkedAt: startedAt }
+    return {
+      endpoint,
+      ok: true,
+      latencyMs: Math.max(1, Date.now() - startedAt),
+      checkedAt: startedAt
+    }
   } catch (error) {
-    return { endpoint, ok: false, latencyMs: null, error: describeTileFetchError(error), checkedAt: startedAt }
+    return {
+      endpoint,
+      ok: false,
+      latencyMs: null,
+      error: describeTileFetchError(error),
+      checkedAt: startedAt
+    }
   }
 }
 
@@ -556,14 +768,18 @@ async function probeMirrorEndpoints(
   reason: 'startup' | 'settings' | 'network' | 'manual',
   onFirstReachable?: () => void
 ): Promise<void> {
-  if (reason !== 'manual' && (settings.tileMirrorMode !== 'on' || settings.tileMirrorSource !== 'auto')) return
+  if (
+    reason !== 'manual' &&
+    (settings.tileMirrorMode !== 'on' || settings.tileMirrorSource !== 'auto')
+  )
+    return
   const seq = ++mirrorEndpointProbeSeq
   mirrorEndpointProbing = true
   broadcastMirrorStatus('')
   let resolvedFirst = false
   const roundProbes: MirrorEndpointProbeResult[] = []
-  const probePromises = mirrorEndpointIds.map((endpoint) =>
-    probeSingleMirrorEndpoint(endpoint).then((result) => {
+  const probePromises = mirrorEndpointIds.map(endpoint =>
+    probeSingleMirrorEndpoint(endpoint).then(result => {
       if (seq !== mirrorEndpointProbeSeq) return result
       roundProbes.push(result)
       const outcome = mirrorEndpointManager.applyProbeResult(result, roundProbes)
@@ -637,7 +853,10 @@ async function probeOriginProvider(providerId: string): Promise<boolean | null> 
   const url = originProbeUrl(providerId)
   if (!url) return null
   try {
-    const response = await net.fetch(url, { headers: TILE_FETCH_HEADERS, signal: AbortSignal.timeout(MIRROR_PROBE_TIMEOUT_MS) })
+    const response = await net.fetch(url, {
+      headers: TILE_FETCH_HEADERS,
+      signal: AbortSignal.timeout(MIRROR_PROBE_TIMEOUT_MS)
+    })
     await response.arrayBuffer()
     return originProbeReachable(response.status)
   } catch {
@@ -649,7 +868,9 @@ let mirrorProbePromise: Promise<void> | undefined
 let mirrorProbeQueued = false
 let mirrorProbeTimer: NodeJS.Timeout | undefined
 
-async function refreshMirrorRoutes(reason: 'startup' | 'settings' | 'probe' | 'network'): Promise<void> {
+async function refreshMirrorRoutes(
+  reason: 'startup' | 'settings' | 'probe' | 'network'
+): Promise<void> {
   if (settings.tileMirrorMode !== 'auto') return
   if (mirrorProbePromise) {
     mirrorProbeQueued = true
@@ -657,7 +878,11 @@ async function refreshMirrorRoutes(reason: 'startup' | 'settings' | 'probe' | 'n
   }
   mirrorProbePromise = (async () => {
     const previous = tileMirrorRouter.mirroredProviders(mirrorEligibleProviderIds())
-    const probes = await Promise.all(mirrorEligibleProviderIds().map(async (providerId) => [providerId, await probeOriginProvider(providerId)] as const))
+    const probes = await Promise.all(
+      mirrorEligibleProviderIds().map(
+        async providerId => [providerId, await probeOriginProvider(providerId)] as const
+      )
+    )
     for (const [providerId, reachable] of probes) {
       if (reachable === null) continue
       tileMirrorRouter.noteProbeResult(providerId, reachable)
@@ -665,7 +890,10 @@ async function refreshMirrorRoutes(reason: 'startup' | 'settings' | 'probe' | 'n
     if (settings.tileMirrorMode !== 'auto') return
     const next = tileMirrorRouter.mirroredProviders(mirrorEligibleProviderIds())
     if (previous.join(',') === next.join(',')) return
-    logger.info('tiles', `网络环境检测（${reason}）完成，镜像瓦片源：${next.join('、') || '未启用'}`)
+    logger.info(
+      'tiles',
+      `网络环境检测（${reason}）完成，镜像瓦片源：${next.join('、') || '未启用'}`
+    )
     notifyMirrorRouteChange(previous)
   })().finally(() => {
     mirrorProbePromise = undefined
@@ -704,13 +932,35 @@ async function mirrorTileResponse(
     const payload = await fetchTilePayload(url)
     if (!payload.ok || !payload.data) {
       if (isMirrorCoverageNotFound(payload.status, payload.headers)) return { failure: 'coverage' }
-      return { failure: 'network', detail: `HTTP ${payload.status} ${describeTileTarget(key, url)}` }
+      return {
+        failure: 'network',
+        detail: `HTTP ${payload.status} ${describeTileTarget(key, url)}`
+      }
     }
-    const contentType = payload.headers.get('content-type') ?? (providerId === 'viirs-night' ? 'image/jpeg' : 'image/png')
-    if (settings.tileCacheEnabled) void writeTile({ ...key, data: payload.data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
-    return { response: new Response(payload.data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss', 'x-guearth-mirror': endpoint } }) }
+    const contentType =
+      payload.headers.get('content-type') ??
+      (providerId === 'viirs-night' ? 'image/jpeg' : 'image/png')
+    if (settings.tileCacheEnabled)
+      void writeTile({
+        ...key,
+        data: payload.data,
+        contentType,
+        expiresAt: Date.now() + TILE_TTL_MS
+      })
+    return {
+      response: new Response(payload.data, {
+        headers: {
+          'content-type': contentType,
+          'x-guearth-cache': 'miss',
+          'x-guearth-mirror': endpoint
+        }
+      })
+    }
   } catch (error) {
-    return { failure: 'network', detail: `${describeTileFetchError(error)} ${describeTileTarget(key, url)}` }
+    return {
+      failure: 'network',
+      detail: `${describeTileFetchError(error)} ${describeTileTarget(key, url)}`
+    }
   }
 }
 
@@ -726,19 +976,25 @@ async function serveMirrorTile(
   const logKey = `${endpoint}:${providerId}`
   if (!mirrorLoggedProviders.has(logKey)) {
     mirrorLoggedProviders.add(logKey)
-    logger.info('tiles', `镜像瓦片源已启用，${providerId} 使用 ${mirrorEndpointLabel(endpoint)} 镜像服务`)
+    logger.info(
+      'tiles',
+      `镜像瓦片源已启用，${providerId} 使用 ${mirrorEndpointLabel(endpoint)} 镜像服务`
+    )
   }
   const outcome = await mirrorTileResponse(providerId, key, granuleDate, endpoint)
   if ('response' in outcome) {
     if (
-      routeGeneration === mirrorRouteGeneration
-      && modeGeneration === tileMirrorRouter.currentModeGeneration()
-      && endpoint === mirrorEndpointManager.getActive()
+      routeGeneration === mirrorRouteGeneration &&
+      modeGeneration === tileMirrorRouter.currentModeGeneration() &&
+      endpoint === mirrorEndpointManager.getActive()
     ) {
       tileMirrorRouter.noteMirrorSuccess(providerId, modeGeneration)
       mirrorEndpointManager.noteEndpointSuccess(endpoint)
       if (mirrorFallenBackProviders.delete(providerId)) {
-        logger.info('tiles', `镜像瓦片源已恢复，${providerId} 重新使用 ${mirrorEndpointLabel(endpoint)} 镜像服务`)
+        logger.info(
+          'tiles',
+          `镜像瓦片源已恢复，${providerId} 重新使用 ${mirrorEndpointLabel(endpoint)} 镜像服务`
+        )
         broadcastMirrorStatus('')
       }
       scheduleMirrorFallbackExpirySync()
@@ -747,16 +1003,17 @@ async function serveMirrorTile(
   }
   if (outcome.failure !== 'network') return null
   if (
-    routeGeneration !== mirrorRouteGeneration
-    || modeGeneration !== tileMirrorRouter.currentModeGeneration()
-    || endpoint !== mirrorEndpointManager.getActive()
+    routeGeneration !== mirrorRouteGeneration ||
+    modeGeneration !== tileMirrorRouter.currentModeGeneration() ||
+    endpoint !== mirrorEndpointManager.getActive()
   ) {
     return null
   }
   if (tileMirrorRouter.recordMirrorFailure(providerId, modeGeneration)) {
-    const failoverEndpoint = (settings.tileMirrorMode === 'on' || settings.tileMirrorMode === 'auto')
-      ? mirrorEndpointManager.tryFailover(endpoint)
-      : null
+    const failoverEndpoint =
+      settings.tileMirrorMode === 'on' || settings.tileMirrorMode === 'auto'
+        ? mirrorEndpointManager.tryFailover(endpoint)
+        : null
     if (failoverEndpoint) {
       const failoverRouteGeneration = advanceMirrorRouteGeneration()
       tileMirrorRouter.resetMirrorFallback()
@@ -764,14 +1021,20 @@ async function serveMirrorTile(
       mirrorLoggedProviders.clear()
       scheduleMirrorFallbackExpirySync()
       syncMirrorConsumers()
-      logger.warn('tiles', `镜像源 ${mirrorEndpointLabel(endpoint)} 连续失败，已自动切换至 ${mirrorEndpointLabel(failoverEndpoint)}`, outcome.detail)
-      broadcastMirrorStatus(`镜像源 ${mirrorEndpointShortLabel(endpoint)} 异常，已自动切换至 ${mirrorEndpointShortLabel(failoverEndpoint)}`)
+      logger.warn(
+        'tiles',
+        `镜像源 ${mirrorEndpointLabel(endpoint)} 连续失败，已自动切换至 ${mirrorEndpointLabel(failoverEndpoint)}`,
+        outcome.detail
+      )
+      broadcastMirrorStatus(
+        `镜像源 ${mirrorEndpointShortLabel(endpoint)} 异常，已自动切换至 ${mirrorEndpointShortLabel(failoverEndpoint)}`
+      )
       const retryOutcome = await mirrorTileResponse(providerId, key, granuleDate, failoverEndpoint)
       if ('response' in retryOutcome) {
         if (
-          failoverRouteGeneration === mirrorRouteGeneration
-          && modeGeneration === tileMirrorRouter.currentModeGeneration()
-          && failoverEndpoint === mirrorEndpointManager.getActive()
+          failoverRouteGeneration === mirrorRouteGeneration &&
+          modeGeneration === tileMirrorRouter.currentModeGeneration() &&
+          failoverEndpoint === mirrorEndpointManager.getActive()
         ) {
           tileMirrorRouter.noteMirrorSuccess(providerId, modeGeneration)
           mirrorEndpointManager.noteEndpointSuccess(failoverEndpoint)
@@ -783,29 +1046,53 @@ async function serveMirrorTile(
     if (tileMirrorRouter.commitMirrorFallback(providerId, modeGeneration)) {
       if (settings.tileMirrorMode === 'on') mirrorFallenBackProviders.add(providerId)
       scheduleMirrorFallbackExpirySync()
-      logger.warn('tiles', `镜像瓦片源（${mirrorEndpointLabel(endpoint)}）连续失败，${providerId} 已临时回退到原影像源`, outcome.detail)
+      logger.warn(
+        'tiles',
+        `镜像瓦片源（${mirrorEndpointLabel(endpoint)}）连续失败，${providerId} 已临时回退到原影像源`,
+        outcome.detail
+      )
       broadcastMirrorStatus(mirrorFallbackNotice())
     }
     return null
   }
   if (shouldLogTileFailure(`mirror:${endpoint}:${providerId}`)) {
-    logger.warn('tiles', `镜像瓦片请求失败（${mirrorEndpointShortLabel(endpoint)}），${providerId} 本次改用原影像源`, outcome.detail)
+    logger.warn(
+      'tiles',
+      `镜像瓦片请求失败（${mirrorEndpointShortLabel(endpoint)}），${providerId} 本次改用原影像源`,
+      outcome.detail
+    )
   }
   return null
 }
 
-async function serveOriginTile(providerId: string, key: TileKey, remoteUrl: string): Promise<Response> {
+async function serveOriginTile(
+  providerId: string,
+  key: TileKey,
+  remoteUrl: string
+): Promise<Response> {
   const previous = tileMirrorRouter.mirroredProviders(mirrorEligibleProviderIds())
   try {
     const payload = await fetchTilePayload(remoteUrl)
     if (payload.ok && payload.data) {
       const contentType = payload.headers.get('content-type') ?? 'image/png'
-      if (settings.tileCacheEnabled) void writeTile({ ...key, data: payload.data, contentType, expiresAt: Date.now() + TILE_TTL_MS })
+      if (settings.tileCacheEnabled)
+        void writeTile({
+          ...key,
+          data: payload.data,
+          contentType,
+          expiresAt: Date.now() + TILE_TTL_MS
+        })
       if (tileMirrorRouter.noteOriginSuccess(providerId)) notifyMirrorRouteChange(previous)
-      return new Response(payload.data, { headers: { 'content-type': contentType, 'x-guearth-cache': 'miss' } })
+      return new Response(payload.data, {
+        headers: { 'content-type': contentType, 'x-guearth-cache': 'miss' }
+      })
     }
     if (shouldLogTileFailure(`origin:${providerId}`)) {
-      logger.warn('tiles', `原影像瓦片请求失败，${providerId}`, `HTTP ${payload.status} ${describeTileTarget(key, remoteUrl)}`)
+      logger.warn(
+        'tiles',
+        `原影像瓦片请求失败，${providerId}`,
+        `HTTP ${payload.status} ${describeTileTarget(key, remoteUrl)}`
+      )
     }
     if (isRetryableTileStatus(payload.status)) {
       if (tileMirrorRouter.noteOriginFailure(providerId)) notifyMirrorRouteChange(previous)
@@ -817,7 +1104,11 @@ async function serveOriginTile(providerId: string, key: TileKey, remoteUrl: stri
     return new Response(`Tile request failed: ${payload.status}`, { status: payload.status })
   } catch (error) {
     if (shouldLogTileFailure(`origin:${providerId}`)) {
-      logger.warn('tiles', `原影像瓦片请求异常，${providerId}`, `${describeTileFetchError(error)} ${describeTileTarget(key, remoteUrl)}`)
+      logger.warn(
+        'tiles',
+        `原影像瓦片请求异常，${providerId}`,
+        `${describeTileFetchError(error)} ${describeTileTarget(key, remoteUrl)}`
+      )
     }
     if (tileMirrorRouter.noteOriginFailure(providerId)) notifyMirrorRouteChange(previous)
     const stale = await cachedTileResponse(key, true)
@@ -832,24 +1123,50 @@ async function handleTileProtocol(request: Request): Promise<Response> {
   const parts = parsed.pathname.split('/').filter(Boolean)
   if (parts.length !== 4) return new Response('Bad tile path', { status: 400 })
   const coordinates = parts.slice(1).map(Number)
-  if (!Number.isInteger(coordinates[0]) || coordinates[0] < 0 || !Number.isInteger(coordinates[1]) || !Number.isInteger(coordinates[2])) return new Response('Bad tile path', { status: 400 })
+  if (
+    !Number.isInteger(coordinates[0]) ||
+    coordinates[0] < 0 ||
+    !Number.isInteger(coordinates[1]) ||
+    !Number.isInteger(coordinates[2])
+  )
+    return new Response('Bad tile path', { status: 400 })
   const [level, x, y] = coordinates
   const granuleDate = viirsGranuleDate()
-  const requestStyleId = providerId === 'viirs-night' ? viirsCacheStyleId(safeId(parts[0]), granuleDate) : safeId(parts[0])
+  const requestStyleId =
+    providerId === 'viirs-night'
+      ? viirsCacheStyleId(safeId(parts[0]), granuleDate)
+      : safeId(parts[0])
   const kind = mirrorEligibleProviders[providerId]
-  const mirrorKey: TileKey = { providerId, styleId: mirrorCacheStyleId(requestStyleId), level, x, y }
+  const mirrorKey: TileKey = {
+    providerId,
+    styleId: mirrorCacheStyleId(requestStyleId),
+    level,
+    x,
+    y
+  }
   const originKey: TileKey = { providerId, styleId: requestStyleId, level, x, y }
   const modeGeneration = tileMirrorRouter.currentModeGeneration()
   const routeGeneration = mirrorRouteGeneration
   const endpoint = mirrorEndpointManager.getActive()
-  const mirrored = Boolean(kind) && Boolean(mirrorTileUrl(providerId, level, x, y, granuleDate, endpoint)) && mirrorSource(providerId) === 'mirror'
+  const mirrored =
+    Boolean(kind) &&
+    Boolean(mirrorTileUrl(providerId, level, x, y, granuleDate, endpoint)) &&
+    mirrorSource(providerId) === 'mirror'
   const key = mirrored ? mirrorKey : originKey
   const cached = await cachedTileResponse(key, false)
   if (cached) return cached
   const remoteUrl = tileRemoteUrl(providerId, requestStyleId, level, x, y, granuleDate)
   if (!remoteUrl) return new Response('Unknown provider', { status: 404 })
   if (kind && mirrored) {
-    const mirror = await serveMirrorTile(providerId, kind, mirrorKey, granuleDate, modeGeneration, routeGeneration, endpoint)
+    const mirror = await serveMirrorTile(
+      providerId,
+      kind,
+      mirrorKey,
+      granuleDate,
+      modeGeneration,
+      routeGeneration,
+      endpoint
+    )
     if (mirror) return mirror
   }
   return serveOriginTile(providerId, originKey, remoteUrl)
@@ -858,22 +1175,55 @@ async function handleTileProtocol(request: Request): Promise<Response> {
 function normalizeShape(value: unknown): StoredShape {
   if (!isRecord(value)) throw new Error('无效的标注数据')
   const id = safeId(value.id)
-  if (value.kind !== 'point' && value.kind !== 'polyline' && value.kind !== 'polygon' && value.kind !== 'arrow' && value.kind !== 'text') throw new Error('无效的标注类型')
+  if (
+    value.kind !== 'point' &&
+    value.kind !== 'polyline' &&
+    value.kind !== 'polygon' &&
+    value.kind !== 'arrow' &&
+    value.kind !== 'text'
+  )
+    throw new Error('无效的标注类型')
   if (!Array.isArray(value.positions)) throw new Error('无效的标注坐标')
-  const positions: GeoPosition[] = value.positions.map((item) => {
+  const positions: GeoPosition[] = value.positions.map(item => {
     if (!isRecord(item)) throw new Error('无效的标注坐标')
     const { longitude, latitude, height } = item
-    if (typeof longitude !== 'number' || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) throw new Error('无效的标注坐标')
-    if (typeof latitude !== 'number' || !Number.isFinite(latitude) || latitude < -90 || latitude > 90) throw new Error('无效的标注坐标')
-    if (typeof height !== 'number' || !Number.isFinite(height) || height < -11000 || height > 20000) throw new Error('无效的标注坐标')
+    if (
+      typeof longitude !== 'number' ||
+      !Number.isFinite(longitude) ||
+      longitude < -180 ||
+      longitude > 180
+    )
+      throw new Error('无效的标注坐标')
+    if (
+      typeof latitude !== 'number' ||
+      !Number.isFinite(latitude) ||
+      latitude < -90 ||
+      latitude > 90
+    )
+      throw new Error('无效的标注坐标')
+    if (typeof height !== 'number' || !Number.isFinite(height) || height < -11000 || height > 20000)
+      throw new Error('无效的标注坐标')
     return { longitude, latitude, height }
   })
-  const minimum = value.kind === 'point' || value.kind === 'text' ? 1 : value.kind === 'polygon' ? 3 : 2
+  const minimum =
+    value.kind === 'point' || value.kind === 'text' ? 1 : value.kind === 'polygon' ? 3 : 2
   if (positions.length < minimum || positions.length > 500) throw new Error('无效的标注坐标')
-  const validColor = (color: unknown, fallback: string): string => typeof color === 'string' && /^#[\da-f]{6}$/i.test(color) ? color.toLowerCase() : fallback
-  const fontFamily = typeof value.fontFamily === 'string' && value.fontFamily.length <= 128 && /^[\p{L}\p{N} .,'()&_\-]+$/u.test(value.fontFamily) ? value.fontFamily : 'Arial'
-  const fontSize = typeof value.fontSize === 'number' && Number.isFinite(value.fontSize) ? Math.min(72, Math.max(8, value.fontSize)) : 13
-  const lineWidth = typeof value.lineWidth === 'number' && Number.isFinite(value.lineWidth) ? Math.min(12, Math.max(1, value.lineWidth)) : 3
+  const validColor = (color: unknown, fallback: string): string =>
+    typeof color === 'string' && /^#[\da-f]{6}$/i.test(color) ? color.toLowerCase() : fallback
+  const fontFamily =
+    typeof value.fontFamily === 'string' &&
+    value.fontFamily.length <= 128 &&
+    /^[\p{L}\p{N} .,'()&_\-]+$/u.test(value.fontFamily)
+      ? value.fontFamily
+      : 'Arial'
+  const fontSize =
+    typeof value.fontSize === 'number' && Number.isFinite(value.fontSize)
+      ? Math.min(72, Math.max(8, value.fontSize))
+      : 13
+  const lineWidth =
+    typeof value.lineWidth === 'number' && Number.isFinite(value.lineWidth)
+      ? Math.min(12, Math.max(1, value.lineWidth))
+      : 3
   return {
     id,
     kind: value.kind,
@@ -885,20 +1235,24 @@ function normalizeShape(value: unknown): StoredShape {
     fontSize,
     textFrame: typeof value.textFrame === 'boolean' ? value.textFrame : false,
     lineWidth,
-    createdAt: typeof value.createdAt === 'number' && Number.isFinite(value.createdAt) ? value.createdAt : Date.now()
+    createdAt:
+      typeof value.createdAt === 'number' && Number.isFinite(value.createdAt)
+        ? value.createdAt
+        : Date.now()
   }
 }
 
 function normalizeAnnotations(value: unknown): AnnotationDocument {
-  if (!isRecord(value) || !Array.isArray(value.shapes) || !Array.isArray(value.entries)) throw new Error('无效的标注目录')
+  if (!isRecord(value) || !Array.isArray(value.shapes) || !Array.isArray(value.entries))
+    throw new Error('无效的标注目录')
   const shapes = value.shapes.map(normalizeShape)
-  const shapeIds = new Set(shapes.map((shape) => shape.id))
+  const shapeIds = new Set(shapes.map(shape => shape.id))
   if (shapeIds.size !== shapes.length) throw new Error('重复的标注')
   const referenced = new Set<string>()
   const folderIds = new Set<string>()
   function normalizeEntries(items: unknown[], depth: number): AnnotationEntry[] {
     if (items.length > 10000) throw new Error('标注目录过大')
-    return items.map((item) => {
+    return items.map(item => {
       if (!isRecord(item)) throw new Error('无效的目录项')
       const id = safeId(item.id)
       if (item.type === 'shape') {
@@ -906,7 +1260,13 @@ function normalizeAnnotations(value: unknown): AnnotationDocument {
         referenced.add(id)
         return { type: 'shape', id }
       }
-      if (item.type !== 'folder' || depth > 5 || !Array.isArray(item.children) || typeof item.name !== 'string') throw new Error('无效的文件夹')
+      if (
+        item.type !== 'folder' ||
+        depth > 5 ||
+        !Array.isArray(item.children) ||
+        typeof item.name !== 'string'
+      )
+        throw new Error('无效的文件夹')
       if (folderIds.has(id) || shapeIds.has(id)) throw new Error('重复的文件夹')
       folderIds.add(id)
       const name = item.name.trim().slice(0, 80)
@@ -923,14 +1283,14 @@ async function readAnnotations(): Promise<AnnotationDocument> {
   try {
     const parsed: unknown = await readJson(annotationsPath)
     if (!Array.isArray(parsed)) return normalizeAnnotations(parsed)
-    const shapes = parsed.flatMap((item) => {
+    const shapes = parsed.flatMap(item => {
       try {
         return [normalizeShape(item)]
       } catch {
         return []
       }
     })
-    return { shapes, entries: shapes.map((shape) => ({ type: 'shape' as const, id: shape.id })) }
+    return { shapes, entries: shapes.map(shape => ({ type: 'shape' as const, id: shape.id })) }
   } catch (error) {
     logger.warn('annotations', '读取标注失败，已按空目录处理', error)
     return { shapes: [], entries: [] }
@@ -948,7 +1308,9 @@ const MOTION_PANEL_IDS = new Set(['solar-path', 'obliquity', 'rotation-speed'])
 const SCENE_MAX = 200
 
 function normalizeNumber(value: unknown, min: number, max: number, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, value))
+    : fallback
 }
 
 function normalizeSceneCamera(value: unknown): SceneCamera {
@@ -956,9 +1318,12 @@ function normalizeSceneCamera(value: unknown): SceneCamera {
   const longitude = Number(value.longitude)
   const latitude = Number(value.latitude)
   const height = Number(value.height)
-  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) throw new Error('无效的场景视角')
-  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) throw new Error('无效的场景视角')
-  if (!Number.isFinite(height) || height <= 0 || height > 20000000) throw new Error('无效的场景视角')
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)
+    throw new Error('无效的场景视角')
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)
+    throw new Error('无效的场景视角')
+  if (!Number.isFinite(height) || height <= 0 || height > 20000000)
+    throw new Error('无效的场景视角')
   const heading = normalizeNumber(value.heading, -360, 360, 0)
   const pitch = normalizeNumber(value.pitch, -90, 90, -90)
   return { longitude, latitude, height, heading, pitch }
@@ -966,7 +1331,8 @@ function normalizeSceneCamera(value: unknown): SceneCamera {
 
 function normalizeSceneSimTime(value: unknown): SceneSimTime | null {
   if (value === null || value === undefined) return null
-  if (!isRecord(value) || typeof value.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.date)) throw new Error('无效的模拟时间')
+  if (!isRecord(value) || typeof value.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.date))
+    throw new Error('无效的模拟时间')
   return { date: value.date, hour: normalizeNumber(value.hour, 0, 24, 12) }
 }
 
@@ -988,9 +1354,18 @@ function normalizeStyleId(value: unknown): string | undefined {
 function normalizeSceneSnapshot(value: unknown): SceneSnapshot {
   if (!isRecord(value)) throw new Error('无效的场景快照')
   const overlays = Array.isArray(value.overlays)
-    ? [...new Set(value.overlays.filter((item): item is string => typeof item === 'string' && THEMATIC_LAYER_ID_SET.has(item)))]
+    ? [
+        ...new Set(
+          value.overlays.filter(
+            (item): item is string => typeof item === 'string' && THEMATIC_LAYER_ID_SET.has(item)
+          )
+        )
+      ]
     : []
-  const motionPanel = typeof value.motionPanel === 'string' && MOTION_PANEL_IDS.has(value.motionPanel) ? value.motionPanel : null
+  const motionPanel =
+    typeof value.motionPanel === 'string' && MOTION_PANEL_IDS.has(value.motionPanel)
+      ? value.motionPanel
+      : null
   return {
     camera: normalizeSceneCamera(value.camera),
     basemapId: safeId(value.basemapId ?? 'osm'),
@@ -1001,7 +1376,9 @@ function normalizeSceneSnapshot(value: unknown): SceneSnapshot {
     motionPanel,
     ensoPhase: normalizeEnsoPhase(value.ensoPhase),
     seaLevelRise: normalizeSeaLevelRise(value.seaLevelRise),
-    transportYear: Math.round(normalizeNumber(value.transportYear, HSR_START_YEAR, HSR_END_YEAR, HSR_END_YEAR))
+    transportYear: Math.round(
+      normalizeNumber(value.transportYear, HSR_START_YEAR, HSR_END_YEAR, HSR_END_YEAR)
+    )
   }
 }
 
@@ -1017,7 +1394,10 @@ function normalizeTeachingScene(value: unknown): TeachingScene {
     dwellMs: Math.round(normalizeNumber(value.dwellMs, 1000, 60000, 6000)),
     flyDurationMs: Math.round(normalizeNumber(value.flyDurationMs, 500, 15000, 3500)),
     snapshot: normalizeSceneSnapshot(value.snapshot),
-    createdAt: typeof value.createdAt === 'number' && Number.isFinite(value.createdAt) ? value.createdAt : Date.now()
+    createdAt:
+      typeof value.createdAt === 'number' && Number.isFinite(value.createdAt)
+        ? value.createdAt
+        : Date.now()
   }
 }
 
@@ -1025,7 +1405,7 @@ function normalizeSceneDocument(value: unknown): SceneDocument {
   if (!isRecord(value) || !Array.isArray(value.scenes)) throw new Error('无效的场景目录')
   if (value.scenes.length > SCENE_MAX) throw new Error('场景目录过大')
   const scenes = value.scenes.map(normalizeTeachingScene)
-  if (new Set(scenes.map((scene) => scene.id)).size !== scenes.length) throw new Error('重复的场景')
+  if (new Set(scenes.map(scene => scene.id)).size !== scenes.length) throw new Error('重复的场景')
   return { scenes }
 }
 
@@ -1050,24 +1430,50 @@ function ffmpegPath(): string {
 }
 
 const macRecordingHost: OffscreenMacSessionHost = {
-  setCancelHook: (hook) => { cancelOffscreenRecording = hook },
-  clearCancelHook: (hook) => { if (cancelOffscreenRecording === hook) cancelOffscreenRecording = null },
-  setTeardownHook: (hook) => { teardownOffscreenRecording = hook },
-  clearTeardownHook: (hook) => { if (teardownOffscreenRecording === hook) teardownOffscreenRecording = null },
-  adoptWindow: (window) => { offscreenRecordingWindow = window },
+  setCancelHook: hook => {
+    cancelOffscreenRecording = hook
+  },
+  clearCancelHook: hook => {
+    if (cancelOffscreenRecording === hook) cancelOffscreenRecording = null
+  },
+  setTeardownHook: hook => {
+    teardownOffscreenRecording = hook
+  },
+  clearTeardownHook: hook => {
+    if (teardownOffscreenRecording === hook) teardownOffscreenRecording = null
+  },
+  adoptWindow: window => {
+    offscreenRecordingWindow = window
+  },
   dropWindow: stopOffscreenRecordingWindow,
-  notePaintFrame: () => { offscreenPaintFrames += 1 },
-  resetPaintStats: () => { offscreenPaintStartedAt = Date.now(); offscreenPaintFrames = 0 },
-  resetPrewarnWarned: () => { offscreenPrewarmWarned = false },
+  notePaintFrame: () => {
+    offscreenPaintFrames += 1
+  },
+  resetPaintStats: () => {
+    offscreenPaintStartedAt = Date.now()
+    offscreenPaintFrames = 0
+  },
+  resetPrewarnWarned: () => {
+    offscreenPrewarmWarned = false
+  },
   usableDirectory: usableRecordingDirectory,
   sweepStaleDirectories: removeStaleOffscreenDirectories
 }
 
 function registerIpcHandlers(): void {
   ipcMain.handle('system:fonts', (): string[] => {
-    const families = new Set(process.platform === 'linux'
-      ? ['Arial', 'Noto Sans', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', 'DejaVu Sans']
-      : ['Arial', 'Segoe UI', 'Microsoft YaHei'])
+    const families = new Set(
+      process.platform === 'linux'
+        ? [
+            'Arial',
+            'Noto Sans',
+            'Noto Sans CJK SC',
+            'Noto Sans SC',
+            'WenQuanYi Micro Hei',
+            'DejaVu Sans'
+          ]
+        : ['Arial', 'Segoe UI', 'Microsoft YaHei']
+    )
     const registryKeys = [
       'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts',
       'HKCU\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts'
@@ -1075,7 +1481,11 @@ function registerIpcHandlers(): void {
     if (process.platform === 'win32') {
       for (const key of registryKeys) {
         try {
-          const result = execFileSync('reg.exe', ['query', key], { encoding: 'utf8', windowsHide: true, timeout: 5000 })
+          const result = execFileSync('reg.exe', ['query', key], {
+            encoding: 'utf8',
+            windowsHide: true,
+            timeout: 5000
+          })
           for (const line of result.split(/\r?\n/)) {
             const match = line.match(/^\s+(.+?)\s+REG_\w+\s+/)
             if (!match) continue
@@ -1090,7 +1500,11 @@ function registerIpcHandlers(): void {
       }
     } else {
       try {
-        const result = execFileSync('fc-list', ['--format', '%{family}\n'], { encoding: 'utf8', windowsHide: true, timeout: 5000 })
+        const result = execFileSync('fc-list', ['--format', '%{family}\n'], {
+          encoding: 'utf8',
+          windowsHide: true,
+          timeout: 5000
+        })
         for (const line of result.split(/\r?\n/)) {
           for (const family of line.split(',')) {
             const name = family.trim()
@@ -1104,187 +1518,246 @@ function registerIpcHandlers(): void {
     return [...families].sort((first, second) => first.localeCompare(second))
   })
   ipcMain.handle('settings:get', () => settingsSnapshot())
-  ipcMain.handle('settings:update', async (_event, patch: GuEarthSettingsPatch): Promise<GuEarthSettings> => {
-    if (!isRecord(patch)) throw new Error('无效的设置')
-    let tileMirrorModeChanged = false
-    let tileMirrorModeNow: TileMirrorMode = settings.tileMirrorMode
-    let tileMirrorSourceChanged = false
-    let tileMirrorSourceNow: MirrorEndpointPreference = settings.tileMirrorSource
-    let networkProxyChanged = false
-    await saveSettings((settings) => {
-      const nextSettings: PersistedSettings = {
-        ...settings,
-        providerCredentials: settings.providerCredentials
-      }
-      if (patch.selectedImageryProviderId !== undefined) nextSettings.selectedImageryProviderId = safeId(patch.selectedImageryProviderId)
-      if (patch.selectedTerrainProviderId !== undefined) nextSettings.selectedTerrainProviderId = safeId(patch.selectedTerrainProviderId)
-      if (patch.terrainExaggeration !== undefined) {
-        if (typeof patch.terrainExaggeration !== 'number' || !Number.isFinite(patch.terrainExaggeration)) throw new Error('无效的地形夸张设置')
-        nextSettings.terrainExaggeration = Math.min(5, Math.max(1, patch.terrainExaggeration))
-      }
-      if (patch.terrainLighting !== undefined) {
-        if (typeof patch.terrainLighting !== 'boolean') throw new Error('无效的光照设置')
-        nextSettings.terrainLighting = patch.terrainLighting
-      }
-      if (patch.tileCacheEnabled !== undefined) {
-        if (typeof patch.tileCacheEnabled !== 'boolean') throw new Error('无效的缓存设置')
-        nextSettings.tileCacheEnabled = patch.tileCacheEnabled
-      }
-      if (patch.tileMirrorMode !== undefined) {
-        if (!isTileMirrorMode(patch.tileMirrorMode)) throw new Error('无效的镜像瓦片设置')
-        tileMirrorModeChanged = patch.tileMirrorMode !== nextSettings.tileMirrorMode
-        tileMirrorModeNow = patch.tileMirrorMode
-        nextSettings.tileMirrorMode = patch.tileMirrorMode
-      }
-      if (patch.tileMirrorSource !== undefined) {
-        if (!isMirrorEndpointPreference(patch.tileMirrorSource)) throw new Error('无效的镜像源设置')
-        tileMirrorSourceChanged = patch.tileMirrorSource !== nextSettings.tileMirrorSource
-        tileMirrorSourceNow = patch.tileMirrorSource
-        nextSettings.tileMirrorSource = patch.tileMirrorSource
-      }
-      if (patch.mirrorConsentPrompted !== undefined) {
-        if (typeof patch.mirrorConsentPrompted !== 'boolean') throw new Error('无效的镜像协议确认设置')
-        nextSettings.mirrorConsentPrompted = patch.mirrorConsentPrompted
-      }
-      if (patch.touchInteractionMode !== undefined) {
-        if (!isTouchInteractionMode(patch.touchInteractionMode)) throw new Error('无效的触摸操作设置')
-        nextSettings.touchInteractionMode = patch.touchInteractionMode
-      }
-      if (patch.networkProxy !== undefined) {
-        if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')
-        const normalized = normalizeNetworkProxy(patch.networkProxy)
-        if (normalized === '' && patch.networkProxy.trim() !== '') throw new Error('无效的代理地址')
-        networkProxyChanged = normalized !== nextSettings.networkProxy
-        nextSettings.networkProxy = normalized
-      }
-      if (patch.providerStyles !== undefined) {
-        if (!isRecord(patch.providerStyles)) throw new Error('无效的影像样式')
-        const providerStyles = { ...settings.providerStyles }
-        for (const [providerId, styleId] of Object.entries(patch.providerStyles)) {
-          providerStyles[safeId(providerId)] = safeId(styleId)
+  ipcMain.handle(
+    'settings:update',
+    async (_event, patch: GuEarthSettingsPatch): Promise<GuEarthSettings> => {
+      if (!isRecord(patch)) throw new Error('无效的设置')
+      let tileMirrorModeChanged = false
+      let tileMirrorModeNow: TileMirrorMode = settings.tileMirrorMode
+      let tileMirrorSourceChanged = false
+      let tileMirrorSourceNow: MirrorEndpointPreference = settings.tileMirrorSource
+      let networkProxyChanged = false
+      await saveSettings(settings => {
+        const nextSettings: PersistedSettings = {
+          ...settings,
+          providerCredentials: settings.providerCredentials
         }
-        nextSettings.providerStyles = providerStyles
-      }
-      if (patch.setupGuideDismissed !== undefined) {
-        if (typeof patch.setupGuideDismissed !== 'boolean') throw new Error('无效的向导设置')
-        nextSettings.setupGuideDismissed = patch.setupGuideDismissed
-      }
-      if (patch.errorReportingEnabled !== undefined) {
-        if (typeof patch.errorReportingEnabled !== 'boolean') throw new Error('无效的错误报告设置')
-        nextSettings.errorReportingEnabled = patch.errorReportingEnabled
-      }
-      if (patch.telemetryEnabled !== undefined) {
-        if (typeof patch.telemetryEnabled !== 'boolean') throw new Error('无效的遥测设置')
-        nextSettings.telemetryEnabled = patch.telemetryEnabled
-      }
-      if (patch.aiTelemetryEnabled !== undefined) {
-        if (typeof patch.aiTelemetryEnabled !== 'boolean') throw new Error('无效的 AI 使用信息上报设置')
-        nextSettings.aiTelemetryEnabled = patch.aiTelemetryEnabled
-      }
-      return nextSettings
-    })
-    if (patch.errorReportingEnabled !== undefined || patch.telemetryEnabled !== undefined || patch.aiTelemetryEnabled !== undefined) {
-      applyPrivacySettings(settings)
-    }
-    if (networkProxyChanged) {
-      void applyNetworkProxy().then(() => {
-        advanceMirrorRouteGeneration()
-        const recovered = tileMirrorRouter.resetMirrorFallback()
-        mirrorFallenBackProviders.clear()
-        mirrorEndpointManager.clearFailures()
-        scheduleMirrorFallbackExpirySync()
-        if (settings.tileMirrorMode === 'on' && settings.tileMirrorSource === 'auto') {
-          void probeMirrorEndpoints('network')
-        } else if (recovered) {
-          broadcastMirrorStatus('')
+        if (patch.selectedImageryProviderId !== undefined)
+          nextSettings.selectedImageryProviderId = safeId(patch.selectedImageryProviderId)
+        if (patch.selectedTerrainProviderId !== undefined)
+          nextSettings.selectedTerrainProviderId = safeId(patch.selectedTerrainProviderId)
+        if (patch.terrainExaggeration !== undefined) {
+          if (
+            typeof patch.terrainExaggeration !== 'number' ||
+            !Number.isFinite(patch.terrainExaggeration)
+          )
+            throw new Error('无效的地形夸张设置')
+          nextSettings.terrainExaggeration = Math.min(5, Math.max(1, patch.terrainExaggeration))
         }
-        scheduleMirrorRefresh('network')
+        if (patch.terrainLighting !== undefined) {
+          if (typeof patch.terrainLighting !== 'boolean') throw new Error('无效的光照设置')
+          nextSettings.terrainLighting = patch.terrainLighting
+        }
+        if (patch.tileCacheEnabled !== undefined) {
+          if (typeof patch.tileCacheEnabled !== 'boolean') throw new Error('无效的缓存设置')
+          nextSettings.tileCacheEnabled = patch.tileCacheEnabled
+        }
+        if (patch.tileMirrorMode !== undefined) {
+          if (!isTileMirrorMode(patch.tileMirrorMode)) throw new Error('无效的镜像瓦片设置')
+          tileMirrorModeChanged = patch.tileMirrorMode !== nextSettings.tileMirrorMode
+          tileMirrorModeNow = patch.tileMirrorMode
+          nextSettings.tileMirrorMode = patch.tileMirrorMode
+        }
+        if (patch.tileMirrorSource !== undefined) {
+          if (!isMirrorEndpointPreference(patch.tileMirrorSource))
+            throw new Error('无效的镜像源设置')
+          tileMirrorSourceChanged = patch.tileMirrorSource !== nextSettings.tileMirrorSource
+          tileMirrorSourceNow = patch.tileMirrorSource
+          nextSettings.tileMirrorSource = patch.tileMirrorSource
+        }
+        if (patch.mirrorConsentPrompted !== undefined) {
+          if (typeof patch.mirrorConsentPrompted !== 'boolean')
+            throw new Error('无效的镜像协议确认设置')
+          nextSettings.mirrorConsentPrompted = patch.mirrorConsentPrompted
+        }
+        if (patch.touchInteractionMode !== undefined) {
+          if (!isTouchInteractionMode(patch.touchInteractionMode))
+            throw new Error('无效的触摸操作设置')
+          nextSettings.touchInteractionMode = patch.touchInteractionMode
+        }
+        if (patch.networkProxy !== undefined) {
+          if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')
+          const normalized = normalizeNetworkProxy(patch.networkProxy)
+          if (normalized === '' && patch.networkProxy.trim() !== '')
+            throw new Error('无效的代理地址')
+          networkProxyChanged = normalized !== nextSettings.networkProxy
+          nextSettings.networkProxy = normalized
+        }
+        if (patch.providerStyles !== undefined) {
+          if (!isRecord(patch.providerStyles)) throw new Error('无效的影像样式')
+          const providerStyles = { ...settings.providerStyles }
+          for (const [providerId, styleId] of Object.entries(patch.providerStyles)) {
+            providerStyles[safeId(providerId)] = safeId(styleId)
+          }
+          nextSettings.providerStyles = providerStyles
+        }
+        if (patch.setupGuideDismissed !== undefined) {
+          if (typeof patch.setupGuideDismissed !== 'boolean') throw new Error('无效的向导设置')
+          nextSettings.setupGuideDismissed = patch.setupGuideDismissed
+        }
+        if (patch.errorReportingEnabled !== undefined) {
+          if (typeof patch.errorReportingEnabled !== 'boolean')
+            throw new Error('无效的错误报告设置')
+          nextSettings.errorReportingEnabled = patch.errorReportingEnabled
+        }
+        if (patch.telemetryEnabled !== undefined) {
+          if (typeof patch.telemetryEnabled !== 'boolean') throw new Error('无效的遥测设置')
+          nextSettings.telemetryEnabled = patch.telemetryEnabled
+        }
+        if (patch.aiTelemetryEnabled !== undefined) {
+          if (typeof patch.aiTelemetryEnabled !== 'boolean')
+            throw new Error('无效的 AI 使用信息上报设置')
+          nextSettings.aiTelemetryEnabled = patch.aiTelemetryEnabled
+        }
+        return nextSettings
       })
-    }
-    if (tileMirrorModeChanged || tileMirrorSourceChanged) {
-      if (tileMirrorSourceChanged) {
-        mirrorEndpointProbeSeq += 1
-        mirrorEndpointProbing = false
-        mirrorEndpointManager.setPreference(tileMirrorSourceNow)
+      if (
+        patch.errorReportingEnabled !== undefined ||
+        patch.telemetryEnabled !== undefined ||
+        patch.aiTelemetryEnabled !== undefined
+      ) {
+        applyPrivacySettings(settings)
       }
-      if (tileMirrorModeChanged) {
-        tileMirrorRouter.setMode(tileMirrorModeNow)
-        if (tileMirrorModeNow !== 'on') {
+      if (networkProxyChanged) {
+        void applyNetworkProxy().then(() => {
+          advanceMirrorRouteGeneration()
+          const recovered = tileMirrorRouter.resetMirrorFallback()
+          mirrorFallenBackProviders.clear()
+          mirrorEndpointManager.clearFailures()
+          scheduleMirrorFallbackExpirySync()
+          if (settings.tileMirrorMode === 'on' && settings.tileMirrorSource === 'auto') {
+            void probeMirrorEndpoints('network')
+          } else if (recovered) {
+            broadcastMirrorStatus('')
+          }
+          scheduleMirrorRefresh('network')
+        })
+      }
+      if (tileMirrorModeChanged || tileMirrorSourceChanged) {
+        if (tileMirrorSourceChanged) {
           mirrorEndpointProbeSeq += 1
           mirrorEndpointProbing = false
+          mirrorEndpointManager.setPreference(tileMirrorSourceNow)
+        }
+        if (tileMirrorModeChanged) {
+          tileMirrorRouter.setMode(tileMirrorModeNow)
+          if (tileMirrorModeNow !== 'on') {
+            mirrorEndpointProbeSeq += 1
+            mirrorEndpointProbing = false
+          }
+        }
+        advanceMirrorRouteGeneration()
+        mirrorLoggedProviders.clear()
+        mirrorFallenBackProviders.clear()
+        mirrorEndpointManager.clearFailures()
+        tileMirrorRouter.resetMirrorFallback()
+        scheduleMirrorFallbackExpirySync()
+        syncMirrorConsumers()
+        if (tileMirrorModeChanged) {
+          logger.info('tiles', `镜像瓦片源模式已切换为「${tileMirrorModeNow}」`)
+        }
+        if (tileMirrorSourceChanged) {
+          const sourceDesc =
+            tileMirrorSourceNow === 'auto' ? '自动匹配' : mirrorEndpointLabel(tileMirrorSourceNow)
+          logger.info(
+            'tiles',
+            `镜像服务源已切换为「${sourceDesc}」，当前使用 ${mirrorEndpointLabel(mirrorEndpointManager.getActive())}`
+          )
+        }
+        broadcastMirrorStatus(tileMirrorModeChanged ? mirrorModeNotice(tileMirrorModeNow) : '')
+        if (tileMirrorModeChanged) scheduleMirrorRefresh('settings')
+        if (settings.tileMirrorMode === 'on' && settings.tileMirrorSource === 'auto') {
+          void probeMirrorEndpoints('settings')
+        }
+        if (tileMirrorModeChanged && tileMirrorModeNow === 'on')
+          void refreshEarthquakes().catch(() => undefined)
+      }
+      return settingsSnapshot()
+    }
+  )
+  ipcMain.handle(
+    'settings:set-provider-api-key',
+    async (_event, providerId: string, apiKey: string): Promise<ProviderCredentialStatus> => {
+      const id = safeId(providerId)
+      writeProviderKey(id, apiKey)
+      const status = { configured: true, updatedAt: Date.now() }
+      await saveSettings(current => ({
+        ...current,
+        providerCredentials: { ...current.providerCredentials, [id]: status }
+      }))
+      return status
+    }
+  )
+  ipcMain.handle(
+    'settings:clear-provider-api-key',
+    async (_event, providerId: string): Promise<ProviderCredentialStatus> => {
+      const id = safeId(providerId)
+      clearProviderKey(id)
+      const status = { configured: false, updatedAt: null }
+      await saveSettings(current => ({
+        ...current,
+        providerCredentials: { ...current.providerCredentials, [id]: status }
+      }))
+      return status
+    }
+  )
+  ipcMain.handle(
+    'settings:has-provider-api-key',
+    (_event, providerId: string): ProviderCredentialStatus => credentialStatus(safeId(providerId))
+  )
+  ipcMain.handle(
+    'settings:test-network-proxy',
+    async (_event, proxy: unknown): Promise<NetworkProxyTestResult> => {
+      const raw = typeof proxy === 'string' ? proxy : ''
+      const normalized = normalizeNetworkProxy(raw)
+      if (normalized === '' && raw.trim() !== '')
+        return { ok: false, elapsedMs: 0, error: '无效的代理地址' }
+      const startedAt = Date.now()
+      try {
+        const testSession = session.fromPartition('guearth-network-test')
+        await testSession.setProxy(proxyConfig(normalized))
+        const response = await testSession.fetch(
+          'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/0/0/0',
+          { headers: TILE_FETCH_HEADERS, signal: AbortSignal.timeout(TILE_FETCH_TIMEOUT_MS) }
+        )
+        if (!response.ok)
+          return { ok: false, elapsedMs: Date.now() - startedAt, error: `HTTP ${response.status}` }
+        await response.arrayBuffer()
+        return { ok: true, elapsedMs: Date.now() - startedAt, error: '' }
+      } catch (error) {
+        return {
+          ok: false,
+          elapsedMs: Date.now() - startedAt,
+          error: error instanceof Error ? error.message : String(error)
         }
       }
-      advanceMirrorRouteGeneration()
-      mirrorLoggedProviders.clear()
-      mirrorFallenBackProviders.clear()
-      mirrorEndpointManager.clearFailures()
-      tileMirrorRouter.resetMirrorFallback()
-      scheduleMirrorFallbackExpirySync()
-      syncMirrorConsumers()
-      if (tileMirrorModeChanged) {
-        logger.info('tiles', `镜像瓦片源模式已切换为「${tileMirrorModeNow}」`)
-      }
-      if (tileMirrorSourceChanged) {
-        const sourceDesc = tileMirrorSourceNow === 'auto' ? '自动匹配' : mirrorEndpointLabel(tileMirrorSourceNow)
-        logger.info('tiles', `镜像服务源已切换为「${sourceDesc}」，当前使用 ${mirrorEndpointLabel(mirrorEndpointManager.getActive())}`)
-      }
-      broadcastMirrorStatus(tileMirrorModeChanged ? mirrorModeNotice(tileMirrorModeNow) : '')
-      if (tileMirrorModeChanged) scheduleMirrorRefresh('settings')
-      if (settings.tileMirrorMode === 'on' && settings.tileMirrorSource === 'auto') {
-        void probeMirrorEndpoints('settings')
-      }
-      if (tileMirrorModeChanged && tileMirrorModeNow === 'on') void refreshEarthquakes().catch(() => undefined)
     }
-    return settingsSnapshot()
-  })
-  ipcMain.handle('settings:set-provider-api-key', async (_event, providerId: string, apiKey: string): Promise<ProviderCredentialStatus> => {
-    const id = safeId(providerId)
-    writeProviderKey(id, apiKey)
-    const status = { configured: true, updatedAt: Date.now() }
-    await saveSettings((current) => ({ ...current, providerCredentials: { ...current.providerCredentials, [id]: status } }))
-    return status
-  })
-  ipcMain.handle('settings:clear-provider-api-key', async (_event, providerId: string): Promise<ProviderCredentialStatus> => {
-    const id = safeId(providerId)
-    clearProviderKey(id)
-    const status = { configured: false, updatedAt: null }
-    await saveSettings((current) => ({ ...current, providerCredentials: { ...current.providerCredentials, [id]: status } }))
-    return status
-  })
-  ipcMain.handle('settings:has-provider-api-key', (_event, providerId: string): ProviderCredentialStatus => credentialStatus(safeId(providerId)))
-  ipcMain.handle('settings:test-network-proxy', async (_event, proxy: unknown): Promise<NetworkProxyTestResult> => {
-    const raw = typeof proxy === 'string' ? proxy : ''
-    const normalized = normalizeNetworkProxy(raw)
-    if (normalized === '' && raw.trim() !== '') return { ok: false, elapsedMs: 0, error: '无效的代理地址' }
-    const startedAt = Date.now()
-    try {
-      const testSession = session.fromPartition('guearth-network-test')
-      await testSession.setProxy(proxyConfig(normalized))
-      const response = await testSession.fetch('https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/0/0/0', { headers: TILE_FETCH_HEADERS, signal: AbortSignal.timeout(TILE_FETCH_TIMEOUT_MS) })
-      if (!response.ok) return { ok: false, elapsedMs: Date.now() - startedAt, error: `HTTP ${response.status}` }
-      await response.arrayBuffer()
-      return { ok: true, elapsedMs: Date.now() - startedAt, error: '' }
-    } catch (error) {
-      return { ok: false, elapsedMs: Date.now() - startedAt, error: error instanceof Error ? error.message : String(error) }
-    }
-  })
+  )
   ipcMain.handle('places:search', async (_event, keyword: unknown, provider: unknown) => {
     if (typeof keyword !== 'string') throw new Error('无效的搜索关键词')
-    if (provider !== undefined && provider !== 'amap' && provider !== 'baidu') throw new Error('无效的搜索源')
-    const preferred: PlaceSearchProvider = provider ?? (hasProviderKey('amap') ? 'amap' : hasProviderKey('baidu') ? 'baidu' : 'amap')
+    if (provider !== undefined && provider !== 'amap' && provider !== 'baidu')
+      throw new Error('无效的搜索源')
+    const preferred: PlaceSearchProvider =
+      provider ?? (hasProviderKey('amap') ? 'amap' : hasProviderKey('baidu') ? 'baidu' : 'amap')
     const requestId = beginPlacesRequest()
-    const primary = preferred === 'baidu' ? await searchBaiduPlaces(keyword, requestId) : await searchPlaces(keyword, undefined, requestId)
+    const primary =
+      preferred === 'baidu'
+        ? await searchBaiduPlaces(keyword, requestId)
+        : await searchPlaces(keyword, undefined, requestId)
     if (primary.superseded || !primary.error) return { ...primary, source: preferred }
     const alternative: PlaceSearchProvider = preferred === 'baidu' ? 'amap' : 'baidu'
     if (!hasProviderKey(alternative)) return { ...primary, source: preferred }
-    const fallback = alternative === 'baidu' ? await searchBaiduPlaces(keyword) : await searchPlaces(keyword)
+    const fallback =
+      alternative === 'baidu' ? await searchBaiduPlaces(keyword) : await searchPlaces(keyword)
     if (fallback.error || fallback.superseded) return { ...primary, source: preferred }
     return { ...fallback, source: alternative, fellBackFrom: preferred }
   })
   ipcMain.handle('places:poi-statistics', async (_event, request: unknown) => {
     if (!isRecord(request)) throw new Error('无效的 POI 统计请求')
-    const numberArg = (value: unknown): number | undefined => typeof value === 'number' && Number.isFinite(value) ? value : undefined
-    const stringArg = (value: unknown): string | undefined => typeof value === 'string' && value.trim() ? value : undefined
+    const numberArg = (value: unknown): number | undefined =>
+      typeof value === 'number' && Number.isFinite(value) ? value : undefined
+    const stringArg = (value: unknown): string | undefined =>
+      typeof value === 'string' && value.trim() ? value : undefined
     return poiStatistics({
       centerName: stringArg(request.centerName),
       longitude: numberArg(request.longitude),
@@ -1309,32 +1782,39 @@ function registerIpcHandlers(): void {
   })
   ipcMain.handle('datasets:online-data', () => getOnlineData())
   ipcMain.handle('datasets:ensure-typhoons', (_event, retry) => ensureTyphoons(retry === true))
-  ipcMain.handle('datasets:earthquakes', (_event, refresh) => (refresh === true ? refreshEarthquakes() : getStartupEarthquakes()))
+  ipcMain.handle('datasets:earthquakes', (_event, refresh) =>
+    refresh === true ? refreshEarthquakes() : getStartupEarthquakes()
+  )
   ipcMain.handle('datasets:provinces', () => loadProvinceGeometry())
   ipcMain.handle('tiles:get', (_event, key: TileKey) => readTile(key))
   ipcMain.handle('tiles:put', (_event, entry: TileCacheEntry) => writeTile(entry))
   ipcMain.handle('tiles:mirror-status', (): TileMirrorStatus => mirrorStatus())
-  ipcMain.handle('tiles:reset-mirror-fallback', (_event, providerId?: unknown, notify = true): TileMirrorStatus => {
-    const id = typeof providerId === 'string' && providerId.trim() ? safeId(providerId) : undefined
-    advanceMirrorRouteGeneration()
-    const recovered = tileMirrorRouter.resetMirrorFallback(id)
-    mirrorEndpointManager.clearFailures()
-    if (id) mirrorFallenBackProviders.delete(id)
-    else mirrorFallenBackProviders.clear()
-    scheduleMirrorFallbackExpirySync()
-    if (recovered) {
-      logger.info('tiles', `已重置镜像回退状态，${id ?? '全部底图源'} 重新尝试镜像服务`)
-      if (notify !== false) broadcastMirrorStatus('')
+  ipcMain.handle(
+    'tiles:reset-mirror-fallback',
+    (_event, providerId?: unknown, notify = true): TileMirrorStatus => {
+      const id =
+        typeof providerId === 'string' && providerId.trim() ? safeId(providerId) : undefined
+      advanceMirrorRouteGeneration()
+      const recovered = tileMirrorRouter.resetMirrorFallback(id)
+      mirrorEndpointManager.clearFailures()
+      if (id) mirrorFallenBackProviders.delete(id)
+      else mirrorFallenBackProviders.clear()
+      scheduleMirrorFallbackExpirySync()
+      if (recovered) {
+        logger.info('tiles', `已重置镜像回退状态，${id ?? '全部底图源'} 重新尝试镜像服务`)
+        if (notify !== false) broadcastMirrorStatus('')
+      }
+      return mirrorStatus()
     }
-    return mirrorStatus()
-  })
+  )
   ipcMain.handle('tiles:probe-mirror-endpoints', async (): Promise<TileMirrorStatus> => {
     mirrorEndpointManager.clearFailures()
     await probeMirrorEndpoints('manual')
     return mirrorStatus()
   })
   ipcMain.handle('tiles:clear', (_event, providerId?: string) => {
-    const target = providerId === undefined ? tileCachePath : storageChildPath(tileCachePath, safeId(providerId))
+    const target =
+      providerId === undefined ? tileCachePath : storageChildPath(tileCachePath, safeId(providerId))
     return enqueueTileMutation(async () => {
       if (tilePrunePromise) await tilePrunePromise
       await rm(target, { recursive: true, force: true })
@@ -1358,14 +1838,18 @@ function registerIpcHandlers(): void {
       throw error instanceof Error ? error : new Error(String(error))
     }
   })
-  ipcMain.handle('recordings:get-directory', (): Promise<string | null> => usableRecordingDirectory())
+  ipcMain.handle('recordings:get-directory', (): Promise<string | null> =>
+    usableRecordingDirectory()
+  )
   ipcMain.handle('recordings:choose-directory', async (event): Promise<string | null> => {
     const owner = BrowserWindow.fromWebContents(event.sender)
     const options = {
       title: '选择视频保存文件夹',
       properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[]
     }
-    const result = owner ? await dialog.showOpenDialog(owner, options) : await dialog.showOpenDialog(options)
+    const result = owner
+      ? await dialog.showOpenDialog(owner, options)
+      : await dialog.showOpenDialog(options)
     if (result.canceled || !result.filePaths[0]) return null
     const directory = result.filePaths[0]
     try {
@@ -1375,55 +1859,74 @@ function registerIpcHandlers(): void {
     } catch {
       throw new Error('所选文件夹不可写，请选择其他文件夹')
     }
-    await saveSettings((current) => ({ ...current, recordingDirectory: directory }))
+    await saveSettings(current => ({ ...current, recordingDirectory: directory }))
     return directory
   })
-  ipcMain.handle('recordings:offscreen-probe', async (_event, script: unknown): Promise<OffscreenRecordingProbeResult> => {
-    assertOffscreenRecordingIdle()
-    if (script === undefined) return startOffscreenRecordingWindow()
-    return startOffscreenRecordingWindow(normalizeOffscreenRecordingScript(script))
-  })
-  ipcMain.handle('recordings:offscreen-encode', async (event, script: unknown): Promise<RecordingSaveResult> => {
-    if (process.platform === 'darwin') {
+  ipcMain.handle(
+    'recordings:offscreen-probe',
+    async (_event, script: unknown): Promise<OffscreenRecordingProbeResult> => {
+      assertOffscreenRecordingIdle()
+      if (script === undefined) return startOffscreenRecordingWindow()
+      return startOffscreenRecordingWindow(normalizeOffscreenRecordingScript(script))
+    }
+  )
+  ipcMain.handle(
+    'recordings:offscreen-encode',
+    async (event, script: unknown): Promise<RecordingSaveResult> => {
+      if (process.platform === 'darwin') {
+        assertOffscreenRecordingIdle()
+        const requester = event.sender
+        offscreenRecordRequester = requester
+        try {
+          return await encodeMacOffscreenRecording(
+            normalizeOffscreenRecordingScript(script),
+            macRecordingHost
+          )
+        } finally {
+          if (offscreenRecordRequester === requester) offscreenRecordRequester = null
+        }
+      }
+      assertOffscreenRecordingSupported(process.platform)
       assertOffscreenRecordingIdle()
       const requester = event.sender
       offscreenRecordRequester = requester
       try {
-        return await encodeMacOffscreenRecording(normalizeOffscreenRecordingScript(script), macRecordingHost)
+        return await encodeOffscreenRecording(normalizeOffscreenRecordingScript(script))
       } finally {
         if (offscreenRecordRequester === requester) offscreenRecordRequester = null
       }
     }
-    assertOffscreenRecordingSupported(process.platform)
-    assertOffscreenRecordingIdle()
-    const requester = event.sender
-    offscreenRecordRequester = requester
-    try {
-      return await encodeOffscreenRecording(normalizeOffscreenRecordingScript(script))
-    } finally {
-      if (offscreenRecordRequester === requester) offscreenRecordRequester = null
-    }
-  })
+  )
   ipcMain.on('recordings:offscreen-progress', (event, payload: unknown): void => {
     const target = offscreenRecordRequester
-    if (!target || target.isDestroyed() || event.sender !== offscreenRecordingWindow?.webContents) return
+    if (!target || target.isDestroyed() || event.sender !== offscreenRecordingWindow?.webContents)
+      return
     if (!isRecord(payload)) return
     const sceneIndex = normalizeNumber(payload.sceneIndex, 0, 1000, 0)
     const totalScenes = normalizeNumber(payload.totalScenes, 0, 1000, 0)
     const preparing = payload.phase === 'preparing'
     const timedOut = payload.timedOut === true
     if (preparing) {
-      logger.info('recording', `预热视角 ${Math.round(sceneIndex)}/${Math.round(totalScenes)}${timedOut ? '（已有视角超出预加载预算）' : ''}`)
+      logger.info(
+        'recording',
+        `预热视角 ${Math.round(sceneIndex)}/${Math.round(totalScenes)}${timedOut ? '（已有视角超出预加载预算）' : ''}`
+      )
       if (timedOut && !offscreenPrewarmWarned) {
         offscreenPrewarmWarned = true
         logger.warn('recording', '部分录制视角的高清瓦片未在预加载预算内完成')
       }
     }
-    target.send('recordings:offscreen-progress', { phase: preparing ? 'preparing' : 'recording', sceneIndex: Math.round(sceneIndex), totalScenes: Math.round(totalScenes), timedOut })
+    target.send('recordings:offscreen-progress', {
+      phase: preparing ? 'preparing' : 'recording',
+      sceneIndex: Math.round(sceneIndex),
+      totalScenes: Math.round(totalScenes),
+      timedOut
+    })
   })
   ipcMain.on('recordings:offscreen-notice', (event, message: unknown): void => {
     const target = offscreenRecordRequester
-    if (!target || target.isDestroyed() || event.sender !== offscreenRecordingWindow?.webContents) return
+    if (!target || target.isDestroyed() || event.sender !== offscreenRecordingWindow?.webContents)
+      return
     if (typeof message !== 'string' || !message.trim()) return
     target.send('recordings:offscreen-notice', message.trim().slice(0, 200))
   })
@@ -1437,30 +1940,39 @@ function registerIpcHandlers(): void {
     const value = quality === 'standard' || quality === 'ultra' ? quality : 'high'
     forwardOffscreenCommand(event, `window.guEarthOffscreenRecorder.setPrewarmQuality('${value}')`)
   })
-  ipcMain.handle('recordings:offscreen-cancel', (): void => { cancelOffscreenRecording?.() })
-  ipcMain.handle('recordings:offscreen-stats', (): OffscreenRecordingProbeResult => offscreenRecordingStats())
+  ipcMain.handle('recordings:offscreen-cancel', (): void => {
+    cancelOffscreenRecording?.()
+  })
+  ipcMain.handle('recordings:offscreen-stats', (): OffscreenRecordingProbeResult =>
+    offscreenRecordingStats()
+  )
   ipcMain.handle('logging:copy-report', (_event, rendererDump: unknown): void => {
     if (typeof rendererDump !== 'string') throw new Error('无效的日志数据')
-    clipboard.writeText([
-      '=== 咕咕地球诊断日志 ===',
-      `版本 ${app.getVersion()} | Electron ${process.versions.electron} | Chrome ${process.versions.chrome} | Node ${process.versions.node} | ${process.platform} ${process.getSystemVersion()}`,
-      `生成时间 ${new Date().toLocaleString()}`,
-      '',
-      '== 渲染进程 ==',
-      rendererDump || '（无日志）',
-      '',
-      '== 主进程 ==',
-      logger.dump() || '（无日志）'
-    ].join('\n'))
+    clipboard.writeText(
+      [
+        '=== 咕咕地球诊断日志 ===',
+        `版本 ${app.getVersion()} | Electron ${process.versions.electron} | Chrome ${process.versions.chrome} | Node ${process.versions.node} | ${process.platform} ${process.getSystemVersion()}`,
+        `生成时间 ${new Date().toLocaleString()}`,
+        '',
+        '== 渲染进程 ==',
+        rendererDump || '（无日志）',
+        '',
+        '== 主进程 ==',
+        logger.dump() || '（无日志）'
+      ].join('\n')
+    )
   })
   ipcMain.on('recordings:offscreen-frame-ack', (event, count: unknown): void => {
     if (event.sender !== offscreenRecordingWindow?.webContents) return
     noteMacOffscreenFrameAck(count)
   })
-  ipcMain.on('recordings:offscreen-video-chunk', (event, bytes: unknown, position: unknown): void => {
-    if (event.sender !== offscreenRecordingWindow?.webContents) return
-    deliverMacOffscreenVideo(bytes, position)
-  })
+  ipcMain.on(
+    'recordings:offscreen-video-chunk',
+    (event, bytes: unknown, position: unknown): void => {
+      if (event.sender !== offscreenRecordingWindow?.webContents) return
+      deliverMacOffscreenVideo(bytes, position)
+    }
+  )
   ipcMain.on('recordings:offscreen-video-complete', (event): void => {
     if (event.sender !== offscreenRecordingWindow?.webContents) return
     deliverMacOffscreenVideoComplete()
@@ -1468,7 +1980,13 @@ function registerIpcHandlers(): void {
 }
 
 function assertOffscreenRecordingIdle(): void {
-  if (!offscreenRecordingWindow && !cancelOffscreenRecording && !teardownOffscreenRecording && !offscreenRecordRequester) return
+  if (
+    !offscreenRecordingWindow &&
+    !cancelOffscreenRecording &&
+    !teardownOffscreenRecording &&
+    !offscreenRecordRequester
+  )
+    return
   throw new Error('已有离屏录制任务正在进行，请稍后再试')
 }
 
@@ -1482,7 +2000,10 @@ function stopOffscreenRecordingWindow(): void {
 
 function taskkillProcessTree(pid: number): boolean {
   try {
-    execFileSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
+    execFileSync('taskkill', ['/pid', String(pid), '/T', '/F'], {
+      windowsHide: true,
+      stdio: 'ignore'
+    })
     return true
   } catch {
     return false
@@ -1499,7 +2020,9 @@ function terminateOffscreenEncoder(encoder: ReturnType<typeof spawn> | null): vo
   }
 }
 
-async function startOffscreenRecordingWindow(script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> {
+async function startOffscreenRecordingWindow(
+  script?: OffscreenRecordingScript
+): Promise<OffscreenRecordingProbeResult> {
   stopOffscreenRecordingWindow()
   const targetWidth = script?.width ?? 1280
   const targetHeight = script?.height ?? 720
@@ -1529,7 +2052,9 @@ async function startOffscreenRecordingWindow(script?: OffscreenRecordingScript):
     window.webContents.setFrameRate(targetFps)
     const ready = new Promise<void>((resolve, reject) => {
       window.webContents.once('did-finish-load', () => resolve())
-      window.webContents.once('did-fail-load', (_event, code, description) => reject(new Error(`${code}: ${description}`)))
+      window.webContents.once('did-fail-load', (_event, code, description) =>
+        reject(new Error(`${code}: ${description}`))
+      )
     })
     const loading = process.env['ELECTRON_RENDERER_URL']
       ? window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/offscreen.html`)
@@ -1537,19 +2062,26 @@ async function startOffscreenRecordingWindow(script?: OffscreenRecordingScript):
     await Promise.all([loading, ready])
     if (script) {
       const serialized = JSON.stringify(script).replace(/</g, '\\u003c')
-      await window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.prepare(${serialized})`)
+      await window.webContents.executeJavaScript(
+        `window.guEarthOffscreenRecorder.prepare(${serialized})`
+      )
     }
     offscreenPaintStartedAt = Date.now()
     offscreenPaintFrames = 0
     window.webContents.startPainting()
     if (script) {
       const serialized = JSON.stringify(script).replace(/</g, '\\u003c')
-      await window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.play(${serialized})`)
+      await window.webContents.executeJavaScript(
+        `window.guEarthOffscreenRecorder.play(${serialized})`
+      )
     } else {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise(resolve => setTimeout(resolve, 1000))
     }
     const elapsed = Math.max(1, Date.now() - offscreenPaintStartedAt)
-    return { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
+    return {
+      fps: Math.round((offscreenPaintFrames * 1000) / elapsed),
+      frames: offscreenPaintFrames
+    }
   } finally {
     if (created && offscreenRecordingWindow === created) stopOffscreenRecordingWindow()
   }
@@ -1557,13 +2089,16 @@ async function startOffscreenRecordingWindow(script?: OffscreenRecordingScript):
 
 function offscreenRecordingStats(): { fps: number; frames: number } {
   const elapsed = Math.max(1, Date.now() - offscreenPaintStartedAt)
-  return { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
+  return { fps: Math.round((offscreenPaintFrames * 1000) / elapsed), frames: offscreenPaintFrames }
 }
 
 function normalizeOffscreenTerrain(value: unknown): OffscreenRecordingScript['terrain'] {
   if (!isRecord(value)) return { providerId: 'ellipsoid', exaggeration: 1, lighting: false }
   return {
-    providerId: typeof value.providerId === 'string' && TERRAIN_PROVIDER_ID_SET.has(value.providerId) ? value.providerId : 'ellipsoid',
+    providerId:
+      typeof value.providerId === 'string' && TERRAIN_PROVIDER_ID_SET.has(value.providerId)
+        ? value.providerId
+        : 'ellipsoid',
     exaggeration: normalizeNumber(value.exaggeration, 1, 5, 1),
     lighting: value.lighting === true
   }
@@ -1575,32 +2110,67 @@ function normalizeOffscreenRecordingScript(value: unknown): OffscreenRecordingSc
   return {
     title: typeof value.title === 'string' ? value.title.slice(0, 120) : '',
     scenes: sceneDocument.scenes,
-    annotations: Array.isArray(value.annotations) ? value.annotations.flatMap((entry) => {
-      if (!isRecord(entry) || typeof entry.sceneId !== 'string' || typeof entry.name !== 'string' || !Array.isArray(entry.positions)) return []
-      if (entry.kind !== 'point' && entry.kind !== 'polyline' && entry.kind !== 'polygon') return []
-      const positions = entry.positions.flatMap((position) => isRecord(position) ? [{ longitude: normalizeNumber(position.longitude, -180, 180, 0), latitude: normalizeNumber(position.latitude, -90, 90, 0), height: normalizeNumber(position.height, -10000, 100000000, 0) }] : [])
-      if (!positions.length) return []
-      return [{
-        sceneId: entry.sceneId,
-        kind: entry.kind,
-        name: entry.name.slice(0, 120),
-        positions,
-        color: typeof entry.color === 'string' ? entry.color.slice(0, 32) : '#1677ff',
-        textColor: typeof entry.textColor === 'string' ? entry.textColor.slice(0, 32) : '#1f1f1f',
-        fontFamily: typeof entry.fontFamily === 'string' ? entry.fontFamily.slice(0, 120) : 'Arial',
-        fontSize: normalizeNumber(entry.fontSize, 8, 72, 13),
-        textFrame: entry.textFrame === true,
-        lineWidth: normalizeNumber(entry.lineWidth, 1, 20, 3)
-      }]
-    }) : [],
+    annotations: Array.isArray(value.annotations)
+      ? value.annotations.flatMap(entry => {
+          if (
+            !isRecord(entry) ||
+            typeof entry.sceneId !== 'string' ||
+            typeof entry.name !== 'string' ||
+            !Array.isArray(entry.positions)
+          )
+            return []
+          if (entry.kind !== 'point' && entry.kind !== 'polyline' && entry.kind !== 'polygon')
+            return []
+          const positions = entry.positions.flatMap(position =>
+            isRecord(position)
+              ? [
+                  {
+                    longitude: normalizeNumber(position.longitude, -180, 180, 0),
+                    latitude: normalizeNumber(position.latitude, -90, 90, 0),
+                    height: normalizeNumber(position.height, -10000, 100000000, 0)
+                  }
+                ]
+              : []
+          )
+          if (!positions.length) return []
+          return [
+            {
+              sceneId: entry.sceneId,
+              kind: entry.kind,
+              name: entry.name.slice(0, 120),
+              positions,
+              color: typeof entry.color === 'string' ? entry.color.slice(0, 32) : '#1677ff',
+              textColor:
+                typeof entry.textColor === 'string' ? entry.textColor.slice(0, 32) : '#1f1f1f',
+              fontFamily:
+                typeof entry.fontFamily === 'string' ? entry.fontFamily.slice(0, 120) : 'Arial',
+              fontSize: normalizeNumber(entry.fontSize, 8, 72, 13),
+              textFrame: entry.textFrame === true,
+              lineWidth: normalizeNumber(entry.lineWidth, 1, 20, 3)
+            }
+          ]
+        })
+      : [],
     terrain: normalizeOffscreenTerrain(value.terrain),
     seaLevelHeights: Array.isArray(value.seaLevelHeights)
-      ? value.seaLevelHeights.slice(0, 4096).map((height) => typeof height === 'number' && Number.isFinite(height) ? Math.round(height * 100) / 100 : null)
+      ? value.seaLevelHeights
+          .slice(0, 4096)
+          .map(height =>
+            typeof height === 'number' && Number.isFinite(height)
+              ? Math.round(height * 100) / 100
+              : null
+          )
       : [],
-    prewarmQuality: value.prewarmQuality === 'standard' || value.prewarmQuality === 'ultra' ? value.prewarmQuality : 'high',
+    prewarmQuality:
+      value.prewarmQuality === 'standard' || value.prewarmQuality === 'ultra'
+        ? value.prewarmQuality
+        : 'high',
     centerTarget: value.centerTarget === true,
     width: Math.min(1920, Math.max(320, Math.round(normalizeNumber(value.width, 320, 1920, 1280)))),
-    height: Math.min(1080, Math.max(240, Math.round(normalizeNumber(value.height, 240, 1080, 720)))),
+    height: Math.min(
+      1080,
+      Math.max(240, Math.round(normalizeNumber(value.height, 240, 1080, 720)))
+    ),
     fps: Math.min(60, Math.max(1, Math.round(normalizeNumber(value.fps, 1, 60, 30))))
   }
 }
@@ -1630,11 +2200,17 @@ function forwardOffscreenCommand(event: Electron.IpcMainEvent, expression: strin
   void window.webContents.executeJavaScript(expression).catch(() => undefined)
 }
 
-async function offscreenFrameDirectoryActive(directory: string, entryName: string): Promise<boolean> {
+async function offscreenFrameDirectoryActive(
+  directory: string,
+  entryName: string
+): Promise<boolean> {
   const path = resolveOffscreenEntry(directory, entryName)
   if (!path) return true
   try {
-    const owner = Number.parseInt((await readFile(join(path, OFFSCREEN_OWNER_FILE), 'utf8')).trim(), 10)
+    const owner = Number.parseInt(
+      (await readFile(join(path, OFFSCREEN_OWNER_FILE), 'utf8')).trim(),
+      10
+    )
     if (!Number.isInteger(owner) || owner <= 0) return false
     if (owner === process.pid) return true
     process.kill(owner, 0)
@@ -1655,14 +2231,16 @@ async function offscreenFrameDirectoryActive(directory: string, entryName: strin
 async function removeStaleOffscreenDirectories(directory: string): Promise<void> {
   try {
     const entries = await readdir(directory, { withFileTypes: true })
-    await Promise.all(entries
-      .filter((entry) => entry.isDirectory() && entry.name.startsWith(OFFSCREEN_TEMP_PREFIX))
-      .map(async (entry) => {
-        if (await offscreenFrameDirectoryActive(directory, entry.name)) return
-        const path = resolveOffscreenEntry(directory, entry.name)
-        if (!path) return
-        await rm(path, { recursive: true, force: true }).catch(() => undefined)
-      }))
+    await Promise.all(
+      entries
+        .filter(entry => entry.isDirectory() && entry.name.startsWith(OFFSCREEN_TEMP_PREFIX))
+        .map(async entry => {
+          if (await offscreenFrameDirectoryActive(directory, entry.name)) return
+          const path = resolveOffscreenEntry(directory, entry.name)
+          if (!path) return
+          await rm(path, { recursive: true, force: true }).catch(() => undefined)
+        })
+    )
   } catch {
     return
   }
@@ -1693,7 +2271,10 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       const directory = tempDir
       tempDir = null
       if (directory) rmSync(directory, { recursive: true, force: true })
-      logger.info('recording', pending ? '应用退出，已中止离屏录制并清理临时文件' : '应用退出，已清理离屏录制临时文件')
+      logger.info(
+        'recording',
+        pending ? '应用退出，已中止离屏录制并清理临时文件' : '应用退出，已清理离屏录制临时文件'
+      )
       if (pending) resolve({ path: '', bytes: 0, cancelled: true })
     }
     teardownOffscreenRecording = teardown
@@ -1735,7 +2316,12 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       const outputPath = join(directory, `GuEarth-${stamp}-${randomUUID().slice(0, 8)}.mp4`)
       const targetFps = script.fps
       const workArea = screen.getPrimaryDisplay().workAreaSize
-      const capture = offscreenCaptureSize(script.width, script.height, workArea.width, workArea.height)
+      const capture = offscreenCaptureSize(
+        script.width,
+        script.height,
+        workArea.width,
+        workArea.height
+      )
       recorderWindow = new BrowserWindow({
         show: false,
         width: capture.width,
@@ -1769,12 +2355,23 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       let pendingFrames = 0
       window.webContents.on('paint', (_event, _dirty, image) => {
         offscreenPaintFrames += 1
-        if (settled || !capturing || image.isEmpty() || pendingFrames >= OFFSCREEN_MAX_PENDING_FRAMES) return
+        if (
+          settled ||
+          !capturing ||
+          image.isEmpty() ||
+          pendingFrames >= OFFSCREEN_MAX_PENDING_FRAMES
+        )
+          return
         const size = image.getSize()
         if (!captureLogged) {
           captureLogged = true
-          logger.info('recording', `离屏采集 ${size.width}x${size.height}，输出 ${script.width}x${script.height}`, `窗口 ${capture.width}x${capture.height} 工作区 ${workArea.width}x${workArea.height}`)
-          if (Math.abs(size.width / size.height - script.width / script.height) > 0.02) logger.warn('recording', '离屏采集比例与输出比例不一致，将以补边方式适配')
+          logger.info(
+            'recording',
+            `离屏采集 ${size.width}x${size.height}，输出 ${script.width}x${script.height}`,
+            `窗口 ${capture.width}x${capture.height} 工作区 ${workArea.width}x${workArea.height}`
+          )
+          if (Math.abs(size.width / size.height - script.width / script.height) > 0.02)
+            logger.warn('recording', '离屏采集比例与输出比例不一致，将以补边方式适配')
         }
         const frame = image.toJPEG(95)
         if (frame.length === 0) return
@@ -1783,11 +2380,20 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
         frameTimes.push(Date.now() - recordingStartedAt)
         frameIndex += 1
         pendingFrames += 1
-        frameWrite = frameWrite.then(() => writeFile(join(frameDirectory, name), frame)).catch((error) => { fail(error) }).finally(() => { pendingFrames -= 1 })
+        frameWrite = frameWrite
+          .then(() => writeFile(join(frameDirectory, name), frame))
+          .catch(error => {
+            fail(error)
+          })
+          .finally(() => {
+            pendingFrames -= 1
+          })
       })
       const ready = new Promise<void>((resolveReady, rejectReady) => {
         window.webContents.once('did-finish-load', () => resolveReady())
-        window.webContents.once('did-fail-load', (_event, code, description) => rejectReady(new Error(`${code}: ${description}`)))
+        window.webContents.once('did-fail-load', (_event, code, description) =>
+          rejectReady(new Error(`${code}: ${description}`))
+        )
       })
       const loading = process.env['ELECTRON_RENDERER_URL']
         ? window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/offscreen.html`)
@@ -1800,11 +2406,16 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       window.webContents.startPainting()
       const prepareStartedAt = Date.now()
       await withOffscreenTimeout(
-        window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.prepare(${serialized})`),
+        window.webContents.executeJavaScript(
+          `window.guEarthOffscreenRecorder.prepare(${serialized})`
+        ),
         OFFSCREEN_PREPARE_TIMEOUT_MS,
         '离屏渲染初始化超时，已中止录制'
       )
-      logger.info('recording', `离屏渲染准备完成，耗时 ${((Date.now() - prepareStartedAt) / 1000).toFixed(1)} 秒`)
+      logger.info(
+        'recording',
+        `离屏渲染准备完成，耗时 ${((Date.now() - prepareStartedAt) / 1000).toFixed(1)} 秒`
+      )
       if (settled) return
       const captureBudgetMs = offscreenSceneDurationMs(script) + OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS
       offscreenPaintStartedAt = Date.now()
@@ -1827,30 +2438,70 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
         return
       }
       const measuredFps = offscreenFrameRate(frameIndex, recordingElapsedMs)
-      logger.info('recording', `离屏录制 ${frameIndex} 帧 / ${(recordingElapsedMs / 1000).toFixed(1)} 秒，实测约 ${measuredFps.toFixed(1)} FPS`)
-      if (measuredFps < OFFSCREEN_MIN_FLUENT_FPS) logger.warn('recording', `离屏采集帧率偏低（${measuredFps.toFixed(1)} FPS），画面可能不够流畅`)
+      logger.info(
+        'recording',
+        `离屏录制 ${frameIndex} 帧 / ${(recordingElapsedMs / 1000).toFixed(1)} 秒，实测约 ${measuredFps.toFixed(1)} FPS`
+      )
+      if (measuredFps < OFFSCREEN_MIN_FLUENT_FPS)
+        logger.warn(
+          'recording',
+          `离屏采集帧率偏低（${measuredFps.toFixed(1)} FPS），画面可能不够流畅`
+        )
       const durations = offscreenFrameDurations(frameTimes, recordingElapsedMs)
       const recordingSeconds = durations.reduce((total, seconds) => total + seconds, 0)
-      await writeFile(join(frameDirectory, 'frames.txt'), offscreenConcatPlaylist(frameNames, durations), 'utf8')
+      await writeFile(
+        join(frameDirectory, 'frames.txt'),
+        offscreenConcatPlaylist(frameNames, durations),
+        'utf8'
+      )
       if (settled) return
       const outputFps = Math.min(60, Math.max(1, Math.round(script.fps)))
       const stderr: Buffer[] = []
-      const encoder = spawn(ffmpegPath(), [
-        '-hide_banner', '-loglevel', 'error', '-y',
-        '-f', 'concat', '-safe', '0', '-i', 'frames.txt',
-        '-vf', `scale=${script.width}:${script.height}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${script.width}:${script.height}:(ow-iw)/2:(oh-ih)/2:color=black,fps=${outputFps}`,
-        '-t', recordingSeconds.toFixed(6), '-an', ...offscreenVideoEncoderArgs, '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
-      ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'], cwd: frameDirectory })
+      const encoder = spawn(
+        ffmpegPath(),
+        [
+          '-hide_banner',
+          '-loglevel',
+          'error',
+          '-y',
+          '-f',
+          'concat',
+          '-safe',
+          '0',
+          '-i',
+          'frames.txt',
+          '-vf',
+          `scale=${script.width}:${script.height}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${script.width}:${script.height}:(ow-iw)/2:(oh-ih)/2:color=black,fps=${outputFps}`,
+          '-t',
+          recordingSeconds.toFixed(6),
+          '-an',
+          ...offscreenVideoEncoderArgs,
+          '-pix_fmt',
+          'yuv420p',
+          '-movflags',
+          '+faststart',
+          '-f',
+          'mp4',
+          temporaryPath
+        ],
+        { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'], cwd: frameDirectory }
+      )
       ffmpeg = encoder
       encoder.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
       const code = await new Promise<number | null>((resolveClose, rejectClose) => {
         encoder.once('error', rejectClose)
         encoder.once('close', resolveClose)
-      }).catch((error) => { throw error instanceof Error ? error : new Error(String(error)) })
+      }).catch(error => {
+        throw error instanceof Error ? error : new Error(String(error))
+      })
       if (settled) return
       if (code !== 0) {
         const detail = Buffer.concat(stderr).toString('utf8').trim()
-        fail(new Error(`离屏视频编码失败（FFmpeg 退出码 ${code ?? '未知'}）${detail ? `：${detail.slice(-1000)}` : ''}`))
+        fail(
+          new Error(
+            `离屏视频编码失败（FFmpeg 退出码 ${code ?? '未知'}）${detail ? `：${detail.slice(-1000)}` : ''}`
+          )
+        )
         return
       }
       const bytes = await readFileSize(temporaryPath)
@@ -1869,10 +2520,14 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       ffmpeg = null
       tempDir = null
       stopOffscreenRecordingWindow()
-      logger.info('recording', `离屏录制完成：${outputPath}`, `${(bytes / 1024 / 1024).toFixed(1)} MB`)
+      logger.info(
+        'recording',
+        `离屏录制完成：${outputPath}`,
+        `${(bytes / 1024 / 1024).toFixed(1)} MB`
+      )
       shell.showItemInFolder(outputPath)
       resolve({ path: outputPath, bytes, fps: measuredFps })
-    })().catch((error) => fail(error))
+    })().catch(error => fail(error))
   })
 }
 
@@ -1904,12 +2559,12 @@ function createWindow(): void {
   })
 
   win.on('ready-to-show', () => win.show())
-  win.on('page-title-updated', (event) => event.preventDefault())
+  win.on('page-title-updated', event => event.preventDefault())
   win.on('close', () => {
     cancelOffscreenRecording?.()
   })
 
-  win.webContents.setWindowOpenHandler((details) => {
+  win.webContents.setWindowOpenHandler(details => {
     if (/^https?:\/\//i.test(details.url)) void shell.openExternal(details.url)
     return { action: 'deny' }
   })
@@ -1917,17 +2572,26 @@ function createWindow(): void {
   win.webContents.on('render-process-gone', (_event, details) => {
     logger.error('window', `渲染进程退出（${details.reason}）`, `exitCode=${details.exitCode}`)
     if (errorReportingEnabled) {
-      Sentry.captureMessage(`渲染进程退出：${details.reason}`, { level: 'fatal', extra: { exitCode: details.exitCode } })
+      Sentry.captureMessage(`渲染进程退出：${details.reason}`, {
+        level: 'fatal',
+        extra: { exitCode: details.exitCode }
+      })
     }
   })
 
-  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-    if (!isMainFrame || errorCode === -3) return
-    logger.error('window', '页面加载失败', `${errorCode} ${errorDescription} ${validatedURL}`)
-    if (errorReportingEnabled) {
-      Sentry.captureMessage('渲染页面加载失败', { level: 'error', extra: { errorCode, errorDescription, url: validatedURL } })
+  win.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (!isMainFrame || errorCode === -3) return
+      logger.error('window', '页面加载失败', `${errorCode} ${errorDescription} ${validatedURL}`)
+      if (errorReportingEnabled) {
+        Sentry.captureMessage('渲染页面加载失败', {
+          level: 'error',
+          extra: { errorCode, errorDescription, url: validatedURL }
+        })
+      }
     }
-  })
+  )
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -1969,19 +2633,19 @@ app.whenReady().then(async () => {
     tileCacheNamespaceStale = false
     logger.info('tiles', '镜像瓦片源设置已升级为模式选择，正在重建底图瓦片缓存命名空间')
     await clearMirrorProviderTileCaches()
-    await saveSettings((current) => current)
+    await saveSettings(current => current)
   }
   await applyNetworkProxy()
   let startupMirrorProbeReady: Promise<void> | undefined
   if (settings.tileMirrorMode === 'on' && settings.tileMirrorSource === 'auto') {
     let resolveReady: (() => void) | undefined
-    const firstOrAllReady = new Promise<void>((resolve) => {
+    const firstOrAllReady = new Promise<void>(resolve => {
       resolveReady = resolve
     })
     void probeMirrorEndpoints('startup', () => resolveReady?.()).finally(() => resolveReady?.())
     startupMirrorProbeReady = Promise.race([
       firstOrAllReady,
-      new Promise<void>((resolve) => setTimeout(resolve, STARTUP_MIRROR_PROBE_BUDGET_MS))
+      new Promise<void>(resolve => setTimeout(resolve, STARTUP_MIRROR_PROBE_BUDGET_MS))
     ])
   }
   const legacyHistoryPath = join(userDataPath, 'ai-chat-history.json')
@@ -2013,10 +2677,7 @@ app.whenReady().then(async () => {
     } else {
       logger.warn('ai', '未找到内置 HawDB 引擎库，已降级为 JSON 存储')
     }
-    await Promise.all([
-      aiChatHistory.init(legacyHistoryPath),
-      aiMemories.init(legacyMemoriesPath)
-    ])
+    await Promise.all([aiChatHistory.init(legacyHistoryPath), aiMemories.init(legacyMemoriesPath)])
   }
   const loaded = await Promise.all([
     readAnnotations(),
@@ -2025,9 +2686,10 @@ app.whenReady().then(async () => {
     initEoqStores()
   ])
   if (startupMirrorProbeReady) await startupMirrorProbeReady
-  void startOnlineData(userDataPath, (snapshot) => {
+  void startOnlineData(userDataPath, snapshot => {
     for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('datasets:online-data-changed', snapshot)
+      if (!window.isDestroyed() && !window.webContents.isDestroyed())
+        window.webContents.send('datasets:online-data-changed', snapshot)
     }
   })
   ;[annotations, scenes] = loaded
@@ -2037,10 +2699,10 @@ app.whenReady().then(async () => {
   initAccount()
   logger.info('app', '主进程服务就绪')
   capturePosthogLog('info', 'main_process_ready')
-  protocol.handle('guearth-tile', async (request) => {
+  protocol.handle('guearth-tile', async request => {
     const response = await serveTileResponse(
       () => handleTileProtocol(request),
-      (error) => logger.warn('tiles', '瓦片请求处理异常，已返回降级响应', error)
+      error => logger.warn('tiles', '瓦片请求处理异常，已返回降级响应', error)
     )
     response.headers.set('Access-Control-Allow-Origin', '*')
     return response
@@ -2054,7 +2716,7 @@ app.whenReady().then(async () => {
   })
 })
 
-app.on('before-quit', (event) => {
+app.on('before-quit', event => {
   if (quitting) return
   event.preventDefault()
   quitting = true
@@ -2095,5 +2757,8 @@ app.on('child-process-gone', (_event, details) => {
   if (!errorReportingEnabled) return
   if (Date.now() - gpuCrashReportedAt < 60_000) return
   gpuCrashReportedAt = Date.now()
-  Sentry.captureMessage(`GPU 进程退出：${details.reason}`, { level: 'error', extra: { exitCode: details.exitCode } })
+  Sentry.captureMessage(`GPU 进程退出：${details.reason}`, {
+    level: 'error',
+    extra: { exitCode: details.exitCode }
+  })
 })

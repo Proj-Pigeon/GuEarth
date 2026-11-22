@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { useScrollLock, type MessagePrimitive } from '@assistant-ui/react'
-import { CheckIcon, ChevronRightIcon, Loader2Icon, XCircleIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { CheckIcon, ChevronRightIcon, Loader2Icon, XCircleIcon } from 'lucide-react'
+import { useCallback, useRef, useState, type ReactNode } from 'react'
+
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from './collapsible'
 
 const ANIMATION_DURATION = 200
@@ -47,10 +48,10 @@ export function EoqToolGroup({ group, failedCount, children }: EoqToolGroupProps
       ref={rootRef}
       open={isOpen}
       onOpenChange={handleOpenChange}
-      className="group/tool-group w-full"
+      className='group/tool-group w-full'
     >
-      <CollapsibleTrigger className="group/trigger flex w-full items-center gap-1.5 rounded-md py-1 text-[12px] leading-5 text-muted-foreground transition-colors duration-100 hover:text-foreground">
-        <ChevronRightIcon className="size-3.5 shrink-0 opacity-60 transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] group-data-[panel-open]/trigger:rotate-90 motion-reduce:transition-none" />
+      <CollapsibleTrigger className='group/trigger text-muted-foreground hover:text-foreground flex w-full items-center gap-1.5 rounded-md py-1 text-[12px] leading-5 transition-colors duration-100'>
+        <ChevronRightIcon className='size-3.5 shrink-0 opacity-60 transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] group-data-[panel-open]/trigger:rotate-90 motion-reduce:transition-none' />
         <span
           className={cn(
             'leading-5 tabular-nums',
@@ -63,19 +64,19 @@ export function EoqToolGroup({ group, failedCount, children }: EoqToolGroupProps
         >
           {label}
         </span>
-        <span className="ml-auto flex shrink-0 items-center pl-1">
+        <span className='ml-auto flex shrink-0 items-center pl-1'>
           {running ? (
-            <Loader2Icon className="size-3.5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
+            <Loader2Icon className='text-muted-foreground size-3.5 shrink-0 animate-spin motion-reduce:animate-none' />
           ) : failedCount > 0 ? (
-            <XCircleIcon className="size-3.5 shrink-0 animate-eoq-pop text-destructive" />
+            <XCircleIcon className='animate-eoq-pop text-destructive size-3.5 shrink-0' />
           ) : (
-            <CheckIcon className="size-3.5 shrink-0 animate-eoq-pop text-[#52c41a]" />
+            <CheckIcon className='animate-eoq-pop size-3.5 shrink-0 text-[#52c41a]' />
           )}
         </span>
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        <div className="mt-0.5 ml-1.5 flex flex-col gap-0.5 border-l border-border pl-3">
+        <div className='border-border mt-0.5 ml-1.5 flex flex-col gap-0.5 border-l pl-3'>
           {children}
         </div>
       </CollapsibleContent>

@@ -42,24 +42,56 @@ export const BUFFER_MISSING_REPORT_MS = 8000
 export const RENDER_FAULT_LIMIT = 3
 
 export const WEBGL_UNAVAILABLE_MESSAGE = '三维地球无法启动'
-export const WEBGL_UNAVAILABLE_DETAIL = '显卡加速暂时不可用，请更新显卡驱动或关闭其他占用显卡的程序后重试。'
+export const WEBGL_UNAVAILABLE_DETAIL =
+  '显卡加速暂时不可用，请更新显卡驱动或关闭其他占用显卡的程序后重试。'
 export const SURFACE_UNAVAILABLE_MESSAGE = '地球画面无法创建'
-export const SURFACE_UNAVAILABLE_DETAIL = '画面尺寸异常，请先还原窗口后点击重试；若仍空白请更新显卡驱动。'
+export const SURFACE_UNAVAILABLE_DETAIL =
+  '画面尺寸异常，请先还原窗口后点击重试；若仍空白请更新显卡驱动。'
 export const RENDER_HALTED_MESSAGE = '三维地球渲染已停止'
 export const RENDER_HALTED_DETAIL = '画面渲染遇到异常，请更新显卡驱动后点击重试。'
 export const WEBGL_RETRY_STAGE = '正在准备图形界面…'
 
 export const WEBGL_CONTEXT_ATTEMPTS: readonly WebGlContextAttempt[] = [
-  { id: 'webgl2', requestWebgl1: false, preserveDrawingBuffer: true, antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false },
-  { id: 'webgl2-relaxed', requestWebgl1: false, preserveDrawingBuffer: true, antialias: false, powerPreference: 'default', failIfMajorPerformanceCaveat: false },
-  { id: 'webgl1', requestWebgl1: true, preserveDrawingBuffer: true, antialias: false, powerPreference: 'default', failIfMajorPerformanceCaveat: false },
-  { id: 'webgl1-fallback', requestWebgl1: true, preserveDrawingBuffer: false, antialias: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: false }
+  {
+    id: 'webgl2',
+    requestWebgl1: false,
+    preserveDrawingBuffer: true,
+    antialias: true,
+    powerPreference: 'high-performance',
+    failIfMajorPerformanceCaveat: false
+  },
+  {
+    id: 'webgl2-relaxed',
+    requestWebgl1: false,
+    preserveDrawingBuffer: true,
+    antialias: false,
+    powerPreference: 'default',
+    failIfMajorPerformanceCaveat: false
+  },
+  {
+    id: 'webgl1',
+    requestWebgl1: true,
+    preserveDrawingBuffer: true,
+    antialias: false,
+    powerPreference: 'default',
+    failIfMajorPerformanceCaveat: false
+  },
+  {
+    id: 'webgl1-fallback',
+    requestWebgl1: true,
+    preserveDrawingBuffer: false,
+    antialias: false,
+    powerPreference: 'low-power',
+    failIfMajorPerformanceCaveat: false
+  }
 ]
 
 const WEBGL_RETRY_DELAYS_MS = [0, 700, 1800, 4000]
 
 export function webGlRetryDelayMs(attempt: number): number {
-  return WEBGL_RETRY_DELAYS_MS[Math.min(Math.max(attempt, 0), WEBGL_RETRY_DELAYS_MS.length - 1)] ?? 0
+  return (
+    WEBGL_RETRY_DELAYS_MS[Math.min(Math.max(attempt, 0), WEBGL_RETRY_DELAYS_MS.length - 1)] ?? 0
+  )
 }
 
 export function contextOptionsForAttempt(attempt: WebGlContextAttempt): WebGlContextOptions {
@@ -105,17 +137,31 @@ export function surfaceFailureCopy(contextLost: boolean): { message: string; det
 }
 
 export function surfaceIsRenderable(size: SurfaceSize): boolean {
-  return size.clientWidth >= 1 && size.clientHeight >= 1 && size.drawingBufferWidth >= 1 && size.drawingBufferHeight >= 1
+  return (
+    size.clientWidth >= 1 &&
+    size.clientHeight >= 1 &&
+    size.drawingBufferWidth >= 1 &&
+    size.drawingBufferHeight >= 1
+  )
 }
 
-export function decideRenderFrame(size: SurfaceSize, recoveryAttempted: boolean): RenderFrameDecision {
-  if (size.clientWidth < 1 || size.clientHeight < 1) return { action: 'tick', reason: 'awaiting-layout' }
+export function decideRenderFrame(
+  size: SurfaceSize,
+  recoveryAttempted: boolean
+): RenderFrameDecision {
+  if (size.clientWidth < 1 || size.clientHeight < 1)
+    return { action: 'tick', reason: 'awaiting-layout' }
   if (size.drawingBufferWidth >= 1 && size.drawingBufferHeight >= 1) return { action: 'render' }
   if (!recoveryAttempted) return { action: 'recover-resize' }
   return { action: 'tick', reason: 'buffer-missing' }
 }
 
-export function advanceBufferGap(state: BufferGapState, kind: SurfaceFrameKind, now: number, limitMs: number): 'ok' | 'waiting' | 'report' {
+export function advanceBufferGap(
+  state: BufferGapState,
+  kind: SurfaceFrameKind,
+  now: number,
+  limitMs: number
+): 'ok' | 'waiting' | 'report' {
   if (kind === 'rendered') {
     state.since = 0
     state.reported = false
@@ -132,15 +178,26 @@ export function advanceBufferGap(state: BufferGapState, kind: SurfaceFrameKind, 
   return 'report'
 }
 
-export function backingStoreSize(clientWidth: number, clientHeight: number, pixelRatio: number, resolutionScale: number): { width: number; height: number } {
+export function backingStoreSize(
+  clientWidth: number,
+  clientHeight: number,
+  pixelRatio: number,
+  resolutionScale: number
+): { width: number; height: number } {
   return {
     width: Math.trunc(clientWidth * pixelRatio * resolutionScale),
     height: Math.trunc(clientHeight * pixelRatio * resolutionScale)
   }
 }
 
-export function nudgedCanvasSize(currentWidth: number, currentHeight: number, targetWidth: number, targetHeight: number): { width: number; height: number } {
-  if (currentWidth === targetWidth && currentHeight === targetHeight) return { width: targetWidth + 1, height: targetHeight }
+export function nudgedCanvasSize(
+  currentWidth: number,
+  currentHeight: number,
+  targetWidth: number,
+  targetHeight: number
+): { width: number; height: number } {
+  if (currentWidth === targetWidth && currentHeight === targetHeight)
+    return { width: targetWidth + 1, height: targetHeight }
   return { width: targetWidth, height: targetHeight }
 }
 
@@ -158,7 +215,9 @@ export function glRendererName(gl: GlRendererSource | null): string {
   if (!gl) return ''
   try {
     const info = gl.getExtension('WEBGL_debug_renderer_info')
-    const value = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)
+    const value = info
+      ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
+      : gl.getParameter(gl.RENDERER)
     return typeof value === 'string' ? value : ''
   } catch {
     return ''
@@ -166,5 +225,10 @@ export function glRendererName(gl: GlRendererSource | null): string {
 }
 
 export function surfaceFailureAlreadyShown(extra: unknown): boolean {
-  return typeof extra === 'object' && extra !== null && 'surfaceNotified' in extra && extra.surfaceNotified === true
+  return (
+    typeof extra === 'object' &&
+    extra !== null &&
+    'surfaceNotified' in extra &&
+    extra.surfaceNotified === true
+  )
 }

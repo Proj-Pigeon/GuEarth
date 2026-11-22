@@ -4,31 +4,32 @@
   "private": true,
   "description": "面向地理教学的三维数字地球",
   "homepage": "https://github.com/Proj-Pigeon/GuEarth",
-  "desktopName": "io.project.pigeon.guearth.desktop",
   "license": "Apache-2.0",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "build:win": "npm run fetch:ffmpeg && npm run fetch:hawdb && npm run build && electron-builder --win --publish never",
-    "build:mac": "node scripts/fetch-hawdb.mjs --arch all && npm run build && electron-builder --mac --publish never",
     "build:linux": "node scripts/fetch-ffmpeg.mjs --arch all && node scripts/fetch-hawdb.mjs --arch all && npm run build && npm install --no-save --force @koromix/koffi-linux-x64@3.3.8 @koromix/koffi-linux-arm64@3.3.8 && electron-builder --linux --publish never",
+    "build:mac": "node scripts/fetch-hawdb.mjs --arch all && npm run build && electron-builder --mac --publish never",
+    "build:win": "npm run fetch:ffmpeg && npm run fetch:hawdb && npm run build && electron-builder --win --publish never",
+    "dev": "electron-vite dev",
     "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
     "fetch:hawdb": "node scripts/fetch-hawdb.mjs",
-    "start": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "test": "node --test \"tests/*.test.mjs\"",
-    "lint": "vp lint",
     "fmt": "vp fmt",
-    "fmt:check": "vp fmt --check"
+    "fmt:check": "vp fmt --check",
+    "lint": "vp lint",
+    "start": "electron-vite preview",
+    "test": "node --test \"tests/*.test.mjs\"",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },
-  "overrides": {
-    "app-builder-lib": {
-      "@electron/get": "5.1.0"
-    },
-    "katex": "^0.18.2",
-    "minimatch": "11.0.3",
-    "vite": "npm:@voidzero-dev/vite-plus-core@8.3.8000"
+  "dependencies": {
+    "@opentelemetry/api-logs": "^0.223.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.301.2",
+    "@opentelemetry/resources": "^3.1.1",
+    "@opentelemetry/sdk-logs": "^3.1.1",
+    "geographiclib-geodesic": "^2.2.0",
+    "koffi": "^3.3.8",
+    "posthog-js": "^1.451.2",
+    "posthog-node": "^5.74.0"
   },
   "devDependencies": {
     "@ant-design/cssinjs": "^2.2.0",
@@ -36,6 +37,7 @@
     "@assistant-ui/react": "^0.15.37",
     "@assistant-ui/react-markdown": "^0.14.26",
     "@base-ui/react": "^1.9.0",
+    "@liangmi/vp-config": "^1.0.2",
     "@sentry/electron": "^8.0.0",
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^26.6.3",
@@ -63,18 +65,16 @@
     "tw-shimmer": "^0.4.14",
     "typescript": "^5.9.3",
     "vite": "npm:@voidzero-dev/vite-plus-core@8.3.8000",
-    "zustand": "^5.1.0",
-    "@liangmi/vp-config": "^1.0.2",
-    "vite-plus": "1.7.0"
+    "vite-plus": "1.7.0",
+    "zustand": "^5.1.0"
   },
-  "dependencies": {
-    "@opentelemetry/api-logs": "^0.223.0",
-    "@opentelemetry/exporter-logs-otlp-http": "^0.301.2",
-    "@opentelemetry/resources": "^3.1.1",
-    "@opentelemetry/sdk-logs": "^3.1.1",
-    "geographiclib-geodesic": "^2.2.0",
-    "koffi": "^3.3.8",
-    "posthog-js": "^1.451.2",
-    "posthog-node": "^5.74.0"
-  }
+  "overrides": {
+    "app-builder-lib": {
+      "@electron/get": "5.1.0"
+    },
+    "katex": "^0.18.2",
+    "minimatch": "11.0.3",
+    "vite": "npm:@voidzero-dev/vite-plus-core@8.3.8000"
+  },
+  "desktopName": "io.project.pigeon.guearth.desktop"
 }

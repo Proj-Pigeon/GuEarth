@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { test } from 'node:test'
+
 import ts from 'typescript'
 
 const RENDERER_ROOT = resolve('src/renderer/src')
@@ -55,7 +56,7 @@ function isIconTag(tag, importedIcons) {
 
 function findIconsInJsxChildren(children, importedIcons, sourceFile) {
   const found = []
-  const visit = (node) => {
+  const visit = node => {
     if (ts.isJsxSelfClosingElement(node)) {
       const tag = jsxTagName(node.tagName)
       if (isIconTag(tag, importedIcons)) {
@@ -83,7 +84,7 @@ function findIconsInJsxChildren(children, importedIcons, sourceFile) {
       visitExpression(node.expression)
     }
   }
-  const visitExpression = (expr) => {
+  const visitExpression = expr => {
     if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
       visit(expr)
       return
@@ -108,7 +109,7 @@ function findIconsInJsxChildren(children, importedIcons, sourceFile) {
 
 function walkTsx(node, visitor) {
   visitor(node)
-  ts.forEachChild(node, (child) => walkTsx(child, visitor))
+  ts.forEachChild(node, child => walkTsx(child, visitor))
 }
 
 test('all loading buttons place icons in the icon prop so loading replaces the original icon', () => {
@@ -117,10 +118,16 @@ test('all loading buttons place icons in the icon prop so loading replaces the o
 
   for (const file of collectTsxFiles(RENDERER_ROOT)) {
     const source = readFileSync(file, 'utf8')
-    const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const sourceFile = ts.createSourceFile(
+      file,
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX
+    )
     const importedIcons = extractImportedIcons(sourceFile)
 
-    walkTsx(sourceFile, (node) => {
+    walkTsx(sourceFile, node => {
       if (ts.isJsxSelfClosingElement(node)) {
         const tag = jsxTagName(node.tagName)
         if (BUTTON_TAGS.has(tag) && hasLoadingAttr(node.attributes)) checkedButtons++
@@ -132,7 +139,9 @@ test('all loading buttons place icons in the icon prop so loading replaces the o
       checkedButtons++
       const misplaced = findIconsInJsxChildren(node.children, importedIcons, sourceFile)
       for (const icon of misplaced) {
-        violations.push(`${relative(RENDERER_ROOT, file)}:${icon.line} <${icon.tag}> inside loading <${tag}>`)
+        violations.push(
+          `${relative(RENDERER_ROOT, file)}:${icon.line} <${icon.tag}> inside loading <${tag}>`
+        )
       }
     })
   }

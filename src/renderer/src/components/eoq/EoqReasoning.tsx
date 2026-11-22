@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useScrollLock } from '@assistant-ui/react'
-import { BrainIcon, ChevronDownIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { BrainIcon, ChevronDownIcon } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from './collapsible'
 
 const ANIMATION_DURATION = 200
@@ -65,10 +66,7 @@ export function EoqReasoning({ streaming, durationMs, children }: EoqReasoningPr
     const onScroll = () => {
       if (isAtBottom()) {
         pinned = true
-      } else if (
-        scrollEl.scrollTop < lastScrollTop &&
-        scrollEl.scrollHeight === lastScrollHeight
-      ) {
+      } else if (scrollEl.scrollTop < lastScrollTop && scrollEl.scrollHeight === lastScrollHeight) {
         pinned = false
       }
       lastScrollTop = scrollEl.scrollTop
@@ -90,10 +88,10 @@ export function EoqReasoning({ streaming, durationMs, children }: EoqReasoningPr
       ref={rootRef}
       open={isOpen}
       onOpenChange={handleOpenChange}
-      className="group/reasoning w-full"
+      className='group/reasoning w-full'
     >
-      <CollapsibleTrigger className="group/trigger flex w-fit max-w-full items-center gap-1.5 rounded-md py-1 text-[12px] leading-5 text-muted-foreground transition-colors duration-100 hover:text-foreground">
-        <BrainIcon className="size-3.5 shrink-0 opacity-75" />
+      <CollapsibleTrigger className='group/trigger text-muted-foreground hover:text-foreground flex w-fit max-w-full items-center gap-1.5 rounded-md py-1 text-[12px] leading-5 transition-colors duration-100'>
+        <BrainIcon className='size-3.5 shrink-0 opacity-75' />
         <span
           className={cn(
             'inline-block tabular-nums leading-5',
@@ -102,21 +100,21 @@ export function EoqReasoning({ streaming, durationMs, children }: EoqReasoningPr
         >
           {streaming ? '正在深度思考' : formatReasoningDuration(durationMs)}
         </span>
-        <ChevronDownIcon className="size-3.5 shrink-0 -rotate-90 opacity-60 transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] group-data-[panel-open]/trigger:rotate-0 motion-reduce:transition-none" />
+        <ChevronDownIcon className='size-3.5 shrink-0 -rotate-90 opacity-60 transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] group-data-[panel-open]/trigger:rotate-0 motion-reduce:transition-none' />
       </CollapsibleTrigger>
       <CollapsibleContent aria-busy={streaming}>
-        <div className="relative mt-1 ml-1.5 border-l border-border pl-3">
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-background to-transparent" />
+        <div className='border-border relative mt-1 ml-1.5 border-l pl-3'>
+          <div className='from-background pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b to-transparent' />
           <div
             ref={scrollRef}
-            className="reasoning-text max-h-48 overflow-y-auto py-1.5 text-[12px] leading-5 whitespace-pre-wrap break-words text-muted-foreground"
+            className='reasoning-text text-muted-foreground max-h-48 overflow-y-auto py-1.5 text-[12px] leading-5 break-words whitespace-pre-wrap'
           >
-            <div ref={contentRef} className="space-y-2">
+            <div ref={contentRef} className='space-y-2'>
               {children}
             </div>
           </div>
           {isPreview && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-5 bg-gradient-to-t from-background to-transparent" />
+            <div className='from-background pointer-events-none absolute inset-x-0 bottom-0 z-10 h-5 bg-gradient-to-t to-transparent' />
           )}
         </div>
       </CollapsibleContent>

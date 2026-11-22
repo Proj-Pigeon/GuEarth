@@ -1,6 +1,7 @@
 import { PostHog } from 'posthog-node'
 
-const projectToken = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || process.env.VITE_POSTHOG_PROJECT_TOKEN
+const projectToken =
+  import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || process.env.VITE_POSTHOG_PROJECT_TOKEN
 const host = import.meta.env.VITE_POSTHOG_HOST || process.env.VITE_POSTHOG_HOST
 
 let aiPosthogEnabled = false
@@ -13,8 +14,12 @@ function ensureClient(): PostHog | null {
   if (!projectToken || !host) {
     if (!missingWarned && import.meta.env.DEV) {
       missingWarned = true
-      const missingConfiguration = !projectToken ? 'VITE_POSTHOG_PROJECT_TOKEN' : 'VITE_POSTHOG_HOST'
-      console.warn(`${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`)
+      const missingConfiguration = !projectToken
+        ? 'VITE_POSTHOG_PROJECT_TOKEN'
+        : 'VITE_POSTHOG_HOST'
+      console.warn(
+        `${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`
+      )
     }
     return null
   }
@@ -118,7 +123,7 @@ export async function shutdownPosthog(): Promise<void> {
   try {
     await Promise.race([
       posthogClient.shutdown(),
-      new Promise<void>((resolve) => {
+      new Promise<void>(resolve => {
         timeout = setTimeout(resolve, 1_000)
         timeout.unref()
       })

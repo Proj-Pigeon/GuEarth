@@ -1,8 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Alert, App as AntdApp, Button, Input, Radio, Select, Switch, Tag, type RadioChangeEvent } from 'antd'
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons'
 import { credentialOnlyProviders, providerCatalog, useGlobeStore } from '@renderer/stores/globe'
-import { networkProxyMode, normalizeNetworkProxy, type NetworkProxyMode } from '../../../../common/networkProxy'
+import {
+  Alert,
+  App as AntdApp,
+  Button,
+  Input,
+  Radio,
+  Select,
+  Switch,
+  Tag,
+  type RadioChangeEvent
+} from 'antd'
+import { useEffect, useMemo, useState } from 'react'
+
+import {
+  networkProxyMode,
+  normalizeNetworkProxy,
+  type NetworkProxyMode
+} from '../../../../common/networkProxy'
 import {
   mirrorEndpointLabel,
   mirrorEndpointShortLabel,
@@ -13,6 +28,7 @@ import {
   touchInteractionModes,
   type TouchInteractionMode
 } from '../../../../common/touchInteraction'
+
 import styles from './MapSettings.module.css'
 
 export interface MapSettingsProps {}
@@ -31,43 +47,45 @@ const touchInteractionModeDescriptions: Record<TouchInteractionMode, string> = {
   off: '始终使用桌面键鼠界面。'
 }
 
-const touchInteractionModeOptions = touchInteractionModes.map((mode) => ({
+const touchInteractionModeOptions = touchInteractionModes.map(mode => ({
   value: mode,
   label: touchInteractionModeLabels[mode]
 }))
 
 export function MapSettings(_props: MapSettingsProps) {
   const { message } = AntdApp.useApp()
-  const networkProxy = useGlobeStore((state) => state.networkProxy)
-  const selectedLayerId = useGlobeStore((state) => state.selectedLayerId)
-  const tileCacheEnabled = useGlobeStore((state) => state.tileCacheEnabled)
-  const tileMirrorMode = useGlobeStore((state) => state.tileMirrorMode)
-  const tileMirrorSource = useGlobeStore((state) => state.tileMirrorSource)
-  const activeMirrorEndpoint = useGlobeStore((state) => state.activeMirrorEndpoint)
-  const mirrorProbingEndpoints = useGlobeStore((state) => state.mirrorProbingEndpoints)
-  const mirrorEndpointProbes = useGlobeStore((state) => state.mirrorEndpointProbes)
-  const mirroredProviders = useGlobeStore((state) => state.mirroredProviders)
-  const mirrorFallenBackProviders = useGlobeStore((state) => state.mirrorFallenBackProviders)
-  const providerCredentials = useGlobeStore((state) => state.providerCredentials)
-  const touchInteractionMode = useGlobeStore((state) => state.touchInteractionMode)
-  const touchInteractionActive = useGlobeStore((state) => state.touchInteractionActive)
-  const applyTileMirrorStatus = useGlobeStore((state) => state.applyTileMirrorStatus)
-  const setTileMirrorSource = useGlobeStore((state) => state.setTileMirrorSource)
-  const openMirrorConsent = useGlobeStore((state) => state.openMirrorConsent)
-  const setTileMirrorMode = useGlobeStore((state) => state.setTileMirrorMode)
-  const setCredentialStatus = useGlobeStore((state) => state.setCredentialStatus)
-  const setNetworkProxy = useGlobeStore((state) => state.setNetworkProxy)
-  const setTileCacheEnabled = useGlobeStore((state) => state.setTileCacheEnabled)
-  const openMirrorPolicy = useGlobeStore((state) => state.openMirrorPolicy)
-  const setTouchInteractionMode = useGlobeStore((state) => state.setTouchInteractionMode)
+  const networkProxy = useGlobeStore(state => state.networkProxy)
+  const selectedLayerId = useGlobeStore(state => state.selectedLayerId)
+  const tileCacheEnabled = useGlobeStore(state => state.tileCacheEnabled)
+  const tileMirrorMode = useGlobeStore(state => state.tileMirrorMode)
+  const tileMirrorSource = useGlobeStore(state => state.tileMirrorSource)
+  const activeMirrorEndpoint = useGlobeStore(state => state.activeMirrorEndpoint)
+  const mirrorProbingEndpoints = useGlobeStore(state => state.mirrorProbingEndpoints)
+  const mirrorEndpointProbes = useGlobeStore(state => state.mirrorEndpointProbes)
+  const mirroredProviders = useGlobeStore(state => state.mirroredProviders)
+  const mirrorFallenBackProviders = useGlobeStore(state => state.mirrorFallenBackProviders)
+  const providerCredentials = useGlobeStore(state => state.providerCredentials)
+  const touchInteractionMode = useGlobeStore(state => state.touchInteractionMode)
+  const touchInteractionActive = useGlobeStore(state => state.touchInteractionActive)
+  const applyTileMirrorStatus = useGlobeStore(state => state.applyTileMirrorStatus)
+  const setTileMirrorSource = useGlobeStore(state => state.setTileMirrorSource)
+  const openMirrorConsent = useGlobeStore(state => state.openMirrorConsent)
+  const setTileMirrorMode = useGlobeStore(state => state.setTileMirrorMode)
+  const setCredentialStatus = useGlobeStore(state => state.setCredentialStatus)
+  const setNetworkProxy = useGlobeStore(state => state.setNetworkProxy)
+  const setTileCacheEnabled = useGlobeStore(state => state.setTileCacheEnabled)
+  const openMirrorPolicy = useGlobeStore(state => state.openMirrorPolicy)
+  const setTouchInteractionMode = useGlobeStore(state => state.setTouchInteractionMode)
 
-  const keyProviders = useMemo(() => allProviders.filter((provider) => provider.requiresKey), [])
+  const keyProviders = useMemo(() => allProviders.filter(provider => provider.requiresKey), [])
   const [credentialProviderId, setCredentialProviderId] = useState(() => keyProviders[0]?.id ?? '')
   const [credentialDraft, setCredentialDraft] = useState('')
   const [credentialSkDraft, setCredentialSkDraft] = useState('')
 
   const [proxyPendingCustom, setProxyPendingCustom] = useState(false)
-  const [proxyDraft, setProxyDraft] = useState(() => (networkProxyMode(networkProxy) === 'custom' ? networkProxy : ''))
+  const [proxyDraft, setProxyDraft] = useState(() =>
+    networkProxyMode(networkProxy) === 'custom' ? networkProxy : ''
+  )
   const [proxyTesting, setProxyTesting] = useState(false)
   const [proxyTestResult, setProxyTestResult] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -75,14 +93,14 @@ export function MapSettings(_props: MapSettingsProps) {
     if (typeof window.guEarth?.tiles?.getMirrorStatus !== 'function') return
     void window.guEarth.tiles
       .getMirrorStatus()
-      .then((status) => {
+      .then(status => {
         applyTileMirrorStatus(status)
       })
       .catch(() => undefined)
   }, [applyTileMirrorStatus])
 
   useEffect(() => {
-    if (!keyProviders.some((provider) => provider.id === credentialProviderId)) {
+    if (!keyProviders.some(provider => provider.id === credentialProviderId)) {
       setCredentialProviderId(keyProviders[0]?.id ?? '')
     }
   }, [keyProviders, credentialProviderId])
@@ -99,7 +117,11 @@ export function MapSettings(_props: MapSettingsProps) {
     tileMirrorEnabled &&
     mirrorFallenBackProviders.length > 0 &&
     (mirrorFallenBackProviders.includes(selectedLayerId) || mirroredProviders.length === 0)
-  const tileMirrorStatusColor = tileMirrorFallenBack ? 'orange' : tileMirrorRouteActive ? 'blue' : undefined
+  const tileMirrorStatusColor = tileMirrorFallenBack
+    ? 'orange'
+    : tileMirrorRouteActive
+      ? 'blue'
+      : undefined
   const tileMirrorStatusLabel = tileMirrorFallenBack
     ? '镜像异常，已回退直连'
     : tileMirrorRouteActive
@@ -116,7 +138,7 @@ export function MapSettings(_props: MapSettingsProps) {
 
   const mirrorProbeEntries = useMemo(
     () =>
-      mirrorEndpointProbes.map((probe) => ({
+      mirrorEndpointProbes.map(probe => ({
         endpoint: probe.endpoint,
         label: mirrorEndpointShortLabel(probe.endpoint),
         ok: probe.ok,
@@ -132,16 +154,21 @@ export function MapSettings(_props: MapSettingsProps) {
 
   const selectedCredentialStatus = providerCredentials[credentialProviderId]
   const selectedSecurityCredentialStatus = providerCredentials[`${credentialProviderId}-sk`]
-  const selectedProvider = allProviders.find((provider) => provider.id === credentialProviderId)
-  const supportsSecurityKey = Boolean(selectedProvider?.requiresSk || selectedProvider?.requiresSecurityKey)
+  const selectedProvider = allProviders.find(provider => provider.id === credentialProviderId)
+  const supportsSecurityKey = Boolean(
+    selectedProvider?.requiresSk || selectedProvider?.requiresSecurityKey
+  )
   const requiresSecurityKey = Boolean(
     (selectedProvider?.requiresSecurityKey && !selectedProvider?.securityKeyOptional) ||
-      (selectedProvider?.requiresSk && !selectedProvider?.skOptional)
+    (selectedProvider?.requiresSk && !selectedProvider?.skOptional)
   )
-  const securityKeyPlaceholder = selectedProvider?.requiresSecurityKey ? '输入签名私钥（可选）' : '输入 SK (签名密钥，可选)'
+  const securityKeyPlaceholder = selectedProvider?.requiresSecurityKey
+    ? '输入签名私钥（可选）'
+    : '输入 SK (签名密钥，可选)'
 
   const proxyMode: NetworkProxyMode = networkProxyMode(networkProxy)
-  const proxyModeView: NetworkProxyMode = proxyPendingCustom || proxyMode === 'custom' ? 'custom' : proxyMode
+  const proxyModeView: NetworkProxyMode =
+    proxyPendingCustom || proxyMode === 'custom' ? 'custom' : proxyMode
   const normalizedProxyDraft = normalizeNetworkProxy(proxyDraft)
   const proxyApplyEnabled = normalizedProxyDraft !== '' && normalizedProxyDraft !== networkProxy
 
@@ -156,12 +183,13 @@ export function MapSettings(_props: MapSettingsProps) {
   }
 
   async function reprobeMirrorEndpoints(): Promise<void> {
-    if (mirrorProbingEndpoints || typeof window.guEarth?.tiles?.probeMirrorEndpoints !== 'function') return
+    if (mirrorProbingEndpoints || typeof window.guEarth?.tiles?.probeMirrorEndpoints !== 'function')
+      return
     try {
       const status = await window.guEarth.tiles.probeMirrorEndpoints()
       applyTileMirrorStatus(status)
       const probes = status.endpointProbes ?? []
-      const anyReachable = probes.some((probe) => probe.ok)
+      const anyReachable = probes.some(probe => probe.ok)
       if (!anyReachable) {
         message.warning('镜像源测速失败，请检查网络连接或代理设置')
         return
@@ -283,20 +311,22 @@ export function MapSettings(_props: MapSettingsProps) {
   }
 
   const keyProviderOptions = useMemo(
-    () => keyProviders.map((provider) => ({ value: provider.id, label: provider.name })),
+    () => keyProviders.map(provider => ({ value: provider.id, label: provider.name })),
     [keyProviders]
   )
 
   return (
-    <section className={styles.settingsSection} data-settings-section="" aria-label="地图设置">
+    <section className={styles.settingsSection} data-settings-section='' aria-label='地图设置'>
       <h3 className={styles.sectionTitle}>地图</h3>
 
       {keyProviders.length > 0 && (
-        <section className={styles.settingsBlock} data-guide-target="map-credentials">
+        <section className={styles.settingsBlock} data-guide-target='map-credentials'>
           <div className={styles.blockHeading}>
             <span>地图搜索密钥</span>
             {selectedCredentialStatus?.configured &&
-              (!requiresSecurityKey || selectedSecurityCredentialStatus?.configured) && <Tag color="green">已配置</Tag>}
+              (!requiresSecurityKey || selectedSecurityCredentialStatus?.configured) && (
+                <Tag color='green'>已配置</Tag>
+              )}
           </div>
           <Select
             value={credentialProviderId}
@@ -306,7 +336,7 @@ export function MapSettings(_props: MapSettingsProps) {
           />
           <Input
             value={credentialDraft}
-            type="password"
+            type='password'
             placeholder={
               credentialProviderId === 'amap'
                 ? '输入高德 Web 服务 Key'
@@ -315,22 +345,22 @@ export function MapSettings(_props: MapSettingsProps) {
                   : '输入 API Key'
             }
             className={styles.keyInput}
-            onChange={(event) => setCredentialDraft(event.target.value)}
+            onChange={event => setCredentialDraft(event.target.value)}
             onPressEnter={() => void saveCredential()}
           />
           {supportsSecurityKey && (
             <Input
               value={credentialSkDraft}
-              type="password"
+              type='password'
               placeholder={securityKeyPlaceholder}
               className={styles.keyInput}
-              onChange={(event) => setCredentialSkDraft(event.target.value)}
+              onChange={event => setCredentialSkDraft(event.target.value)}
               onPressEnter={() => void saveCredential()}
             />
           )}
           {supportsSecurityKey && !requiresSecurityKey && (
             <Alert
-              type="info"
+              type='info'
               title={
                 credentialProviderId === 'amap'
                   ? '仅在高德控制台开启数字签名时填写签名私钥'
@@ -342,15 +372,20 @@ export function MapSettings(_props: MapSettingsProps) {
           )}
           <div className={styles.keyActions}>
             <Button
-              type="primary"
-              disabled={!credentialDraft.trim() || (requiresSecurityKey && !credentialSkDraft.trim())}
+              type='primary'
+              disabled={
+                !credentialDraft.trim() || (requiresSecurityKey && !credentialSkDraft.trim())
+              }
               icon={<SaveOutlined />}
               onClick={() => void saveCredential()}
             >
               保存
             </Button>
             <Button
-              disabled={!selectedCredentialStatus?.configured && !selectedSecurityCredentialStatus?.configured}
+              disabled={
+                !selectedCredentialStatus?.configured &&
+                !selectedSecurityCredentialStatus?.configured
+              }
               icon={<DeleteOutlined />}
               onClick={() => void clearCredential()}
             >
@@ -364,23 +399,27 @@ export function MapSettings(_props: MapSettingsProps) {
         <div className={styles.blockHeading}>
           <span>网络代理</span>
         </div>
-        <Radio.Group value={proxyModeView} className={styles.proxyModeGroup} onChange={handleProxyModeChange}>
-          <Radio.Button value="system">跟随系统</Radio.Button>
-          <Radio.Button value="direct">直连</Radio.Button>
-          <Radio.Button value="custom">自定义</Radio.Button>
+        <Radio.Group
+          value={proxyModeView}
+          className={styles.proxyModeGroup}
+          onChange={handleProxyModeChange}
+        >
+          <Radio.Button value='system'>跟随系统</Radio.Button>
+          <Radio.Button value='direct'>直连</Radio.Button>
+          <Radio.Button value='custom'>自定义</Radio.Button>
         </Radio.Group>
         {proxyModeView === 'custom' && (
           <Input
             value={proxyDraft}
-            placeholder="http://127.0.0.1:7890 或 socks5://…"
+            placeholder='http://127.0.0.1:7890 或 socks5://…'
             className={styles.proxyInput}
-            onChange={(event) => setProxyDraft(event.target.value)}
+            onChange={event => setProxyDraft(event.target.value)}
             onPressEnter={() => void testProxy()}
           />
         )}
         <div className={styles.proxyActions}>
           {proxyModeView === 'custom' && (
-            <Button type="primary" disabled={!proxyApplyEnabled} onClick={applyProxy}>
+            <Button type='primary' disabled={!proxyApplyEnabled} onClick={applyProxy}>
               应用
             </Button>
           )}
@@ -403,7 +442,7 @@ export function MapSettings(_props: MapSettingsProps) {
             <div className={styles.settingTitle}>地图缓存</div>
             <p className={styles.settingDesc}>将浏览过的地图保存在本地，再次打开更快、更省流量</p>
           </div>
-          <Switch checked={tileCacheEnabled} onChange={(value) => setTileCacheEnabled(value)} />
+          <Switch checked={tileCacheEnabled} onChange={value => setTileCacheEnabled(value)} />
         </div>
       </section>
 
@@ -414,19 +453,28 @@ export function MapSettings(_props: MapSettingsProps) {
               <span className={styles.settingTitle}>海外资源镜像服务</span>
               <Tag color={tileMirrorStatusColor}>{tileMirrorStatusLabel}</Tag>
               {tileMirrorFallenBack && (
-                <Button type="link" className={styles.policyInlineLink} onClick={() => void retryTileMirror()}>
+                <Button
+                  type='link'
+                  className={styles.policyInlineLink}
+                  onClick={() => void retryTileMirror()}
+                >
                   重试镜像
                 </Button>
               )}
             </div>
             <p className={styles.settingDesc}>
-              由咕咕地球携手奈索星联团队提供加速服务，加速海外底图、3D 地形与教学数据加载。启用即表示同意
-              <Button type="link" className={styles.policyInlineLink} onClick={() => openMirrorPolicy('agreement')}>
+              由咕咕地球携手奈索星联团队提供加速服务，加速海外底图、3D
+              地形与教学数据加载。启用即表示同意
+              <Button
+                type='link'
+                className={styles.policyInlineLink}
+                onClick={() => openMirrorPolicy('agreement')}
+              >
                 《咕咕地球镜像服务使用协议》
               </Button>
               与
               <Button
-                type="link"
+                type='link'
                 className={styles.policyInlineLink}
                 onClick={() => openMirrorPolicy('acceptable-use')}
               >
@@ -435,26 +483,38 @@ export function MapSettings(_props: MapSettingsProps) {
               。
             </p>
           </div>
-          <Switch checked={tileMirrorEnabled} aria-label="海外资源镜像服务" onChange={handleTileMirrorSwitchChange} />
+          <Switch
+            checked={tileMirrorEnabled}
+            aria-label='海外资源镜像服务'
+            onChange={handleTileMirrorSwitchChange}
+          />
         </div>
 
         {tileMirrorEnabled && (
           <div className={styles.mirrorSourceSection}>
             <div className={styles.mirrorSourceHeader}>
               <span className={styles.mirrorSourceHeading}>镜像服务源</span>
-              <Button size="small" loading={mirrorProbingEndpoints} onClick={() => void reprobeMirrorEndpoints()}>
+              <Button
+                size='small'
+                loading={mirrorProbingEndpoints}
+                onClick={() => void reprobeMirrorEndpoints()}
+              >
                 {mirrorProbingEndpoints ? '测速中…' : '重新测速'}
               </Button>
             </div>
-            <Radio.Group value={tileMirrorSource} className={styles.proxyModeGroup} onChange={handleTileMirrorSourceChange}>
-              <Radio.Button value="auto">自动匹配</Radio.Button>
-              <Radio.Button value="edgeone">EdgeOne</Radio.Button>
-              <Radio.Button value="cloudflare">Cloudflare</Radio.Button>
+            <Radio.Group
+              value={tileMirrorSource}
+              className={styles.proxyModeGroup}
+              onChange={handleTileMirrorSourceChange}
+            >
+              <Radio.Button value='auto'>自动匹配</Radio.Button>
+              <Radio.Button value='edgeone'>EdgeOne</Radio.Button>
+              <Radio.Button value='cloudflare'>Cloudflare</Radio.Button>
             </Radio.Group>
             <p className={styles.mirrorSourceHint}>{tileMirrorSourceHint}</p>
             {mirrorProbeEntries.length > 0 && (
               <div className={styles.mirrorProbeList}>
-                {mirrorProbeEntries.map((entry) => (
+                {mirrorProbeEntries.map(entry => (
                   <span
                     key={entry.endpoint}
                     className={`${styles.mirrorProbeItem} ${entry.ok ? styles.mirrorProbeOk : styles.mirrorProbeFail}`}
@@ -479,14 +539,16 @@ export function MapSettings(_props: MapSettingsProps) {
                 </Tag>
               )}
             </div>
-            <p className={styles.settingDesc}>{touchInteractionModeDescriptions[touchInteractionMode]}</p>
+            <p className={styles.settingDesc}>
+              {touchInteractionModeDescriptions[touchInteractionMode]}
+            </p>
           </div>
           <Select
             className={styles.touchModeSelect}
             value={touchInteractionMode}
             options={touchInteractionModeOptions}
-            aria-label="触摸操作"
-            onChange={(value) => void setTouchInteractionMode(normalizeTouchInteractionMode(value))}
+            aria-label='触摸操作'
+            onChange={value => void setTouchInteractionMode(normalizeTouchInteractionMode(value))}
           />
         </div>
       </section>

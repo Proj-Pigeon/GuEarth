@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
-import { use, type EChartsCoreOption } from 'echarts/core'
 import { BarChart as EChartsBarChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { use, type EChartsCoreOption } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
+import { useMemo } from 'react'
+
 import EChartBase from './EChartBase'
+
 import styles from './BarChart.module.css'
 
 use([EChartsBarChart, GridComponent, TooltipComponent, LegendComponent, SVGRenderer])
@@ -41,7 +43,9 @@ const HAIRLINE = 'rgba(5, 5, 5, 0.06)'
 
 function formatNumber(value: number): string {
   const magnitude = Math.abs(value)
-  const text = Number.isInteger(magnitude) ? String(magnitude) : (Math.round(magnitude * 10) / 10).toString()
+  const text = Number.isInteger(magnitude)
+    ? String(magnitude)
+    : (Math.round(magnitude * 10) / 10).toString()
   return value < 0 ? `-${text}` : text
 }
 
@@ -70,7 +74,8 @@ export function BarChart({
         color: INK_TERTIARY,
         fontFamily: MONO_FONT,
         fontSize: 11,
-        formatter: (value: number) => (absValues ? formatNumber(Math.abs(value)) : formatNumber(value))
+        formatter: (value: number) =>
+          absValues ? formatNumber(Math.abs(value)) : formatNumber(value)
       },
       axisLine: { show: false },
       axisTick: { show: false },
@@ -108,9 +113,9 @@ export function BarChart({
           const list = Array.isArray(params) ? (params as TooltipParam[]) : [params as TooltipParam]
           if (!list.length) return ''
           const rows = list
-            .filter((item) => item && item.seriesName)
+            .filter(item => item && item.seriesName)
             .map(
-              (item) =>
+              item =>
                 `${item.marker}${item.seriesName} ${absValues ? formatNumber(Math.abs(item.value)) : formatNumber(item.value)}`
             )
             .join('<br/>')
@@ -119,7 +124,7 @@ export function BarChart({
       },
       xAxis: horizontal ? valueAxis : categoryAxis,
       yAxis: horizontal ? { ...categoryAxis } : { ...valueAxis },
-      series: series.map((item) => ({
+      series: series.map(item => ({
         type: 'bar',
         name: item.name,
         data: item.values,
@@ -129,9 +134,22 @@ export function BarChart({
         emphasis: { disabled: true }
       }))
     }
-  }, [categories, series, orientation, stacked, showLegend, absValues, valueMin, valueMax, xName, yName])
+  }, [
+    categories,
+    series,
+    orientation,
+    stacked,
+    showLegend,
+    absValues,
+    valueMin,
+    valueMax,
+    xName,
+    yName
+  ])
 
-  return <EChartBase className={styles.barChart} option={option} style={{ height: `${height}px` }} />
+  return (
+    <EChartBase className={styles.barChart} option={option} style={{ height: `${height}px` }} />
+  )
 }
 
 export default BarChart

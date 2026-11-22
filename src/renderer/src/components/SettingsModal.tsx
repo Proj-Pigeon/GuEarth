@@ -1,5 +1,3 @@
-import { useCallback, useRef, useState } from 'react'
-import { Modal } from 'antd'
 import {
   ControlOutlined,
   ExperimentOutlined,
@@ -10,14 +8,18 @@ import {
   UserOutlined
 } from '@ant-design/icons'
 import { useSettingsWindowStore, type SettingsSection } from '@renderer/stores/settingsWindow'
-import AccountSettings from './settings/AccountSettings'
-import GeneralSettings from './settings/GeneralSettings'
-import MapSettings from './settings/MapSettings'
-import AiSettingsSection, { type AiSettingsSectionHandle } from './settings/AiSettingsSection'
-import PrivacySettings from './settings/PrivacySettings'
-import LaboratorySettings from './settings/LaboratorySettings'
+import { Modal } from 'antd'
+import { useCallback, useRef, useState } from 'react'
+
 import AboutSettings from './settings/AboutSettings'
+import AccountSettings from './settings/AccountSettings'
+import AiSettingsSection, { type AiSettingsSectionHandle } from './settings/AiSettingsSection'
+import GeneralSettings from './settings/GeneralSettings'
+import LaboratorySettings from './settings/LaboratorySettings'
+import MapSettings from './settings/MapSettings'
+import PrivacySettings from './settings/PrivacySettings'
 import UnsavedChangesBar from './settings/UnsavedChangesBar'
+
 import styles from './SettingsModal.module.css'
 
 export interface SettingsModalProps {
@@ -62,10 +64,10 @@ function slotClass(visible: boolean): string {
 }
 
 export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
-  const isOpen = useSettingsWindowStore((state) => state.isOpen)
-  const activeSection = useSettingsWindowStore((state) => state.activeSection)
-  const setActiveSection = useSettingsWindowStore((state) => state.setActiveSection)
-  const closeWindow = useSettingsWindowStore((state) => state.close)
+  const isOpen = useSettingsWindowStore(state => state.isOpen)
+  const activeSection = useSettingsWindowStore(state => state.activeSection)
+  const setActiveSection = useSettingsWindowStore(state => state.setActiveSection)
+  const closeWindow = useSettingsWindowStore(state => state.close)
 
   const [laboratoryBusy, setLaboratoryBusy] = useState(false)
   const [aiDirty, setAiDirty] = useState(false)
@@ -154,7 +156,7 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
     <>
       <Modal
         open={isOpen}
-        title="设置"
+        title='设置'
         width={960}
         centered
         footer={null}
@@ -174,23 +176,25 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
       >
         {isOpen && (
           <>
-            <nav className={styles.settingsNav} aria-label="设置分区">
-              {NAV_GROUPS.map((group) => (
+            <nav className={styles.settingsNav} aria-label='设置分区'>
+              {NAV_GROUPS.map(group => (
                 <div key={group.caption} className={styles.navGroup}>
                   <div className={styles.navCaption}>{group.caption}</div>
-                  {group.items.map((item) => {
+                  {group.items.map(item => {
                     const Icon = item.icon
                     const selected = activeSection === item.id
                     return (
                       <button
                         key={item.id}
-                        type="button"
-                        className={selected ? `${styles.navItem} ${styles.navItemSelected}` : styles.navItem}
+                        type='button'
+                        className={
+                          selected ? `${styles.navItem} ${styles.navItemSelected}` : styles.navItem
+                        }
                         aria-current={selected ? 'true' : undefined}
                         disabled={laboratoryBusy}
                         onClick={() => requestNavigate(item.id)}
                       >
-                        <Icon className={styles.navItemIcon} aria-hidden="true" />
+                        <Icon className={styles.navItemIcon} aria-hidden='true' />
                         <span>{item.label}</span>
                       </button>
                     )
@@ -247,10 +251,10 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
 
       <Modal
         open={confirmOpen}
-        title="AI 设置尚未保存"
+        title='AI 设置尚未保存'
         width={420}
-        okText="保存设置"
-        cancelText="忽略"
+        okText='保存设置'
+        cancelText='忽略'
         confirmLoading={confirmSaving}
         closable={false}
         maskClosable={false}

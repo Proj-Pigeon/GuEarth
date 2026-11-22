@@ -1,22 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { ThreadPrimitive } from '@assistant-ui/react'
-import { Button, Checkbox, Drawer, Dropdown, Modal, Tooltip, type MenuProps } from 'antd'
-import {
-  HistoryIcon,
-  Minimize2Icon,
-  PlusIcon,
-  SettingsIcon,
-  Trash2Icon,
-  XIcon
-} from 'lucide-react'
 import { useAiStore } from '@renderer/stores/ai'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
+import { Button, Checkbox, Drawer, Dropdown, Modal, Tooltip, type MenuProps } from 'antd'
+import { HistoryIcon, Minimize2Icon, PlusIcon, SettingsIcon, Trash2Icon, XIcon } from 'lucide-react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent
+} from 'react'
+
 import type { StoredAiConversationSummary } from '../../../preload'
 import EoqComposer, { type EoqSlashCommand } from './eoq/EoqComposer'
 import EoqIconButton from './eoq/EoqIconButton'
 import EoqMessages from './eoq/EoqMessages'
 import EoqRuntimeProvider from './eoq/EoqRuntimeProvider'
 import EoqWelcome from './eoq/EoqWelcome'
+
 import styles from './EoqAssistant.module.css'
 
 function formatConversationTime(timestamp: number): string {
@@ -30,21 +34,23 @@ function formatConversationTime(timestamp: number): string {
 }
 
 export function EoqAssistant() {
-  const messages = useAiStore((state) => state.messages)
-  const conversations = useAiStore((state) => state.conversations)
-  const currentConversationId = useAiStore((state) => state.currentConversationId)
-  const isStreaming = useAiStore((state) => state.isStreaming)
-  const isPanelOpen = useAiStore((state) => state.isPanelOpen)
-  const settings = useAiStore((state) => state.settings)
-  const setPanelOpen = useAiStore((state) => state.setPanelOpen)
-  const newConversation = useAiStore((state) => state.newConversation)
-  const openConversation = useAiStore((state) => state.openConversation)
-  const deleteConversation = useAiStore((state) => state.deleteConversation)
-  const setSkipDeleteConversationConfirm = useAiStore((state) => state.setSkipDeleteConversationConfirm)
-  const compressContext = useAiStore((state) => state.compressContext)
-  const send = useAiStore((state) => state.send)
+  const messages = useAiStore(state => state.messages)
+  const conversations = useAiStore(state => state.conversations)
+  const currentConversationId = useAiStore(state => state.currentConversationId)
+  const isStreaming = useAiStore(state => state.isStreaming)
+  const isPanelOpen = useAiStore(state => state.isPanelOpen)
+  const settings = useAiStore(state => state.settings)
+  const setPanelOpen = useAiStore(state => state.setPanelOpen)
+  const newConversation = useAiStore(state => state.newConversation)
+  const openConversation = useAiStore(state => state.openConversation)
+  const deleteConversation = useAiStore(state => state.deleteConversation)
+  const setSkipDeleteConversationConfirm = useAiStore(
+    state => state.setSkipDeleteConversationConfirm
+  )
+  const compressContext = useAiStore(state => state.compressContext)
+  const send = useAiStore(state => state.send)
 
-  const openSettings = useSettingsWindowStore((state) => state.open)
+  const openSettings = useSettingsWindowStore(state => state.open)
 
   const [historyOpen, setHistoryOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -97,7 +103,7 @@ export function EoqAssistant() {
       const nextViewport = window.innerWidth
       setViewportWidth(nextViewport)
       const maxWidth = Math.max(0, Math.floor(nextViewport / 3))
-      setDrawerWidth((current) => clampDrawerWidth(current, maxWidth))
+      setDrawerWidth(current => clampDrawerWidth(current, maxWidth))
     }
     window.addEventListener('resize', handleViewportResize)
     return () => window.removeEventListener('resize', handleViewportResize)
@@ -169,9 +175,12 @@ export function EoqAssistant() {
 
   const handleInterceptSend = useCallback(
     (text: string): boolean => {
-      const command = text.trim().match(/^\/([^\s]+)(?:\s+.*)?$/)?.[1].toLowerCase()
+      const command = text
+        .trim()
+        .match(/^\/([^\s]+)(?:\s+.*)?$/)?.[1]
+        .toLowerCase()
       if (!command) return false
-      const matched = agentCommands.find((item) => item.name.slice(1) === command)
+      const matched = agentCommands.find(item => item.name.slice(1) === command)
       if (!matched) return false
       void matched.run()
       return true
@@ -189,7 +198,7 @@ export function EoqAssistant() {
   )
 
   const handleHistoryMenuClick = useCallback<NonNullable<MenuProps['onClick']>>(
-    (info) => {
+    info => {
       setHistoryOpen(false)
       void openConversation(String(info.key))
     },
@@ -231,7 +240,7 @@ export function EoqAssistant() {
         }
       ]
     }
-    return conversations.map((conversation) => ({
+    return conversations.map(conversation => ({
       key: conversation.id,
       className:
         conversation.id === currentConversationId
@@ -242,16 +251,18 @@ export function EoqAssistant() {
           <span className={styles.historyItemTitle} title={conversation.title}>
             {conversation.title}
           </span>
-          <span className={styles.historyItemTime}>{formatConversationTime(conversation.updatedAt)}</span>
-          <Tooltip title="删除会话">
+          <span className={styles.historyItemTime}>
+            {formatConversationTime(conversation.updatedAt)}
+          </span>
+          <Tooltip title='删除会话'>
             <Button
-              type="text"
-              size="small"
+              type='text'
+              size='small'
               danger
               className={styles.historyDelete}
               aria-label={`删除会话 ${conversation.title}`}
-              icon={<Trash2Icon className="size-3.5" />}
-              onClick={(event) => handleDeleteConversation(event, conversation)}
+              icon={<Trash2Icon className='size-3.5' />}
+              onClick={event => handleDeleteConversation(event, conversation)}
             />
           </Tooltip>
         </div>
@@ -263,11 +274,11 @@ export function EoqAssistant() {
     <>
       <Drawer
         open={isPanelOpen}
-        placement="right"
+        placement='right'
         size={drawerWidth}
         mask={false}
         closable={false}
-        rootClassName="eoq-drawer"
+        rootClassName='eoq-drawer'
         styles={{
           header: {
             padding: '12px 16px',
@@ -288,19 +299,19 @@ export function EoqAssistant() {
             <div className={styles.titleActions}>
               {messages.length > 0 && (
                 <EoqIconButton
-                  tooltip="新建会话"
-                  tooltipPlacement="bottom"
-                  size="md"
+                  tooltip='新建会话'
+                  tooltipPlacement='bottom'
+                  size='md'
                   disabled={isStreaming}
                   onClick={() => newConversation()}
                 >
-                  <PlusIcon className="size-4" />
+                  <PlusIcon className='size-4' />
                 </EoqIconButton>
               )}
               <Dropdown
                 open={historyOpen}
                 trigger={['click']}
-                placement="bottomRight"
+                placement='bottomRight'
                 styles={{ root: { width: '300px' } }}
                 menu={{
                   className: styles.historyMenu,
@@ -309,33 +320,33 @@ export function EoqAssistant() {
                 }}
                 onOpenChange={setHistoryOpen}
               >
-                <span className="inline-flex">
+                <span className='inline-flex'>
                   <EoqIconButton
-                    tooltip="历史会话"
-                    tooltipPlacement="bottom"
-                    size="md"
-                    aria-haspopup="menu"
+                    tooltip='历史会话'
+                    tooltipPlacement='bottom'
+                    size='md'
+                    aria-haspopup='menu'
                     aria-expanded={historyOpen}
                   >
-                    <HistoryIcon className="size-4" />
+                    <HistoryIcon className='size-4' />
                   </EoqIconButton>
                 </span>
               </Dropdown>
               <EoqIconButton
-                tooltip="设置"
-                tooltipPlacement="bottom"
-                size="md"
+                tooltip='设置'
+                tooltipPlacement='bottom'
+                size='md'
                 onClick={() => openSettings('ai')}
               >
-                <SettingsIcon className="size-4" />
+                <SettingsIcon className='size-4' />
               </EoqIconButton>
               <EoqIconButton
-                tooltip="关闭助手"
-                tooltipPlacement="bottom"
-                size="md"
+                tooltip='关闭助手'
+                tooltipPlacement='bottom'
+                size='md'
                 onClick={() => setPanelOpen(false)}
               >
-                <XIcon className="size-4" />
+                <XIcon className='size-4' />
               </EoqIconButton>
             </div>
           </div>
@@ -344,10 +355,10 @@ export function EoqAssistant() {
       >
         <div
           className={styles.drawerResizeHandle}
-          role="separator"
+          role='separator'
           tabIndex={0}
-          aria-orientation="vertical"
-          aria-label="调整助手宽度"
+          aria-orientation='vertical'
+          aria-label='调整助手宽度'
           aria-valuemin={drawerMinWidth}
           aria-valuemax={drawerMaxWidth}
           aria-valuenow={drawerWidth}
@@ -356,7 +367,7 @@ export function EoqAssistant() {
         />
 
         <EoqRuntimeProvider onInterceptSend={handleInterceptSend}>
-          <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col gap-2">
+          <ThreadPrimitive.Root className='flex min-h-0 flex-1 flex-col gap-2'>
             {messages.length === 0 ? (
               <ThreadPrimitive.Empty>
                 <EoqWelcome onSelectPrompt={handleSubmitPrompt} />
@@ -368,23 +379,23 @@ export function EoqAssistant() {
           </ThreadPrimitive.Root>
         </EoqRuntimeProvider>
 
-        <p className={styles.aiDisclaimer} title="内容由 AI 生成，请注意甄别">
+        <p className={styles.aiDisclaimer} title='内容由 AI 生成，请注意甄别'>
           内容由 AI 生成，请注意甄别
         </p>
       </Drawer>
 
       <Modal
         open={deleteConfirmOpen}
-        title="删除会话"
+        title='删除会话'
         width={400}
-        okText="删除"
+        okText='删除'
         okButtonProps={{ danger: true }}
-        cancelText="取消"
+        cancelText='取消'
         onOk={confirmDeleteConversation}
         onCancel={() => setDeleteConfirmOpen(false)}
       >
         <p className={styles.deleteConfirmText}>删除后「{deleteTarget?.title}」将无法恢复。</p>
-        <Checkbox checked={deleteNoAsk} onChange={(event) => setDeleteNoAsk(event.target.checked)}>
+        <Checkbox checked={deleteNoAsk} onChange={event => setDeleteNoAsk(event.target.checked)}>
           不再提示
         </Checkbox>
       </Modal>

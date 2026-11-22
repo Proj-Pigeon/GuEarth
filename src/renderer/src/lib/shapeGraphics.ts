@@ -1,7 +1,8 @@
 import * as Cesium from 'cesium'
+
 import type { GeoPosition } from '../../../preload'
-import { polygonArea } from './polygonArea'
 import { DEFAULT_DRAW_STYLE } from '../stores/drawing'
+import { polygonArea } from './polygonArea'
 
 export { polygonArea }
 
@@ -17,7 +18,9 @@ export interface ShapeVisual {
   lineWidth: number
 }
 
-export function transientMirrorShape(annotation: ShapeVisual & { id: string; createdAt: number }): ShapeVisual & { id: string; createdAt: number } {
+export function transientMirrorShape(
+  annotation: ShapeVisual & { id: string; createdAt: number }
+): ShapeVisual & { id: string; createdAt: number } {
   return {
     id: annotation.id,
     kind: annotation.kind,
@@ -55,12 +58,16 @@ export function toCartesian(position: GeoPosition): Cesium.Cartesian3 {
 }
 
 export function geodesicDistance(from: Cesium.Cartesian3, to: Cesium.Cartesian3): number {
-  return new Cesium.EllipsoidGeodesic(Cesium.Cartographic.fromCartesian(from), Cesium.Cartographic.fromCartesian(to)).surfaceDistance
+  return new Cesium.EllipsoidGeodesic(
+    Cesium.Cartographic.fromCartesian(from),
+    Cesium.Cartographic.fromCartesian(to)
+  ).surfaceDistance
 }
 
 export function pathDistance(cartesians: Cesium.Cartesian3[]): number {
   let total = 0
-  for (let index = 1; index < cartesians.length; index += 1) total += geodesicDistance(cartesians[index - 1], cartesians[index])
+  for (let index = 1; index < cartesians.length; index += 1)
+    total += geodesicDistance(cartesians[index - 1], cartesians[index])
   return total
 }
 
@@ -74,21 +81,36 @@ export function formatDistance(meters: number): string {
 }
 
 export function formatArea(squareMeters: number): string {
-  return squareMeters >= 1000000 ? `${(squareMeters / 1000000).toFixed(2)} km²` : `${squareMeters.toFixed(0)} m²`
+  return squareMeters >= 1000000
+    ? `${(squareMeters / 1000000).toFixed(2)} km²`
+    : `${squareMeters.toFixed(0)} m²`
 }
 
 export function centroidOf(cartesians: Cesium.Cartesian3[]): Cesium.Cartesian3 {
-  const sum = cartesians.reduce((acc, cartesian) => Cesium.Cartesian3.add(acc, cartesian, new Cesium.Cartesian3()), new Cesium.Cartesian3())
+  const sum = cartesians.reduce(
+    (acc, cartesian) => Cesium.Cartesian3.add(acc, cartesian, new Cesium.Cartesian3()),
+    new Cesium.Cartesian3()
+  )
   return Cesium.Cartesian3.multiplyByScalar(sum, 1 / cartesians.length, new Cesium.Cartesian3())
 }
 
 export function dedupe(cartesians: Cesium.Cartesian3[]): Cesium.Cartesian3[] {
-  return cartesians.filter((cartesian, index) => index === 0 || !Cesium.Cartesian3.equalsEpsilon(cartesian, cartesians[index - 1], 0, 0.5))
+  return cartesians.filter(
+    (cartesian, index) =>
+      index === 0 || !Cesium.Cartesian3.equalsEpsilon(cartesian, cartesians[index - 1], 0, 0.5)
+  )
 }
 
-export function isUsablePosition(position: Cesium.Cartesian3 | undefined): position is Cesium.Cartesian3 {
+export function isUsablePosition(
+  position: Cesium.Cartesian3 | undefined
+): position is Cesium.Cartesian3 {
   if (!position) return false
-  return Number.isFinite(position.x) && Number.isFinite(position.y) && Number.isFinite(position.z) && Cesium.Cartesian3.magnitudeSquared(position) > 0
+  return (
+    Number.isFinite(position.x) &&
+    Number.isFinite(position.y) &&
+    Number.isFinite(position.z) &&
+    Cesium.Cartesian3.magnitudeSquared(position) > 0
+  )
 }
 
 export function sanitizePositions(cartesians: Cesium.Cartesian3[]): Cesium.Cartesian3[] {
@@ -108,8 +130,11 @@ export function isGroundPolylineSupported(viewer: Cesium.Viewer): boolean {
   return viewer.scene.verticalExaggeration === 1
 }
 
-export function terrainPath(positions: Cesium.Cartesian3[], maxSegments: number): Cesium.Cartographic[] {
-  const points = positions.map((position) => Cesium.Cartographic.fromCartesian(position))
+export function terrainPath(
+  positions: Cesium.Cartesian3[],
+  maxSegments: number
+): Cesium.Cartographic[] {
+  const points = positions.map(position => Cesium.Cartographic.fromCartesian(position))
   const spacing = Math.max(200, pathDistance(positions) / maxSegments)
   const path: Cesium.Cartographic[] = []
   for (let index = 1; index < points.length; index += 1) {
@@ -129,22 +154,44 @@ export function terrainPath(positions: Cesium.Cartesian3[], maxSegments: number)
   return path
 }
 
-export function terrainSurfacePositions(viewer: Cesium.Viewer, path: Cesium.Cartographic[]): Cesium.Cartesian3[] {
-  return path.map((cartographic) => {
+export function terrainSurfacePositions(
+  viewer: Cesium.Viewer,
+  path: Cesium.Cartographic[]
+): Cesium.Cartesian3[] {
+  return path.map(cartographic => {
     const terrainHeight = viewer.scene.globe.getHeight(cartographic)
     const exaggeration = viewer.scene.verticalExaggeration
-    const height = (typeof terrainHeight === 'number' && Number.isFinite(terrainHeight) ? terrainHeight : cartographic.height / exaggeration) * exaggeration
+    const height =
+      (typeof terrainHeight === 'number' && Number.isFinite(terrainHeight)
+        ? terrainHeight
+        : cartographic.height / exaggeration) * exaggeration
     return Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, height + 5)
   })
 }
 
-export function polylineOptions(viewer: Cesium.Viewer, positions: Cesium.Cartesian3[], width: number, color: Cesium.Color): { graphics: Cesium.PolylineGraphics.ConstructorOptions; drapedPath?: Cesium.Cartographic[] } | undefined {
+export function polylineOptions(
+  viewer: Cesium.Viewer,
+  positions: Cesium.Cartesian3[],
+  width: number,
+  color: Cesium.Color
+):
+  | { graphics: Cesium.PolylineGraphics.ConstructorOptions; drapedPath?: Cesium.Cartographic[] }
+  | undefined {
   const sanitized = sanitizePositions(positions)
   if (sanitized.length < 2) return undefined
-  if (isGroundPolylineSupported(viewer)) return { graphics: { positions: sanitized, width, material: color, clampToGround: true } }
+  if (isGroundPolylineSupported(viewer))
+    return { graphics: { positions: sanitized, width, material: color, clampToGround: true } }
   const material = new Cesium.ColorMaterialProperty(color)
   const drapedPath = terrainPath(sanitized, 512)
-  return { graphics: { positions: terrainSurfacePositions(viewer, drapedPath), width, material, depthFailMaterial: material }, drapedPath }
+  return {
+    graphics: {
+      positions: terrainSurfacePositions(viewer, drapedPath),
+      width,
+      material,
+      depthFailMaterial: material
+    },
+    drapedPath
+  }
 }
 
 export function measurementFor(kind: ShapeVisual['kind'], cartesians: Cesium.Cartesian3[]): string {
@@ -164,12 +211,23 @@ export function pointGraphics(color: Cesium.Color): Cesium.PointGraphics.Constru
   }
 }
 
-export function polygonGraphics(color: Cesium.Color, hierarchy: Cesium.Cartesian3[]): Cesium.PolygonGraphics.ConstructorOptions {
+export function polygonGraphics(
+  color: Cesium.Color,
+  hierarchy: Cesium.Cartesian3[]
+): Cesium.PolygonGraphics.ConstructorOptions {
   return { hierarchy: new Cesium.PolygonHierarchy(hierarchy), material: color.withAlpha(0.25) }
 }
 
-export function shapeLabelOptions(shape: ShapeVisual, cartesians: Cesium.Cartesian3[], textOverride?: string): Cesium.LabelGraphics.ConstructorOptions | undefined {
-  const text = textOverride ?? (shape.kind === 'text' ? shape.annotation : shape.annotation || measurementFor(shape.kind, cartesians))
+export function shapeLabelOptions(
+  shape: ShapeVisual,
+  cartesians: Cesium.Cartesian3[],
+  textOverride?: string
+): Cesium.LabelGraphics.ConstructorOptions | undefined {
+  const text =
+    textOverride ??
+    (shape.kind === 'text'
+      ? shape.annotation
+      : shape.annotation || measurementFor(shape.kind, cartesians))
   if (!text) return undefined
   const textColor = Cesium.Color.fromCssColorString(shape.textColor) ?? Cesium.Color.WHITE
   return {

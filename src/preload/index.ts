@@ -1,11 +1,26 @@
 import '@sentry/electron/preload'
 import { contextBridge, ipcRenderer } from 'electron'
+
+import type {
+  LaboratoryProvider,
+  LaboratoryProviderInput,
+  OnlineDataSnapshot
+} from '../common/onlineData'
+import type {
+  AccountDeviceChallenge,
+  AccountPhase,
+  AccountProfile,
+  AccountState
+} from '../common/passport'
 import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
-import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
-import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, TileMirrorMode } from '../common/tileMirror'
-import type { TouchInteractionMode } from '../common/touchInteraction'
 import type { EnsoPhase } from '../common/thematicState'
-import type { LaboratoryProvider, LaboratoryProviderInput, OnlineDataSnapshot } from '../common/onlineData'
+import type {
+  MirrorEndpointId,
+  MirrorEndpointPreference,
+  MirrorEndpointProbeResult,
+  TileMirrorMode
+} from '../common/tileMirror'
+import type { TouchInteractionMode } from '../common/touchInteraction'
 
 export interface ProviderCredentialStatus {
   configured: boolean
@@ -248,11 +263,27 @@ export type AiChatEvent =
   | { sessionId: string; type: 'reasoning-delta'; text: string }
   | { sessionId: string; type: 'text-delta'; text: string }
   | { sessionId: string; type: 'tool-start'; callId: string; name: string; args: unknown }
-  | { sessionId: string; type: 'tool-end'; callId: string; ok: boolean; summary: string; result: string; references?: AiSearchReference[] }
+  | {
+      sessionId: string
+      type: 'tool-end'
+      callId: string
+      ok: boolean
+      summary: string
+      result: string
+      references?: AiSearchReference[]
+    }
   | { sessionId: string; type: 'execute-tool'; callId: string; name: string; args: unknown }
   | { sessionId: string; type: 'context-stats'; stats: AiContextStats }
   | { sessionId: string; type: 'context-compression-start' }
-  | { sessionId: string; type: 'context-compressed'; summary: string; retainedTurns: AiChatTurn[]; stats: AiContextStats; beforeTokens: number; afterTokens: number }
+  | {
+      sessionId: string
+      type: 'context-compressed'
+      summary: string
+      retainedTurns: AiChatTurn[]
+      stats: AiContextStats
+      beforeTokens: number
+      afterTokens: number
+    }
   | { sessionId: string; type: 'context-compression-error'; message: string }
   | { sessionId: string; type: 'model-retry'; attempt: number; maxRetries: number; reason: string }
   | { sessionId: string; type: 'done' }
@@ -299,9 +330,17 @@ export interface StoredAiConversation extends StoredAiConversationSummary {
   compression?: StoredAiCompression
 }
 
-import type { ConversationSearchHit, HawdbStatusInfo, MemoryRecallMatch } from '../main/ai/hawdb/protocol'
+import type {
+  ConversationSearchHit,
+  HawdbStatusInfo,
+  MemoryRecallMatch
+} from '../main/ai/hawdb/protocol'
 
-export type { ConversationSearchHit as AiConversationSearchHit, HawdbStatusInfo as AiHawdbStatus, MemoryRecallMatch as AiMemoryRecallMatch }
+export type {
+  ConversationSearchHit as AiConversationSearchHit,
+  HawdbStatusInfo as AiHawdbStatus,
+  MemoryRecallMatch as AiMemoryRecallMatch
+}
 
 type AiConversationSearchHit = ConversationSearchHit
 type AiMemoryRecallMatch = MemoryRecallMatch
@@ -357,7 +396,11 @@ export interface ProvinceGeoDocument {
 
 export type PlaceSearchProvider = 'amap' | 'baidu'
 
-export type { PoiCategoryCount, PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
+export type {
+  PoiCategoryCount,
+  PoiStatisticsRequest,
+  PoiStatisticsResult
+} from '../common/poiStatistics'
 
 export interface SceneCamera {
   longitude: number
@@ -482,11 +525,16 @@ const api = {
   },
   settings: {
     get: (): Promise<GuEarthSettings> => ipcRenderer.invoke('settings:get'),
-    update: (patch: GuEarthSettingsPatch): Promise<GuEarthSettings> => ipcRenderer.invoke('settings:update', patch),
-    setProviderApiKey: (providerId: string, apiKey: string): Promise<ProviderCredentialStatus> => ipcRenderer.invoke('settings:set-provider-api-key', providerId, apiKey),
-    clearProviderApiKey: (providerId: string): Promise<ProviderCredentialStatus> => ipcRenderer.invoke('settings:clear-provider-api-key', providerId),
-    hasProviderApiKey: (providerId: string): Promise<ProviderCredentialStatus> => ipcRenderer.invoke('settings:has-provider-api-key', providerId),
-    testNetworkProxy: (proxy: string): Promise<NetworkProxyTestResult> => ipcRenderer.invoke('settings:test-network-proxy', proxy)
+    update: (patch: GuEarthSettingsPatch): Promise<GuEarthSettings> =>
+      ipcRenderer.invoke('settings:update', patch),
+    setProviderApiKey: (providerId: string, apiKey: string): Promise<ProviderCredentialStatus> =>
+      ipcRenderer.invoke('settings:set-provider-api-key', providerId, apiKey),
+    clearProviderApiKey: (providerId: string): Promise<ProviderCredentialStatus> =>
+      ipcRenderer.invoke('settings:clear-provider-api-key', providerId),
+    hasProviderApiKey: (providerId: string): Promise<ProviderCredentialStatus> =>
+      ipcRenderer.invoke('settings:has-provider-api-key', providerId),
+    testNetworkProxy: (proxy: string): Promise<NetworkProxyTestResult> =>
+      ipcRenderer.invoke('settings:test-network-proxy', proxy)
   },
   tiles: {
     get: (key: TileKey): Promise<TileCacheEntry | null> => ipcRenderer.invoke('tiles:get', key),
@@ -494,17 +542,21 @@ const api = {
     clear: (providerId?: string): Promise<void> => ipcRenderer.invoke('tiles:clear', providerId),
     stats: (): Promise<TileCacheStats> => ipcRenderer.invoke('tiles:stats'),
     getMirrorStatus: (): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:mirror-status'),
-    resetMirrorFallback: (providerId?: string, notify?: boolean): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:reset-mirror-fallback', providerId, notify),
-    probeMirrorEndpoints: (): Promise<TileMirrorStatus> => ipcRenderer.invoke('tiles:probe-mirror-endpoints'),
+    resetMirrorFallback: (providerId?: string, notify?: boolean): Promise<TileMirrorStatus> =>
+      ipcRenderer.invoke('tiles:reset-mirror-fallback', providerId, notify),
+    probeMirrorEndpoints: (): Promise<TileMirrorStatus> =>
+      ipcRenderer.invoke('tiles:probe-mirror-endpoints'),
     onMirrorStatus: (listener: (status: TileMirrorStatus) => void): (() => void) => {
-      const wrapped = (_event: Electron.IpcRendererEvent, payload: TileMirrorStatus): void => listener(payload)
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: TileMirrorStatus): void =>
+        listener(payload)
       ipcRenderer.on('tiles:mirror-status', wrapped)
       return () => ipcRenderer.removeListener('tiles:mirror-status', wrapped)
     }
   },
   annotations: {
     load: (): Promise<AnnotationDocument> => ipcRenderer.invoke('annotations:load'),
-    save: (document: AnnotationDocument): Promise<void> => ipcRenderer.invoke('annotations:save', document)
+    save: (document: AnnotationDocument): Promise<void> =>
+      ipcRenderer.invoke('annotations:save', document)
   },
   scenes: {
     load: (): Promise<SceneDocument> => ipcRenderer.invoke('scenes:load'),
@@ -512,33 +564,55 @@ const api = {
   },
   recordings: {
     getDirectory: (): Promise<string | null> => ipcRenderer.invoke('recordings:get-directory'),
-    chooseDirectory: (): Promise<string | null> => ipcRenderer.invoke('recordings:choose-directory'),
-    offscreenProbe: (script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-probe', script),
-    offscreenEncode: (script: OffscreenRecordingScript): Promise<RecordingSaveResult> => ipcRenderer.invoke('recordings:offscreen-encode', script),
+    chooseDirectory: (): Promise<string | null> =>
+      ipcRenderer.invoke('recordings:choose-directory'),
+    offscreenProbe: (script?: OffscreenRecordingScript): Promise<OffscreenRecordingProbeResult> =>
+      ipcRenderer.invoke('recordings:offscreen-probe', script),
+    offscreenEncode: (script: OffscreenRecordingScript): Promise<RecordingSaveResult> =>
+      ipcRenderer.invoke('recordings:offscreen-encode', script),
     offscreenCancel: (): Promise<void> => ipcRenderer.invoke('recordings:offscreen-cancel'),
-    offscreenProgress: (progress: OffscreenRecordingProgress): void => ipcRenderer.send('recordings:offscreen-progress', progress),
-    onOffscreenProgress: (listener: (progress: OffscreenRecordingProgress) => void): (() => void) => {
-      const wrapped = (_event: Electron.IpcRendererEvent, payload: OffscreenRecordingProgress): void => listener(payload)
+    offscreenProgress: (progress: OffscreenRecordingProgress): void =>
+      ipcRenderer.send('recordings:offscreen-progress', progress),
+    onOffscreenProgress: (
+      listener: (progress: OffscreenRecordingProgress) => void
+    ): (() => void) => {
+      const wrapped = (
+        _event: Electron.IpcRendererEvent,
+        payload: OffscreenRecordingProgress
+      ): void => listener(payload)
       ipcRenderer.on('recordings:offscreen-progress', wrapped)
       return () => ipcRenderer.removeListener('recordings:offscreen-progress', wrapped)
     },
-    offscreenNotice: (message: string): void => ipcRenderer.send('recordings:offscreen-notice', message),
+    offscreenNotice: (message: string): void =>
+      ipcRenderer.send('recordings:offscreen-notice', message),
     onOffscreenNotice: (listener: (message: string) => void): (() => void) => {
-      const wrapped = (_event: Electron.IpcRendererEvent, payload: string): void => listener(payload)
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: string): void =>
+        listener(payload)
       ipcRenderer.on('recordings:offscreen-notice', wrapped)
       return () => ipcRenderer.removeListener('recordings:offscreen-notice', wrapped)
     },
     offscreenNext: (): void => ipcRenderer.send('recordings:offscreen-next'),
     offscreenSkipPrewarm: (): void => ipcRenderer.send('recordings:offscreen-skip-prewarm'),
-    offscreenPrewarmQuality: (quality: OffscreenPrewarmQuality): void => ipcRenderer.send('recordings:offscreen-prewarm-quality', quality),
-    offscreenStats: (): Promise<OffscreenRecordingProbeResult> => ipcRenderer.invoke('recordings:offscreen-stats'),
-    onOffscreenFrame: (listener: (index: number, captureTimeMs: number, jpeg: Uint8Array) => void): (() => void) => {
-      const wrapped = (_event: Electron.IpcRendererEvent, index: number, captureTimeMs: number, jpeg: Uint8Array): void => listener(index, captureTimeMs, jpeg)
+    offscreenPrewarmQuality: (quality: OffscreenPrewarmQuality): void =>
+      ipcRenderer.send('recordings:offscreen-prewarm-quality', quality),
+    offscreenStats: (): Promise<OffscreenRecordingProbeResult> =>
+      ipcRenderer.invoke('recordings:offscreen-stats'),
+    onOffscreenFrame: (
+      listener: (index: number, captureTimeMs: number, jpeg: Uint8Array) => void
+    ): (() => void) => {
+      const wrapped = (
+        _event: Electron.IpcRendererEvent,
+        index: number,
+        captureTimeMs: number,
+        jpeg: Uint8Array
+      ): void => listener(index, captureTimeMs, jpeg)
       ipcRenderer.on('recordings:offscreen-frame', wrapped)
       return () => ipcRenderer.removeListener('recordings:offscreen-frame', wrapped)
     },
-    sendOffscreenFrameAck: (count: number): void => ipcRenderer.send('recordings:offscreen-frame-ack', count),
-    sendOffscreenVideoChunk: (bytes: Uint8Array, position: number): void => ipcRenderer.send('recordings:offscreen-video-chunk', bytes, position),
+    sendOffscreenFrameAck: (count: number): void =>
+      ipcRenderer.send('recordings:offscreen-frame-ack', count),
+    sendOffscreenVideoChunk: (bytes: Uint8Array, position: number): void =>
+      ipcRenderer.send('recordings:offscreen-video-chunk', bytes, position),
     sendOffscreenVideoComplete: (): void => ipcRenderer.send('recordings:offscreen-video-complete')
   },
   system: {
@@ -549,36 +623,47 @@ const api = {
     login: (): Promise<AccountState> => ipcRenderer.invoke('account:login'),
     cancelLogin: (): Promise<AccountState> => ipcRenderer.invoke('account:cancel-login'),
     signOut: (): Promise<AccountState> => ipcRenderer.invoke('account:sign-out'),
-    dismissRevocationWarning: (): Promise<AccountState> => ipcRenderer.invoke('account:dismiss-revocation-warning'),
+    dismissRevocationWarning: (): Promise<AccountState> =>
+      ipcRenderer.invoke('account:dismiss-revocation-warning'),
     openDeviceList: (): Promise<void> => ipcRenderer.invoke('account:open-device-list'),
     openVerification: (): Promise<void> => ipcRenderer.invoke('account:open-verification'),
     onState: (listener: (state: AccountState) => void): (() => void) => {
-      const wrapped = (_event: Electron.IpcRendererEvent, payload: AccountState): void => listener(payload)
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: AccountState): void =>
+        listener(payload)
       ipcRenderer.on('account:event', wrapped)
       return () => ipcRenderer.removeListener('account:event', wrapped)
     }
   },
   logs: {
-    copy: (rendererDump: string): Promise<void> => ipcRenderer.invoke('logging:copy-report', rendererDump)
+    copy: (rendererDump: string): Promise<void> =>
+      ipcRenderer.invoke('logging:copy-report', rendererDump)
   },
   places: {
-    search: (keyword: string, provider?: PlaceSearchProvider): Promise<PlaceSearchResult> => ipcRenderer.invoke('places:search', keyword, provider),
-    poiStatistics: (request: PoiStatisticsRequest): Promise<PoiStatisticsResult> => ipcRenderer.invoke('places:poi-statistics', request)
+    search: (keyword: string, provider?: PlaceSearchProvider): Promise<PlaceSearchResult> =>
+      ipcRenderer.invoke('places:search', keyword, provider),
+    poiStatistics: (request: PoiStatisticsRequest): Promise<PoiStatisticsResult> =>
+      ipcRenderer.invoke('places:poi-statistics', request)
   },
   laboratory: {
-    listProviders: (): Promise<LaboratoryProvider[]> => ipcRenderer.invoke('laboratory:list-providers'),
-    saveProvider: (input: LaboratoryProviderInput): Promise<LaboratoryProvider[]> => ipcRenderer.invoke('laboratory:save-provider', input),
-    removeProvider: (provider: 'qweather'): Promise<LaboratoryProvider[]> => ipcRenderer.invoke('laboratory:remove-provider', provider)
+    listProviders: (): Promise<LaboratoryProvider[]> =>
+      ipcRenderer.invoke('laboratory:list-providers'),
+    saveProvider: (input: LaboratoryProviderInput): Promise<LaboratoryProvider[]> =>
+      ipcRenderer.invoke('laboratory:save-provider', input),
+    removeProvider: (provider: 'qweather'): Promise<LaboratoryProvider[]> =>
+      ipcRenderer.invoke('laboratory:remove-provider', provider)
   },
   datasets: {
     getOnlineData: (): Promise<OnlineDataSnapshot> => ipcRenderer.invoke('datasets:online-data'),
-    ensureTyphoons: (retry = false): Promise<OnlineDataSnapshot> => ipcRenderer.invoke('datasets:ensure-typhoons', retry),
+    ensureTyphoons: (retry = false): Promise<OnlineDataSnapshot> =>
+      ipcRenderer.invoke('datasets:ensure-typhoons', retry),
     onOnlineData: (listener: (snapshot: OnlineDataSnapshot) => void): (() => void) => {
-      const wrapped = (_event: Electron.IpcRendererEvent, payload: OnlineDataSnapshot): void => listener(payload)
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: OnlineDataSnapshot): void =>
+        listener(payload)
       ipcRenderer.on('datasets:online-data-changed', wrapped)
       return () => ipcRenderer.removeListener('datasets:online-data-changed', wrapped)
     },
-    getEarthquakes: (refresh = false): Promise<EarthquakeFeed> => ipcRenderer.invoke('datasets:earthquakes', refresh),
+    getEarthquakes: (refresh = false): Promise<EarthquakeFeed> =>
+      ipcRenderer.invoke('datasets:earthquakes', refresh),
     getProvinces: (): Promise<ProvinceGeoDocument> => ipcRenderer.invoke('datasets:provinces')
   },
   updater: {
@@ -587,37 +672,66 @@ const api = {
     install: (): Promise<void> => ipcRenderer.invoke('updater:install'),
     check: (): Promise<UpdateCheckOutcome> => ipcRenderer.invoke('updater:check'),
     onEvent: (listener: (event: UpdaterEvent) => void): (() => void) => {
-      const wrapped = (_event: Electron.IpcRendererEvent, payload: UpdaterEvent): void => listener(payload)
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: UpdaterEvent): void =>
+        listener(payload)
       ipcRenderer.on('updater:event', wrapped)
       return () => ipcRenderer.removeListener('updater:event', wrapped)
     }
   },
   ai: {
     getSettings: (): Promise<AiSettings> => ipcRenderer.invoke('ai:get-settings'),
-    updateSettings: (settings: AiSettings): Promise<AiSettings> => ipcRenderer.invoke('ai:update-settings', settings),
-    importModels: (request: AiModelImportRequest): Promise<AiModelImportResult> => ipcRenderer.invoke('ai:import-models', request),
-    testModel: (request: AiModelTestRequest): Promise<AiModelTestResult> => ipcRenderer.invoke('ai:test-model', request),
-    chat: (sessionId: string, turns: AiChatTurn[], tools: AiToolDefinition[], conversationId: string, distinctId: string): Promise<void> => ipcRenderer.invoke('ai:chat', sessionId, turns, tools, conversationId, distinctId),
-    getContextStats: (entries: AiContextEntry[]): Promise<AiContextStats> => ipcRenderer.invoke('ai:context-stats', entries),
-    compressContext: (entries: AiContextEntry[], conversationId: string, distinctId: string): Promise<AiContextCompressionResult> => ipcRenderer.invoke('ai:compress-context', entries, conversationId, distinctId),
+    updateSettings: (settings: AiSettings): Promise<AiSettings> =>
+      ipcRenderer.invoke('ai:update-settings', settings),
+    importModels: (request: AiModelImportRequest): Promise<AiModelImportResult> =>
+      ipcRenderer.invoke('ai:import-models', request),
+    testModel: (request: AiModelTestRequest): Promise<AiModelTestResult> =>
+      ipcRenderer.invoke('ai:test-model', request),
+    chat: (
+      sessionId: string,
+      turns: AiChatTurn[],
+      tools: AiToolDefinition[],
+      conversationId: string,
+      distinctId: string
+    ): Promise<void> =>
+      ipcRenderer.invoke('ai:chat', sessionId, turns, tools, conversationId, distinctId),
+    getContextStats: (entries: AiContextEntry[]): Promise<AiContextStats> =>
+      ipcRenderer.invoke('ai:context-stats', entries),
+    compressContext: (
+      entries: AiContextEntry[],
+      conversationId: string,
+      distinctId: string
+    ): Promise<AiContextCompressionResult> =>
+      ipcRenderer.invoke('ai:compress-context', entries, conversationId, distinctId),
     stop: (sessionId: string): Promise<void> => ipcRenderer.invoke('ai:stop', sessionId),
-    toolResult: (sessionId: string, callId: string, ok: boolean, result: unknown): Promise<void> => ipcRenderer.invoke('ai:tool-result', sessionId, callId, ok, result),
+    toolResult: (sessionId: string, callId: string, ok: boolean, result: unknown): Promise<void> =>
+      ipcRenderer.invoke('ai:tool-result', sessionId, callId, ok, result),
     chatHistory: {
       list: (): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-list'),
-      get: (id: string): Promise<StoredAiConversation | null> => ipcRenderer.invoke('ai:history-get', id),
-      save: (conversation: StoredAiConversation): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-save', conversation),
-      delete: (id: string): Promise<StoredAiConversationSummary[]> => ipcRenderer.invoke('ai:history-delete', id),
-      search: (query: string, limit?: number, excludeId?: string): Promise<AiConversationSearchHit[]> => ipcRenderer.invoke('ai:history-search', query, limit, excludeId)
+      get: (id: string): Promise<StoredAiConversation | null> =>
+        ipcRenderer.invoke('ai:history-get', id),
+      save: (conversation: StoredAiConversation): Promise<StoredAiConversationSummary[]> =>
+        ipcRenderer.invoke('ai:history-save', conversation),
+      delete: (id: string): Promise<StoredAiConversationSummary[]> =>
+        ipcRenderer.invoke('ai:history-delete', id),
+      search: (
+        query: string,
+        limit?: number,
+        excludeId?: string
+      ): Promise<AiConversationSearchHit[]> =>
+        ipcRenderer.invoke('ai:history-search', query, limit, excludeId)
     },
     memory: {
       list: (): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-list'),
-      add: (content: string): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-add', content),
+      add: (content: string): Promise<AgentMemory[]> =>
+        ipcRenderer.invoke('ai:memory-add', content),
       delete: (id: string): Promise<AgentMemory[]> => ipcRenderer.invoke('ai:memory-delete', id),
-      recall: (query: string, limit?: number): Promise<AiMemoryRecallMatch[]> => ipcRenderer.invoke('ai:memory-recall', query, limit)
+      recall: (query: string, limit?: number): Promise<AiMemoryRecallMatch[]> =>
+        ipcRenderer.invoke('ai:memory-recall', query, limit)
     },
     hawdbStatus: (): Promise<AiHawdbStatus> => ipcRenderer.invoke('ai:hawdb-status'),
     onEvent: (listener: (event: AiChatEvent) => void): (() => void) => {
-      const wrapped = (_event: Electron.IpcRendererEvent, payload: AiChatEvent): void => listener(payload)
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: AiChatEvent): void =>
+        listener(payload)
       ipcRenderer.on('ai:event', wrapped)
       return () => ipcRenderer.removeListener('ai:event', wrapped)
     }

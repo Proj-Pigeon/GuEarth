@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
-import { Alert, App, Button, Tooltip } from 'antd'
 import { CloseOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useFailureStore, type FailureNotice } from '@renderer/stores/failure'
+import { Alert, App, Button, Tooltip } from 'antd'
+import { useEffect } from 'react'
+
 import styles from './FailureBanner.module.css'
 
 export interface FailureBannerProps {}
@@ -12,12 +13,12 @@ function alertType(notice: FailureNotice): 'error' | 'warning' {
 
 export function FailureBanner(_props: FailureBannerProps) {
   const { message } = App.useApp()
-  const active = useFailureStore((state) => state.active)
-  const degradationCount = useFailureStore((state) => state.degradations.length)
-  const retrying = useFailureStore((state) => state.retrying)
-  const takeDegradations = useFailureStore((state) => state.takeDegradations)
-  const retry = useFailureStore((state) => state.retry)
-  const clearFailure = useFailureStore((state) => state.clearFailure)
+  const active = useFailureStore(state => state.active)
+  const degradationCount = useFailureStore(state => state.degradations.length)
+  const retrying = useFailureStore(state => state.retrying)
+  const takeDegradations = useFailureStore(state => state.takeDegradations)
+  const retry = useFailureStore(state => state.retry)
+  const clearFailure = useFailureStore(state => state.clearFailure)
 
   useEffect(() => {
     if (!degradationCount) return
@@ -26,12 +27,12 @@ export function FailureBanner(_props: FailureBannerProps) {
     }
   }, [degradationCount, takeDegradations, message])
 
-  const bannerNotices = active.filter((notice) => notice.scope !== 'webgl')
+  const bannerNotices = active.filter(notice => notice.scope !== 'webgl')
   if (!bannerNotices.length) return null
 
   return (
     <div className={styles.failureBanner}>
-      {bannerNotices.map((notice) => (
+      {bannerNotices.map(notice => (
         <Alert
           key={notice.scope}
           type={alertType(notice)}
@@ -46,8 +47,8 @@ export function FailureBanner(_props: FailureBannerProps) {
             <span className={styles.failureActions}>
               {notice.retryable && (
                 <Button
-                  type="text"
-                  size="small"
+                  type='text'
+                  size='small'
                   loading={Boolean(retrying[notice.scope])}
                   icon={<ReloadOutlined />}
                   onClick={() => void retry(notice.scope)}
@@ -55,11 +56,11 @@ export function FailureBanner(_props: FailureBannerProps) {
                   重试
                 </Button>
               )}
-              <Tooltip title="忽略">
+              <Tooltip title='忽略'>
                 <Button
-                  type="text"
-                  size="small"
-                  aria-label="忽略提示"
+                  type='text'
+                  size='small'
+                  aria-label='忽略提示'
                   icon={<CloseOutlined />}
                   onClick={() => clearFailure(notice.scope)}
                 />

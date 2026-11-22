@@ -43,7 +43,8 @@ let session: OffscreenMacEncoderSession | null = null
 
 async function begin(config: OffscreenMacEncoderConfig): Promise<void> {
   if (session) throw new Error('macOS 编码会话已在进行')
-  if (typeof VideoEncoder === 'undefined') throw new Error('当前系统缺少 H.264 视频编码器（VideoEncoder 不可用），无法录制视频')
+  if (typeof VideoEncoder === 'undefined')
+    throw new Error('当前系统缺少 H.264 视频编码器（VideoEncoder 不可用），无法录制视频')
   const support = await VideoEncoder.isConfigSupported({
     codec: OFFSCREEN_MAC_CODEC,
     width: config.width,
@@ -52,7 +53,8 @@ async function begin(config: OffscreenMacEncoderConfig): Promise<void> {
     framerate: config.framerate,
     avc: { format: 'avc' }
   })
-  if (!support.supported) throw new Error(`当前系统缺少 H.264 视频编码器（${OFFSCREEN_MAC_CODEC} 不可用），无法录制视频`)
+  if (!support.supported)
+    throw new Error(`当前系统缺少 H.264 视频编码器（${OFFSCREEN_MAC_CODEC} 不可用），无法录制视频`)
   const canvas = document.createElement('canvas')
   canvas.width = config.width
   canvas.height = config.height
@@ -62,15 +64,21 @@ async function begin(config: OffscreenMacEncoderConfig): Promise<void> {
   const muxer = new MuxerCtor({
     target: new StreamTargetCtor({
       chunked: true,
-      onData: (data, position) => window.guEarth?.recordings?.sendOffscreenVideoChunk(data, position)
+      onData: (data, position) =>
+        window.guEarth?.recordings?.sendOffscreenVideoChunk(data, position)
     }),
-    video: { codec: 'avc', width: config.width, height: config.height, frameRate: config.framerate },
+    video: {
+      codec: 'avc',
+      width: config.width,
+      height: config.height,
+      frameRate: config.framerate
+    },
     fastStart: 'in-memory',
     firstTimestampBehavior: 'offset'
   })
   const encoder = new VideoEncoder({
     output: (chunk, metadata) => muxer.addVideoChunk(chunk, metadata),
-    error: (error) => {
+    error: error => {
       if (session?.failure) return
       if (session) session.failure = `离屏视频编码失败（${error.message}）`
     }
@@ -109,7 +117,7 @@ async function decodeJpegFrame(jpeg: Uint8Array): Promise<VideoFrame> {
 
 function drainEncodeQueue(encoder: VideoEncoder, maxQueue: number): Promise<void> {
   if (encoder.encodeQueueSize <= maxQueue) return Promise.resolve()
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const check = (): void => {
       if (encoder.encodeQueueSize <= maxQueue) {
         encoder.removeEventListener('dequeue', check)
@@ -148,7 +156,10 @@ function pump(active: OffscreenMacEncoderSession): void {
   })()
 }
 
-async function encodeFrame(active: OffscreenMacEncoderSession, entry: OffscreenMacFrameEntry): Promise<void> {
+async function encodeFrame(
+  active: OffscreenMacEncoderSession,
+  entry: OffscreenMacFrameEntry
+): Promise<void> {
   if (active.failure) throw new Error(active.failure)
   const { config, canvas, context, encoder } = active
   const image = await decodeJpegFrame(entry.jpeg)
@@ -157,10 +168,19 @@ async function encodeFrame(active: OffscreenMacEncoderSession, entry: OffscreenM
   const scale = Math.min(config.width / image.displayWidth, config.height / image.displayHeight)
   const drawWidth = Math.max(1, Math.round(image.displayWidth * scale))
   const drawHeight = Math.max(1, Math.round(image.displayHeight * scale))
-  context.drawImage(image, Math.round((config.width - drawWidth) / 2), Math.round((config.height - drawHeight) / 2), drawWidth, drawHeight)
+  context.drawImage(
+    image,
+    Math.round((config.width - drawWidth) / 2),
+    Math.round((config.height - drawHeight) / 2),
+    drawWidth,
+    drawHeight
+  )
   image.close()
   const capturedUs = Math.round(entry.captureTimeMs * 1000)
-  const timestampUs = capturedUs > active.lastTimestampUs + OFFSCREEN_MAC_MIN_FRAME_GAP_US ? capturedUs : active.lastTimestampUs + OFFSCREEN_MAC_MIN_FRAME_GAP_US
+  const timestampUs =
+    capturedUs > active.lastTimestampUs + OFFSCREEN_MAC_MIN_FRAME_GAP_US
+      ? capturedUs
+      : active.lastTimestampUs + OFFSCREEN_MAC_MIN_FRAME_GAP_US
   active.lastTimestampUs = timestampUs
   const frame = new VideoFrame(canvas, { timestamp: timestampUs })
   encoder.encode(frame, { keyFrame: active.encoded % OFFSCREEN_MAC_KEYFRAME_INTERVAL === 0 })
@@ -170,7 +190,7 @@ async function encodeFrame(active: OffscreenMacEncoderSession, entry: OffscreenM
 
 function whenDrained(active: OffscreenMacEncoderSession): Promise<void> {
   if (!active.pumping && (active.queue.length === 0 || active.failure)) return Promise.resolve()
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     active.drainWaiters.push(resolve)
   })
 }

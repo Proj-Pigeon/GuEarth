@@ -1,8 +1,9 @@
-import { Button, Slider } from 'antd'
 import { CaretRightOutlined, PauseOutlined } from '@ant-design/icons'
 import { useVisibleAnimation } from '@renderer/composables/useVisibleAnimation'
 import { useTransportStore } from '@renderer/stores/transport'
 import { HSR_END_YEAR, HSR_START_YEAR, hsrMileageAt } from '@renderer/thematic/hsrLines'
+import { Button, Slider } from 'antd'
+
 import styles from './YearTimeline.module.css'
 
 export interface YearTimelineProps {}
@@ -16,13 +17,13 @@ const marks: Record<number, string> = {
 }
 
 export function YearTimeline(_props: YearTimelineProps) {
-  const year = useTransportStore((state) => state.year)
-  const isPlaying = useTransportStore((state) => state.isPlaying)
-  const togglePlaying = useTransportStore((state) => state.togglePlaying)
-  const setYear = useTransportStore((state) => state.setYear)
-  const advance = useTransportStore((state) => state.advance)
+  const year = useTransportStore(state => state.year)
+  const isPlaying = useTransportStore(state => state.isPlaying)
+  const togglePlaying = useTransportStore(state => state.togglePlaying)
+  const setYear = useTransportStore(state => state.setYear)
+  const advance = useTransportStore(state => state.advance)
 
-  useVisibleAnimation(isPlaying, (dt) => {
+  useVisibleAnimation(isPlaying, dt => {
     if (dt > 0) advance(dt)
   })
 
@@ -30,10 +31,10 @@ export function YearTimeline(_props: YearTimelineProps) {
   const mileageText = `约 ${(hsrMileageAt(displayYear) / 10000).toFixed(2)} 万公里`
 
   return (
-    <div className={styles.yearTimeline} role="group" aria-label="年份时间轴">
+    <div className={styles.yearTimeline} role='group' aria-label='年份时间轴'>
       <Button
         type={isPlaying ? 'primary' : 'default'}
-        shape="circle"
+        shape='circle'
         aria-label={isPlaying ? '暂停年份播放' : '播放年份动画'}
         icon={isPlaying ? <PauseOutlined /> : <CaretRightOutlined />}
         onClick={togglePlaying}
@@ -49,7 +50,7 @@ export function YearTimeline(_props: YearTimelineProps) {
         step={1}
         marks={marks}
         className={styles.yearSlider}
-        ariaLabelForHandle="年份选择"
+        ariaLabelForHandle='年份选择'
         tooltip={{ open: false }}
         onChange={(value: number) => setYear(value)}
       />

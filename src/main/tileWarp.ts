@@ -1,5 +1,7 @@
-import { nativeImage } from 'electron'
 import { endianness } from 'os'
+
+import { nativeImage } from 'electron'
+
 import { tileCenter, wgs84ToGcj02 } from './geo'
 
 const TILE_SIZE = 256
@@ -10,7 +12,11 @@ export interface WarpSourceTile {
   contentType: string
 }
 
-export type WarpSourceFetcher = (level: number, x: number, y: number) => Promise<WarpSourceTile | null>
+export type WarpSourceFetcher = (
+  level: number,
+  x: number,
+  y: number
+) => Promise<WarpSourceTile | null>
 
 export interface WarpedTile {
   data: ArrayBuffer
@@ -23,7 +29,11 @@ function mercatorYFromLatitude(latitude: number, worldPixels: number): number {
   return (0.5 - Math.log(Math.tan(Math.PI / 4 + radians / 2)) / (2 * Math.PI)) * worldPixels
 }
 
-export function tileWgs84ShiftPixels(level: number, x: number, y: number): { dx: number; dy: number } | null {
+export function tileWgs84ShiftPixels(
+  level: number,
+  x: number,
+  y: number
+): { dx: number; dy: number } | null {
   const [longitude, latitude] = tileCenter(level, x, y)
   const [gcjLongitude, gcjLatitude] = wgs84ToGcj02(longitude, latitude)
   const deltaLongitude = gcjLongitude - longitude
@@ -31,7 +41,9 @@ export function tileWgs84ShiftPixels(level: number, x: number, y: number): { dx:
   if (deltaLongitude === 0 && deltaLatitude === 0) return null
   const worldPixels = TILE_SIZE * 2 ** level
   const dx = (deltaLongitude / 360) * worldPixels
-  const dy = mercatorYFromLatitude(latitude + deltaLatitude, worldPixels) - mercatorYFromLatitude(latitude, worldPixels)
+  const dy =
+    mercatorYFromLatitude(latitude + deltaLatitude, worldPixels) -
+    mercatorYFromLatitude(latitude, worldPixels)
   if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return null
   return { dx, dy }
 }
@@ -59,7 +71,12 @@ function bufferToArrayBuffer(data: Buffer): ArrayBuffer {
   return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
 }
 
-export async function warpTileToWgs84(level: number, x: number, y: number, fetchSourceTile: WarpSourceFetcher): Promise<WarpedTile | null> {
+export async function warpTileToWgs84(
+  level: number,
+  x: number,
+  y: number,
+  fetchSourceTile: WarpSourceFetcher
+): Promise<WarpedTile | null> {
   const shift = tileWgs84ShiftPixels(level, x, y)
   if (!shift) return null
   const worldTiles = 2 ** level
@@ -78,7 +95,8 @@ export async function warpTileToWgs84(level: number, x: number, y: number, fetch
     for (let column = 0; column < columns; column += 1) {
       const sourceX = tileLeft + column
       const sourceY = tileTop + row
-      const withinWorld = sourceX >= 0 && sourceX < worldTiles && sourceY >= 0 && sourceY < worldTiles
+      const withinWorld =
+        sourceX >= 0 && sourceX < worldTiles && sourceY >= 0 && sourceY < worldTiles
       sources.push(withinWorld ? fetchSourceTile(level, sourceX, sourceY) : Promise.resolve(null))
     }
   }
@@ -96,7 +114,12 @@ export async function warpTileToWgs84(level: number, x: number, y: number, fetch
     const canvasY = Math.floor(index / columns) * TILE_SIZE
     for (let line = 0; line < TILE_SIZE; line += 1) {
       const sourceStart = line * TILE_SIZE * 4
-      pixels.copy(canvas, (canvasY + line) * canvasWidth * 4 + canvasX * 4, sourceStart, sourceStart + TILE_SIZE * 4)
+      pixels.copy(
+        canvas,
+        (canvasY + line) * canvasWidth * 4 + canvasX * 4,
+        sourceStart,
+        sourceStart + TILE_SIZE * 4
+      )
     }
   }
   const columnOrigins: number[] = []

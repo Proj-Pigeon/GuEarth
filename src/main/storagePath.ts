@@ -18,6 +18,7 @@ export function storageChildPath(directory: string, ...segments: string[]): stri
   let result = root
   for (const segment of segments) result = join(result, sanitizeStorageSegment(segment))
   const child = relative(root, result)
-  if (!child || child.startsWith('..') || isAbsolute(child)) throw new Error('Storage path escapes its directory')
+  if (!child || child.startsWith('..') || isAbsolute(child))
+    throw new Error('Storage path escapes its directory')
   return result
 }

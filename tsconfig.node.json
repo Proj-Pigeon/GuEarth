@@ -11,9 +11,5 @@
     "esModuleInterop": true,
     "resolveJsonModule": true
   },
-  "include": [
-    "src/common/**/*",
-    "src/main/**/*",
-    "src/preload/index.ts"
-  ]
+  "include": ["src/common/**/*", "src/main/**/*", "src/preload/index.ts"]
 }

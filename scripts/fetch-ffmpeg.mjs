@@ -55,11 +55,15 @@ export const FFMPEG_BUILD = FFMPEG_BUILDS['win32-x64']
 
 export const APPROVED_ARCHIVE_HOSTS = ['registry.npmmirror.com', 'github.com']
 
-export const APPROVED_ARCHIVE_REDIRECT_HOSTS = ['cdn.npmmirror.com', 'objects.githubusercontent.com', 'release-assets.githubusercontent.com']
+export const APPROVED_ARCHIVE_REDIRECT_HOSTS = [
+  'cdn.npmmirror.com',
+  'objects.githubusercontent.com',
+  'release-assets.githubusercontent.com'
+]
 
 const maxArchiveRedirects = 5
 
-const pinnedArchiveNames = new Set(Object.values(FFMPEG_BUILDS).map((build) => build.archiveName))
+const pinnedArchiveNames = new Set(Object.values(FFMPEG_BUILDS).map(build => build.archiveName))
 
 export function normalizeFfmpegArch(arch) {
   if (arch === 'x64' || arch === 'x86_64' || arch === 'amd64') return 'x64'
@@ -71,7 +75,9 @@ export function ffmpegBuildFor(platform = process.platform, arch = process.arch)
   const key = `${platform}-${normalizeFfmpegArch(arch)}`
   const build = FFMPEG_BUILDS[key]
   if (!build) {
-    throw new Error(`内置视频编码器目前提供 Windows x64 与 Linux x64/arm64 构建，当前平台 ${platform} ${arch} 暂不支持`)
+    throw new Error(
+      `内置视频编码器目前提供 Windows x64 与 Linux x64/arm64 构建，当前平台 ${platform} ${arch} 暂不支持`
+    )
   }
   return build
 }
@@ -102,17 +108,25 @@ function rejectedArchiveLabel(url) {
 
 export function isApprovedArchiveUrl(url) {
   const parsed = parseArchiveUrl(url)
-  return parsed != null && parsed.protocol === 'https:' && APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname)
+  return (
+    parsed != null &&
+    parsed.protocol === 'https:' &&
+    APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname)
+  )
 }
 
 export function isApprovedArchiveRedirectUrl(url) {
   const parsed = parseArchiveUrl(url)
   if (parsed == null || parsed.protocol !== 'https:') return false
-  return APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname) || APPROVED_ARCHIVE_REDIRECT_HOSTS.includes(parsed.hostname)
+  return (
+    APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname) ||
+    APPROVED_ARCHIVE_REDIRECT_HOSTS.includes(parsed.hostname)
+  )
 }
 
 export function archiveRedirectTarget(location, currentUrl) {
-  if (location == null || location === '') throw new Error(`下载重定向缺少目标地址：${rejectedArchiveLabel(currentUrl)}`)
+  if (location == null || location === '')
+    throw new Error(`下载重定向缺少目标地址：${rejectedArchiveLabel(currentUrl)}`)
   let resolved = null
   try {
     resolved = new URL(location, currentUrl).href
@@ -145,7 +159,7 @@ export function approvedArchiveSource(overrideUrl) {
       `FFMPEG_FETCH_URL 归档路径不受信任：${parsed.pathname}${parsed.search}；仅允许指向 v${ffmpegVersion} 的 ${allowed}，离线安装请将 FFMPEG_FETCH_FILE 指向本地归档`
     )
   }
-  const approvedHost = APPROVED_ARCHIVE_HOSTS.find((host) => host === parsed.hostname)
+  const approvedHost = APPROVED_ARCHIVE_HOSTS.find(host => host === parsed.hostname)
   return new URL(parsed.pathname, `https://${approvedHost}/`).href
 }
 
@@ -180,15 +194,18 @@ export function packagedBinaryPath(repoRoot, platform = process.platform, arch =
   const normalized = normalizeFfmpegArch(arch)
   const build = FFMPEG_BUILDS[`${platform}-${normalized}`]
   if (!build) return defaultBinaryPath(repoRoot, platform, arch)
-  if (build.platform === 'linux') return join(repoRoot, 'resources', 'bin', normalized, build.binaryName)
+  if (build.platform === 'linux')
+    return join(repoRoot, 'resources', 'bin', normalized, build.binaryName)
   return join(repoRoot, 'resources', 'bin', build.binaryName)
 }
 
 function outputPaths(repoRoot, build) {
-  return [...new Set([
-    packagedBinaryPath(repoRoot, build.platform, build.arch),
-    defaultBinaryPath(repoRoot, build.platform, build.arch)
-  ])]
+  return [
+    ...new Set([
+      packagedBinaryPath(repoRoot, build.platform, build.arch),
+      defaultBinaryPath(repoRoot, build.platform, build.arch)
+    ])
+  ]
 }
 
 async function sha256File(path) {
@@ -203,7 +220,8 @@ export async function verifyFile(path, { sha256, bytes }) {
     return { ok: false, reason: `大小不符（期望 ${bytes} 字节，实际 ${info.size} 字节）` }
   }
   const digest = await sha256File(path)
-  if (digest !== sha256) return { ok: false, reason: `SHA256 不符（期望 ${sha256}，实际 ${digest}）` }
+  if (digest !== sha256)
+    return { ok: false, reason: `SHA256 不符（期望 ${sha256}，实际 ${digest}）` }
   return { ok: true }
 }
 
@@ -228,7 +246,10 @@ async function fetchArchive(url) {
   assertArchiveSource(url)
   let current = url
   for (let hop = 0; hop <= maxArchiveRedirects; hop += 1) {
-    const response = await fetch(current, { redirect: 'manual', headers: { 'user-agent': 'GuEarth-FFmpeg-Fetch' } })
+    const response = await fetch(current, {
+      redirect: 'manual',
+      headers: { 'user-agent': 'GuEarth-FFmpeg-Fetch' }
+    })
     if (response.status < 300 || response.status >= 400) return response
     if (hop === maxArchiveRedirects) break
     current = archiveRedirectTarget(response.headers.get('location'), current)
@@ -252,11 +273,16 @@ async function placeBinary(extracted, targets) {
   }
 }
 
-export async function fetchFfmpeg({ repoRoot, force = false, platform = process.platform, arch = process.arch } = {}) {
+export async function fetchFfmpeg({
+  repoRoot,
+  force = false,
+  platform = process.platform,
+  arch = process.arch
+} = {}) {
   const build = ffmpegBuildFor(platform, arch)
   const targets = outputPaths(repoRoot, build)
   if (!force) {
-    const ready = await Promise.all(targets.map((target) => binaryMatches(target, build)))
+    const ready = await Promise.all(targets.map(target => binaryMatches(target, build)))
     if (ready.every(Boolean)) {
       console.log(`内置视频编码器已就绪：${targets.join('、')}`)
       return targets[0]
@@ -270,14 +296,20 @@ export async function fetchFfmpeg({ repoRoot, force = false, platform = process.
     if (localArchive) {
       await copyFile(localArchive, archivePath)
       console.log(`使用本地归档：${localArchive}`)
-      const localCheck = await verifyFile(archivePath, { sha256: build.archiveSha256, bytes: build.archiveBytes })
+      const localCheck = await verifyFile(archivePath, {
+        sha256: build.archiveSha256,
+        bytes: build.archiveBytes
+      })
       if (!localCheck.ok) throw new Error(`归档校验失败：${localCheck.reason}`)
     } else {
       let lastError = null
       for (const source of archiveSources(process.env.FFMPEG_FETCH_URL, build)) {
         try {
           await download(source, archivePath)
-          const sourceCheck = await verifyFile(archivePath, { sha256: build.archiveSha256, bytes: build.archiveBytes })
+          const sourceCheck = await verifyFile(archivePath, {
+            sha256: build.archiveSha256,
+            bytes: build.archiveBytes
+          })
           if (!sourceCheck.ok) throw new Error(`归档校验失败：${sourceCheck.reason}`)
           lastError = null
           break
@@ -288,9 +320,14 @@ export async function fetchFfmpeg({ repoRoot, force = false, platform = process.
       }
       if (lastError) throw lastError
     }
-    await runFile(tarCommand(), ['-xf', archivePath, '-C', workDirectory, build.binaryMemberPath], { windowsHide: true })
+    await runFile(tarCommand(), ['-xf', archivePath, '-C', workDirectory, build.binaryMemberPath], {
+      windowsHide: true
+    })
     const extracted = join(workDirectory, build.binaryMemberPath)
-    const binaryCheck = await verifyFile(extracted, { sha256: build.binarySha256, bytes: build.binaryBytes })
+    const binaryCheck = await verifyFile(extracted, {
+      sha256: build.binarySha256,
+      bytes: build.binaryBytes
+    })
     if (!binaryCheck.ok) throw new Error(`编码器校验失败：${binaryCheck.reason}`)
     await placeBinary(extracted, targets)
     console.log(`内置视频编码器已更新：${targets.join('、')}`)
@@ -306,22 +343,30 @@ function buildsFromArgs(argv) {
   const value = argv[index + 1]
   if (!value || value.startsWith('--')) throw new Error('请在 --arch 后指定 x64、arm64 或 all')
   if (value === 'all') return [FFMPEG_BUILDS['linux-x64'], FFMPEG_BUILDS['linux-arm64']]
-  if (argv.includes('--linux') || process.platform === 'linux') return [ffmpegBuildFor('linux', value)]
+  if (argv.includes('--linux') || process.platform === 'linux')
+    return [ffmpegBuildFor('linux', value)]
   return [ffmpegBuildFor(process.platform, value)]
 }
 
-const runsAsScript = process.argv[1] != null && pathToFileURL(resolve(process.argv[1])).href === import.meta.url
+const runsAsScript =
+  process.argv[1] != null && pathToFileURL(resolve(process.argv[1])).href === import.meta.url
 
 if (runsAsScript) {
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
   const force = process.argv.includes('--force')
-  Promise.all(buildsFromArgs(process.argv).map((build) => fetchFfmpeg({
-    repoRoot,
-    force,
-    platform: build.platform,
-    arch: build.arch
-  }))).catch((error) => {
-    console.error(`内置视频编码器获取失败：${error instanceof Error ? error.message : String(error)}`)
+  Promise.all(
+    buildsFromArgs(process.argv).map(build =>
+      fetchFfmpeg({
+        repoRoot,
+        force,
+        platform: build.platform,
+        arch: build.arch
+      })
+    )
+  ).catch(error => {
+    console.error(
+      `内置视频编码器获取失败：${error instanceof Error ? error.message : String(error)}`
+    )
     process.exitCode = 1
   })
 }

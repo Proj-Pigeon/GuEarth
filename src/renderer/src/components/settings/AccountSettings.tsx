@@ -1,31 +1,38 @@
-import { useEffect, useRef, useState } from 'react'
-import { Alert, App as AntdApp, Avatar, Button, Space, Tag } from 'antd'
-import { CheckCircleOutlined, CopyOutlined, ExportOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons'
+import {
+  CheckCircleOutlined,
+  CopyOutlined,
+  ExportOutlined,
+  LoginOutlined,
+  LogoutOutlined
+} from '@ant-design/icons'
 import { useAccountStore } from '@renderer/stores/account'
+import { Alert, App as AntdApp, Avatar, Button, Space, Tag } from 'antd'
+import { useEffect, useRef, useState } from 'react'
+
 import styles from './AccountSettings.module.css'
 
 export interface AccountSettingsProps {}
 
 export function AccountSettings(_props: AccountSettingsProps) {
   const { message, modal } = AntdApp.useApp()
-  const phase = useAccountStore((state) => state.phase)
-  const profile = useAccountStore((state) => state.profile)
-  const userCode = useAccountStore((state) => state.userCode)
-  const verificationUri = useAccountStore((state) => state.verificationUri)
-  const challengeExpiresAt = useAccountStore((state) => state.challengeExpiresAt)
-  const error = useAccountStore((state) => state.error)
-  const pendingRemoteRevocation = useAccountStore((state) => state.pendingRemoteRevocation)
-  const busy = useAccountStore((state) => state.busy)
-  const canceling = useAccountStore((state) => state.canceling)
-  const signedIn = useAccountStore((state) => state.signedIn)
-  const storeDisplayName = useAccountStore((state) => state.displayName)
-  const login = useAccountStore((state) => state.login)
-  const cancelLogin = useAccountStore((state) => state.cancelLogin)
-  const signOut = useAccountStore((state) => state.signOut)
-  const dismissRevocationWarning = useAccountStore((state) => state.dismissRevocationWarning)
-  const openDeviceList = useAccountStore((state) => state.openDeviceList)
-  const openVerification = useAccountStore((state) => state.openVerification)
-  const clearError = useAccountStore((state) => state.clearError)
+  const phase = useAccountStore(state => state.phase)
+  const profile = useAccountStore(state => state.profile)
+  const userCode = useAccountStore(state => state.userCode)
+  const verificationUri = useAccountStore(state => state.verificationUri)
+  const challengeExpiresAt = useAccountStore(state => state.challengeExpiresAt)
+  const error = useAccountStore(state => state.error)
+  const pendingRemoteRevocation = useAccountStore(state => state.pendingRemoteRevocation)
+  const busy = useAccountStore(state => state.busy)
+  const canceling = useAccountStore(state => state.canceling)
+  const signedIn = useAccountStore(state => state.signedIn)
+  const storeDisplayName = useAccountStore(state => state.displayName)
+  const login = useAccountStore(state => state.login)
+  const cancelLogin = useAccountStore(state => state.cancelLogin)
+  const signOut = useAccountStore(state => state.signOut)
+  const dismissRevocationWarning = useAccountStore(state => state.dismissRevocationWarning)
+  const openDeviceList = useAccountStore(state => state.openDeviceList)
+  const openVerification = useAccountStore(state => state.openVerification)
+  const clearError = useAccountStore(state => state.clearError)
 
   const [now, setNow] = useState(() => Date.now())
   const [copied, setCopied] = useState(false)
@@ -48,7 +55,9 @@ export function AccountSettings(_props: AccountSettingsProps) {
     }
   }, [])
 
-  const remainingSeconds = challengeExpiresAt ? Math.max(0, Math.ceil((challengeExpiresAt - now) / 1000)) : 0
+  const remainingSeconds = challengeExpiresAt
+    ? Math.max(0, Math.ceil((challengeExpiresAt - now) / 1000))
+    : 0
   const remainingText = `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, '0')}`
   const challengeExpired = phase === 'awaiting-approval' && remainingSeconds <= 0
 
@@ -85,13 +94,13 @@ export function AccountSettings(_props: AccountSettingsProps) {
   }
 
   return (
-    <section className={styles.settingsSection} data-settings-section="" aria-label="账户">
+    <section className={styles.settingsSection} data-settings-section='' aria-label='账户'>
       <h3 className={styles.sectionTitle}>账户</h3>
 
       {error && (
         <Alert
           className={styles.accountAlert}
-          type="error"
+          type='error'
           showIcon
           title={error}
           closable={{ onClose: () => clearError() }}
@@ -101,15 +110,15 @@ export function AccountSettings(_props: AccountSettingsProps) {
       {pendingRemoteRevocation && (
         <Alert
           className={styles.accountAlert}
-          type="warning"
+          type='warning'
           showIcon
-          title="本机已退出，请到账号中心手动移除此设备"
+          title='本机已退出，请到账号中心手动移除此设备'
           action={
-            <Space orientation="vertical" size={4}>
-              <Button size="small" icon={<ExportOutlined />} onClick={() => void openDeviceList()}>
+            <Space orientation='vertical' size={4}>
+              <Button size='small' icon={<ExportOutlined />} onClick={() => void openDeviceList()}>
                 打开设备列表
               </Button>
-              <Button size="small" type="text" onClick={() => void dismissRevocationWarning()}>
+              <Button size='small' type='text' onClick={() => void dismissRevocationWarning()}>
                 我知道了
               </Button>
             </Space>
@@ -152,7 +161,9 @@ export function AccountSettings(_props: AccountSettingsProps) {
                   </Tag>
                 </div>
                 <p className={styles.settingDesc}>
-                  {challengeExpired ? '登录已超时，请取消后重试' : '请在浏览器中确认登录，并核对下方验证码'}
+                  {challengeExpired
+                    ? '登录已超时，请取消后重试'
+                    : '请在浏览器中确认登录，并核对下方验证码'}
                 </p>
               </div>
               <Button loading={canceling} onClick={() => void cancelLogin()}>
@@ -162,19 +173,19 @@ export function AccountSettings(_props: AccountSettingsProps) {
 
             {userCode && (
               <div className={styles.challengeBar}>
-                <div className={styles.challengeCode} aria-label="登录验证码">
+                <div className={styles.challengeCode} aria-label='登录验证码'>
                   {userCode}
                 </div>
                 <Space size={8} wrap>
                   <Button
-                    size="small"
+                    size='small'
                     icon={copied ? <CheckCircleOutlined /> : <CopyOutlined />}
                     onClick={() => void copyUserCode()}
                   >
                     {copied ? '已复制' : '复制验证码'}
                   </Button>
                   <Button
-                    size="small"
+                    size='small'
                     disabled={!verificationUri}
                     icon={<ExportOutlined />}
                     onClick={() => void openVerification()}
@@ -191,7 +202,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
               <div className={styles.settingTitle}>鸽巢通行证</div>
             </div>
             <Button
-              type="primary"
+              type='primary'
               loading={loginLoading}
               disabled={busy || phase === 'restoring'}
               icon={<LoginOutlined />}

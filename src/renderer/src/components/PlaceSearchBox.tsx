@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { DownOutlined, LoadingOutlined, SearchOutlined } from '@ant-design/icons'
+import type { BaseSelectRef } from '@rc-component/select'
+import { useFailureStore } from '@renderer/stores/failure'
+import { useGlobeStore } from '@renderer/stores/globe'
 import { AutoComplete, Button, Dropdown, Input } from 'antd'
 import type { MenuProps } from 'antd'
-import type { BaseSelectRef } from '@rc-component/select'
-import { DownOutlined, LoadingOutlined, SearchOutlined } from '@ant-design/icons'
-import { useGlobeStore } from '@renderer/stores/globe'
-import { useFailureStore } from '@renderer/stores/failure'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+
 import type { PlaceSearchProvider, PlaceSuggestion } from '../../../preload'
+
 import styles from './PlaceSearchBox.module.css'
 
 export interface PlaceSearchBoxProps {
@@ -27,13 +29,13 @@ const providerDefinitions: Array<{ id: PlaceSearchProvider; name: string }> = [
 
 function regionText(place: PlaceSuggestion): string {
   const region = [place.province, place.city, place.district]
-    .filter((part) => part && part !== place.name)
+    .filter(part => part && part !== place.name)
     .join(' · ')
-  return [region, place.address].filter((part) => part).join(' · ')
+  return [region, place.address].filter(part => part).join(' · ')
 }
 
 function providerName(id?: PlaceSearchProvider): string {
-  return providerDefinitions.find((item) => item.id === id)?.name ?? ''
+  return providerDefinitions.find(item => item.id === id)?.name ?? ''
 }
 
 function statusOption(text: string, isError: boolean, retry?: () => void): PlaceOption {
@@ -42,15 +44,19 @@ function statusOption(text: string, isError: boolean, retry?: () => void): Place
     key: `status:${text}`,
     disabled: true,
     label: (
-      <div className={isError ? `${styles.placeStatus} ${styles.placeStatusError}` : styles.placeStatus}>
+      <div
+        className={
+          isError ? `${styles.placeStatus} ${styles.placeStatusError}` : styles.placeStatus
+        }
+      >
         <span>{text}</span>
         {retry ? (
           <Button
-            type="text"
-            size="small"
+            type='text'
+            size='small'
             className={styles.placeRetry}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={(event) => {
+            onMouseDown={event => event.preventDefault()}
+            onClick={event => {
               event.stopPropagation()
               retry()
             }}
@@ -79,8 +85,8 @@ function placeOption(place: PlaceSuggestion, index: number): PlaceOption {
 }
 
 export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
-  const providerCredentials = useGlobeStore((state) => state.providerCredentials)
-  const reportDegrade = useFailureStore((state) => state.reportDegrade)
+  const providerCredentials = useGlobeStore(state => state.providerCredentials)
+  const reportDegrade = useFailureStore(state => state.reportDegrade)
 
   const [keyword, setKeyword] = useState('')
   const [options, setOptions] = useState<PlaceOption[]>([])
@@ -99,12 +105,12 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
   })
 
   const availableProviders = useMemo(
-    () => providerDefinitions.filter((item) => providerCredentials[item.id]?.configured),
+    () => providerDefinitions.filter(item => providerCredentials[item.id]?.configured),
     [providerCredentials]
   )
   const showProviderSelect = availableProviders.length > 1
   const provider = useMemo(
-    () => availableProviders.find((item) => item.id === preferredProvider) ?? availableProviders[0],
+    () => availableProviders.find(item => item.id === preferredProvider) ?? availableProviders[0],
     [availableProviders, preferredProvider]
   )
   const providerId = provider?.id
@@ -151,7 +157,9 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
       if (seq !== requestSeqRef.current) return
       if (result.superseded) return
       if (result.fellBackFrom) {
-        reportDegrade(`${providerName(result.fellBackFrom)}不可用，已改用${providerName(result.source)}`)
+        reportDegrade(
+          `${providerName(result.fellBackFrom)}不可用，已改用${providerName(result.source)}`
+        )
       }
       if (result.error) {
         setOptions([statusOption(result.error, true, retryLast)])
@@ -209,7 +217,7 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
 
   const handleProviderSelect: MenuProps['onClick'] = ({ key }) => {
     if (key !== 'amap' && key !== 'baidu') return
-    if (!availableProviders.some((item) => item.id === key)) return
+    if (!availableProviders.some(item => item.id === key)) return
     setPreferredProvider(key)
     setProviderMenuOpen(false)
     requestAnimationFrame(() => {
@@ -218,17 +226,17 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
     })
   }
 
-  const providerMenuItems: MenuProps['items'] = availableProviders.map((item) => ({
+  const providerMenuItems: MenuProps['items'] = availableProviders.map(item => ({
     key: item.id,
     label: item.name
   }))
 
   return (
-    <div className={styles.placeSearch} data-guide-target="place-search">
+    <div className={styles.placeSearch} data-guide-target='place-search'>
       <AutoComplete<string, PlaceOption>
         ref={searchInputRef}
         value={keyword}
-        onChange={(value) => setKeyword(value)}
+        onChange={value => setKeyword(value)}
         className={styles.placeAutocomplete}
         options={options}
         showSearch={{ filterOption: false }}
@@ -239,13 +247,13 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
       >
         <Input
           allowClear
-          size="large"
-          placeholder="输入关键词以搜索"
-          aria-label="搜索地点"
+          size='large'
+          placeholder='输入关键词以搜索'
+          aria-label='搜索地点'
           prefix={<SearchOutlined className={styles.placeSearchIcon} />}
           suffix={
             showProviderSelect ? (
-              <span className={styles.placeProviderSpace} aria-hidden="true" />
+              <span className={styles.placeProviderSpace} aria-hidden='true' />
             ) : undefined
           }
         />
@@ -255,7 +263,7 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
           open={providerMenuOpen}
           onOpenChange={setProviderMenuOpen}
           trigger={['click']}
-          placement="bottomRight"
+          placement='bottomRight'
           menu={{
             selectedKeys: provider ? [provider.id] : [],
             items: providerMenuItems,
@@ -263,13 +271,13 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
           }}
         >
           <Button
-            type="text"
+            type='text'
             className={styles.placeProviderButton}
             aria-label={`搜索源：${provider?.name ?? ''}`}
-            aria-haspopup="menu"
+            aria-haspopup='menu'
             aria-expanded={providerMenuOpen}
-            onMouseDown={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
+            onMouseDown={event => event.stopPropagation()}
+            onKeyDown={event => {
               if (event.key === 'Escape') setProviderMenuOpen(false)
             }}
           >

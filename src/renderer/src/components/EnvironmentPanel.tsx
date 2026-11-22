@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import * as Cesium from 'cesium'
 import { CloseOutlined, EnvironmentOutlined } from '@ant-design/icons'
-import { Button, Segmented } from 'antd'
+import { ensureSeaLevelSamples } from '@renderer/composables/seaLevelSampling'
 import { useClimateStore } from '@renderer/stores/climate'
 import {
   SEA_LEVEL_SCENARIOS,
@@ -13,8 +11,12 @@ import {
   useSeaLevelStore,
   type SeaLevelScenario
 } from '@renderer/thematic/seaLevelRise'
-import { ensureSeaLevelSamples } from '@renderer/composables/seaLevelSampling'
+import { Button, Segmented } from 'antd'
+import * as Cesium from 'cesium'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+
 import BarChart, { type BarSeries } from './charts/BarChart'
+
 import styles from './EnvironmentPanel.module.css'
 
 export interface EnvironmentPanelProps {
@@ -22,17 +24,17 @@ export interface EnvironmentPanelProps {
   onClose: () => void
 }
 
-const scenarioOptions = SEA_LEVEL_SCENARIOS.map((value) => ({ label: `+${value} m`, value }))
+const scenarioOptions = SEA_LEVEL_SCENARIOS.map(value => ({ label: `+${value} m`, value }))
 
 export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
-  const rise = useClimateStore((state) => state.seaLevelRise)
-  const setSeaLevelRise = useClimateStore((state) => state.setSeaLevelRise)
-  const seaLevelOverlayEnabled = useClimateStore((state) => state.overlays['sea-level-rise'])
-  const setOverlay = useClimateStore((state) => state.setOverlay)
+  const rise = useClimateStore(state => state.seaLevelRise)
+  const setSeaLevelRise = useClimateStore(state => state.setSeaLevelRise)
+  const seaLevelOverlayEnabled = useClimateStore(state => state.overlays['sea-level-rise'])
+  const setOverlay = useClimateStore(state => state.setOverlay)
 
-  const sampleVersion = useSeaLevelStore((state) => state.version)
-  const landMask = useSeaLevelStore((state) => state.landMask)
-  const samplingStatus = useSeaLevelStore((state) => state.samplingStatus)
+  const sampleVersion = useSeaLevelStore(state => state.version)
+  const landMask = useSeaLevelStore(state => state.landMask)
+  const samplingStatus = useSeaLevelStore(state => state.samplingStatus)
 
   const flyingRef = useRef(false)
 
@@ -44,14 +46,16 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
 
   const totalArea = useMemo(() => stats.reduce((sum, item) => sum + item.areaKm2, 0), [stats])
   const sampledReady = samplingStatus === 'ready'
-  const hasSamples = stats.some((item) => item.sampled > 0)
+  const hasSamples = stats.some(item => item.sampled > 0)
   const sampledCount = stats.reduce((sum, item) => sum + item.sampled, 0)
   const partialSamples = sampledReady && sampledCount < totalGridCellCount
   const maskFallback = sampledReady && landMask === null
 
-  const categories = useMemo(() => stats.map((item) => item.zone.name.split('（')[0]), [stats])
+  const categories = useMemo(() => stats.map(item => item.zone.name.split('（')[0]), [stats])
   const series = useMemo<BarSeries[]>(
-    () => [{ name: `淹没面积（+${rise} m）`, color: '#1677ff', values: stats.map((item) => item.areaKm2) }],
+    () => [
+      { name: `淹没面积（+${rise} m）`, color: '#1677ff', values: stats.map(item => item.areaKm2) }
+    ],
     [rise, stats]
   )
 
@@ -80,10 +84,16 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
   }
 
   return (
-    <div className={styles.environmentPanel} role="group" aria-label="环境与发展">
+    <div className={styles.environmentPanel} role='group' aria-label='环境与发展'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>环境与发展 · 海平面上升</span>
-        <Button type="text" size="small" aria-label="关闭环境面板" icon={<CloseOutlined />} onClick={onClose} />
+        <Button
+          type='text'
+          size='small'
+          aria-label='关闭环境面板'
+          icon={<CloseOutlined />}
+          onClick={onClose}
+        />
       </div>
 
       <div className={styles.chartTitle}>海平面上升高度</div>
@@ -91,22 +101,32 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
         value={rise}
         options={scenarioOptions}
         className={styles.scenarioPicker}
-        onChange={(value) => setSeaLevelRise(value as SeaLevelScenario)}
+        onChange={value => setSeaLevelRise(value as SeaLevelScenario)}
       />
 
       {sampledReady ? (
         <>
           <div className={styles.chartTitle}>沿海低地预计淹没面积（km²）</div>
-          {hasSamples && <BarChart categories={categories} series={series} valueMin={0} yName="km²" height={170} />}
+          {hasSamples && (
+            <BarChart
+              categories={categories}
+              series={series}
+              valueMin={0}
+              yName='km²'
+              height={170}
+            />
+          )}
           {partialSamples && (
             <div className={styles.panelNote}>
               部分地形数据未加载，当前估算偏保守。
-              <Button type="link" size="small" onClick={() => void beginSampling()}>
+              <Button type='link' size='small' onClick={() => void beginSampling()}>
                 重试
               </Button>
             </div>
           )}
-          {maskFallback && <div className={styles.panelNote}>海陆边界加载失败，当前估算仅供参考。</div>}
+          {maskFallback && (
+            <div className={styles.panelNote}>海陆边界加载失败，当前估算仅供参考。</div>
+          )}
         </>
       ) : samplingStatus === 'terrain-required' ? (
         <div className={styles.panelNote}>请先在「图层管理 → 3D 地形」中开启「全球 3D 地形」。</div>
@@ -115,7 +135,7 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
       ) : (
         <div className={styles.panelNote}>
           地形数据加载未完成。
-          <Button type="link" size="small" onClick={() => void beginSampling()}>
+          <Button type='link' size='small' onClick={() => void beginSampling()}>
             重试
           </Button>
         </div>
@@ -124,7 +144,8 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
       <div className={styles.fact}>
         {sampledReady ? (
           <>
-            海平面上升 {rise} 米时，五大沿海低地预计淹没约 {totalArea.toLocaleString()} km²。{scenarioSummary(rise)}
+            海平面上升 {rise} 米时，五大沿海低地预计淹没约 {totalArea.toLocaleString()} km²。
+            {scenarioSummary(rise)}
           </>
         ) : (
           <>
@@ -138,7 +159,7 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
         {coastalZones.map((zone, index) => (
           <Button
             key={zone.id}
-            size="small"
+            size='small'
             className={styles.zoneButton}
             icon={<EnvironmentOutlined />}
             onClick={() => flyToZone(index)}
@@ -150,7 +171,7 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
 
       <Button
         className={styles.panelAction}
-        size="small"
+        size='small'
         block
         disabled={seaLevelOverlayEnabled}
         onClick={() => setOverlay('sea-level-rise', true)}
@@ -158,7 +179,7 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
         {seaLevelOverlayEnabled ? '淹没模拟图层已开启' : '在地球上查看淹没模拟'}
       </Button>
 
-      {seaLevelFacts.map((fact) => (
+      {seaLevelFacts.map(fact => (
         <div key={fact} className={styles.fact}>
           · {fact}
         </div>

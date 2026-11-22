@@ -1,6 +1,7 @@
+import { message } from 'antd'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { message } from 'antd'
+
 import type { UpdateCheckOutcome, UpdateState, UpdaterEvent } from '../../../preload'
 import { updateReadyHint } from './updateCopy'
 
@@ -54,7 +55,8 @@ let prompted = false
 let unsubscribeUpdater: (() => void) | null = null
 
 function stripIpcErrorPrefix(value: unknown): string {
-  if (value instanceof Error) return value.message.replace(/^Error invoking remote method '[^']+':?\s*(Error:\s*)?/i, '')
+  if (value instanceof Error)
+    return value.message.replace(/^Error invoking remote method '[^']+':?\s*(Error:\s*)?/i, '')
   return '未知错误'
 }
 
@@ -62,7 +64,7 @@ function applyEvent(event: UpdaterEvent): void {
   if (event.type === 'available') {
     const shouldPrompt = !prompted
     if (shouldPrompt) prompted = true
-    useUpdaterStore.setState((state) => ({
+    useUpdaterStore.setState(state => ({
       version: event.version,
       notes: event.notes,
       packageKind: event.packageKind,
@@ -77,7 +79,7 @@ function applyEvent(event: UpdaterEvent): void {
       percent: selectUpdaterPercent({ received: event.received, total: event.total })
     })
   } else if (event.type === 'downloaded') {
-    useUpdaterStore.setState((state) => {
+    useUpdaterStore.setState(state => {
       const received = state.total > 0 ? state.total : state.received
       return {
         status: 'ready',
@@ -89,7 +91,7 @@ function applyEvent(event: UpdaterEvent): void {
     })
     message.success(`新版本 v${event.version} 已下载完成，${updateReadyHint(event.packageKind)}`, 8)
   } else if (event.type === 'error') {
-    useUpdaterStore.setState((state) => ({
+    useUpdaterStore.setState(state => ({
       status: state.version ? 'available' : 'idle'
     }))
     message.error(event.message, 6)
@@ -115,7 +117,7 @@ export const useUpdaterStore = create<UpdaterStore>()(
           const state = await window.guEarth.updater.getState()
           const shouldPrompt = state.status === 'available' && !prompted
           if (shouldPrompt) prompted = true
-          set((current) => ({
+          set(current => ({
             currentVersion: state.currentVersion,
             version: state.version || current.version,
             notes: state.notes || current.notes,

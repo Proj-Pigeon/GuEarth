@@ -1,21 +1,30 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { compileFunction } from 'node:vm'
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 import { test } from 'node:test'
+import { compileFunction } from 'node:vm'
 
-const aiTelemetrySource = readFileSync(new URL('../src/common/aiTelemetry.ts', import.meta.url), 'utf8')
+import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+
+const aiTelemetrySource = readFileSync(
+  new URL('../src/common/aiTelemetry.ts', import.meta.url),
+  'utf8'
+)
 const aiTelemetryOutput = transpileModule(aiTelemetrySource, {
   compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 }
 }).outputText
 const aiTelemetryApi = compileFunction(`${aiTelemetryOutput}\nreturn exports`, ['exports'])({})
 
-const responseReaderSource = readFileSync(new URL('../src/main/ai/responseReader.ts', import.meta.url), 'utf8')
+const responseReaderSource = readFileSync(
+  new URL('../src/main/ai/responseReader.ts', import.meta.url),
+  'utf8'
+)
 const responseReaderOutput = transpileModule(responseReaderSource, {
   compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 }
 }).outputText
-const responseReaderApi = compileFunction(`${responseReaderOutput}\nreturn exports`, ['exports'])({})
+const responseReaderApi = compileFunction(`${responseReaderOutput}\nreturn exports`, ['exports'])(
+  {}
+)
 
 const source = readFileSync(new URL('../src/main/ai/modelTest.ts', import.meta.url), 'utf8')
 const { outputText } = transpileModule(source, {
@@ -27,14 +36,34 @@ function loadTester(respond, key = 'secret-key') {
   const captures = []
   const dependencies = new Map([
     ['crypto', { randomUUID }],
-    ['electron', { net: { fetch: async (url, options) => { requests.push({ url, options }); return respond(url, options) } } }],
+    [
+      'electron',
+      {
+        net: {
+          fetch: async (url, options) => {
+            requests.push({ url, options })
+            return respond(url, options)
+          }
+        }
+      }
+    ],
     ['../../common/aiTelemetry', aiTelemetryApi],
     ['../keyVault', { readProviderKey: () => key }],
-    ['./posthog', { captureAiGeneration: (payload) => { captures.push(payload) } }],
+    [
+      './posthog',
+      {
+        captureAiGeneration: payload => {
+          captures.push(payload)
+        }
+      }
+    ],
     ['./responseReader', responseReaderApi]
   ])
-  const load = compileFunction(`${outputText}\nreturn { testModel: exports.testModel }`, ['require', 'exports'])
-  const api = load((id) => {
+  const load = compileFunction(`${outputText}\nreturn { testModel: exports.testModel }`, [
+    'require',
+    'exports'
+  ])
+  const api = load(id => {
     const dependency = dependencies.get(id)
     if (!dependency) throw new Error(`Unexpected module dependency: ${id}`)
     return dependency
@@ -69,15 +98,24 @@ test('Anthropic response test uses messages and Anthropic headers', async () => 
 })
 
 test('insufficient balance is reported in plain language', async () => {
-  const tester = loadTester(() => Response.json({
-    error: { message: 'Insufficient Balance', type: 'insufficient_balance_error', code: 'invalid_request_error' }
-  }, { status: 402 }))
+  const tester = loadTester(() =>
+    Response.json(
+      {
+        error: {
+          message: 'Insufficient Balance',
+          type: 'insufficient_balance_error',
+          code: 'invalid_request_error'
+        }
+      },
+      { status: 402 }
+    )
+  )
   await assert.rejects(tester.testModel(request()), { message: '账户余额不足或额度已用尽' })
 })
 
 test('authentication failures never include the API key', async () => {
   const tester = loadTester(() => new Response('rejected secret-key', { status: 401 }))
-  await assert.rejects(tester.testModel(request()), (error) => {
+  await assert.rejects(tester.testModel(request()), error => {
     assert.match(error.message, /API Key/)
     assert.doesNotMatch(error.message, /secret-key/)
     return true
@@ -86,7 +124,7 @@ test('authentication failures never include the API key', async () => {
 
 test('unknown failures keep the status and redact the API key', async () => {
   const tester = loadTester(() => new Response('upstream secret-key', { status: 500 }))
-  await assert.rejects(tester.testModel(request()), (error) => {
+  await assert.rejects(tester.testModel(request()), error => {
     assert.match(error.message, /HTTP 500/)
     assert.doesNotMatch(error.message, /secret-key/)
     assert.match(error.message, /\[redacted\]/)
@@ -95,16 +133,26 @@ test('unknown failures keep the status and redact the API key', async () => {
 })
 
 test('HTTP 200 error payloads are treated as failures with redaction and truncation', async () => {
-  const tester = loadTester(() => Response.json({
-    error: { message: 'model not found' }
-  }, { status: 200 }))
+  const tester = loadTester(() =>
+    Response.json(
+      {
+        error: { message: 'model not found' }
+      },
+      { status: 200 }
+    )
+  )
   await assert.rejects(tester.testModel(request()), { message: '模型不存在' })
 
   const longDetail = `bad secret-key ${'x'.repeat(240)}`
-  const longTester = loadTester(() => Response.json({
-    error: { message: longDetail }
-  }, { status: 200 }))
-  await assert.rejects(longTester.testModel(request()), (error) => {
+  const longTester = loadTester(() =>
+    Response.json(
+      {
+        error: { message: longDetail }
+      },
+      { status: 200 }
+    )
+  )
+  await assert.rejects(longTester.testModel(request()), error => {
     assert.match(error.message, /^响应失败（HTTP 200）：/)
     assert.doesNotMatch(error.message, /secret-key/)
     assert.match(error.message, /\[redacted\]/)
@@ -118,7 +166,9 @@ test('oversized streaming responses abort immediately while reading', async () =
   let canceled = false
   let aborted = false
   const tester = loadTester((_url, options) => {
-    options.signal.addEventListener('abort', () => { aborted = true })
+    options.signal.addEventListener('abort', () => {
+      aborted = true
+    })
     const stream = new ReadableStream({
       pull(controller) {
         pulls += 1
@@ -141,21 +191,31 @@ test('oversized streaming responses abort immediately while reading', async () =
 })
 
 test('model test telemetry normalizes OpenAI and Anthropic outputs and redacts API keys on failure', async () => {
-  const openAiTester = loadTester(() => Response.json({
-    id: 'chatcmpl-1',
-    choices: [{ index: 0, message: { role: 'assistant', content: 'pong' } }]
-  }))
+  const openAiTester = loadTester(() =>
+    Response.json({
+      id: 'chatcmpl-1',
+      choices: [{ index: 0, message: { role: 'assistant', content: 'pong' } }]
+    })
+  )
   await openAiTester.testModel(request())
   assert.deepEqual(openAiTester.captures[0].output, [{ role: 'assistant', content: 'pong' }])
 
-  const anthropicTester = loadTester(() => Response.json({
-    id: 'msg-1',
-    content: [{ type: 'text', text: 'pong-anthropic' }]
-  }))
-  await anthropicTester.testModel(request({ protocol: 'anthropic', baseUrl: 'https://api.anthropic.com' }))
-  assert.deepEqual(anthropicTester.captures[0].output, [{ role: 'assistant', content: 'pong-anthropic' }])
+  const anthropicTester = loadTester(() =>
+    Response.json({
+      id: 'msg-1',
+      content: [{ type: 'text', text: 'pong-anthropic' }]
+    })
+  )
+  await anthropicTester.testModel(
+    request({ protocol: 'anthropic', baseUrl: 'https://api.anthropic.com' })
+  )
+  assert.deepEqual(anthropicTester.captures[0].output, [
+    { role: 'assistant', content: 'pong-anthropic' }
+  ])
 
-  const failingTester = loadTester(() => new Response('upstream echoed secret-key', { status: 500 }))
+  const failingTester = loadTester(
+    () => new Response('upstream echoed secret-key', { status: 500 })
+  )
   await assert.rejects(failingTester.testModel(request()))
   assert.doesNotMatch(failingTester.captures[0].error, /secret-key/)
   assert.match(failingTester.captures[0].error, /\[redacted\]/)

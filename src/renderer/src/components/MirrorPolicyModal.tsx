@@ -1,22 +1,27 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useGlobeStore } from '@renderer/stores/globe'
+import { renderMarkdown } from '@renderer/utils/markdown'
 import { Button, Modal, Tabs, type TabsProps } from 'antd'
-import agreementMarkdown from '../../../../docs/policies/MIRROR-SERVICE-AGREEMENT.md?raw'
+import { useEffect, useMemo, useRef } from 'react'
+
 import acceptableUseMarkdown from '../../../../docs/policies/ACCEPTABLE-USE-POLICY.md?raw'
+import agreementMarkdown from '../../../../docs/policies/MIRROR-SERVICE-AGREEMENT.md?raw'
 import {
   MIRROR_POLICY_FALLBACK_TITLES,
   parsePolicyMarkdown,
   type MirrorPolicyId,
   type ParsedPolicyMarkdown
 } from '../../../common/mirrorPolicies'
-import { useGlobeStore } from '@renderer/stores/globe'
-import { renderMarkdown } from '@renderer/utils/markdown'
+
 import styles from './MirrorPolicyModal.module.css'
 
 export interface MirrorPolicyModalProps {}
 
 const policies: Record<MirrorPolicyId, ParsedPolicyMarkdown> = {
   agreement: parsePolicyMarkdown(agreementMarkdown, MIRROR_POLICY_FALLBACK_TITLES.agreement),
-  'acceptable-use': parsePolicyMarkdown(acceptableUseMarkdown, MIRROR_POLICY_FALLBACK_TITLES['acceptable-use'])
+  'acceptable-use': parsePolicyMarkdown(
+    acceptableUseMarkdown,
+    MIRROR_POLICY_FALLBACK_TITLES['acceptable-use']
+  )
 }
 
 const tabItems: TabsProps['items'] = [
@@ -25,10 +30,10 @@ const tabItems: TabsProps['items'] = [
 ]
 
 export function MirrorPolicyModal(_props: MirrorPolicyModalProps) {
-  const mirrorPolicyOpen = useGlobeStore((state) => state.mirrorPolicyOpen)
-  const mirrorPolicyActiveId = useGlobeStore((state) => state.mirrorPolicyActiveId)
-  const openMirrorPolicy = useGlobeStore((state) => state.openMirrorPolicy)
-  const closeMirrorPolicy = useGlobeStore((state) => state.closeMirrorPolicy)
+  const mirrorPolicyOpen = useGlobeStore(state => state.mirrorPolicyOpen)
+  const mirrorPolicyActiveId = useGlobeStore(state => state.mirrorPolicyActiveId)
+  const openMirrorPolicy = useGlobeStore(state => state.openMirrorPolicy)
+  const closeMirrorPolicy = useGlobeStore(state => state.closeMirrorPolicy)
 
   const policyBodyRef = useRef<HTMLDivElement | null>(null)
 
@@ -55,12 +60,17 @@ export function MirrorPolicyModal(_props: MirrorPolicyModalProps) {
       centered
       onCancel={closeMirrorPolicy}
       footer={
-        <Button type="primary" onClick={closeMirrorPolicy}>
+        <Button type='primary' onClick={closeMirrorPolicy}>
           关闭
         </Button>
       }
     >
-      <Tabs activeKey={mirrorPolicyActiveId} size="small" items={tabItems} onChange={handleTabChange} />
+      <Tabs
+        activeKey={mirrorPolicyActiveId}
+        size='small'
+        items={tabItems}
+        onChange={handleTabChange}
+      />
       <div ref={policyBodyRef} className={`${styles.policyBody} ${styles.policyMarkdown}`}>
         {renderedNodes}
       </div>

@@ -20,10 +20,19 @@ function clamp(text: string): string {
 
 export function stringifyLogValue(value: unknown, depth = 0, seen?: WeakSet<object>): string {
   if (typeof value === 'string') return value
-  if (value === null || value === undefined || typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  )
+    return String(value)
   if (value instanceof Error) {
-    const stack = typeof value.stack === 'string' ? value.stack.split('\n').slice(0, 4).join('\n') : ''
-    return clamp(stack ? `${value.name}: ${value.message}\n${stack}` : `${value.name}: ${value.message}`)
+    const stack =
+      typeof value.stack === 'string' ? value.stack.split('\n').slice(0, 4).join('\n') : ''
+    return clamp(
+      stack ? `${value.name}: ${value.message}\n${stack}` : `${value.name}: ${value.message}`
+    )
   }
   if (depth >= 4) return '[深层结构省略]'
   const marker = seen ?? new WeakSet<object>()
@@ -31,11 +40,13 @@ export function stringifyLogValue(value: unknown, depth = 0, seen?: WeakSet<obje
     if (marker.has(value)) return '[循环引用]'
     marker.add(value)
     if (Array.isArray(value)) {
-      const items = value.slice(0, 20).map((item) => stringifyLogValue(item, depth + 1, marker))
+      const items = value.slice(0, 20).map(item => stringifyLogValue(item, depth + 1, marker))
       if (value.length > 20) items.push(`…共 ${value.length} 项`)
       return `[${items.join(', ')}]`
     }
-    const parts = Object.entries(value as Record<string, unknown>).slice(0, 20).map(([key, item]) => `${key}: ${stringifyLogValue(item, depth + 1, marker)}`)
+    const parts = Object.entries(value as Record<string, unknown>)
+      .slice(0, 20)
+      .map(([key, item]) => `${key}: ${stringifyLogValue(item, depth + 1, marker)}`)
     return `{${parts.join(', ')}}`
   }
   return String(value)
@@ -72,7 +83,7 @@ export const logger = {
     push('error', scope, message, detail)
   },
   dump(limit = MAX_ENTRIES): string {
-    const lines = entries.slice(-limit).map((entry) => {
+    const lines = entries.slice(-limit).map(entry => {
       const detail = entry.detail ? ` | ${entry.detail}` : ''
       return `${formatTime(entry.time)} [${entry.level}] [${entry.scope}] ${entry.message}${detail}`
     })
@@ -92,11 +103,11 @@ export function attachConsoleLogTee(scope: string): void {
   const originalWarn = console.warn.bind(console)
   const originalError = console.error.bind(console)
   console.warn = (...args: unknown[]) => {
-    push('warn', scope, args.map((arg) => stringifyLogValue(arg)).join(' '), '')
+    push('warn', scope, args.map(arg => stringifyLogValue(arg)).join(' '), '')
     originalWarn(...args)
   }
   console.error = (...args: unknown[]) => {
-    push('error', scope, args.map((arg) => stringifyLogValue(arg)).join(' '), '')
+    push('error', scope, args.map(arg => stringifyLogValue(arg)).join(' '), '')
     originalError(...args)
   }
 }

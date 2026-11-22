@@ -2,7 +2,12 @@ import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Worker } from 'node:worker_threads'
-import type { AgentMemory, StoredAiConversation, StoredAiConversationSummary } from '../../../preload'
+
+import type {
+  AgentMemory,
+  StoredAiConversation,
+  StoredAiConversationSummary
+} from '../../../preload'
 import { EoqHawdbEngine } from './engine'
 import { HawdbError } from './ffi'
 import type {
@@ -93,15 +98,17 @@ export class EoqHawdbClient {
       if (response.ok) {
         entry.resolve(response.result)
       } else {
-        entry.reject(response.kind ? new HawdbError(response.kind, response.error) : new Error(response.error))
+        entry.reject(
+          response.kind ? new HawdbError(response.kind, response.error) : new Error(response.error)
+        )
       }
     })
-    worker.on('error', (error) => {
+    worker.on('error', error => {
       this.ready = false
       this.worker = null
       this.rejectAllPending(error instanceof Error ? error : new Error(String(error)))
     })
-    worker.on('exit', (code) => {
+    worker.on('exit', code => {
       this.ready = false
       if (this.worker === worker) this.worker = null
       if (this.pending.size > 0) {
@@ -135,7 +142,7 @@ export class EoqHawdbClient {
       }, timeoutMs)
       timer.unref?.()
       this.pending.set(id, {
-        resolve: (value) => resolve(value as T),
+        resolve: value => resolve(value as T),
         reject,
         timer
       })
@@ -144,7 +151,7 @@ export class EoqHawdbClient {
   }
 
   private dispatchInProcess<T>(body: RequestBody): Promise<T> {
-    return this.runInProcess((engine) => {
+    return this.runInProcess(engine => {
       switch (body.op) {
         case 'open':
           return engine.open(body.payload) as Promise<T>
@@ -170,9 +177,17 @@ export class EoqHawdbClient {
         case 'history:delete':
           return engine.deleteConversation(body.payload.id) as Promise<T>
         case 'history:search':
-          return engine.searchConversations(body.payload.query, body.payload.limit, body.payload.excludeId) as T
+          return engine.searchConversations(
+            body.payload.query,
+            body.payload.limit,
+            body.payload.excludeId
+          ) as T
         case 'knowledge:retrieve':
-          return engine.retrieveKnowledge(body.payload.query, body.payload.module, body.payload.topK) as T
+          return engine.retrieveKnowledge(
+            body.payload.query,
+            body.payload.module,
+            body.payload.topK
+          ) as T
       }
     })
   }
@@ -188,7 +203,7 @@ export class EoqHawdbClient {
     this.ready = false
     if (this.inProcessEngine) {
       try {
-        await this.runInProcess((engine) => engine.close())
+        await this.runInProcess(engine => engine.close())
       } finally {
         this.inProcessEngine = null
       }
@@ -236,18 +251,31 @@ export class EoqHawdbClient {
   }
 
   saveConversation(conversation: unknown): Promise<StoredAiConversationSummary[]> {
-    return this.send<StoredAiConversationSummary[]>({ op: 'history:save', payload: { conversation } })
+    return this.send<StoredAiConversationSummary[]>({
+      op: 'history:save',
+      payload: { conversation }
+    })
   }
 
   deleteConversation(id: string): Promise<StoredAiConversationSummary[]> {
     return this.send<StoredAiConversationSummary[]>({ op: 'history:delete', payload: { id } })
   }
 
-  searchConversations(query: string, limit?: number, excludeId?: string): Promise<ConversationSearchHit[]> {
-    return this.send<ConversationSearchHit[]>({ op: 'history:search', payload: { query, limit, excludeId } })
+  searchConversations(
+    query: string,
+    limit?: number,
+    excludeId?: string
+  ): Promise<ConversationSearchHit[]> {
+    return this.send<ConversationSearchHit[]>({
+      op: 'history:search',
+      payload: { query, limit, excludeId }
+    })
   }
 
   retrieveKnowledge(query: string, module?: string, topK?: number): Promise<KnowledgeSearchResult> {
-    return this.send<KnowledgeSearchResult>({ op: 'knowledge:retrieve', payload: { query, module, topK } })
+    return this.send<KnowledgeSearchResult>({
+      op: 'knowledge:retrieve',
+      payload: { query, module, topK }
+    })
   }
 }

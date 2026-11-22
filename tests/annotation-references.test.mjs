@@ -6,7 +6,15 @@ import { referencedShapeIds } from '../src/renderer/src/lib/annotationReferences
 test('annotation references collect shapes across nested folders', () => {
   const ids = referencedShapeIds([
     { type: 'shape', id: 'a' },
-    { type: 'folder', id: 'f1', name: '分组', children: [{ type: 'shape', id: 'b' }, { type: 'folder', id: 'f2', name: '子分组', children: [{ type: 'shape', id: 'c' }] }] }
+    {
+      type: 'folder',
+      id: 'f1',
+      name: '分组',
+      children: [
+        { type: 'shape', id: 'b' },
+        { type: 'folder', id: 'f2', name: '子分组', children: [{ type: 'shape', id: 'c' }] }
+      ]
+    }
   ])
   assert.deepEqual([...ids].sort(), ['a', 'b', 'c'])
 })

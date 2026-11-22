@@ -1,6 +1,13 @@
 export type PassportPlatform = 'windows' | 'macos' | 'linux' | 'android' | 'ios' | 'other'
 
-export const PASSPORT_PLATFORMS: readonly PassportPlatform[] = ['windows', 'macos', 'linux', 'android', 'ios', 'other']
+export const PASSPORT_PLATFORMS: readonly PassportPlatform[] = [
+  'windows',
+  'macos',
+  'linux',
+  'android',
+  'ios',
+  'other'
+]
 
 export const PASSPORT_DEFAULT_ISSUER = 'https://passport.project-pigeon.com'
 export const PASSPORT_DEFAULT_ACCOUNT_ORIGIN = 'https://account.project-pigeon.com'
@@ -72,7 +79,10 @@ export function isValidInstallationId(value: unknown): value is string {
 }
 
 export function sanitizeDeviceNameText(value: string): string {
-  return value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()
+  return value
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export function isValidDeviceName(value: unknown): value is string {
@@ -100,11 +110,16 @@ export function passportPlatform(platform: string): PassportPlatform {
 }
 
 export function scopeParameter(scopes: readonly string[]): string {
-  return [...new Set(scopes.filter((scope) => /^[A-Za-z0-9:._-]{1,80}$/.test(scope)))].join(' ')
+  return [...new Set(scopes.filter(scope => /^[A-Za-z0-9:._-]{1,80}$/.test(scope)))].join(' ')
 }
 
 function isLocalHostname(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]' || hostname === '::1'
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]' ||
+    hostname === '::1'
+  )
 }
 
 export function parseAbsoluteUrl(value: unknown): URL | null {
@@ -115,7 +130,8 @@ export function parseAbsoluteUrl(value: unknown): URL | null {
   } catch {
     return null
   }
-  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && isLocalHostname(url.hostname))) return null
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && isLocalHostname(url.hostname)))
+    return null
   return url
 }
 
@@ -127,7 +143,10 @@ export function isTrustedVerificationUri(value: unknown, accountOrigin: string):
   return url.pathname === PASSPORT_DEVICE_VERIFICATION_PATH
 }
 
-export function isTrustedVerificationUriComplete(value: unknown, accountOrigin: string): value is string {
+export function isTrustedVerificationUriComplete(
+  value: unknown,
+  accountOrigin: string
+): value is string {
   if (!isTrustedVerificationUri(value, accountOrigin)) return false
   const url = new URL(value)
   for (const key of url.searchParams.keys()) {
@@ -166,7 +185,11 @@ export interface PassportEndpoints {
   revocationEndpoint: string
 }
 
-function endpointUnderIssuer(payload: Record<string, unknown>, key: string, issuerUrl: URL): string {
+function endpointUnderIssuer(
+  payload: Record<string, unknown>,
+  key: string,
+  issuerUrl: URL
+): string {
   const url = parseAbsoluteUrl(payload[key])
   if (!url) return ''
   if (url.origin !== issuerUrl.origin) return ''
@@ -182,19 +205,33 @@ export function normalizeIssuer(value: unknown): string {
   return url.toString().replace(/\/$/, '')
 }
 
-export function parseDiscovery(payload: unknown, expectedIssuer?: string): PassportEndpoints | null {
+export function parseDiscovery(
+  payload: unknown,
+  expectedIssuer?: string
+): PassportEndpoints | null {
   if (!isRecord(payload)) return null
   const issuer = normalizeIssuer(payload.issuer)
   if (!issuer) return null
   if (expectedIssuer !== undefined && normalizeIssuer(expectedIssuer) !== issuer) return null
   const issuerUrl = parseAbsoluteUrl(issuer)
   if (!issuerUrl) return null
-  const deviceAuthorizationEndpoint = endpointUnderIssuer(payload, 'device_authorization_endpoint', issuerUrl)
+  const deviceAuthorizationEndpoint = endpointUnderIssuer(
+    payload,
+    'device_authorization_endpoint',
+    issuerUrl
+  )
   const tokenEndpoint = endpointUnderIssuer(payload, 'token_endpoint', issuerUrl)
   const userinfoEndpoint = endpointUnderIssuer(payload, 'userinfo_endpoint', issuerUrl)
   const revocationEndpoint = endpointUnderIssuer(payload, 'revocation_endpoint', issuerUrl)
-  if (!deviceAuthorizationEndpoint || !tokenEndpoint || !userinfoEndpoint || !revocationEndpoint) return null
-  return { issuer, deviceAuthorizationEndpoint, tokenEndpoint, userinfoEndpoint, revocationEndpoint }
+  if (!deviceAuthorizationEndpoint || !tokenEndpoint || !userinfoEndpoint || !revocationEndpoint)
+    return null
+  return {
+    issuer,
+    deviceAuthorizationEndpoint,
+    tokenEndpoint,
+    userinfoEndpoint,
+    revocationEndpoint
+  }
 }
 
 export interface DeviceAuthorizationChallenge {
@@ -218,7 +255,10 @@ function positiveNumber(value: unknown, fallback: number, max: number): number {
   return Math.min(max, value)
 }
 
-export function parseDeviceAuthorization(payload: unknown, accountOrigin: string): DeviceAuthorizationChallenge | null {
+export function parseDeviceAuthorization(
+  payload: unknown,
+  accountOrigin: string
+): DeviceAuthorizationChallenge | null {
   if (!isRecord(payload)) return null
   const deviceCode = boundedString(payload.device_code, 512)
   const userCode = boundedString(payload.user_code, 64)
@@ -227,8 +267,10 @@ export function parseDeviceAuthorization(payload: unknown, accountOrigin: string
   const verificationUri = new URL(payload.verification_uri as string)
   verificationUri.search = ''
   const advertisedComplete = payload.verification_uri_complete
-  const hasAdvertisedComplete = advertisedComplete !== undefined && advertisedComplete !== null && advertisedComplete !== ''
-  if (hasAdvertisedComplete && !isTrustedVerificationUriComplete(advertisedComplete, accountOrigin)) return null
+  const hasAdvertisedComplete =
+    advertisedComplete !== undefined && advertisedComplete !== null && advertisedComplete !== ''
+  if (hasAdvertisedComplete && !isTrustedVerificationUriComplete(advertisedComplete, accountOrigin))
+    return null
   const complete = hasAdvertisedComplete
     ? (advertisedComplete as string)
     : buildVerificationUriComplete(verificationUri.toString(), userCode)
@@ -239,7 +281,11 @@ export function parseDeviceAuthorization(payload: unknown, accountOrigin: string
     verificationUri: verificationUri.toString(),
     verificationUriComplete: complete,
     expiresIn: positiveNumber(payload.expires_in, 600, 3600),
-    interval: positiveNumber(payload.interval, DEFAULT_POLL_INTERVAL_SECONDS, MAX_POLL_INTERVAL_SECONDS)
+    interval: positiveNumber(
+      payload.interval,
+      DEFAULT_POLL_INTERVAL_SECONDS,
+      MAX_POLL_INTERVAL_SECONDS
+    )
   }
 }
 
@@ -256,7 +302,8 @@ export function parseTokenResponse(payload: unknown): PassportTokenResponse | nu
   const accessToken = boundedString(payload.access_token, MAX_SECRET_BYTES)
   const refreshToken = boundedString(payload.refresh_token, MAX_SECRET_BYTES)
   if (!accessToken || !refreshToken) return null
-  const tokenType = typeof payload.token_type === 'string' ? payload.token_type.trim().toLowerCase() : ''
+  const tokenType =
+    typeof payload.token_type === 'string' ? payload.token_type.trim().toLowerCase() : ''
   if (tokenType !== '' && tokenType !== 'bearer') return null
   return {
     accessToken,
@@ -301,7 +348,10 @@ export function parseOAuthError(payload: unknown): { error: string; description:
   if (!isRecord(payload)) return null
   const error = typeof payload.error === 'string' ? payload.error.trim() : ''
   if (!error) return null
-  return { error, description: typeof payload.error_description === 'string' ? payload.error_description : '' }
+  return {
+    error,
+    description: typeof payload.error_description === 'string' ? payload.error_description : ''
+  }
 }
 
 export function parseErrorEnvelope(payload: unknown): { code: string; message: string } | null {
@@ -337,7 +387,12 @@ const TERMINAL_TOKEN_ERRORS = new Set([
   'invalid_scope'
 ])
 
-const SESSION_INVALIDATING_TOKEN_ERRORS = new Set(['invalid_grant', 'invalid_client', 'unauthorized_client', 'unsupported_grant_type'])
+const SESSION_INVALIDATING_TOKEN_ERRORS = new Set([
+  'invalid_grant',
+  'invalid_client',
+  'unauthorized_client',
+  'unsupported_grant_type'
+])
 
 const ENVELOPE_MESSAGES: Record<string, string> = {
   rate_limited: '操作过于频繁，请稍后再试',
@@ -360,14 +415,21 @@ function failure(
   }
 }
 
-export function describeAuthorizationFailure(status: number, payload: unknown, retryAfter: number): AuthorizationFailure {
+export function describeAuthorizationFailure(
+  status: number,
+  payload: unknown,
+  retryAfter: number
+): AuthorizationFailure {
   const oauthError = parseOAuthError(payload)
   if (oauthError) {
     const message = TOKEN_ERROR_MESSAGES[oauthError.error] ?? `登录失败（${oauthError.error}）`
     return failure(message, {
       terminal: TERMINAL_TOKEN_ERRORS.has(oauthError.error),
       slowDown: oauthError.error === 'slow_down',
-      retryable: oauthError.error === 'authorization_pending' || oauthError.error === 'temporarily_unavailable' || oauthError.error === 'server_error',
+      retryable:
+        oauthError.error === 'authorization_pending' ||
+        oauthError.error === 'temporarily_unavailable' ||
+        oauthError.error === 'server_error',
       retryAfterSeconds: retryAfter,
       invalidatesSession: SESSION_INVALIDATING_TOKEN_ERRORS.has(oauthError.error)
     })
@@ -381,9 +443,18 @@ export function describeAuthorizationFailure(status: number, payload: unknown, r
       retryAfterSeconds: retryAfter
     })
   }
-  if (status === 429) return failure(ENVELOPE_MESSAGES.rate_limited, { retryable: true, retryAfterSeconds: retryAfter })
-  if (status >= 500) return failure('鸽巢通行证服务暂时不可用，请稍后再试', { retryable: true, retryAfterSeconds: retryAfter })
-  if (status === 401 || status === 403) return failure('登录服务拒绝了本次请求，请稍后再试', { terminal: true })
+  if (status === 429)
+    return failure(ENVELOPE_MESSAGES.rate_limited, {
+      retryable: true,
+      retryAfterSeconds: retryAfter
+    })
+  if (status >= 500)
+    return failure('鸽巢通行证服务暂时不可用，请稍后再试', {
+      retryable: true,
+      retryAfterSeconds: retryAfter
+    })
+  if (status === 401 || status === 403)
+    return failure('登录服务拒绝了本次请求，请稍后再试', { terminal: true })
   return failure('登录服务暂时不可用，请稍后再试', { terminal: status < 500 })
 }
 
@@ -422,7 +493,11 @@ export interface AccountState {
   deviceListUrl: string
 }
 
-export function signedOutAccountState(deviceListUrlValue: string, error = '', pendingRemoteRevocation = false): AccountState {
+export function signedOutAccountState(
+  deviceListUrlValue: string,
+  error = '',
+  pendingRemoteRevocation = false
+): AccountState {
   return {
     phase: 'signed-out',
     profile: null,

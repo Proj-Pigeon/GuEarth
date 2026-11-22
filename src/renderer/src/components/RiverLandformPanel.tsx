@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import * as Cesium from 'cesium'
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons'
 import { Alert, Button } from 'antd'
+import * as Cesium from 'cesium'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
 import LineChart, { type ChartSeries } from './charts/LineChart'
+
 import styles from './RiverLandformPanel.module.css'
 
 export interface RiverLandformPanelProps {
@@ -102,60 +104,79 @@ export function RiverLandformPanel({ viewer, onClose }: RiverLandformPanelProps)
   const activeReachRef = useRef<RiverReach>(reaches[0])
   const sampleSeqRef = useRef(0)
 
-  const series = useMemo<ChartSeries[]>(() => [{ name: '沿河高程剖面', color: '#722ed1', points: profile }], [profile])
+  const series = useMemo<ChartSeries[]>(
+    () => [{ name: '沿河高程剖面', color: '#722ed1', points: profile }],
+    [profile]
+  )
 
-  const sampleProfile = useCallback(async (reach: RiverReach, targetViewer: Cesium.Viewer | undefined): Promise<void> => {
-    sampleSeqRef.current += 1
-    const seq = sampleSeqRef.current
-    setProfile([])
-    if (!targetViewer || targetViewer.isDestroyed()) return
-    setSampling(true)
-    setDegraded(false)
-    try {
-      const points = interpolate(reach.waypoints)
-      const cartographics = points.map(([lon, lat]) => Cesium.Cartographic.fromDegrees(lon, lat))
-      let heights: number[]
-      let isDegraded = false
+  const sampleProfile = useCallback(
+    async (reach: RiverReach, targetViewer: Cesium.Viewer | undefined): Promise<void> => {
+      sampleSeqRef.current += 1
+      const seq = sampleSeqRef.current
+      setProfile([])
+      if (!targetViewer || targetViewer.isDestroyed()) return
+      setSampling(true)
+      setDegraded(false)
       try {
-        const sampled = await Cesium.sampleTerrainMostDetailed(targetViewer.terrainProvider, cartographics)
-        if (sampleSeqRef.current !== seq || targetViewer.isDestroyed()) return
-        heights = sampled.map((item) =>
-          Number.isFinite(item.height)
-            ? item.height
-            : targetViewer.scene.globe.getHeight(
-                Cesium.Cartographic.fromDegrees((item.longitude * 180) / Math.PI, (item.latitude * 180) / Math.PI)
-              ) ?? 0
+        const points = interpolate(reach.waypoints)
+        const cartographics = points.map(([lon, lat]) => Cesium.Cartographic.fromDegrees(lon, lat))
+        let heights: number[]
+        let isDegraded = false
+        try {
+          const sampled = await Cesium.sampleTerrainMostDetailed(
+            targetViewer.terrainProvider,
+            cartographics
+          )
+          if (sampleSeqRef.current !== seq || targetViewer.isDestroyed()) return
+          heights = sampled.map(item =>
+            Number.isFinite(item.height)
+              ? item.height
+              : (targetViewer.scene.globe.getHeight(
+                  Cesium.Cartographic.fromDegrees(
+                    (item.longitude * 180) / Math.PI,
+                    (item.latitude * 180) / Math.PI
+                  )
+                ) ?? 0)
+          )
+          isDegraded = sampled.some(item => !Number.isFinite(item.height))
+        } catch {
+          if (sampleSeqRef.current !== seq || targetViewer.isDestroyed()) return
+          heights = cartographics.map(item => targetViewer.scene.globe.getHeight(item) ?? 0)
+          isDegraded = true
+        }
+        if (sampleSeqRef.current !== seq) return
+        setDegraded(isDegraded)
+        let distance = 0
+        setProfile(
+          points.map((point, index) => {
+            if (index > 0) {
+              const [px, py] = points[index - 1]
+              distance += Math.hypot(
+                (point[0] - px) * 111 * Math.cos((py * Math.PI) / 180),
+                (point[1] - py) * 111
+              )
+            }
+            return [Math.round(distance * 10) / 10, Math.round((heights[index] ?? 0) * 10) / 10]
+          })
         )
-        isDegraded = sampled.some((item) => !Number.isFinite(item.height))
-      } catch {
-        if (sampleSeqRef.current !== seq || targetViewer.isDestroyed()) return
-        heights = cartographics.map((item) => targetViewer.scene.globe.getHeight(item) ?? 0)
-        isDegraded = true
+      } finally {
+        if (sampleSeqRef.current === seq) {
+          setSampling(false)
+        }
       }
-      if (sampleSeqRef.current !== seq) return
-      setDegraded(isDegraded)
-      let distance = 0
-      setProfile(
-        points.map((point, index) => {
-          if (index > 0) {
-            const [px, py] = points[index - 1]
-            distance += Math.hypot((point[0] - px) * 111 * Math.cos((py * Math.PI) / 180), (point[1] - py) * 111)
-          }
-          return [Math.round(distance * 10) / 10, Math.round((heights[index] ?? 0) * 10) / 10]
-        })
-      )
-    } finally {
-      if (sampleSeqRef.current === seq) {
-        setSampling(false)
-      }
-    }
-  }, [])
+    },
+    []
+  )
 
   const runReach = useCallback(
     (reach: RiverReach, targetViewer: Cesium.Viewer | undefined): void => {
       if (targetViewer && !targetViewer.isDestroyed()) {
         targetViewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(reach.center[0], reach.center[1], reach.center[2]),
+          destination: Cesium.Cartesian3.fromDegrees(
+            reach.center[0],
+            reach.center[1],
+            reach.center[2]
+          ),
           duration: 1.4
         })
       }
@@ -180,20 +201,29 @@ export function RiverLandformPanel({ viewer, onClose }: RiverLandformPanelProps)
   }
 
   const xMax = Math.max(60, Math.ceil(profile[profile.length - 1]?.[0] ?? 60))
-  const yMin = Math.min(0, Math.floor((profile.length ? Math.min(...profile.map((p) => p[1])) : 0) / 500) * 500)
-  const yMax = Math.ceil((profile.length ? Math.max(...profile.map((p) => p[1])) : 1000) / 500) * 500
+  const yMin = Math.min(
+    0,
+    Math.floor((profile.length ? Math.min(...profile.map(p => p[1])) : 0) / 500) * 500
+  )
+  const yMax = Math.ceil((profile.length ? Math.max(...profile.map(p => p[1])) : 1000) / 500) * 500
 
   return (
-    <div className={styles.riverPanel} role="group" aria-label="河流地貌发育">
+    <div className={styles.riverPanel} role='group' aria-label='河流地貌发育'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>河流地貌发育</span>
-        <Button type="text" size="small" aria-label="关闭河流地貌" icon={<CloseOutlined />} onClick={onClose} />
+        <Button
+          type='text'
+          size='small'
+          aria-label='关闭河流地貌'
+          icon={<CloseOutlined />}
+          onClick={onClose}
+        />
       </div>
       <div className={styles.reachRow}>
-        {reaches.map((reach) => (
+        {reaches.map(reach => (
           <Button
             key={reach.id}
-            size="small"
+            size='small'
             type={reach.id === activeReach.id ? 'primary' : 'default'}
             onClick={() => selectReach(reach)}
           >
@@ -211,19 +241,23 @@ export function RiverLandformPanel({ viewer, onClose }: RiverLandformPanelProps)
         series={series}
         xMin={0}
         xMax={xMax}
-        xName="沿河距离(千米)"
-        yName="海拔(米)"
+        xName='沿河距离(千米)'
+        yName='海拔(米)'
         yMin={yMin}
         yMax={yMax}
         height={150}
       />
-      {degraded && <Alert type="warning" showIcon title="地形源不可用或部分格网未取到，本剖面为粗略估算值" />}
-      {activeReach.facts.map((fact) => (
+      {degraded && (
+        <Alert type='warning' showIcon title='地形源不可用或部分格网未取到，本剖面为粗略估算值' />
+      )}
+      {activeReach.facts.map(fact => (
         <div key={fact} className={styles.fact}>
           · {fact}
         </div>
       ))}
-      <div className={styles.panelNote}>上游 V 形谷下切、中游河曲侧蚀、下游三角洲堆积，外力作用沿程演变。</div>
+      <div className={styles.panelNote}>
+        上游 V 形谷下切、中游河曲侧蚀、下游三角洲堆积，外力作用沿程演变。
+      </div>
     </div>
   )
 }

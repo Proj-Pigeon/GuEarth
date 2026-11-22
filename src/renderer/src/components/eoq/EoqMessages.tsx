@@ -1,20 +1,12 @@
 import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent
-} from 'react'
-import {
   ActionBarPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
   useAuiState,
   type PartState
 } from '@assistant-ui/react'
+import { cn } from '@renderer/lib/utils'
+import { useAiStore, type ChatMessage, type ToolStep } from '@renderer/stores/ai'
 import { App as AntdApp } from 'antd'
 import {
   AlertCircleIcon,
@@ -25,8 +17,17 @@ import {
   PencilIcon,
   RefreshCwIcon
 } from 'lucide-react'
-import { useAiStore, type ChatMessage, type ToolStep } from '@renderer/stores/ai'
-import { cn } from '@renderer/lib/utils'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent
+} from 'react'
+
 import EoqIconButton from './EoqIconButton'
 import EoqMarkdownText from './EoqMarkdownText'
 import EoqReasoning from './EoqReasoning'
@@ -66,9 +67,9 @@ function useEoqThreadActions(): EoqThreadActionsContextValue {
 
 function EoqUserMessage() {
   const chatMessage = useAuiState(
-    (state) => state.message.metadata.custom?.chatMessage as ChatMessage | undefined
+    state => state.message.metadata.custom?.chatMessage as ChatMessage | undefined
   )
-  const isStreaming = useAiStore((state) => state.isStreaming)
+  const isStreaming = useAiStore(state => state.isStreaming)
   const {
     editingId,
     editingDraft,
@@ -83,31 +84,31 @@ function EoqUserMessage() {
   const isEditing = editingId === chatMessage.id
 
   return (
-    <MessagePrimitive.Root className="group/user flex min-w-0 animate-eoq-fade-up flex-col items-end gap-1 motion-reduce:animate-none">
+    <MessagePrimitive.Root className='group/user animate-eoq-fade-up flex min-w-0 flex-col items-end gap-1 motion-reduce:animate-none'>
       {isEditing ? (
-        <div className="edit-box flex w-full flex-col gap-2 rounded-2xl border border-primary bg-background px-3 pt-2.5 pb-2 ring-2 ring-primary/12">
+        <div className='edit-box border-primary bg-background ring-primary/12 flex w-full flex-col gap-2 rounded-2xl border px-3 pt-2.5 pb-2 ring-2'>
           <textarea
             value={editingDraft}
             rows={3}
             autoFocus
-            aria-label="编辑提问"
-            onChange={(event) => setEditingDraft(event.target.value)}
-            onKeyDown={(event) => handleEditKeydown(event, chatMessage)}
-            className="max-h-48 w-full resize-none border-0 bg-transparent p-0 text-[14px] leading-[22px] text-foreground shadow-none outline-none ring-0 focus:outline-none"
+            aria-label='编辑提问'
+            onChange={event => setEditingDraft(event.target.value)}
+            onKeyDown={event => handleEditKeydown(event, chatMessage)}
+            className='text-foreground max-h-48 w-full resize-none border-0 bg-transparent p-0 text-[14px] leading-[22px] shadow-none ring-0 outline-none focus:outline-none'
           />
-          <div className="flex items-center justify-end gap-2">
+          <div className='flex items-center justify-end gap-2'>
             <button
-              type="button"
+              type='button'
               onClick={cancelEdit}
-              className="h-7 cursor-pointer rounded-md border border-border bg-background px-2.5 text-[12px] leading-5 text-foreground/65 transition-colors duration-100 hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className='border-border bg-background text-foreground/65 hover:border-foreground/20 hover:text-foreground focus-visible:ring-primary h-7 cursor-pointer rounded-md border px-2.5 text-[12px] leading-5 transition-colors duration-100 focus-visible:ring-2 focus-visible:outline-none'
             >
               取消
             </button>
             <button
-              type="button"
+              type='button'
               disabled={!editingDraft.trim()}
               onClick={() => confirmEdit(chatMessage)}
-              className="h-7 cursor-pointer rounded-md border-0 bg-primary px-3 text-[12px] leading-5 text-primary-foreground transition-colors duration-100 hover:bg-[#4096ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:bg-foreground/[0.06] disabled:text-foreground/25"
+              className='bg-primary text-primary-foreground focus-visible:ring-primary disabled:bg-foreground/[0.06] disabled:text-foreground/25 h-7 cursor-pointer rounded-md border-0 px-3 text-[12px] leading-5 transition-colors duration-100 hover:bg-[#4096ff] focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed'
             >
               发送
             </button>
@@ -115,20 +116,16 @@ function EoqUserMessage() {
         </div>
       ) : (
         <>
-          <div className="max-w-[88%] rounded-2xl bg-muted px-3.5 py-2 text-[14px] leading-[22px] whitespace-pre-wrap break-words text-foreground">
+          <div className='bg-muted text-foreground max-w-[88%] rounded-2xl px-3.5 py-2 text-[14px] leading-[22px] break-words whitespace-pre-wrap'>
             {chatMessage.content}
           </div>
           {!isStreaming && (
             <ActionBarPrimitive.Root
               hideWhenRunning
-              className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-focus-within/user:opacity-100 group-hover/user:opacity-100 motion-reduce:transition-none"
+              className='flex items-center gap-1 opacity-0 transition-opacity duration-200 group-focus-within/user:opacity-100 group-hover/user:opacity-100 motion-reduce:transition-none'
             >
-              <EoqIconButton
-                tooltip="编辑提问"
-                size="sm"
-                onClick={() => startEdit(chatMessage)}
-              >
-                <PencilIcon className="size-3.5" />
+              <EoqIconButton tooltip='编辑提问' size='sm' onClick={() => startEdit(chatMessage)}>
+                <PencilIcon className='size-3.5' />
               </EoqIconButton>
             </ActionBarPrimitive.Root>
           )}
@@ -140,11 +137,11 @@ function EoqUserMessage() {
 
 function EoqAssistantMessage() {
   const chatMessage = useAuiState(
-    (state) => state.message.metadata.custom?.chatMessage as ChatMessage | undefined
+    state => state.message.metadata.custom?.chatMessage as ChatMessage | undefined
   )
-  const isStreaming = useAiStore((state) => state.isStreaming)
-  const modelRetryNotice = useAiStore((state) => state.modelRetryNotice)
-  const retryLast = useAiStore((state) => state.retryLast)
+  const isStreaming = useAiStore(state => state.isStreaming)
+  const modelRetryNotice = useAiStore(state => state.modelRetryNotice)
+  const retryLast = useAiStore(state => state.retryLast)
   const { copiedMessageId, copyAnswer, handleRegenerate, onSubmitPrompt } = useEoqThreadActions()
 
   const toolStepsById = useMemo(() => {
@@ -159,9 +156,9 @@ function EoqAssistantMessage() {
   if (!chatMessage) return null
 
   return (
-    <MessagePrimitive.Root className="assistant-block group/assistant flex min-w-0 animate-eoq-fade-up flex-col gap-2 px-0.5 motion-reduce:animate-none">
-      <div className="flex min-w-0 flex-col gap-2">
-        <MessagePrimitive.GroupedParts groupBy={eoqGroupBy} indicator="empty">
+    <MessagePrimitive.Root className='assistant-block group/assistant animate-eoq-fade-up flex min-w-0 flex-col gap-2 px-0.5 motion-reduce:animate-none'>
+      <div className='flex min-w-0 flex-col gap-2'>
+        <MessagePrimitive.GroupedParts groupBy={eoqGroupBy} indicator='empty'>
           {({ part, children }) => {
             switch (part.type) {
               case 'group-reasoning': {
@@ -190,7 +187,7 @@ function EoqAssistantMessage() {
                 )
               }
               case 'reasoning':
-                return <div className="whitespace-pre-wrap break-words">{part.text}</div>
+                return <div className='break-words whitespace-pre-wrap'>{part.text}</div>
               case 'text':
                 return <EoqMarkdownText />
               case 'tool-call': {
@@ -200,7 +197,7 @@ function EoqAssistantMessage() {
                     <EoqWebSearch
                       step={step}
                       busy={isStreaming}
-                      onRetry={(query) => onSubmitPrompt(`请重新联网搜索：${query}`)}
+                      onRetry={query => onSubmitPrompt(`请重新联网搜索：${query}`)}
                     />
                   )
                 }
@@ -218,7 +215,7 @@ function EoqAssistantMessage() {
               }
               case 'indicator':
                 return (
-                  <span className="inline-block py-1 text-[12px] leading-5 text-muted-foreground shimmer motion-reduce:animate-none">
+                  <span className='text-muted-foreground shimmer inline-block py-1 text-[12px] leading-5 motion-reduce:animate-none'>
                     思考中…
                   </span>
                 )
@@ -231,28 +228,28 @@ function EoqAssistantMessage() {
 
       {chatMessage.status === 'streaming' && modelRetryNotice && (
         <div
-          role="status"
-          className="flex items-start gap-2 rounded-lg border border-[#faad14]/35 bg-[#faad14]/[0.06] px-3 py-2 text-[12px] leading-5 text-foreground/80"
+          role='status'
+          className='text-foreground/80 flex items-start gap-2 rounded-lg border border-[#faad14]/35 bg-[#faad14]/[0.06] px-3 py-2 text-[12px] leading-5'
         >
-          <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-[#faad14]" />
-          <span className="min-w-0 flex-1 break-words">{modelRetryNotice}</span>
+          <AlertTriangleIcon className='mt-0.5 size-3.5 shrink-0 text-[#faad14]' />
+          <span className='min-w-0 flex-1 break-words'>{modelRetryNotice}</span>
         </div>
       )}
 
       {chatMessage.status === 'error' && (
         <div
-          role="alert"
-          className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/[0.04] px-3 py-2 text-[12px] leading-5 text-destructive"
+          role='alert'
+          className='border-destructive/30 bg-destructive/[0.04] text-destructive flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] leading-5'
         >
-          <AlertCircleIcon className="size-3.5 shrink-0" />
-          <span className="min-w-0 flex-1 break-words">{chatMessage.error}</span>
+          <AlertCircleIcon className='size-3.5 shrink-0' />
+          <span className='min-w-0 flex-1 break-words'>{chatMessage.error}</span>
           <button
-            type="button"
+            type='button'
             disabled={isStreaming}
             onClick={() => void retryLast()}
-            className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border border-destructive/30 bg-background px-2 py-0.5 text-[12px] leading-5 text-destructive transition-colors duration-100 hover:bg-destructive/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"
+            className='border-destructive/30 bg-background text-destructive hover:bg-destructive/[0.06] focus-visible:ring-primary inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border px-2 py-0.5 text-[12px] leading-5 transition-colors duration-100 focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40'
           >
-            <RefreshCwIcon className="size-3" />
+            <RefreshCwIcon className='size-3' />
             重试
           </button>
         </div>
@@ -261,29 +258,25 @@ function EoqAssistantMessage() {
       {chatMessage.status === 'done' && (
         <ActionBarPrimitive.Root
           hideWhenRunning
-          autohide="not-last"
-          className="flex items-center gap-0.5 pt-0.5 text-muted-foreground"
+          autohide='not-last'
+          className='text-muted-foreground flex items-center gap-0.5 pt-0.5'
         >
           <EoqIconButton
             tooltip={copiedMessageId === chatMessage.id ? '已复制' : '复制回复'}
-            size="sm"
+            size='sm'
             className={cn(
               copiedMessageId === chatMessage.id && 'text-[#52c41a] hover:text-[#52c41a]'
             )}
             onClick={() => copyAnswer(chatMessage)}
           >
             {copiedMessageId === chatMessage.id ? (
-              <CheckIcon className="size-3.5 animate-eoq-pop" />
+              <CheckIcon className='animate-eoq-pop size-3.5' />
             ) : (
-              <CopyIcon className="size-3.5" />
+              <CopyIcon className='size-3.5' />
             )}
           </EoqIconButton>
-          <EoqIconButton
-            tooltip="重新生成"
-            size="sm"
-            onClick={() => handleRegenerate(chatMessage)}
-          >
-            <RefreshCwIcon className="size-3.5" />
+          <EoqIconButton tooltip='重新生成' size='sm' onClick={() => handleRegenerate(chatMessage)}>
+            <RefreshCwIcon className='size-3.5' />
           </EoqIconButton>
         </ActionBarPrimitive.Root>
       )}
@@ -297,10 +290,10 @@ export interface EoqMessagesProps {
 
 export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
   const { message: antdMessage, modal } = AntdApp.useApp()
-  const messages = useAiStore((state) => state.messages)
-  const currentConversationId = useAiStore((state) => state.currentConversationId)
-  const resendFrom = useAiStore((state) => state.resendFrom)
-  const regenerate = useAiStore((state) => state.regenerate)
+  const messages = useAiStore(state => state.messages)
+  const currentConversationId = useAiStore(state => state.currentConversationId)
+  const resendFrom = useAiStore(state => state.resendFrom)
+  const regenerate = useAiStore(state => state.regenerate)
 
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -328,7 +321,7 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
 
   const discardsFollowing = useCallback((messageId: string): boolean => {
     const currentMessages = useAiStore.getState().messages
-    const index = currentMessages.findIndex((item) => item.id === messageId)
+    const index = currentMessages.findIndex(item => item.id === messageId)
     return index >= 0 && index < currentMessages.length - 1
   }, [])
 
@@ -433,10 +426,10 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
         onSubmitPrompt
       }}
     >
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div className='relative flex min-h-0 flex-1 flex-col'>
         <ThreadPrimitive.Viewport
           autoScroll
-          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 pb-4"
+          className='flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 pb-4'
         >
           <ThreadPrimitive.Messages
             components={{
@@ -448,13 +441,13 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
 
         <ThreadPrimitive.ScrollToBottom asChild>
           <EoqIconButton
-            variant="outline"
-            size="md"
-            tooltip="回到底部"
-            aria-label="回到底部"
-            className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 disabled:pointer-events-none disabled:invisible"
+            variant='outline'
+            size='md'
+            tooltip='回到底部'
+            aria-label='回到底部'
+            className='absolute bottom-3 left-1/2 z-10 -translate-x-1/2 disabled:pointer-events-none disabled:invisible'
           >
-            <ArrowDownIcon className="size-4" />
+            <ArrowDownIcon className='size-4' />
           </EoqIconButton>
         </ThreadPrimitive.ScrollToBottom>
       </div>

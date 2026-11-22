@@ -1,17 +1,19 @@
-import { useEffect, useState, type MouseEvent } from 'react'
-import { Button, Checkbox, Modal } from 'antd'
-import type { MirrorPolicyId } from '../../../common/mirrorPolicies'
 import { useGlobeStore } from '@renderer/stores/globe'
+import { Button, Checkbox, Modal } from 'antd'
+import { useEffect, useState, type MouseEvent } from 'react'
+
+import type { MirrorPolicyId } from '../../../common/mirrorPolicies'
+
 import styles from './MirrorConsentModal.module.css'
 
 export interface MirrorConsentModalProps {}
 
 export function MirrorConsentModal(_props: MirrorConsentModalProps) {
-  const mirrorConsentOpen = useGlobeStore((state) => state.mirrorConsentOpen)
-  const mirrorConsentReason = useGlobeStore((state) => state.mirrorConsentReason)
-  const openMirrorPolicy = useGlobeStore((state) => state.openMirrorPolicy)
-  const declineMirrorConsent = useGlobeStore((state) => state.declineMirrorConsent)
-  const acceptMirrorConsent = useGlobeStore((state) => state.acceptMirrorConsent)
+  const mirrorConsentOpen = useGlobeStore(state => state.mirrorConsentOpen)
+  const mirrorConsentReason = useGlobeStore(state => state.mirrorConsentReason)
+  const openMirrorPolicy = useGlobeStore(state => state.openMirrorPolicy)
+  const declineMirrorConsent = useGlobeStore(state => state.declineMirrorConsent)
+  const acceptMirrorConsent = useGlobeStore(state => state.acceptMirrorConsent)
 
   const [agreed, setAgreed] = useState(false)
 
@@ -30,7 +32,10 @@ export function MirrorConsentModal(_props: MirrorConsentModalProps) {
     openMirrorPolicy(policyId)
   }
 
-  function handleCheckboxPolicyClick(event: MouseEvent<HTMLElement>, policyId: MirrorPolicyId): void {
+  function handleCheckboxPolicyClick(
+    event: MouseEvent<HTMLElement>,
+    policyId: MirrorPolicyId
+  ): void {
     event.preventDefault()
     event.stopPropagation()
     openPolicy(policyId)
@@ -48,7 +53,7 @@ export function MirrorConsentModal(_props: MirrorConsentModalProps) {
   return (
     <Modal
       open={mirrorConsentOpen}
-      title="海外资源镜像服务"
+      title='海外资源镜像服务'
       width={480}
       zIndex={1300}
       closable={false}
@@ -58,7 +63,7 @@ export function MirrorConsentModal(_props: MirrorConsentModalProps) {
       footer={
         <div className={styles.consentFooter}>
           <Button onClick={handleDecline}>不需要</Button>
-          <Button type="primary" disabled={!agreed} onClick={handleAccept}>
+          <Button type='primary' disabled={!agreed} onClick={handleAccept}>
             同意并启用
           </Button>
         </div>
@@ -68,31 +73,35 @@ export function MirrorConsentModal(_props: MirrorConsentModalProps) {
         {detectionNotice && <p className={styles.consentParagraph}>{detectionNotice}</p>}
         <p className={styles.consentParagraph}>
           咕咕地球携手奈索星联团队，为中国境内用户提供海外资源镜像服务。您需要遵守
-          <Button type="link" className={styles.policyLink} onClick={() => openPolicy('agreement')}>
+          <Button type='link' className={styles.policyLink} onClick={() => openPolicy('agreement')}>
             《咕咕地球镜像服务使用协议》
           </Button>
           与
-          <Button type="link" className={styles.policyLink} onClick={() => openPolicy('acceptable-use')}>
+          <Button
+            type='link'
+            className={styles.policyLink}
+            onClick={() => openPolicy('acceptable-use')}
+          >
             《可接受使用政策》
           </Button>
           。
         </p>
         <div className={styles.consentCheckboxRow}>
-          <Checkbox checked={agreed} onChange={(event) => setAgreed(event.target.checked)}>
+          <Checkbox checked={agreed} onChange={event => setAgreed(event.target.checked)}>
             <span className={styles.checkboxLabel}>
               我已阅读并同意
               <Button
-                type="link"
+                type='link'
                 className={styles.policyLink}
-                onClick={(event) => handleCheckboxPolicyClick(event, 'agreement')}
+                onClick={event => handleCheckboxPolicyClick(event, 'agreement')}
               >
                 《咕咕地球镜像服务使用协议》
               </Button>
               与
               <Button
-                type="link"
+                type='link'
                 className={styles.policyLink}
-                onClick={(event) => handleCheckboxPolicyClick(event, 'acceptable-use')}
+                onClick={event => handleCheckboxPolicyClick(event, 'acceptable-use')}
               >
                 《可接受使用政策》
               </Button>

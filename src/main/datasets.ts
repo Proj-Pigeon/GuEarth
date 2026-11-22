@@ -1,13 +1,20 @@
 import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
+
 import { net } from 'electron'
+
+import provincesAssetPath from '../../resources/geo/china-provinces.geojson?asset'
+import {
+  DEFAULT_MIRROR_ENDPOINT,
+  mirrorEarthquakesUrl,
+  type MirrorEndpointId
+} from '../common/tileMirror'
 import type { EarthquakeFeed, ProvinceFeature, ProvinceGeoDocument } from '../preload'
-import { DEFAULT_MIRROR_ENDPOINT, mirrorEarthquakesUrl, type MirrorEndpointId } from '../common/tileMirror'
 import { gcj02ToWgs84 } from './geo/gcj02'
 import { writeJson } from './jsonStore'
-import provincesAssetPath from '../../resources/geo/china-provinces.geojson?asset'
 
-const EARTHQUAKE_FEED_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_month.geojson'
+const EARTHQUAKE_FEED_URL =
+  'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_month.geojson'
 const FETCH_TIMEOUT_MS = 15000
 
 let earthquakesPath = ''
@@ -34,16 +41,18 @@ function readCachedFeed(): EarthquakeFeed | null {
   if (!existsSync(earthquakesPath)) return null
   try {
     const parsed: unknown = JSON.parse(readFileSync(earthquakesPath, 'utf8'))
-    if (!isRecord(parsed) || typeof parsed.fetchedAt !== 'number' || !Array.isArray(parsed.events)) return null
-    const events = parsed.events.filter((item): item is EarthquakeFeed['events'][number] =>
-      isRecord(item)
-      && typeof item.magnitude === 'number'
-      && Number.isFinite(item.magnitude)
-      && Number.isFinite(item.longitude)
-      && Number.isFinite(item.latitude)
-      && Number.isFinite(item.depthKm)
-      && typeof item.place === 'string'
-      && Number.isFinite(item.time)
+    if (!isRecord(parsed) || typeof parsed.fetchedAt !== 'number' || !Array.isArray(parsed.events))
+      return null
+    const events = parsed.events.filter(
+      (item): item is EarthquakeFeed['events'][number] =>
+        isRecord(item) &&
+        typeof item.magnitude === 'number' &&
+        Number.isFinite(item.magnitude) &&
+        Number.isFinite(item.longitude) &&
+        Number.isFinite(item.latitude) &&
+        Number.isFinite(item.depthKm) &&
+        typeof item.place === 'string' &&
+        Number.isFinite(item.time)
     )
     return { fetchedAt: parsed.fetchedAt, events }
   } catch {
@@ -69,7 +78,10 @@ function parseFeed(json: unknown): EarthquakeFeed['events'] {
       latitude: Math.max(-90, Math.min(90, latitude)),
       depthKm: typeof depth === 'number' && Number.isFinite(depth) ? Math.round(depth) : 0,
       place: typeof properties.place === 'string' ? properties.place : '未知位置',
-      time: typeof properties.time === 'number' && Number.isFinite(properties.time) ? properties.time : 0
+      time:
+        typeof properties.time === 'number' && Number.isFinite(properties.time)
+          ? properties.time
+          : 0
     })
   }
   return events.sort((a, b) => a.time - b.time)
@@ -118,13 +130,18 @@ function toLatLngPair(value: unknown): [number, number] | null {
 
 function normalizePolygons(geometry: unknown): number[][][][] {
   if (!isRecord(geometry) || !Array.isArray(geometry.coordinates)) return []
-  const sets = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.type === 'MultiPolygon' ? geometry.coordinates : []
+  const sets =
+    geometry.type === 'Polygon'
+      ? [geometry.coordinates]
+      : geometry.type === 'MultiPolygon'
+        ? geometry.coordinates
+        : []
   const polygons: number[][][][] = []
   for (const set of sets) {
     if (!Array.isArray(set)) continue
     const rings = set
       .filter((ring): ring is number[][] => Array.isArray(ring) && ring.length >= 3)
-      .map((ring) => ring.map((point) => gcj02ToWgs84(point[0], point[1])))
+      .map(ring => ring.map(point => gcj02ToWgs84(point[0], point[1])))
     if (rings.length > 0) polygons.push(rings)
   }
   return polygons

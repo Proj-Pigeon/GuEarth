@@ -1,4 +1,5 @@
 import { parentPort } from 'node:worker_threads'
+
 import { EoqHawdbEngine } from './engine'
 import { HawdbError } from './ffi'
 import type { HawdbWorkerRequest, HawdbWorkerResponse } from './protocol'
@@ -32,9 +33,17 @@ async function dispatch(request: HawdbWorkerRequest): Promise<unknown> {
     case 'history:delete':
       return engine.deleteConversation(request.payload.id)
     case 'history:search':
-      return engine.searchConversations(request.payload.query, request.payload.limit, request.payload.excludeId)
+      return engine.searchConversations(
+        request.payload.query,
+        request.payload.limit,
+        request.payload.excludeId
+      )
     case 'knowledge:retrieve':
-      return engine.retrieveKnowledge(request.payload.query, request.payload.module, request.payload.topK)
+      return engine.retrieveKnowledge(
+        request.payload.query,
+        request.payload.module,
+        request.payload.topK
+      )
   }
 }
 

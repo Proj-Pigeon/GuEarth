@@ -17,11 +17,7 @@ function ensureTable(db: HawdbDatabase, tableName: string, ddl: string): void {
 }
 
 export function ensureEoqSchema(db: HawdbDatabase): void {
-  ensureTable(
-    db,
-    'eoq_meta',
-    'CREATE TABLE eoq_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)'
-  )
+  ensureTable(db, 'eoq_meta', 'CREATE TABLE eoq_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
   ensureTable(
     db,
     'eoq_memories',

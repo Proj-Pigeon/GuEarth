@@ -1,9 +1,10 @@
 import { cpSync, createReadStream, existsSync, statSync } from 'fs'
 import { extname, join, resolve, sep } from 'path'
+
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
 import { defineConfig } from 'electron-vite'
 import type { Connect, Plugin } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
 const cesiumBuild = resolve('node_modules/cesium/Build/Cesium')
 const cesiumDirs = ['Workers', 'ThirdParty', 'Assets', 'Widgets']
@@ -24,7 +25,10 @@ const serveCesiumAsset: Connect.NextHandleFunction = (req, res, next) => {
   const assetPath = resolve(cesiumBuild, `.${(req.url ?? '/').split('?')[0]}`)
   if (!assetPath.startsWith(cesiumBuild + sep)) return next()
   if (!existsSync(assetPath) || !statSync(assetPath).isFile()) return next()
-  res.setHeader('Content-Type', cesiumMimeTypes[extname(assetPath).toLowerCase()] ?? 'application/octet-stream')
+  res.setHeader(
+    'Content-Type',
+    cesiumMimeTypes[extname(assetPath).toLowerCase()] ?? 'application/octet-stream'
+  )
   res.setHeader('Cache-Control', 'no-cache')
   createReadStream(assetPath).pipe(res)
 }

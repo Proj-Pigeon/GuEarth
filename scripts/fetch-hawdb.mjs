@@ -76,10 +76,13 @@ export const HAWDB_BUILDS = {
 }
 
 export const APPROVED_ARCHIVE_HOSTS = ['github.com']
-export const APPROVED_ARCHIVE_REDIRECT_HOSTS = ['objects.githubusercontent.com', 'release-assets.githubusercontent.com']
+export const APPROVED_ARCHIVE_REDIRECT_HOSTS = [
+  'objects.githubusercontent.com',
+  'release-assets.githubusercontent.com'
+]
 
 const maxArchiveRedirects = 5
-const pinnedArchiveNames = new Set(Object.values(HAWDB_BUILDS).map((build) => build.archiveName))
+const pinnedArchiveNames = new Set(Object.values(HAWDB_BUILDS).map(build => build.archiveName))
 
 export function normalizeHawdbArch(arch) {
   if (arch === 'x64' || arch === 'x86_64' || arch === 'amd64') return 'x64'
@@ -91,13 +94,18 @@ export function hawdbBuildFor(platform = process.platform, arch = process.arch) 
   const key = `${platform}-${normalizeHawdbArch(arch)}`
   const build = HAWDB_BUILDS[key]
   if (!build) {
-    throw new Error(`HawDB 预编译库目前支持 Windows x64、Linux x64/arm64 与 macOS x64/arm64，当前平台 ${platform} ${arch} 暂不支持`)
+    throw new Error(
+      `HawDB 预编译库目前支持 Windows x64、Linux x64/arm64 与 macOS x64/arm64，当前平台 ${platform} ${arch} 暂不支持`
+    )
   }
   return build
 }
 
 export function hostHawdbBuild() {
-  return HAWDB_BUILDS[`${process.platform}-${normalizeHawdbArch(process.arch)}`] ?? HAWDB_BUILDS['win32-x64']
+  return (
+    HAWDB_BUILDS[`${process.platform}-${normalizeHawdbArch(process.arch)}`] ??
+    HAWDB_BUILDS['win32-x64']
+  )
 }
 
 export function pinnedArchiveUrl(build = hostHawdbBuild()) {
@@ -119,17 +127,25 @@ function rejectedArchiveLabel(url) {
 
 export function isApprovedArchiveUrl(url) {
   const parsed = parseArchiveUrl(url)
-  return parsed != null && parsed.protocol === 'https:' && APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname)
+  return (
+    parsed != null &&
+    parsed.protocol === 'https:' &&
+    APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname)
+  )
 }
 
 export function isApprovedArchiveRedirectUrl(url) {
   const parsed = parseArchiveUrl(url)
   if (parsed == null || parsed.protocol !== 'https:') return false
-  return APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname) || APPROVED_ARCHIVE_REDIRECT_HOSTS.includes(parsed.hostname)
+  return (
+    APPROVED_ARCHIVE_HOSTS.includes(parsed.hostname) ||
+    APPROVED_ARCHIVE_REDIRECT_HOSTS.includes(parsed.hostname)
+  )
 }
 
 export function archiveRedirectTarget(location, currentUrl) {
-  if (location == null || location === '') throw new Error(`下载重定向缺少目标地址：${rejectedArchiveLabel(currentUrl)}`)
+  if (location == null || location === '')
+    throw new Error(`下载重定向缺少目标地址：${rejectedArchiveLabel(currentUrl)}`)
   let resolved = null
   try {
     resolved = new URL(location, currentUrl).href
@@ -173,7 +189,11 @@ export function defaultHawdbBinaryPath(repoRoot, platform = process.platform, ar
   return join(repoRoot, 'resources', 'bin', normalized, build.binaryName)
 }
 
-export function packagedHawdbBinaryPath(repoRoot, platform = process.platform, arch = process.arch) {
+export function packagedHawdbBinaryPath(
+  repoRoot,
+  platform = process.platform,
+  arch = process.arch
+) {
   const normalized = normalizeHawdbArch(arch)
   const build = HAWDB_BUILDS[`${platform}-${normalized}`]
   if (!build) return defaultHawdbBinaryPath(repoRoot, platform, arch)
@@ -182,10 +202,12 @@ export function packagedHawdbBinaryPath(repoRoot, platform = process.platform, a
 }
 
 function outputPaths(repoRoot, build) {
-  return [...new Set([
-    packagedHawdbBinaryPath(repoRoot, build.platform, build.arch),
-    defaultHawdbBinaryPath(repoRoot, build.platform, build.arch)
-  ])]
+  return [
+    ...new Set([
+      packagedHawdbBinaryPath(repoRoot, build.platform, build.arch),
+      defaultHawdbBinaryPath(repoRoot, build.platform, build.arch)
+    ])
+  ]
 }
 
 function stampPath(binaryPath) {
@@ -204,7 +226,8 @@ export async function verifyFile(path, { sha256, bytes }) {
     return { ok: false, reason: `大小不符（期望 ${bytes} 字节，实际 ${info.size} 字节）` }
   }
   const digest = await sha256File(path)
-  if (digest !== sha256) return { ok: false, reason: `SHA256 不符（期望 ${sha256}，实际 ${digest}）` }
+  if (digest !== sha256)
+    return { ok: false, reason: `SHA256 不符（期望 ${sha256}，实际 ${digest}）` }
   return { ok: true }
 }
 
@@ -212,7 +235,11 @@ async function binaryMatchesStamp(path, build) {
   if (!existsSync(path) || !existsSync(stampPath(path))) return false
   try {
     const stamp = JSON.parse(await readFile(stampPath(path), 'utf8'))
-    if (stamp.version !== build.version || stamp.triple !== build.triple || stamp.archiveSha256 !== build.archiveSha256) {
+    if (
+      stamp.version !== build.version ||
+      stamp.triple !== build.triple ||
+      stamp.archiveSha256 !== build.archiveSha256
+    ) {
       return false
     }
     const result = await verifyFile(path, { sha256: stamp.binarySha256, bytes: stamp.binaryBytes })
@@ -231,7 +258,10 @@ function tarCommand() {
 async function fetchArchive(url) {
   let current = assertArchiveSource(url)
   for (let hop = 0; hop <= maxArchiveRedirects; hop += 1) {
-    const response = await fetch(assertFetchableUrl(current), { redirect: 'manual', headers: { 'user-agent': 'GuEarth-HawDB-Fetch' } })
+    const response = await fetch(assertFetchableUrl(current), {
+      redirect: 'manual',
+      headers: { 'user-agent': 'GuEarth-HawDB-Fetch' }
+    })
     if (response.status < 300 || response.status >= 400) return response
     if (hop === maxArchiveRedirects) break
     current = archiveRedirectTarget(response.headers.get('location'), current)
@@ -248,11 +278,15 @@ async function download(url, destination) {
 
 async function extractMembers(archivePath, members, workDirectory) {
   if (archivePath.endsWith('.zip') && process.platform !== 'win32') {
-    await runFile('unzip', ['-o', archivePath, ...members, '-d', workDirectory], { windowsHide: true })
+    await runFile('unzip', ['-o', archivePath, ...members, '-d', workDirectory], {
+      windowsHide: true
+    })
     return
   }
   const flag = archivePath.endsWith('.tar.gz') ? '-xzf' : '-xf'
-  await runFile(tarCommand(), [flag, archivePath, '-C', workDirectory, ...members], { windowsHide: true })
+  await runFile(tarCommand(), [flag, archivePath, '-C', workDirectory, ...members], {
+    windowsHide: true
+  })
 }
 
 async function placeBinary(extracted, targets, stamp) {
@@ -266,11 +300,16 @@ async function placeBinary(extracted, targets, stamp) {
   }
 }
 
-export async function fetchHawdb({ repoRoot, force = false, platform = process.platform, arch = process.arch } = {}) {
+export async function fetchHawdb({
+  repoRoot,
+  force = false,
+  platform = process.platform,
+  arch = process.arch
+} = {}) {
   const build = hawdbBuildFor(platform, arch)
   const targets = outputPaths(repoRoot, build)
   if (!force) {
-    const ready = await Promise.all(targets.map((target) => binaryMatchesStamp(target, build)))
+    const ready = await Promise.all(targets.map(target => binaryMatchesStamp(target, build)))
     if (ready.every(Boolean)) {
       console.log(`HawDB 引擎库已就绪：${targets.join('、')}`)
       return targets[0]
@@ -291,7 +330,11 @@ export async function fetchHawdb({ repoRoot, force = false, platform = process.p
       const sourceCheck = await verifyFile(archivePath, { sha256: build.archiveSha256 })
       if (!sourceCheck.ok) throw new Error(`归档校验失败：${sourceCheck.reason}`)
     }
-    await extractMembers(archivePath, [build.binaryMemberPath, build.manifestMemberPath], workDirectory)
+    await extractMembers(
+      archivePath,
+      [build.binaryMemberPath, build.manifestMemberPath],
+      workDirectory
+    )
     const extractedBinary = join(workDirectory, ...build.binaryMemberPath.split('/'))
     const extractedManifest = join(workDirectory, ...build.manifestMemberPath.split('/'))
     const binaryInfo = await stat(extractedBinary)
@@ -300,7 +343,7 @@ export async function fetchHawdb({ repoRoot, force = false, platform = process.p
       const manifest = JSON.parse(await readFile(extractedManifest, 'utf8'))
       const relPath = build.binaryMemberPath.split('/').slice(1).join('/')
       const entry = Array.isArray(manifest.files)
-        ? manifest.files.find((item) => item?.path === relPath)
+        ? manifest.files.find(item => item?.path === relPath)
         : manifest.files?.[relPath]
       if (entry?.sha256 && entry.sha256 !== binarySha256) {
         throw new Error(`manifest 校验失败：期望 ${entry.sha256}，实际 ${binarySha256}`)
@@ -347,14 +390,14 @@ export function parseCliArgs(argv) {
   return options
 }
 
-const isEntrypoint = process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url
+const isEntrypoint =
+  process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url
 
 if (isEntrypoint) {
   const repoRoot = fileURLToPath(new URL('..', import.meta.url))
   const { force, platform, archArg } = parseCliArgs(process.argv.slice(2))
-  const arches = archArg === 'all'
-    ? (ALL_ARCH_PLATFORMS.has(platform) ? ['x64', 'arm64'] : ['x64'])
-    : [archArg]
+  const arches =
+    archArg === 'all' ? (ALL_ARCH_PLATFORMS.has(platform) ? ['x64', 'arm64'] : ['x64']) : [archArg]
   for (const arch of arches) {
     await fetchHawdb({ repoRoot, force, platform, arch })
   }

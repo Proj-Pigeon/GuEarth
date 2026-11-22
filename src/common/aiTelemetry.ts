@@ -44,8 +44,10 @@ function sanitizeToolArguments(name: string, rawArguments: string): string {
   return JSON.stringify({ content: REDACTED_MARKER })
 }
 
-export function formatTelemetryToolCalls(toolCalls: TelemetryToolCall[]): Record<string, unknown>[] {
-  return toolCalls.map((call) => ({
+export function formatTelemetryToolCalls(
+  toolCalls: TelemetryToolCall[]
+): Record<string, unknown>[] {
+  return toolCalls.map(call => ({
     id: call.id,
     type: 'function',
     function: {
@@ -57,15 +59,24 @@ export function formatTelemetryToolCalls(toolCalls: TelemetryToolCall[]): Record
 
 function sanitizeToolContentValue(value: unknown, depth = 0): unknown {
   if (depth > 6 || value === null || value === undefined) return value
-  if (Array.isArray(value)) return value.map((item) => sanitizeToolContentValue(item, depth + 1))
+  if (Array.isArray(value)) return value.map(item => sanitizeToolContentValue(item, depth + 1))
   if (!isRecord(value)) return value
   const sanitized: Record<string, unknown> = {}
   for (const [key, entry] of Object.entries(value)) {
     if (key === 'image' && isRecord(entry) && typeof entry.data === 'string') {
-      sanitized[key] = { omitted: true, mediaType: typeof entry.mediaType === 'string' ? entry.mediaType : 'unknown' }
+      sanitized[key] = {
+        omitted: true,
+        mediaType: typeof entry.mediaType === 'string' ? entry.mediaType : 'unknown'
+      }
       continue
     }
-    if (key === 'data' && typeof entry === 'string' && entry.length > 256 && isRecord(value) && typeof value.mediaType === 'string') {
+    if (
+      key === 'data' &&
+      typeof entry === 'string' &&
+      entry.length > 256 &&
+      isRecord(value) &&
+      typeof value.mediaType === 'string'
+    ) {
       sanitized[key] = REDACTED_MARKER
       continue
     }
@@ -78,7 +89,11 @@ function sanitizeToolContentValue(value: unknown, depth = 0): unknown {
   return sanitized
 }
 
-function sanitizeToolMessageContent(name: string | undefined, content: string, hadImage: boolean): string {
+function sanitizeToolMessageContent(
+  name: string | undefined,
+  content: string,
+  hadImage: boolean
+): string {
   let nextContent = content
   if (name === 'save_memory') {
     try {
@@ -94,14 +109,19 @@ function sanitizeToolMessageContent(name: string | undefined, content: string, h
       const parsed: unknown = JSON.parse(content)
       nextContent = JSON.stringify(sanitizeToolContentValue(parsed))
     } catch {
-      nextContent = content.replace(/data:image\/[^;\s"']+;base64,[A-Za-z0-9+/=]+/g, '[image omitted]')
+      nextContent = content.replace(
+        /data:image\/[^;\s"']+;base64,[A-Za-z0-9+/=]+/g,
+        '[image omitted]'
+      )
     }
   }
   return hadImage ? `${nextContent}\n[image omitted]` : nextContent
 }
 
-export function sanitizeTelemetryMessages(messages: TelemetryWireMessage[]): Record<string, unknown>[] {
-  return messages.map((message) => {
+export function sanitizeTelemetryMessages(
+  messages: TelemetryWireMessage[]
+): Record<string, unknown>[] {
+  return messages.map(message => {
     if (message.role === 'system') {
       return { role: 'system', content: stripMemoryFromPrompt(message.content) }
     }
@@ -112,7 +132,9 @@ export function sanitizeTelemetryMessages(messages: TelemetryWireMessage[]): Rec
       return {
         role: 'assistant',
         content: message.content,
-        ...(message.toolCalls?.length ? { tool_calls: formatTelemetryToolCalls(message.toolCalls) } : {})
+        ...(message.toolCalls?.length
+          ? { tool_calls: formatTelemetryToolCalls(message.toolCalls) }
+          : {})
       }
     }
     return {
@@ -130,10 +152,13 @@ export function sanitizeTelemetryToolSpan(
   output: unknown
 ): { input: unknown; output: unknown } {
   if (name === 'save_memory') {
-    const safeInput = isRecord(input) ? { ...input, content: REDACTED_MARKER } : { content: REDACTED_MARKER }
-    const safeOutput = isRecord(output) && typeof output.content === 'string'
-      ? { ...output, content: REDACTED_MARKER }
-      : sanitizeToolContentValue(output)
+    const safeInput = isRecord(input)
+      ? { ...input, content: REDACTED_MARKER }
+      : { content: REDACTED_MARKER }
+    const safeOutput =
+      isRecord(output) && typeof output.content === 'string'
+        ? { ...output, content: REDACTED_MARKER }
+        : sanitizeToolContentValue(output)
     return { input: safeInput, output: safeOutput }
   }
   return {
@@ -142,12 +167,18 @@ export function sanitizeTelemetryToolSpan(
   }
 }
 
-export function normalizeModelTestOutput(protocol: AiProtocol, payload: Record<string, unknown>): Record<string, unknown>[] {
+export function normalizeModelTestOutput(
+  protocol: AiProtocol,
+  payload: Record<string, unknown>
+): Record<string, unknown>[] {
   if (protocol === 'anthropic') {
     const blocks = Array.isArray(payload.content) ? payload.content : []
     const text = blocks
-      .filter((block): block is Record<string, unknown> => isRecord(block) && block.type === 'text' && typeof block.text === 'string')
-      .map((block) => block.text)
+      .filter(
+        (block): block is Record<string, unknown> =>
+          isRecord(block) && block.type === 'text' && typeof block.text === 'string'
+      )
+      .map(block => block.text)
       .join('')
     return [{ role: 'assistant', content: text }]
   }

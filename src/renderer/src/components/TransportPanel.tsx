@@ -1,7 +1,5 @@
-import { useRef } from 'react'
-import * as Cesium from 'cesium'
 import { CloseOutlined, EnvironmentOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { resolveFlightDestination } from '@renderer/composables/terrainFlight'
 import { useClimateStore } from '@renderer/stores/climate'
 import { useTransportStore } from '@renderer/stores/transport'
 import {
@@ -13,9 +11,13 @@ import {
   hsrMileageAt,
   type HsrLine
 } from '@renderer/thematic/hsrLines'
-import { resolveFlightDestination } from '@renderer/composables/terrainFlight'
+import { Button } from 'antd'
+import * as Cesium from 'cesium'
+import { useRef } from 'react'
+
 import LineChart, { type ChartSeries } from './charts/LineChart'
 import YearTimeline from './YearTimeline'
+
 import styles from './TransportPanel.module.css'
 
 export interface TransportPanelProps {
@@ -31,14 +33,21 @@ const growthSeries: ChartSeries[] = [
   }
 ]
 
-const caseLines: HsrLine[] = ['京津城际', '京沪高铁', '京广高铁', '兰新高铁', '沪昆高铁', '西成高铁']
-  .map((name) => hsrLines.find((line) => line.name === name))
+const caseLines: HsrLine[] = [
+  '京津城际',
+  '京沪高铁',
+  '京广高铁',
+  '兰新高铁',
+  '沪昆高铁',
+  '西成高铁'
+]
+  .map(name => hsrLines.find(line => line.name === name))
   .filter((line): line is HsrLine => Boolean(line))
 
 export function TransportPanel({ viewer, onClose }: TransportPanelProps) {
-  const hsrOverlayEnabled = useClimateStore((state) => state.overlays['hsr-network'])
-  const setOverlay = useClimateStore((state) => state.setOverlay)
-  const year = useTransportStore((state) => state.year)
+  const hsrOverlayEnabled = useClimateStore(state => state.overlays['hsr-network'])
+  const setOverlay = useClimateStore(state => state.setOverlay)
+  const year = useTransportStore(state => state.year)
 
   const flyingRef = useRef(false)
 
@@ -62,28 +71,41 @@ export function TransportPanel({ viewer, onClose }: TransportPanelProps) {
   }
 
   return (
-    <div className={styles.transportPanel} role="group" aria-label="交通运输布局">
+    <div className={styles.transportPanel} role='group' aria-label='交通运输布局'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>交通运输布局 · 高铁网络</span>
-        <Button type="text" size="small" aria-label="关闭交通运输面板" icon={<CloseOutlined />} onClick={onClose} />
+        <Button
+          type='text'
+          size='small'
+          aria-label='关闭交通运输面板'
+          icon={<CloseOutlined />}
+          onClick={onClose}
+        />
       </div>
 
       <YearTimeline />
 
       <div className={styles.chartTitle}>高铁营业里程增长（万公里）</div>
-      <LineChart series={growthSeries} xMin={2008} xMax={HSR_END_YEAR} xName="年份" yName="万公里" height={170} />
+      <LineChart
+        series={growthSeries}
+        xMin={2008}
+        xMax={HSR_END_YEAR}
+        xName='年份'
+        yName='万公里'
+        height={170}
+      />
 
       <div className={styles.fact}>
-        截至 {displayYear} 年：全国高铁营业里程约 {mileageWan} 万公里；图中已开通干线 {openedCount} / {hsrLines.length}{' '}
-        条。拖动时间轴或播放动画，观察高铁网络如何从京津城际生长为「八纵八横」。
+        截至 {displayYear} 年：全国高铁营业里程约 {mileageWan} 万公里；图中已开通干线 {openedCount}{' '}
+        / {hsrLines.length} 条。拖动时间轴或播放动画，观察高铁网络如何从京津城际生长为「八纵八横」。
       </div>
 
       <div className={styles.chartTitle}>典型线路实地察看</div>
       <div className={styles.caseGrid}>
-        {caseLines.map((line) => (
+        {caseLines.map(line => (
           <Button
             key={line.name}
-            size="small"
+            size='small'
             className={styles.caseButton}
             disabled={line.openedYear > displayYear}
             icon={<EnvironmentOutlined />}
@@ -96,7 +118,7 @@ export function TransportPanel({ viewer, onClose }: TransportPanelProps) {
 
       <Button
         className={styles.panelAction}
-        size="small"
+        size='small'
         block
         disabled={hsrOverlayEnabled}
         onClick={() => setOverlay('hsr-network', true)}
@@ -104,12 +126,14 @@ export function TransportPanel({ viewer, onClose }: TransportPanelProps) {
         {hsrOverlayEnabled ? '高铁网络图层已开启' : '在地球上查看高铁网络生长'}
       </Button>
 
-      {hsrFacts.map((fact) => (
+      {hsrFacts.map(fact => (
         <div key={fact} className={styles.fact}>
           · {fact}
         </div>
       ))}
-      <div className={styles.panelNote}>营业里程为国家铁路局年度公报约数；线路走向为教学示意，点击线路可查看说明。</div>
+      <div className={styles.panelNote}>
+        营业里程为国家铁路局年度公报约数；线路走向为教学示意，点击线路可查看说明。
+      </div>
     </div>
   )
 }

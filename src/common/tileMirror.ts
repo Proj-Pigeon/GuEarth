@@ -23,7 +23,11 @@ export const DEFAULT_MIRROR_ENDPOINT: MirrorEndpointId = 'edgeone'
 
 export const mirrorEndpointIds: readonly MirrorEndpointId[] = ['edgeone', 'cloudflare']
 
-export const mirrorEndpointPreferences: readonly MirrorEndpointPreference[] = ['auto', 'edgeone', 'cloudflare']
+export const mirrorEndpointPreferences: readonly MirrorEndpointPreference[] = [
+  'auto',
+  'edgeone',
+  'cloudflare'
+]
 
 export const EDGEONE_MIRROR_BASE_URL = 'https://proxy.project-pigeon.com'
 export const CLOUDFLARE_MIRROR_BASE_URL = 'https://cf.proxy.project-pigeon.com'
@@ -69,7 +73,9 @@ export function mirrorEndpointShortLabel(endpoint: MirrorEndpointId): string {
   return mirrorEndpoints[endpoint].shortLabel
 }
 
-export function mirrorArcGisTerrainUrl(endpoint: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT): string {
+export function mirrorArcGisTerrainUrl(
+  endpoint: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT
+): string {
   return `${mirrorBaseUrl(endpoint)}/arcgis`
 }
 
@@ -94,7 +100,9 @@ export function selectBestMirrorEndpoint(
   fallback: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT
 ): MirrorEndpointId {
   const reachable = probes
-    .filter((probe) => probe.ok && typeof probe.latencyMs === 'number' && Number.isFinite(probe.latencyMs))
+    .filter(
+      probe => probe.ok && typeof probe.latencyMs === 'number' && Number.isFinite(probe.latencyMs)
+    )
     .sort((a, b) => {
       const diff = (a.latencyMs as number) - (b.latencyMs as number)
       if (diff !== 0) return diff
@@ -137,11 +145,20 @@ export function isMirrorSatelliteProvider(providerId: string): boolean {
 }
 
 export function withinMirrorSatelliteDetail(longitude: number, latitude: number): boolean {
-  return longitude >= mirrorSatelliteDetailBounds.west && longitude <= mirrorSatelliteDetailBounds.east
-    && latitude >= mirrorSatelliteDetailBounds.south && latitude <= mirrorSatelliteDetailBounds.north
+  return (
+    longitude >= mirrorSatelliteDetailBounds.west &&
+    longitude <= mirrorSatelliteDetailBounds.east &&
+    latitude >= mirrorSatelliteDetailBounds.south &&
+    latitude <= mirrorSatelliteDetailBounds.north
+  )
 }
 
-export function isValidTileCoordinate(level: number, x: number, y: number, maxLevel: number): boolean {
+export function isValidTileCoordinate(
+  level: number,
+  x: number,
+  y: number,
+  maxLevel: number
+): boolean {
   if (!Number.isInteger(level) || !Number.isInteger(x) || !Number.isInteger(y)) return false
   if (level < 0 || level > maxLevel || x < 0 || y < 0) return false
   const span = 2 ** level
@@ -163,7 +180,8 @@ export function mirrorTileUrl(
   if (providerId === 'esri-imagery') return `${baseUrl}/tiles/esri/${level}/${y}/${x}`
   if (providerId === 'opentopomap') return `${baseUrl}/tiles/opentopo/${level}/${x}/${y}.png`
   if (providerId === 'viirs-night') {
-    if (typeof granuleDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(granuleDate)) return undefined
+    if (typeof granuleDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(granuleDate))
+      return undefined
     return `${baseUrl}/tiles/viirs/${granuleDate}/${level}/${y}/${x}.jpeg`
   }
   return undefined
@@ -180,12 +198,13 @@ export function edgeOneTileMirrorUrl(
 }
 
 export function isLikelyMainlandChinaEnv(locale?: string, timeZone?: string): boolean {
-  const normalizedLocale = typeof locale === 'string' ? locale.trim().toLowerCase().replaceAll('_', '-') : ''
+  const normalizedLocale =
+    typeof locale === 'string' ? locale.trim().toLowerCase().replaceAll('_', '-') : ''
   if (
-    normalizedLocale === 'zh-cn'
-    || normalizedLocale.startsWith('zh-cn-')
-    || normalizedLocale === 'zh-hans'
-    || normalizedLocale.startsWith('zh-hans-cn')
+    normalizedLocale === 'zh-cn' ||
+    normalizedLocale.startsWith('zh-cn-') ||
+    normalizedLocale === 'zh-hans' ||
+    normalizedLocale.startsWith('zh-hans-cn')
   ) {
     return true
   }
@@ -295,12 +314,12 @@ export class TileMirrorRouter {
   }
 
   mirroredProviders(providerIds: readonly string[]): string[] {
-    return providerIds.filter((providerId) => this.sourceFor(providerId) === 'mirror')
+    return providerIds.filter(providerId => this.sourceFor(providerId) === 'mirror')
   }
 
   fallenBackProviders(providerIds: readonly string[]): string[] {
     if (this.mode !== 'on') return []
-    return providerIds.filter((providerId) => this.isMirrorFallbackActive(providerId))
+    return providerIds.filter(providerId => this.isMirrorFallbackActive(providerId))
   }
 
   reachabilityFor(providerId: string): OriginReachability {
@@ -445,8 +464,10 @@ export class MirrorEndpointManager {
     }
   }
 
-  private eligibleProbes(probes: readonly MirrorEndpointProbeResult[]): MirrorEndpointProbeResult[] {
-    return probes.filter((probe) => !this.isEndpointFailed(probe.endpoint))
+  private eligibleProbes(
+    probes: readonly MirrorEndpointProbeResult[]
+  ): MirrorEndpointProbeResult[] {
+    return probes.filter(probe => !this.isEndpointFailed(probe.endpoint))
   }
 
   getPreference(): MirrorEndpointPreference {
@@ -459,7 +480,7 @@ export class MirrorEndpointManager {
 
   getProbeResults(): MirrorEndpointProbeResult[] {
     return mirrorEndpointIds
-      .map((id) => this.probeResults[id])
+      .map(id => this.probeResults[id])
       .filter((item): item is MirrorEndpointProbeResult => item !== undefined)
   }
 
@@ -491,7 +512,10 @@ export class MirrorEndpointManager {
     return { changed: this.active !== previousActive, active: this.active }
   }
 
-  applyProbeResults(probes: readonly MirrorEndpointProbeResult[]): { changed: boolean; active: MirrorEndpointId } {
+  applyProbeResults(probes: readonly MirrorEndpointProbeResult[]): {
+    changed: boolean
+    active: MirrorEndpointId
+  } {
     for (const probe of probes) {
       this.applySingleProbeHealth(probe)
     }

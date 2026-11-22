@@ -1,16 +1,30 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { findPeaksNear, nearestPeaks, notablePeaks } from '../src/renderer/src/thematic/notablePeaks.ts'
+
+import {
+  findPeaksNear,
+  nearestPeaks,
+  notablePeaks
+} from '../src/renderer/src/thematic/notablePeaks.ts'
 
 test('notable peaks: ids and names unique, coordinates and elevations plausible', () => {
-  const ids = notablePeaks.map((peak) => peak.id)
-  const names = notablePeaks.map((peak) => peak.name)
+  const ids = notablePeaks.map(peak => peak.id)
+  const names = notablePeaks.map(peak => peak.name)
   assert.equal(new Set(ids).size, ids.length)
   assert.equal(new Set(names).size, names.length)
   assert.ok(notablePeaks.length >= 70)
   for (const peak of notablePeaks) {
-    assert.ok(peak.longitude >= -180 && peak.longitude <= 180 && peak.latitude >= -90 && peak.latitude <= 90, `${peak.id} coords out of range`)
-    assert.ok(peak.elevationM >= 1000 && peak.elevationM <= 9000, `${peak.id} elevation implausible`)
+    assert.ok(
+      peak.longitude >= -180 &&
+        peak.longitude <= 180 &&
+        peak.latitude >= -90 &&
+        peak.latitude <= 90,
+      `${peak.id} coords out of range`
+    )
+    assert.ok(
+      peak.elevationM >= 1000 && peak.elevationM <= 9000,
+      `${peak.id} elevation implausible`
+    )
     assert.ok(peak.region.length >= 2 && peak.note.length >= 4, `${peak.id} region/note too short`)
   }
 })
@@ -26,7 +40,7 @@ test('findPeaksNear returns windward-region giants sorted by elevation', () => {
     assert.ok(peak.distanceKm <= 150, `${peak.name} outside the requested radius`)
     assert.ok(peak.bearingDeg >= 0 && peak.bearingDeg < 360)
   }
-  const lhotse = aroundEverest.find((peak) => peak.name === '洛子峰')
+  const lhotse = aroundEverest.find(peak => peak.name === '洛子峰')
   assert.ok(lhotse && lhotse.distanceKm < 20, 'Lhotse sits next to Everest')
 })
 
@@ -38,13 +52,20 @@ test('findPeaksNear returns nothing in the open ocean while nearestPeaks always 
   for (let index = 1; index < nearest.length; index += 1) {
     assert.ok(nearest[index].distanceKm >= nearest[index - 1].distanceKm)
   }
-  assert.ok(nearest.every((peak) => Number.isFinite(peak.bearingDeg) && peak.bearingDeg >= 0 && peak.bearingDeg < 360))
+  assert.ok(
+    nearest.every(
+      peak => Number.isFinite(peak.bearingDeg) && peak.bearingDeg >= 0 && peak.bearingDeg < 360
+    )
+  )
 })
 
 test('bearing from a point south of Everest points north toward the peak', () => {
   const [everest] = findPeaksNear(86.925, 26, 300)
   assert.ok(everest)
-  assert.ok(everest.bearingDeg >= 0 && everest.bearingDeg < 45, `expected northerly bearing, got ${everest.bearingDeg}`)
+  assert.ok(
+    everest.bearingDeg >= 0 && everest.bearingDeg < 45,
+    `expected northerly bearing, got ${everest.bearingDeg}`
+  )
 })
 
 test('catalogue covers representative summits across inhabited continents', () => {

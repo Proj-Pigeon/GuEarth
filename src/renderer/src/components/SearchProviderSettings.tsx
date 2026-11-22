@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, App as AntdApp, Button, Card, Empty, Form, Input, Select, Spin, Tag } from 'antd'
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons'
+import { Alert, App as AntdApp, Button, Card, Empty, Form, Input, Select, Spin, Tag } from 'antd'
+import { useCallback, useEffect, useRef, useState } from 'react'
+
 import type { AiSearchProviderConfig, ProviderCredentialStatus } from '../../../preload'
+
 import styles from './SearchProviderSettings.module.css'
 
 export interface SearchProviderSettingsProps {
@@ -16,31 +18,37 @@ export function SearchProviderSettings({
   onActiveProviderIdChange
 }: SearchProviderSettingsProps) {
   const { message } = AntdApp.useApp()
-  const selected = providers.find((provider) => provider.id === activeProviderId) ?? providers[0]
+  const selected = providers.find(provider => provider.id === activeProviderId) ?? providers[0]
   const selectedId = selected?.id
   const selectedIdRef = useRef(selectedId)
   selectedIdRef.current = selectedId
 
-  const [credential, setCredential] = useState<ProviderCredentialStatus>({ configured: false, updatedAt: null })
+  const [credential, setCredential] = useState<ProviderCredentialStatus>({
+    configured: false,
+    updatedAt: null
+  })
   const [apiKeyDraft, setApiKeyDraft] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [clearing, setClearing] = useState(false)
   const [error, setError] = useState('')
 
-  const refreshCredential = useCallback(async (providerId = selectedIdRef.current): Promise<void> => {
-    if (!providerId) return
-    setLoading(true)
-    setError('')
-    try {
-      const status = await window.guEarth.settings.hasProviderApiKey(`ai-search-${providerId}`)
-      if (selectedIdRef.current === providerId) setCredential(status)
-    } catch {
-      if (selectedIdRef.current === providerId) setError('无法读取搜索密钥状态，请重试')
-    } finally {
-      if (selectedIdRef.current === providerId) setLoading(false)
-    }
-  }, [])
+  const refreshCredential = useCallback(
+    async (providerId = selectedIdRef.current): Promise<void> => {
+      if (!providerId) return
+      setLoading(true)
+      setError('')
+      try {
+        const status = await window.guEarth.settings.hasProviderApiKey(`ai-search-${providerId}`)
+        if (selectedIdRef.current === providerId) setCredential(status)
+      } catch {
+        if (selectedIdRef.current === providerId) setError('无法读取搜索密钥状态，请重试')
+      } finally {
+        if (selectedIdRef.current === providerId) setLoading(false)
+      }
+    },
+    []
+  )
 
   useEffect(() => {
     setApiKeyDraft('')
@@ -97,9 +105,9 @@ export function SearchProviderSettings({
       {providers.length > 1 && (
         <Select
           value={activeProviderId}
-          options={providers.map((provider) => ({ value: provider.id, label: provider.name }))}
+          options={providers.map(provider => ({ value: provider.id, label: provider.name }))}
           disabled={loading || saving || clearing}
-          aria-label="默认搜索供应商"
+          aria-label='默认搜索供应商'
           className={styles.searchProviderSelect}
           onChange={(value: string) => onActiveProviderIdChange(value)}
         />
@@ -107,7 +115,7 @@ export function SearchProviderSettings({
       {selected && (
         <Card
           title={selected.name}
-          size="small"
+          size='small'
           extra={
             !loading && !error ? (
               <Tag color={credential.configured ? 'success' : 'default'}>
@@ -117,16 +125,16 @@ export function SearchProviderSettings({
           }
         >
           <Spin spinning={loading}>
-            <Form layout="vertical">
-              <Form.Item label="AppBuilder API Key" htmlFor={`search-key-${selected.id}`}>
+            <Form layout='vertical'>
+              <Form.Item label='AppBuilder API Key' htmlFor={`search-key-${selected.id}`}>
                 <Input.Password
                   id={`search-key-${selected.id}`}
                   value={apiKeyDraft}
-                  onChange={(event) => setApiKeyDraft(event.target.value)}
+                  onChange={event => setApiKeyDraft(event.target.value)}
                   maxLength={4096}
                   disabled={saving || clearing}
-                  autoComplete="off"
-                  placeholder="输入 AppBuilder API Key"
+                  autoComplete='off'
+                  placeholder='输入 AppBuilder API Key'
                   onPressEnter={() => void saveKey()}
                 />
               </Form.Item>
@@ -154,7 +162,7 @@ export function SearchProviderSettings({
       )}
       {error && (
         <Alert
-          type="error"
+          type='error'
           showIcon
           title={error}
           action={
@@ -164,7 +172,7 @@ export function SearchProviderSettings({
           }
         />
       )}
-      {!selected && <Empty description="暂无可用搜索服务" />}
+      {!selected && <Empty description='暂无可用搜索服务' />}
     </section>
   )
 }

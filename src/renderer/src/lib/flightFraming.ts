@@ -34,8 +34,13 @@ export interface FlightArrivalInput {
   userSteered: boolean
 }
 
-export function exaggeratedFlightGroundM(groundM: number, verticalExaggeration: number, relativeHeightM: number): number {
-  const exaggeration = Number.isFinite(verticalExaggeration) && verticalExaggeration > 0 ? verticalExaggeration : 1
+export function exaggeratedFlightGroundM(
+  groundM: number,
+  verticalExaggeration: number,
+  relativeHeightM: number
+): number {
+  const exaggeration =
+    Number.isFinite(verticalExaggeration) && verticalExaggeration > 0 ? verticalExaggeration : 1
   const relative = Number.isFinite(relativeHeightM) ? relativeHeightM : 0
   return (groundM - relative) * exaggeration + relative
 }
@@ -51,12 +56,15 @@ function smoothstep(edge0: number, edge1: number, value: number): number {
 }
 
 function usableFovY(fovYRadians: number): number {
-  if (Number.isFinite(fovYRadians) && fovYRadians > 0.2 && fovYRadians < Math.PI - 0.2) return fovYRadians
+  if (Number.isFinite(fovYRadians) && fovYRadians > 0.2 && fovYRadians < Math.PI - 0.2)
+    return fovYRadians
   return DEFAULT_FOVY_RAD
 }
 
 function depressionRadians(pitchRadians: number): number {
-  const pitch = Number.isFinite(pitchRadians) ? Math.abs(pitchRadians) : Math.abs(FLIGHT_ARRIVAL_PITCH_RAD)
+  const pitch = Number.isFinite(pitchRadians)
+    ? Math.abs(pitchRadians)
+    : Math.abs(FLIGHT_ARRIVAL_PITCH_RAD)
   return Math.min(Math.PI / 2, Math.max(0.2, pitch))
 }
 
@@ -70,50 +78,96 @@ export function flightReliefOffsets(): Array<{ distanceM: number; bearingRad: nu
   return offsets
 }
 
-export function destinationAt(longitudeDeg: number, latitudeDeg: number, distanceM: number, bearingRad: number): { longitude: number; latitude: number } {
+export function destinationAt(
+  longitudeDeg: number,
+  latitudeDeg: number,
+  distanceM: number,
+  bearingRad: number
+): { longitude: number; latitude: number } {
   const lat1 = (latitudeDeg * Math.PI) / 180
   const lon1 = (longitudeDeg * Math.PI) / 180
   const angular = distanceM / EARTH_RADIUS_M
-  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(angular) + Math.cos(lat1) * Math.sin(angular) * Math.cos(bearingRad))
-  const lon2 = lon1 + Math.atan2(Math.sin(bearingRad) * Math.sin(angular) * Math.cos(lat1), Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2))
-  const longitude = ((((lon2 * 180) / Math.PI + 180) % 360) + 360) % 360 - 180
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(angular) + Math.cos(lat1) * Math.sin(angular) * Math.cos(bearingRad)
+  )
+  const lon2 =
+    lon1 +
+    Math.atan2(
+      Math.sin(bearingRad) * Math.sin(angular) * Math.cos(lat1),
+      Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2)
+    )
+  const longitude = (((((lon2 * 180) / Math.PI + 180) % 360) + 360) % 360) - 180
   return { longitude, latitude: (lat2 * 180) / Math.PI }
 }
 
 export function planFlightCameraHeight(input: FlightFramingInput): number {
-  const center = exaggeratedFlightGroundM(input.centerGroundM, input.verticalExaggeration, input.relativeHeightM)
+  const center = exaggeratedFlightGroundM(
+    input.centerGroundM,
+    input.verticalExaggeration,
+    input.relativeHeightM
+  )
   let maxSurface = center
   let cameraHeight = center + MIN_TERRAIN_CLEARANCE_M
   const tanHalf = Math.tan(usableFovY(input.fovYRadians) / 2)
   const pitchScale = 1 / Math.sin(depressionRadians(input.pitchRadians))
   for (const sample of input.relief) {
-    if (!Number.isFinite(sample.groundM) || !Number.isFinite(sample.distanceM) || sample.distanceM <= 0) continue
-    const surface = exaggeratedFlightGroundM(sample.groundM, input.verticalExaggeration, input.relativeHeightM)
+    if (
+      !Number.isFinite(sample.groundM) ||
+      !Number.isFinite(sample.distanceM) ||
+      sample.distanceM <= 0
+    )
+      continue
+    const surface = exaggeratedFlightGroundM(
+      sample.groundM,
+      input.verticalExaggeration,
+      input.relativeHeightM
+    )
     maxSurface = Math.max(maxSurface, surface)
     const rise = Math.abs(surface - center)
     const slope = Math.atan(rise / sample.distanceM)
     const weight = smoothstep(GENTLE_SLOPE_RAD, STEEP_SLOPE_RAD, slope)
     const viewRadius = sample.distanceM * FRAME_WIDTH_FACTOR
-    const contextClearance = Math.min(MAX_RELIEF_FRAMING_CLEARANCE_M, (viewRadius / tanHalf) * pitchScale)
+    const contextClearance = Math.min(
+      MAX_RELIEF_FRAMING_CLEARANCE_M,
+      (viewRadius / tanHalf) * pitchScale
+    )
     const highPoint = Math.max(center, surface)
-    const framedClearance = MIN_TERRAIN_CLEARANCE_M + weight * (contextClearance - MIN_TERRAIN_CLEARANCE_M)
+    const framedClearance =
+      MIN_TERRAIN_CLEARANCE_M + weight * (contextClearance - MIN_TERRAIN_CLEARANCE_M)
     cameraHeight = Math.max(cameraHeight, highPoint + framedClearance)
     const uphill = surface - center
     if (uphill > 0 && slope >= GENTLE_SLOPE_RAD) {
       const unseen = Math.max(0, viewRadius - sample.distanceM)
-      const continuedClearance = Math.min(MAX_RELIEF_FRAMING_CLEARANCE_M, unseen * (uphill / sample.distanceM) + MIN_TERRAIN_CLEARANCE_M)
+      const continuedClearance = Math.min(
+        MAX_RELIEF_FRAMING_CLEARANCE_M,
+        unseen * (uphill / sample.distanceM) + MIN_TERRAIN_CLEARANCE_M
+      )
       cameraHeight = Math.max(cameraHeight, surface + continuedClearance)
     }
   }
   return Math.max(input.requestedHeightM, cameraHeight, maxSurface + MIN_TERRAIN_CLEARANCE_M)
 }
 
-export function conservativeFlightHeightM(requestedHeightM: number, verticalExaggeration: number, relativeHeightM: number): number {
-  return Math.max(requestedHeightM, exaggeratedFlightGroundM(UNKNOWN_TERRAIN_GROUND_M, verticalExaggeration, relativeHeightM) + MIN_TERRAIN_CLEARANCE_M)
+export function conservativeFlightHeightM(
+  requestedHeightM: number,
+  verticalExaggeration: number,
+  relativeHeightM: number
+): number {
+  return Math.max(
+    requestedHeightM,
+    exaggeratedFlightGroundM(UNKNOWN_TERRAIN_GROUND_M, verticalExaggeration, relativeHeightM) +
+      MIN_TERRAIN_CLEARANCE_M
+  )
 }
 
-export function flightSampleCeilingM(verticalExaggeration: number, relativeHeightM: number): number {
-  return exaggeratedFlightGroundM(UNKNOWN_TERRAIN_GROUND_M, verticalExaggeration, relativeHeightM) + MAX_RELIEF_FRAMING_CLEARANCE_M
+export function flightSampleCeilingM(
+  verticalExaggeration: number,
+  relativeHeightM: number
+): number {
+  return (
+    exaggeratedFlightGroundM(UNKNOWN_TERRAIN_GROUND_M, verticalExaggeration, relativeHeightM) +
+    MAX_RELIEF_FRAMING_CLEARANCE_M
+  )
 }
 
 export function flightArrivalAllowed(input: FlightArrivalInput): boolean {

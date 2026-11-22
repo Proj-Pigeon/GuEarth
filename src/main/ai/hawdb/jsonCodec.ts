@@ -22,7 +22,8 @@ function serializeValue(value: unknown, seen: WeakSet<object>): string {
     return JSON.stringify(value)
   }
   if (typeof value === 'bigint') {
-    if (value < INT64_MIN || value > INT64_MAX) throw new RangeError('bigint 超出 64 位有符号整数范围')
+    if (value < INT64_MIN || value > INT64_MAX)
+      throw new RangeError('bigint 超出 64 位有符号整数范围')
     return value.toString()
   }
   if (typeof value !== 'object') {
@@ -44,7 +45,9 @@ function serializeValue(value: unknown, seen: WeakSet<object>): string {
     }
     if (!isPlainObject(value)) throw new TypeError('HawDB 仅支持普通对象参数')
     const entries = Object.entries(value)
-    const parts = entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${serializeValue(entryValue, seen)}`)
+    const parts = entries.map(
+      ([key, entryValue]) => `${JSON.stringify(key)}:${serializeValue(entryValue, seen)}`
+    )
     return `{${parts.join(',')}}`
   } finally {
     seen.delete(value)
@@ -83,7 +86,8 @@ class LosslessJsonParser {
 
   private parseValue(): unknown {
     this.skipWhitespace()
-    if (this.index >= this.text.length) throw new SyntaxError(`HawDB JSON 意外结束，偏移 ${this.index}`)
+    if (this.index >= this.text.length)
+      throw new SyntaxError(`HawDB JSON 意外结束，偏移 ${this.index}`)
     const ch = this.text[this.index]
     if (ch === '"') return this.parseString()
     if (ch === '{') return this.parseObject()
@@ -128,9 +132,14 @@ class LosslessJsonParser {
     if (this.text[this.index] === '0') {
       this.index += 1
       const next = this.text[this.index]
-      if (next && next >= '0' && next <= '9') throw new SyntaxError(`HawDB JSON 不允许前导零，偏移 ${start}`)
+      if (next && next >= '0' && next <= '9')
+        throw new SyntaxError(`HawDB JSON 不允许前导零，偏移 ${start}`)
     } else if (this.text[this.index] >= '1' && this.text[this.index] <= '9') {
-      while (this.index < this.text.length && this.text[this.index] >= '0' && this.text[this.index] <= '9') {
+      while (
+        this.index < this.text.length &&
+        this.text[this.index] >= '0' &&
+        this.text[this.index] <= '9'
+      ) {
         this.index += 1
       }
     } else {
@@ -141,7 +150,11 @@ class LosslessJsonParser {
       isFloat = true
       this.index += 1
       const fracStart = this.index
-      while (this.index < this.text.length && this.text[this.index] >= '0' && this.text[this.index] <= '9') {
+      while (
+        this.index < this.text.length &&
+        this.text[this.index] >= '0' &&
+        this.text[this.index] <= '9'
+      ) {
         this.index += 1
       }
       if (this.index === fracStart) throw new SyntaxError(`HawDB JSON 小数部分为空，偏移 ${start}`)
@@ -151,7 +164,11 @@ class LosslessJsonParser {
       this.index += 1
       if (this.text[this.index] === '+' || this.text[this.index] === '-') this.index += 1
       const expStart = this.index
-      while (this.index < this.text.length && this.text[this.index] >= '0' && this.text[this.index] <= '9') {
+      while (
+        this.index < this.text.length &&
+        this.text[this.index] >= '0' &&
+        this.text[this.index] <= '9'
+      ) {
         this.index += 1
       }
       if (this.index === expStart) throw new SyntaxError(`HawDB JSON 指数部分为空，偏移 ${start}`)
@@ -196,10 +213,12 @@ class LosslessJsonParser {
     }
     while (true) {
       this.skipWhitespace()
-      if (this.text[this.index] !== '"') throw new SyntaxError(`HawDB JSON 对象键必须为字符串，偏移 ${this.index}`)
+      if (this.text[this.index] !== '"')
+        throw new SyntaxError(`HawDB JSON 对象键必须为字符串，偏移 ${this.index}`)
       const key = this.parseString()
       this.skipWhitespace()
-      if (this.text[this.index] !== ':') throw new SyntaxError(`HawDB JSON 对象缺少冒号，偏移 ${this.index}`)
+      if (this.text[this.index] !== ':')
+        throw new SyntaxError(`HawDB JSON 对象缺少冒号，偏移 ${this.index}`)
       this.index += 1
       result[key] = this.parseValue()
       this.skipWhitespace()

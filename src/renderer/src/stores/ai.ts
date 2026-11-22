@@ -1,11 +1,26 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import type { AiChatEvent, AiChatTurn, AiContextCompressionResult, AiContextEntry, AiContextStats, AiSearchReference, AiSettings, AiToolDefinition, StoredAiCompression, StoredAiConversation, StoredAiConversationSummary, StoredAiMessage, StoredAiPart } from '../../../preload'
+
+import type {
+  AiChatEvent,
+  AiChatTurn,
+  AiContextCompressionResult,
+  AiContextEntry,
+  AiContextStats,
+  AiSearchReference,
+  AiSettings,
+  AiToolDefinition,
+  StoredAiCompression,
+  StoredAiConversation,
+  StoredAiConversationSummary,
+  StoredAiMessage,
+  StoredAiPart
+} from '../../../preload'
 import { defaultAiSettings } from '../../../shared/aiSettings'
 import { ipcErrorMessage } from '../lib/ipcError'
-import { useFlightStopsStore } from './flightStops'
-import { useAccountStore } from './account'
 import { captureAiUsageEvent } from '../posthog'
+import { useAccountStore } from './account'
+import { useFlightStopsStore } from './flightStops'
 
 export interface ToolStep {
   callId: string
@@ -156,7 +171,7 @@ function emptyContextStats(contextWindow = 128_000): AiContextStats {
 function cloneContextStats(stats: AiContextStats): AiContextStats {
   return {
     ...stats,
-    categories: stats.categories.map((category) => ({ ...category }))
+    categories: stats.categories.map(category => ({ ...category }))
   }
 }
 
@@ -194,7 +209,9 @@ function clonePart(part: AssistantPart): AssistantPart {
       step: {
         ...part.step,
         args: { ...part.step.args },
-        references: part.step.references ? part.step.references.map((item) => ({ ...item })) : undefined
+        references: part.step.references
+          ? part.step.references.map(item => ({ ...item }))
+          : undefined
       }
     }
   }
@@ -265,27 +282,32 @@ export const useAiStore = create<AiStore>()(
     }
 
     function conversationTurns(): AiChatTurn[] {
-      const summaryTurns: AiChatTurn[] = compression.summary ? [{ role: 'assistant', content: `[上下文摘要]\n${compression.summary}` }] : []
+      const summaryTurns: AiChatTurn[] = compression.summary
+        ? [{ role: 'assistant', content: `[上下文摘要]\n${compression.summary}` }]
+        : []
       return [
         ...summaryTurns,
-        ...get().messages
-          .filter((message) => message.status !== 'streaming' && message.status !== 'error')
-          .filter((message) => !compression.coveredMessageIds.has(message.id))
-          .filter((message) => message.content.trim() !== '' || message.role === 'user')
-          .map((message) => ({ role: message.role, content: message.content }))
+        ...get()
+          .messages.filter(message => message.status !== 'streaming' && message.status !== 'error')
+          .filter(message => !compression.coveredMessageIds.has(message.id))
+          .filter(message => message.content.trim() !== '' || message.role === 'user')
+          .map(message => ({ role: message.role, content: message.content }))
       ]
     }
 
     function contextEntries(): AiContextEntry[] {
-      const summaryEntries: AiContextEntry[] = compression.summary ? [{ role: 'assistant', content: `[上下文摘要]\n${compression.summary}` }] : []
+      const summaryEntries: AiContextEntry[] = compression.summary
+        ? [{ role: 'assistant', content: `[上下文摘要]\n${compression.summary}` }]
+        : []
       return [
         ...summaryEntries,
-        ...get().messages
-          .filter((message) => message.status !== 'streaming')
-          .filter((message) => !compression.coveredMessageIds.has(message.id))
+        ...get()
+          .messages.filter(message => message.status !== 'streaming')
+          .filter(message => !compression.coveredMessageIds.has(message.id))
           .flatMap((message): AiContextEntry[] => {
             const entries: AiContextEntry[] = []
-            if (message.content.trim() !== '' || message.role === 'user') entries.push({ role: message.role, content: message.content })
+            if (message.content.trim() !== '' || message.role === 'user')
+              entries.push({ role: message.role, content: message.content })
             if (message.role === 'assistant') {
               for (const part of message.parts) {
                 if (part.kind !== 'tool') continue
@@ -327,32 +349,50 @@ export const useAiStore = create<AiStore>()(
     function conversationSnapshot(): StoredAiConversation | null {
       const state = get()
       if (!state.currentConversationId) return null
-      const firstUser = state.messages.find((message) => message.role === 'user')
+      const firstUser = state.messages.find(message => message.role === 'user')
       if (!firstUser) return null
-      const existing = state.conversations.find((item) => item.id === state.currentConversationId)
+      const existing = state.conversations.find(item => item.id === state.currentConversationId)
       const now = Date.now()
       const snapshotted = state.messages.flatMap((message): StoredAiMessage[] => {
         const status = message.status === 'streaming' ? 'done' : message.status
-        if (message.role === 'assistant' && status !== 'error' && message.content === '' && message.parts.length === 0) return []
-        const clone = JSON.parse(JSON.stringify({ id: message.id, role: message.role, content: message.content, parts: message.parts, error: message.error })) as StoredAiMessage
-        return [{
-          ...clone,
-          status,
-          parts: clone.parts.map((part): StoredAiPart => part.kind === 'tool'
-            ? {
-                kind: 'tool',
-                step: {
-                  callId: part.step.callId,
-                  name: part.step.name,
-                  args: part.step.args,
-                  status: part.step.status === 'running' ? 'ok' : part.step.status,
-                  summary: part.step.summary,
-                  result: part.step.result,
-                  references: part.step.references ?? []
-                }
-              }
-            : part)
-        }]
+        if (
+          message.role === 'assistant' &&
+          status !== 'error' &&
+          message.content === '' &&
+          message.parts.length === 0
+        )
+          return []
+        const clone = JSON.parse(
+          JSON.stringify({
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            parts: message.parts,
+            error: message.error
+          })
+        ) as StoredAiMessage
+        return [
+          {
+            ...clone,
+            status,
+            parts: clone.parts.map((part): StoredAiPart =>
+              part.kind === 'tool'
+                ? {
+                    kind: 'tool',
+                    step: {
+                      callId: part.step.callId,
+                      name: part.step.name,
+                      args: part.step.args,
+                      status: part.step.status === 'running' ? 'ok' : part.step.status,
+                      summary: part.step.summary,
+                      result: part.step.result,
+                      references: part.step.references ?? []
+                    }
+                  }
+                : part
+            )
+          }
+        ]
       })
       const storedCompression: StoredAiCompression | undefined = compression.summary
         ? { summary: compression.summary, coveredMessageIds: [...compression.coveredMessageIds] }
@@ -381,8 +421,12 @@ export const useAiStore = create<AiStore>()(
 
     function applyCompressedContext(result: AiContextCompressionResult): void {
       const currentMessages = get().messages
-      const streaming = currentMessages.find((message) => message.role === 'assistant' && message.status === 'streaming')
-      const completed = currentMessages.filter((message) => message !== streaming && message.status !== 'error')
+      const streaming = currentMessages.find(
+        message => message.role === 'assistant' && message.status === 'streaming'
+      )
+      const completed = currentMessages.filter(
+        message => message !== streaming && message.status !== 'error'
+      )
       const retainedIds = new Set<string>()
       let cursor = completed.length - 1
       for (let index = result.retainedTurns.length - 1; index >= 0; index -= 1) {
@@ -398,7 +442,9 @@ export const useAiStore = create<AiStore>()(
       }
       compression = {
         summary: result.summary,
-        coveredMessageIds: new Set(completed.filter((message) => !retainedIds.has(message.id)).map((message) => message.id))
+        coveredMessageIds: new Set(
+          completed.filter(message => !retainedIds.has(message.id)).map(message => message.id)
+        )
       }
       persistConversationCompression()
       void persistConversation()
@@ -427,8 +473,8 @@ export const useAiStore = create<AiStore>()(
       idleTimer = setTimeout(() => {
         idleTimer = undefined
         flushDeltas()
-        set((state) => {
-          const nextMessages = updateLastAssistant(state.messages, (assistant) =>
+        set(state => {
+          const nextMessages = updateLastAssistant(state.messages, assistant =>
             assistant.status === 'streaming'
               ? { ...assistant, status: 'error', error: '模型响应超时，请重试' }
               : null
@@ -455,7 +501,11 @@ export const useAiStore = create<AiStore>()(
       if (event.type === 'text-delta' || event.type === 'reasoning-delta') {
         if (event.sessionId !== activeSessionId) return
         if (get().isStreaming) armIdleWatchdog()
-        if (deltaEvent && (deltaEvent.type !== event.type || deltaEvent.sessionId !== event.sessionId)) flushDeltas()
+        if (
+          deltaEvent &&
+          (deltaEvent.type !== event.type || deltaEvent.sessionId !== event.sessionId)
+        )
+          flushDeltas()
         deltaEvent = event
         deltaChunks.push(event.text)
         if (deltaTimer === undefined) deltaTimer = setTimeout(flushDeltas, 32)
@@ -467,7 +517,8 @@ export const useAiStore = create<AiStore>()(
 
     function applyEvent(event: AiChatEvent): void {
       if (event.type === 'context-stats') {
-        if (event.sessionId === activeSessionId) set({ contextStats: cloneContextStats(event.stats) })
+        if (event.sessionId === activeSessionId)
+          set({ contextStats: cloneContextStats(event.stats) })
         return
       }
       if (event.type === 'context-compression-start') {
@@ -493,15 +544,17 @@ export const useAiStore = create<AiStore>()(
       }
       if (event.type === 'model-retry') {
         if (event.sessionId === activeSessionId) {
-          set({ modelRetryNotice: `模型请求失败（${event.reason}），正在自动重试 ${event.attempt}/${event.maxRetries}…` })
+          set({
+            modelRetryNotice: `模型请求失败（${event.reason}），正在自动重试 ${event.attempt}/${event.maxRetries}…`
+          })
         }
         return
       }
       if (event.sessionId !== activeSessionId) return
       if (get().isStreaming) armIdleWatchdog()
       if (event.type === 'reasoning-delta' || event.type === 'text-delta') {
-        set((state) => {
-          const nextMessages = updateLastAssistant(state.messages, (assistant) => {
+        set(state => {
+          const nextMessages = updateLastAssistant(state.messages, assistant => {
             if (assistant.status !== 'streaming') return null
             const last = assistant.parts[assistant.parts.length - 1]
             if (event.type === 'reasoning-delta') {
@@ -554,8 +607,8 @@ export const useAiStore = create<AiStore>()(
         return
       }
       if (event.type === 'tool-start') {
-        set((state) => {
-          const nextMessages = updateLastAssistant(state.messages, (assistant) => {
+        set(state => {
+          const nextMessages = updateLastAssistant(state.messages, assistant => {
             if (assistant.status !== 'streaming') return null
             const newPart: ToolPart = {
               kind: 'tool',
@@ -579,8 +632,8 @@ export const useAiStore = create<AiStore>()(
         return
       }
       if (event.type === 'tool-end') {
-        set((state) => {
-          const nextMessages = updateLastAssistant(state.messages, (assistant) => {
+        set(state => {
+          const nextMessages = updateLastAssistant(state.messages, assistant => {
             const partIndex = assistant.parts.findIndex(
               (part): part is ToolPart => part.kind === 'tool' && part.step.callId === event.callId
             )
@@ -593,7 +646,9 @@ export const useAiStore = create<AiStore>()(
                 status: event.ok ? 'ok' : 'error',
                 summary: event.summary,
                 result: event.result,
-                references: event.references ? event.references.map((item) => ({ ...item })) : undefined,
+                references: event.references
+                  ? event.references.map(item => ({ ...item }))
+                  : undefined,
                 completedAt: Date.now()
               }
             }
@@ -609,21 +664,30 @@ export const useAiStore = create<AiStore>()(
         void (async () => {
           const tool = rendererTools.get(event.name)
           if (!tool) {
-            await window.guEarth.ai.toolResult(event.sessionId, event.callId, false, { error: `未知工具 ${event.name}` })
+            await window.guEarth.ai.toolResult(event.sessionId, event.callId, false, {
+              error: `未知工具 ${event.name}`
+            })
             return
           }
           try {
             const result = await tool.execute((event.args ?? {}) as Record<string, unknown>)
-            await window.guEarth.ai.toolResult(event.sessionId, event.callId, !reportsFailure(result), result ?? { ok: true })
+            await window.guEarth.ai.toolResult(
+              event.sessionId,
+              event.callId,
+              !reportsFailure(result),
+              result ?? { ok: true }
+            )
           } catch (error) {
-            await window.guEarth.ai.toolResult(event.sessionId, event.callId, false, { error: error instanceof Error ? error.message : '工具执行失败' })
+            await window.guEarth.ai.toolResult(event.sessionId, event.callId, false, {
+              error: error instanceof Error ? error.message : '工具执行失败'
+            })
           }
         })()
         return
       }
       if (event.type === 'done') {
-        set((state) => {
-          const nextMessages = updateLastAssistant(state.messages, (assistant) =>
+        set(state => {
+          const nextMessages = updateLastAssistant(state.messages, assistant =>
             assistant.status === 'streaming' ? { ...assistant, status: 'done' } : null
           )
           return nextMessages
@@ -635,11 +699,15 @@ export const useAiStore = create<AiStore>()(
         return
       }
       if (event.type === 'error') {
-        set((state) => {
-          const nextMessages = updateLastAssistant(state.messages, (assistant) => {
+        set(state => {
+          const nextMessages = updateLastAssistant(state.messages, assistant => {
             if (assistant.status !== 'streaming') return null
             const parts = assistant.parts.map((part): AssistantPart => {
-              if (part.kind === 'tool' && part.step.name === 'web_search' && part.step.status === 'running') {
+              if (
+                part.kind === 'tool' &&
+                part.step.name === 'web_search' &&
+                part.step.status === 'running'
+              ) {
                 return {
                   kind: 'tool',
                   step: {
@@ -675,13 +743,15 @@ export const useAiStore = create<AiStore>()(
     }
 
     function toolDefinitions(): AiToolDefinition[] {
-      return [...rendererTools.values()].map((tool) => tool.definition)
+      return [...rendererTools.values()].map(tool => tool.definition)
     }
 
     function activeModelReady(): boolean {
       const currentSettings = get().settings
-      const provider = currentSettings.providers.find((item) => item.id === currentSettings.activeProviderId)
-      return Boolean(provider?.models.some((model) => model.id === currentSettings.activeModelId))
+      const provider = currentSettings.providers.find(
+        item => item.id === currentSettings.activeProviderId
+      )
+      return Boolean(provider?.models.some(model => model.id === currentSettings.activeModelId))
     }
 
     async function hydrate(): Promise<void> {
@@ -715,18 +785,32 @@ export const useAiStore = create<AiStore>()(
       set({ modelRetryNotice: '' })
       await hydrate()
       messageSeq += 1
-      const userMessage: ChatMessage = { id: `m${messageSeq}`, role: 'user', content: question, parts: [], status: 'done', error: '' }
+      const userMessage: ChatMessage = {
+        id: `m${messageSeq}`,
+        role: 'user',
+        content: question,
+        parts: [],
+        status: 'done',
+        error: ''
+      }
       messageSeq += 1
-      const assistantMessage: ChatMessage = { id: `m${messageSeq}`, role: 'assistant', content: '', parts: [], status: 'streaming', error: '' }
-      set((state) => ({
+      const assistantMessage: ChatMessage = {
+        id: `m${messageSeq}`,
+        role: 'assistant',
+        content: '',
+        parts: [],
+        status: 'streaming',
+        error: ''
+      }
+      set(state => ({
         messages: [...state.messages, userMessage, assistantMessage],
         currentConversationId: state.currentConversationId || crypto.randomUUID()
       }))
       void refreshContextStats()
       void persistConversation()
       if (!activeModelReady()) {
-        set((state) => {
-          const nextMessages = updateLastAssistant(state.messages, (assistant) => ({
+        set(state => {
+          const nextMessages = updateLastAssistant(state.messages, assistant => ({
             ...assistant,
             status: 'error',
             error: '尚未配置 AI 模型：请点击右上角设置，添加服务商和模型并保存 API Key'
@@ -744,12 +828,18 @@ export const useAiStore = create<AiStore>()(
       const turns = conversationTurns()
       const distinctId = useAccountStore.getState().profile?.sub.trim() ?? ''
       try {
-        await window.guEarth.ai.chat(sessionId, turns, toolDefinitions(), get().currentConversationId, distinctId)
+        await window.guEarth.ai.chat(
+          sessionId,
+          turns,
+          toolDefinitions(),
+          get().currentConversationId,
+          distinctId
+        )
       } catch (error) {
         flushDeltas()
         const errorMessage = ipcErrorMessage(error, 'AI 请求失败')
-        set((state) => {
-          const nextMessages = updateLastAssistant(state.messages, (assistant) =>
+        set(state => {
+          const nextMessages = updateLastAssistant(state.messages, assistant =>
             assistant.status === 'streaming'
               ? { ...assistant, status: 'error', error: errorMessage }
               : null
@@ -766,7 +856,7 @@ export const useAiStore = create<AiStore>()(
     async function regenerate(messageId: string): Promise<void> {
       const state = get()
       if (state.isStreaming) return
-      const index = state.messages.findIndex((message) => message.id === messageId)
+      const index = state.messages.findIndex(message => message.id === messageId)
       if (index < 0 || state.messages[index].role !== 'assistant') return
       let userIndex = -1
       for (let cursor = index; cursor >= 0; cursor -= 1) {
@@ -806,8 +896,8 @@ export const useAiStore = create<AiStore>()(
       },
       async setActiveModel(providerId: string, modelId: string): Promise<void> {
         const next = JSON.parse(JSON.stringify(get().settings)) as AiSettings
-        const provider = next.providers.find((item) => item.id === providerId)
-        if (!provider?.models.some((model) => model.id === modelId)) return
+        const provider = next.providers.find(item => item.id === providerId)
+        if (!provider?.models.some(model => model.id === modelId)) return
         next.activeProviderId = providerId
         next.activeModelId = modelId
         await saveSettings(next)
@@ -820,7 +910,7 @@ export const useAiStore = create<AiStore>()(
       async resendFrom(messageId: string, content?: string): Promise<void> {
         const state = get()
         if (state.isStreaming) return
-        const index = state.messages.findIndex((message) => message.id === messageId)
+        const index = state.messages.findIndex(message => message.id === messageId)
         if (index < 0) return
         const anchor = state.messages[index]
         if (anchor.role !== 'user') return
@@ -848,7 +938,11 @@ export const useAiStore = create<AiStore>()(
         setContextNotice('正在整理对话…', 'compressing')
         try {
           const distinctId = useAccountStore.getState().profile?.sub.trim() ?? ''
-          const result = await window.guEarth.ai.compressContext(contextEntries(), get().currentConversationId, distinctId)
+          const result = await window.guEarth.ai.compressContext(
+            contextEntries(),
+            get().currentConversationId,
+            distinctId
+          )
           applyCompressedContext(result)
           setContextNotice(`已精简对话 ${formatContextTokens(result.afterTokens)}`, 'idle')
         } catch {
@@ -860,7 +954,7 @@ export const useAiStore = create<AiStore>()(
         conversationLoadSequence += 1
         resetContextCompression()
         clearContextNoticeTimer()
-        set((state) => ({
+        set(state => ({
           currentConversationId: '',
           messages: [],
           contextStats: emptyContextStats(state.contextStats.contextWindow),
@@ -870,7 +964,13 @@ export const useAiStore = create<AiStore>()(
         useFlightStopsStore.getState().clear()
       },
       async openConversation(id: string): Promise<void> {
-        if (get().isStreaming || id === get().currentConversationId || typeof window === 'undefined' || !window.guEarth?.ai) return
+        if (
+          get().isStreaming ||
+          id === get().currentConversationId ||
+          typeof window === 'undefined' ||
+          !window.guEarth?.ai
+        )
+          return
         const sequence = ++conversationLoadSequence
         try {
           const conversation = await window.guEarth.ai.chatHistory.get(id)
@@ -892,7 +992,7 @@ export const useAiStore = create<AiStore>()(
         compressionByConversation.delete(id)
         if (get().currentConversationId === id) {
           resetContextCompression()
-          set((state) => ({
+          set(state => ({
             currentConversationId: '',
             messages: [],
             contextStats: emptyContextStats(state.contextStats.contextWindow)
@@ -917,8 +1017,13 @@ export const useAiStore = create<AiStore>()(
       },
       activeModelVisionEnabled(): boolean {
         const currentSettings = get().settings
-        const provider = currentSettings.providers.find((item) => item.id === currentSettings.activeProviderId)
-        return provider?.models.find((model) => model.id === currentSettings.activeModelId)?.vision === true
+        const provider = currentSettings.providers.find(
+          item => item.id === currentSettings.activeProviderId
+        )
+        return (
+          provider?.models.find(model => model.id === currentSettings.activeModelId)?.vision ===
+          true
+        )
       }
     }
   })

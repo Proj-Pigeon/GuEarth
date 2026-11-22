@@ -20,7 +20,7 @@ export function createInitialHydrologyState(): HydrologyState {
 }
 
 export const useHydrologyStore = create<HydrologyStore>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector(set => ({
     ...createInitialHydrologyState(),
     setPanel(value: HydrologyPanel | null): void {
       set({ panel: value })

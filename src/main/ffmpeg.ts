@@ -7,7 +7,12 @@ function binaryFileName(platform: string): string {
   return platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
 }
 
-function binaryPathFor(appPath: string, resourcesPath: string, packaged: boolean, platform: string): string {
+function binaryPathFor(
+  appPath: string,
+  resourcesPath: string,
+  packaged: boolean,
+  platform: string
+): string {
   const name = binaryFileName(platform)
   return packaged ? join(resourcesPath, 'bin', name) : join(appPath, 'resources', 'bin', name)
 }
@@ -20,10 +25,17 @@ function platformLabel(platform: string): string {
 
 export function assertOffscreenRecordingSupported(platform: string): void {
   if (platform === 'win32' || platform === 'linux') return
-  throw new Error(`离屏视频录制目前提供 Windows x64 与 Linux x64/arm64 构建，当前平台 ${platform} 暂不支持录制`)
+  throw new Error(
+    `离屏视频录制目前提供 Windows x64 与 Linux x64/arm64 构建，当前平台 ${platform} 暂不支持录制`
+  )
 }
 
-export function findFfmpegBinary(appPath: string, resourcesPath: string, packaged: boolean, platform: string = process.platform): string | null {
+export function findFfmpegBinary(
+  appPath: string,
+  resourcesPath: string,
+  packaged: boolean,
+  platform: string = process.platform
+): string | null {
   const binary = binaryPathFor(appPath, resourcesPath, packaged, platform)
   return existsSync(binary) ? binary : null
 }
@@ -35,7 +47,12 @@ function missingEncoderMessage(binary: string, packaged: boolean, platform: stri
     : `内置视频编码器缺失：${binary}。运行 npm run fetch:ffmpeg 获取（${label}）`
 }
 
-export function resolveFfmpegBinary(appPath: string, resourcesPath: string, packaged: boolean, platform: string = process.platform): string {
+export function resolveFfmpegBinary(
+  appPath: string,
+  resourcesPath: string,
+  packaged: boolean,
+  platform: string = process.platform
+): string {
   assertOffscreenRecordingSupported(platform)
   const binary = binaryPathFor(appPath, resourcesPath, packaged, platform)
   if (!existsSync(binary)) throw new Error(missingEncoderMessage(binary, packaged, platform))

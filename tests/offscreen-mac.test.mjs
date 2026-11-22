@@ -5,17 +5,32 @@ import { test } from 'node:test'
 const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
 const macSource = await readFile(new URL('../src/main/offscreenMac.ts', import.meta.url), 'utf8')
 const preloadSource = await readFile(new URL('../src/preload/index.ts', import.meta.url), 'utf8')
-const encoderSource = await readFile(new URL('../src/renderer/src/offscreenEncoder.ts', import.meta.url), 'utf8')
-const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
+const encoderSource = await readFile(
+  new URL('../src/renderer/src/offscreenEncoder.ts', import.meta.url),
+  'utf8'
+)
+const offscreenSource = await readFile(
+  new URL('../src/renderer/src/offscreen.tsx', import.meta.url),
+  'utf8'
+)
 const agentSource = await readFile(new URL('../src/main/ai/agent.ts', import.meta.url), 'utf8')
 
 test('darwin encodes through the WebCodecs path while Windows keeps the ffmpeg path', () => {
-  const encodeBody = mainSource.slice(mainSource.indexOf("ipcMain.handle('recordings:offscreen-encode'"), mainSource.indexOf("ipcMain.on('recordings:offscreen-progress'"))
+  const encodeBody = mainSource.slice(
+    mainSource.indexOf("ipcMain.handle('recordings:offscreen-encode'"),
+    mainSource.indexOf("ipcMain.on('recordings:offscreen-progress'")
+  )
   assert.match(encodeBody, /if \(process\.platform === 'darwin'\) \{/)
-  assert.match(encodeBody, /encodeMacOffscreenRecording\(normalizeOffscreenRecordingScript\(script\), macRecordingHost\)/)
+  assert.match(
+    encodeBody,
+    /encodeMacOffscreenRecording\(normalizeOffscreenRecordingScript\(script\), macRecordingHost\)/
+  )
   assert.match(encodeBody, /assertOffscreenRecordingSupported\(process\.platform\)/)
   assert.match(encodeBody, /assertOffscreenRecordingIdle\(\)/)
-  assert.match(encodeBody, /return await encodeOffscreenRecording\(normalizeOffscreenRecordingScript\(script\)\)/)
+  assert.match(
+    encodeBody,
+    /return await encodeOffscreenRecording\(normalizeOffscreenRecordingScript\(script\)\)/
+  )
 })
 
 test('the macOS encoder pins the measured High-profile codec and never requests prefer-hardware', () => {
@@ -34,11 +49,23 @@ test('the macOS muxer mirrors the ffmpeg faststart and wall-clock frame timing',
 })
 
 test('the offscreen frame channel is appended to the shared preload', () => {
-  assert.match(preloadSource, /onOffscreenFrame: \(listener: \(index: number, captureTimeMs: number, jpeg: Uint8Array\) => void\): \(\(\) => void\) => \{/)
+  assert.match(
+    preloadSource,
+    /onOffscreenFrame: \(listener: \(index: number, captureTimeMs: number, jpeg: Uint8Array\) => void\): \(\(\) => void\) => \{/
+  )
   assert.match(preloadSource, /ipcRenderer\.on\('recordings:offscreen-frame', wrapped\)/)
-  assert.match(preloadSource, /sendOffscreenFrameAck: \(count: number\): void => ipcRenderer\.send\('recordings:offscreen-frame-ack', count\)/)
-  assert.match(preloadSource, /sendOffscreenVideoChunk: \(bytes: Uint8Array, position: number\): void => ipcRenderer\.send\('recordings:offscreen-video-chunk', bytes, position\)/)
-  assert.match(preloadSource, /sendOffscreenVideoComplete: \(\): void => ipcRenderer\.send\('recordings:offscreen-video-complete'\)/)
+  assert.match(
+    preloadSource,
+    /sendOffscreenFrameAck: \(count: number\): void => ipcRenderer\.send\('recordings:offscreen-frame-ack', count\)/
+  )
+  assert.match(
+    preloadSource,
+    /sendOffscreenVideoChunk: \(bytes: Uint8Array, position: number\): void => ipcRenderer\.send\('recordings:offscreen-video-chunk', bytes, position\)/
+  )
+  assert.match(
+    preloadSource,
+    /sendOffscreenVideoComplete: \(\): void => ipcRenderer\.send\('recordings:offscreen-video-complete'\)/
+  )
 })
 
 test('the offscreen page mounts the macOS encoder module', () => {
@@ -46,11 +73,26 @@ test('the offscreen page mounts the macOS encoder module', () => {
 })
 
 test('main forwards frame acks and encoded video only from the offscreen window', () => {
-  assert.match(mainSource, /ipcMain\.on\('recordings:offscreen-frame-ack', \(event, count: unknown\): void => \{/)
-  assert.match(mainSource, /ipcMain\.on\('recordings:offscreen-video-chunk', \(event, bytes: unknown, position: unknown\): void => \{/)
-  assert.match(mainSource, /ipcMain\.on\('recordings:offscreen-video-complete', \(event\): void => \{/)
-  const frameAckBody = mainSource.slice(mainSource.indexOf("ipcMain.on('recordings:offscreen-frame-ack'"), mainSource.indexOf('function assertOffscreenRecordingIdle'))
-  assert.match(frameAckBody, /if \(event\.sender !== offscreenRecordingWindow\?\.webContents\) return/)
+  assert.match(
+    mainSource,
+    /ipcMain\.on\('recordings:offscreen-frame-ack', \(event, count: unknown\): void => \{/
+  )
+  assert.match(
+    mainSource,
+    /ipcMain\.on\('recordings:offscreen-video-chunk', \(event, bytes: unknown, position: unknown\): void => \{/
+  )
+  assert.match(
+    mainSource,
+    /ipcMain\.on\('recordings:offscreen-video-complete', \(event\): void => \{/
+  )
+  const frameAckBody = mainSource.slice(
+    mainSource.indexOf("ipcMain.on('recordings:offscreen-frame-ack'"),
+    mainSource.indexOf('function assertOffscreenRecordingIdle')
+  )
+  assert.match(
+    frameAckBody,
+    /if \(event\.sender !== offscreenRecordingWindow\?\.webContents\) return/
+  )
   assert.match(frameAckBody, /noteMacOffscreenFrameAck\(count\)/)
   assert.match(frameAckBody, /deliverMacOffscreenVideo\(bytes, position\)/)
 })
@@ -59,7 +101,10 @@ test('the macOS session reuses the Windows temp-directory, ownership and naming 
   assert.match(macSource, /const OFFSCREEN_TEMP_PREFIX = '\.guearth-offscreen-'/)
   assert.match(macSource, /const OFFSCREEN_OWNER_FILE = '\.owner'/)
   assert.match(macSource, /GuEarth-\$\{stamp\}-\$\{randomUUID\(\)\.slice\(0, 8\)\}\.mp4/)
-  assert.match(macSource, /writeFile\(recordingPath\(tempDir, OFFSCREEN_OWNER_FILE\), String\(process\.pid\), 'utf8'\)/)
+  assert.match(
+    macSource,
+    /writeFile\(recordingPath\(tempDir, OFFSCREEN_OWNER_FILE\), String\(process\.pid\), 'utf8'\)/
+  )
   assert.match(macSource, /'请先选择可用的视频保存文件夹'/)
   assert.match(macSource, /'recording\.mp4\.part'/)
 })
@@ -82,17 +127,26 @@ test('the macOS capture window skips the work-area clamp and waits for the page-
   assert.match(macSource, /width: script\.width,\r?\n\s*height: script\.height,/)
   assert.match(macSource, /window\.guEarthOffscreenMacEncoder\.begin\(\$\{encoderConfig\}\)/)
   assert.match(macSource, /window\.guEarthOffscreenMacEncoder\.finish\(\)/)
-  assert.match(macSource, /webContents\.send\('recordings:offscreen-frame', frameIndex, captureTimeMs, frame\)/)
+  assert.match(
+    macSource,
+    /webContents\.send\('recordings:offscreen-frame', frameIndex, captureTimeMs, frame\)/
+  )
 })
 
 test('the macOS encode deadline scales with the captured frame count', () => {
   assert.match(macSource, /const OFFSCREEN_ENCODE_MS_PER_FRAME = 50/)
-  assert.match(macSource, /const encodeBudgetMs = Math\.max\(OFFSCREEN_ENCODE_TIMEOUT_MS, frameIndex \* OFFSCREEN_ENCODE_MS_PER_FRAME\)/)
+  assert.match(
+    macSource,
+    /const encodeBudgetMs = Math\.max\(OFFSCREEN_ENCODE_TIMEOUT_MS, frameIndex \* OFFSCREEN_ENCODE_MS_PER_FRAME\)/
+  )
 })
 
 test('the macOS frame-drain wait clears its timer once acks settle the queue', () => {
   assert.match(macSource, /clearTimeout\(timer\)/)
-  assert.match(macSource, /if \(!settled\) logger\.warn\('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码'\)/)
+  assert.match(
+    macSource,
+    /if \(!settled\) logger\.warn\('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码'\)/
+  )
   assert.match(macSource, /frameDrainResolve = \(\): void => \{/)
   assert.match(macSource, /frameDrainResolve = null/)
 })
@@ -103,12 +157,21 @@ test('record_video no longer advertises a fixed Movies save location', () => {
 })
 
 test('the macOS encoder streams frames through a serial queue and acks after encoding', () => {
-  const listenerBody = encoderSource.slice(encoderSource.indexOf('onOffscreenFrame(('), encoderSource.indexOf('Object.assign(window'))
+  const listenerBody = encoderSource.slice(
+    encoderSource.indexOf('onOffscreenFrame(('),
+    encoderSource.indexOf('Object.assign(window')
+  )
   assert.match(listenerBody, /active\.queue\.push\(\{ captureTimeMs, jpeg \}\)/)
   assert.doesNotMatch(listenerBody, /sendOffscreenFrameAck/)
-  const pumpBody = encoderSource.slice(encoderSource.indexOf('function pump'), encoderSource.indexOf('async function encodeFrame'))
+  const pumpBody = encoderSource.slice(
+    encoderSource.indexOf('function pump'),
+    encoderSource.indexOf('async function encodeFrame')
+  )
   assert.match(pumpBody, /sendOffscreenFrameAck\(1\)/)
-  const finishBody = encoderSource.slice(encoderSource.indexOf('async function finish'), encoderSource.indexOf('function stats'))
+  const finishBody = encoderSource.slice(
+    encoderSource.indexOf('async function finish'),
+    encoderSource.indexOf('function stats')
+  )
   assert.match(finishBody, /await whenDrained\(active\)/)
   assert.doesNotMatch(encoderSource, /frames: Map/)
 })

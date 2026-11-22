@@ -31,7 +31,8 @@ export function beltAxisLatitude(month: number): number {
   for (let i = 1; i < axisControls.length; i += 1) {
     const [prevMonth, prevLat] = axisControls[i - 1]
     const [nextMonth, nextLat] = axisControls[i]
-    if (month <= nextMonth) return prevLat + (nextLat - prevLat) * ease((month - prevMonth) / (nextMonth - prevMonth))
+    if (month <= nextMonth)
+      return prevLat + (nextLat - prevLat) * ease((month - prevMonth) / (nextMonth - prevMonth))
   }
   return last[1]
 }

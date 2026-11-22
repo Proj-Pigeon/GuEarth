@@ -1,10 +1,15 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import type { AccountPhase, AccountProfile, AccountState } from '../../../preload'
+
 import { accountPhaseLabel } from '../../../common/passport'
+import type { AccountPhase, AccountProfile, AccountState } from '../../../preload'
 import { ipcErrorMessage } from '../lib/ipcError'
 import { isTelemetryEnabled, onPrivacySettingsChange } from '../lib/privacyRuntime'
-import { identifyTelemetryUser, isTelemetryUserIdentified, resetTelemetryIdentity } from '../posthog'
+import {
+  identifyTelemetryUser,
+  isTelemetryUserIdentified,
+  resetTelemetryIdentity
+} from '../posthog'
 
 export interface AccountStoreState {
   phase: AccountPhase
@@ -39,15 +44,23 @@ export interface AccountStoreActions {
 
 export type AccountStore = AccountStoreState & AccountStoreActions
 
-export function selectAccountSignedIn(state: Pick<AccountStoreState, 'phase' | 'profile'>): boolean {
+export function selectAccountSignedIn(
+  state: Pick<AccountStoreState, 'phase' | 'profile'>
+): boolean {
   return state.phase === 'signed-in' && state.profile !== null
 }
 
 export function selectAccountLoginInProgress(state: Pick<AccountStoreState, 'phase'>): boolean {
-  return state.phase === 'creating' || state.phase === 'awaiting-approval' || state.phase === 'finalizing'
+  return (
+    state.phase === 'creating' ||
+    state.phase === 'awaiting-approval' ||
+    state.phase === 'finalizing'
+  )
 }
 
-export function selectAccountRemainingSeconds(state: Pick<AccountStoreState, 'challengeExpiresAt'>): number {
+export function selectAccountRemainingSeconds(
+  state: Pick<AccountStoreState, 'challengeExpiresAt'>
+): number {
   if (!state.challengeExpiresAt) return 0
   return Math.max(0, Math.ceil((state.challengeExpiresAt - Date.now()) / 1000))
 }
@@ -66,7 +79,10 @@ function deriveAccountFields(
   phase: AccountPhase,
   profile: AccountProfile | null,
   challengeExpiresAt: number
-): Pick<AccountStoreState, 'signedIn' | 'loginInProgress' | 'remainingSeconds' | 'displayName' | 'phaseLabel'> {
+): Pick<
+  AccountStoreState,
+  'signedIn' | 'loginInProgress' | 'remainingSeconds' | 'displayName' | 'phaseLabel'
+> {
   return {
     signedIn: selectAccountSignedIn({ phase, profile }),
     loginInProgress: selectAccountLoginInProgress({ phase }),
@@ -103,7 +119,7 @@ let unsubscribePrivacy: (() => void) | null = null
 let unsubscribeAccountState: (() => void) | null = null
 
 function syncIdentity(currentPhase: AccountPhase, currentProfile: AccountProfile | null): void {
-  const nextSub = currentPhase === 'signed-in' ? currentProfile?.sub.trim() ?? '' : ''
+  const nextSub = currentPhase === 'signed-in' ? (currentProfile?.sub.trim() ?? '') : ''
 
   if (!isTelemetryEnabled()) {
     if (identifiedSub || isTelemetryUserIdentified()) resetTelemetryIdentity()

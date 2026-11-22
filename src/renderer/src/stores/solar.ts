@@ -1,6 +1,13 @@
+import {
+  datePartsOf,
+  formatClock,
+  presetDate,
+  shiftDate,
+  type DateParts,
+  type SolarPreset
+} from '@renderer/thematic/solarMath'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { datePartsOf, formatClock, presetDate, shiftDate, type DateParts, type SolarPreset } from '@renderer/thematic/solarMath'
 
 const BEIJING_OFFSET_HOURS = 8
 const HOURS_PER_SECOND = 1.5
@@ -60,7 +67,10 @@ export function selectUtcClock(state: Pick<SolarState, 'hour'>): string {
   return formatClock(selectSolarUtcHour(state))
 }
 
-function deriveSolarFields(date: string, hour: number): Pick<SolarState, 'utcMs' | 'utcHour' | 'parts' | 'beijingClock' | 'utcClock'> {
+function deriveSolarFields(
+  date: string,
+  hour: number
+): Pick<SolarState, 'utcMs' | 'utcHour' | 'parts' | 'beijingClock' | 'utcClock'> {
   const utcHour = selectSolarUtcHour({ hour })
   return {
     utcMs: selectSolarUtcMs({ date, hour }),
@@ -101,12 +111,12 @@ export const useSolarStore = create<SolarStore>()(
     },
     setDate(value: string): void {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return
-      set((state) => ({ date: value, ...deriveSolarFields(value, state.hour) }))
+      set(state => ({ date: value, ...deriveSolarFields(value, state.hour) }))
     },
     setHour(value: number): void {
       if (!Number.isFinite(value)) return
       const hour = Math.min(24, Math.max(0, value))
-      set((state) => ({ hour, ...deriveSolarFields(state.date, hour) }))
+      set(state => ({ hour, ...deriveSolarFields(state.date, hour) }))
     },
     setPreset(preset: SolarPreset): void {
       const state = get()
@@ -116,7 +126,7 @@ export const useSolarStore = create<SolarStore>()(
       set({ date, ...deriveSolarFields(date, state.hour) })
     },
     togglePlaying(): void {
-      set((state) => {
+      set(state => {
         const isPlaying = !state.isPlaying
         return {
           isPlaying,
@@ -125,7 +135,7 @@ export const useSolarStore = create<SolarStore>()(
       })
     },
     toggleAnnualPlaying(): void {
-      set((state) => {
+      set(state => {
         const isAnnualPlaying = !state.isAnnualPlaying
         return {
           isAnnualPlaying,
@@ -138,9 +148,12 @@ export const useSolarStore = create<SolarStore>()(
       if (state.isAnnualPlaying) {
         const year = Number(state.date.slice(0, 4))
         const startOfYear = Number.isFinite(year) ? Date.parse(`${year}-01-01T00:00:00Z`) : 0
-        const span = Date.parse(`${(Number.isFinite(year) ? year : 2024) + 1}-01-01T00:00:00Z`) - startOfYear
+        const span =
+          Date.parse(`${(Number.isFinite(year) ? year : 2024) + 1}-01-01T00:00:00Z`) - startOfYear
         const ms = Date.parse(`${state.date}T00:00:00Z`) + dtSeconds * DAYS_PER_SECOND * 86400000
-        const date = new Date(startOfYear + (((ms - startOfYear) % span) + span) % span).toISOString().slice(0, 10)
+        const date = new Date(startOfYear + ((((ms - startOfYear) % span) + span) % span))
+          .toISOString()
+          .slice(0, 10)
         set({ date, ...deriveSolarFields(date, state.hour) })
         return
       }

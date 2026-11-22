@@ -4,13 +4,20 @@ export interface OffscreenSceneTiming {
 }
 
 export function offscreenScriptDurationMs(scenes: OffscreenSceneTiming[]): number {
-  return Math.max(1000, scenes.reduce((total, scene, index) => total + (index > 0 ? Math.max(0, scene.flyDurationMs) : 0) + Math.max(0, scene.dwellMs), 0))
+  return Math.max(
+    1000,
+    scenes.reduce(
+      (total, scene, index) =>
+        total + (index > 0 ? Math.max(0, scene.flyDurationMs) : 0) + Math.max(0, scene.dwellMs),
+      0
+    )
+  )
 }
 
 export function offscreenFrameRate(frameCount: number, elapsedMs: number): number {
   if (!Number.isFinite(frameCount) || frameCount <= 0) return 1
   if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 1
-  return Math.max(1, frameCount * 1000 / elapsedMs)
+  return Math.max(1, (frameCount * 1000) / elapsedMs)
 }
 
 export interface OffscreenCaptureSize {
@@ -18,7 +25,13 @@ export interface OffscreenCaptureSize {
   height: number
 }
 
-export function offscreenCaptureSize(requestedWidth: number, requestedHeight: number, workAreaWidth: number, workAreaHeight: number, margin = 2): OffscreenCaptureSize {
+export function offscreenCaptureSize(
+  requestedWidth: number,
+  requestedHeight: number,
+  workAreaWidth: number,
+  workAreaHeight: number,
+  margin = 2
+): OffscreenCaptureSize {
   const aspect = requestedWidth / requestedHeight
   const maxWidth = Math.max(160, Math.min(requestedWidth, Math.floor(workAreaWidth) - margin))
   const maxHeight = Math.max(120, Math.min(requestedHeight, Math.floor(workAreaHeight) - margin))
@@ -55,4 +68,3 @@ export function offscreenConcatPlaylist(frameNames: string[], durations: number[
   }
   return `${lines.join('\n')}\n`
 }
-

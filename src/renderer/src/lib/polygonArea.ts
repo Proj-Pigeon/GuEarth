@@ -5,7 +5,12 @@ const wgs84 = geodesic.Geodesic.WGS84
 
 function usablePosition(position: Cesium.Cartesian3 | undefined): position is Cesium.Cartesian3 {
   if (!position) return false
-  return Number.isFinite(position.x) && Number.isFinite(position.y) && Number.isFinite(position.z) && Cesium.Cartesian3.magnitudeSquared(position) > 0
+  return (
+    Number.isFinite(position.x) &&
+    Number.isFinite(position.y) &&
+    Number.isFinite(position.z) &&
+    Cesium.Cartesian3.magnitudeSquared(position) > 0
+  )
 }
 
 function sameSurfacePoint(left: Cesium.Cartesian3, right: Cesium.Cartesian3): boolean {
@@ -27,9 +32,12 @@ function surfaceRing(cartesians: Cesium.Cartesian3[]): Cesium.Cartesian3[] {
 }
 
 function longitudesAndLatitudes(ring: Cesium.Cartesian3[]): Array<[number, number]> {
-  return ring.map((cartesian) => {
+  return ring.map(cartesian => {
     const cartographic = Cesium.Cartographic.fromCartesian(cartesian)
-    return [Cesium.Math.toDegrees(cartographic.longitude), Cesium.Math.toDegrees(cartographic.latitude)]
+    return [
+      Cesium.Math.toDegrees(cartographic.longitude),
+      Cesium.Math.toDegrees(cartographic.latitude)
+    ]
   })
 }
 
@@ -62,11 +70,19 @@ function projectRing(ring: Cesium.Cartesian3[]): ProjectedRing | undefined {
   }
 }
 
-function orient(origin: Cesium.Cartesian2, first: Cesium.Cartesian2, second: Cesium.Cartesian2): number {
+function orient(
+  origin: Cesium.Cartesian2,
+  first: Cesium.Cartesian2,
+  second: Cesium.Cartesian2
+): number {
   return (first.x - origin.x) * (second.y - origin.y) - (first.y - origin.y) * (second.x - origin.x)
 }
 
-function pointOnSegment(origin: Cesium.Cartesian2, end: Cesium.Cartesian2, point: Cesium.Cartesian2): boolean {
+function pointOnSegment(
+  origin: Cesium.Cartesian2,
+  end: Cesium.Cartesian2,
+  point: Cesium.Cartesian2
+): boolean {
   const edgeX = end.x - origin.x
   const edgeY = end.y - origin.y
   const lengthSquared = edgeX * edgeX + edgeY * edgeY
@@ -88,15 +104,18 @@ function edgesCross(planar: Cesium.Cartesian2[]): boolean {
       const startEdgeEnd = planar[startEnd]
       const otherEdge = planar[other]
       const otherEdgeEnd = planar[otherEnd]
-      const acrossStart = orient(startEdge, startEdgeEnd, otherEdge) * orient(startEdge, startEdgeEnd, otherEdgeEnd)
-      const acrossOther = orient(otherEdge, otherEdgeEnd, startEdge) * orient(otherEdge, otherEdgeEnd, startEdgeEnd)
+      const acrossStart =
+        orient(startEdge, startEdgeEnd, otherEdge) * orient(startEdge, startEdgeEnd, otherEdgeEnd)
+      const acrossOther =
+        orient(otherEdge, otherEdgeEnd, startEdge) * orient(otherEdge, otherEdgeEnd, startEdgeEnd)
       if (acrossStart < 0 && acrossOther < 0) return true
       if (
         pointOnSegment(startEdge, startEdgeEnd, otherEdge) ||
         pointOnSegment(startEdge, startEdgeEnd, otherEdgeEnd) ||
         pointOnSegment(otherEdge, otherEdgeEnd, startEdge) ||
         pointOnSegment(otherEdge, otherEdgeEnd, startEdgeEnd)
-      ) return true
+      )
+        return true
     }
   }
   return false
@@ -110,11 +129,18 @@ function counterClockwise(projected: ProjectedRing): ProjectedRing {
     signed += current.x * next.y - next.x * current.y
   }
   if (signed >= 0) return projected
-  return { cartesians: projected.cartesians.slice().reverse(), planar: projected.planar.slice().reverse() }
+  return {
+    cartesians: projected.cartesians.slice().reverse(),
+    planar: projected.planar.slice().reverse()
+  }
 }
 
 function triangulate(planar: Cesium.Cartesian2[]): number[] {
-  const pipeline = (Cesium as unknown as { PolygonPipeline: { triangulate(positions: Cesium.Cartesian2[]): number[] } }).PolygonPipeline
+  const pipeline = (
+    Cesium as unknown as {
+      PolygonPipeline: { triangulate(positions: Cesium.Cartesian2[]): number[] }
+    }
+  ).PolygonPipeline
   return pipeline.triangulate(planar)
 }
 
@@ -128,7 +154,15 @@ function renderedFillArea(projected: ProjectedRing): number | undefined {
     const first = indices[index]
     const second = indices[index + 1]
     const third = indices[index + 2]
-    if (first < 0 || second < 0 || third < 0 || first >= coordinates.length || second >= coordinates.length || third >= coordinates.length) return undefined
+    if (
+      first < 0 ||
+      second < 0 ||
+      third < 0 ||
+      first >= coordinates.length ||
+      second >= coordinates.length ||
+      third >= coordinates.length
+    )
+      return undefined
     if (first === second || second === third || third === first) continue
     total += geodesicRingArea([coordinates[first], coordinates[second], coordinates[third]])
   }

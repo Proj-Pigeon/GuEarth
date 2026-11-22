@@ -27,56 +27,164 @@ function probeDurationSeconds(text) {
   return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3])
 }
 
-test('encoded container keeps the final frame duration', { skip: ffmpegPath ? false : '内置 ffmpeg 不可用（运行 npm run fetch:ffmpeg 获取）' }, () => {
-  const directory = mkdtempSync(join(tmpdir(), 'guearth-container-'))
-  try {
-    run(['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=30', '-frames:v', '20', 'frame-%08d.jpg'], directory)
+test(
+  'encoded container keeps the final frame duration',
+  { skip: ffmpegPath ? false : '内置 ffmpeg 不可用（运行 npm run fetch:ffmpeg 获取）' },
+  () => {
+    const directory = mkdtempSync(join(tmpdir(), 'guearth-container-'))
+    try {
+      run(
+        [
+          '-hide_banner',
+          '-loglevel',
+          'error',
+          '-y',
+          '-f',
+          'lavfi',
+          '-i',
+          'testsrc=size=320x240:rate=30',
+          '-frames:v',
+          '20',
+          'frame-%08d.jpg'
+        ],
+        directory
+      )
 
-    const frames = Array.from({ length: 20 }, (_value, index) => `frame-${String(index + 1).padStart(8, '0')}.jpg`)
-    const frameTimes = frames.map((_name, index) => index * (1000 / 30))
-    const tailMs = 900
-    const recordingElapsedMs = frameTimes[frameTimes.length - 1] + tailMs
-    const durations = offscreenFrameDurations(frameTimes, recordingElapsedMs)
-    const expected = durations.reduce((total, value) => total + value, 0)
-    assert.ok(Math.abs(expected - 1.533) < 0.01, `逐帧时长合计应为 1.533 秒，实际 ${expected}`)
+      const frames = Array.from(
+        { length: 20 },
+        (_value, index) => `frame-${String(index + 1).padStart(8, '0')}.jpg`
+      )
+      const frameTimes = frames.map((_name, index) => index * (1000 / 30))
+      const tailMs = 900
+      const recordingElapsedMs = frameTimes[frameTimes.length - 1] + tailMs
+      const durations = offscreenFrameDurations(frameTimes, recordingElapsedMs)
+      const expected = durations.reduce((total, value) => total + value, 0)
+      assert.ok(Math.abs(expected - 1.533) < 0.01, `逐帧时长合计应为 1.533 秒，实际 ${expected}`)
 
-    writeFileSync(join(directory, 'frames.txt'), offscreenConcatPlaylist(frames, durations), 'utf8')
-    run([
-      '-hide_banner', '-loglevel', 'error', '-y',
-      '-f', 'concat', '-safe', '0', '-i', 'frames.txt',
-      '-vf', 'scale=640:360:force_original_aspect_ratio=decrease:flags=lanczos,pad=640:360:(ow-iw)/2:(oh-ih)/2:color=black,fps=30',
-      '-t', expected.toFixed(6),
-      '-an', '-c:v', 'libopenh264', '-profile:v', 'high', '-b:v', '2M', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', 'recording.mp4'
-    ], directory)
+      writeFileSync(
+        join(directory, 'frames.txt'),
+        offscreenConcatPlaylist(frames, durations),
+        'utf8'
+      )
+      run(
+        [
+          '-hide_banner',
+          '-loglevel',
+          'error',
+          '-y',
+          '-f',
+          'concat',
+          '-safe',
+          '0',
+          '-i',
+          'frames.txt',
+          '-vf',
+          'scale=640:360:force_original_aspect_ratio=decrease:flags=lanczos,pad=640:360:(ow-iw)/2:(oh-ih)/2:color=black,fps=30',
+          '-t',
+          expected.toFixed(6),
+          '-an',
+          '-c:v',
+          'libopenh264',
+          '-profile:v',
+          'high',
+          '-b:v',
+          '2M',
+          '-pix_fmt',
+          'yuv420p',
+          '-movflags',
+          '+faststart',
+          '-f',
+          'mp4',
+          'recording.mp4'
+        ],
+        directory
+      )
 
-    const info = probe('recording.mp4', directory)
-    const encoded = probeDurationSeconds(info)
-    assert.match(info, /Video: h264/)
-    assert.ok(encoded >= expected - 0.05, `成片时长 ${encoded.toFixed(2)}s 短于逐帧时长合计 ${expected.toFixed(2)}s`)
-    assert.ok(encoded <= expected + 0.2, `成片时长 ${encoded.toFixed(2)}s 明显长于逐帧时长合计 ${expected.toFixed(2)}s`)
-  } finally {
-    rmSync(directory, { recursive: true, force: true })
+      const info = probe('recording.mp4', directory)
+      const encoded = probeDurationSeconds(info)
+      assert.match(info, /Video: h264/)
+      assert.ok(
+        encoded >= expected - 0.05,
+        `成片时长 ${encoded.toFixed(2)}s 短于逐帧时长合计 ${expected.toFixed(2)}s`
+      )
+      assert.ok(
+        encoded <= expected + 0.2,
+        `成片时长 ${encoded.toFixed(2)}s 明显长于逐帧时长合计 ${expected.toFixed(2)}s`
+      )
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   }
-})
+)
 
-test('encoded container matches the requested output size', { skip: ffmpegPath ? false : '内置 ffmpeg 不可用（运行 npm run fetch:ffmpeg 获取）' }, () => {
-  const directory = mkdtempSync(join(tmpdir(), 'guearth-size-'))
-  try {
-    run(['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc=size=1237x776:rate=30', '-frames:v', '6', 'frame-%08d.jpg'], directory)
-    const frames = Array.from({ length: 6 }, (_value, index) => `frame-${String(index + 1).padStart(8, '0')}.jpg`)
-    const durations = frames.map(() => 1 / 30)
-    const seconds = durations.reduce((total, value) => total + value, 0)
-    writeFileSync(join(directory, 'frames.txt'), offscreenConcatPlaylist(frames, durations), 'utf8')
-    run([
-      '-hide_banner', '-loglevel', 'error', '-y',
-      '-f', 'concat', '-safe', '0', '-i', 'frames.txt',
-      '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease:flags=lanczos,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black,fps=30',
-      '-t', seconds.toFixed(6),
-      '-an', '-c:v', 'libopenh264', '-profile:v', 'high', '-b:v', '2M', '-pix_fmt', 'yuv420p', '-f', 'mp4', 'recording.mp4'
-    ], directory)
-    const info = probe('recording.mp4', directory)
-    assert.match(info, /1920x1080/)
-  } finally {
-    rmSync(directory, { recursive: true, force: true })
+test(
+  'encoded container matches the requested output size',
+  { skip: ffmpegPath ? false : '内置 ffmpeg 不可用（运行 npm run fetch:ffmpeg 获取）' },
+  () => {
+    const directory = mkdtempSync(join(tmpdir(), 'guearth-size-'))
+    try {
+      run(
+        [
+          '-hide_banner',
+          '-loglevel',
+          'error',
+          '-y',
+          '-f',
+          'lavfi',
+          '-i',
+          'testsrc=size=1237x776:rate=30',
+          '-frames:v',
+          '6',
+          'frame-%08d.jpg'
+        ],
+        directory
+      )
+      const frames = Array.from(
+        { length: 6 },
+        (_value, index) => `frame-${String(index + 1).padStart(8, '0')}.jpg`
+      )
+      const durations = frames.map(() => 1 / 30)
+      const seconds = durations.reduce((total, value) => total + value, 0)
+      writeFileSync(
+        join(directory, 'frames.txt'),
+        offscreenConcatPlaylist(frames, durations),
+        'utf8'
+      )
+      run(
+        [
+          '-hide_banner',
+          '-loglevel',
+          'error',
+          '-y',
+          '-f',
+          'concat',
+          '-safe',
+          '0',
+          '-i',
+          'frames.txt',
+          '-vf',
+          'scale=1920:1080:force_original_aspect_ratio=decrease:flags=lanczos,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black,fps=30',
+          '-t',
+          seconds.toFixed(6),
+          '-an',
+          '-c:v',
+          'libopenh264',
+          '-profile:v',
+          'high',
+          '-b:v',
+          '2M',
+          '-pix_fmt',
+          'yuv420p',
+          '-f',
+          'mp4',
+          'recording.mp4'
+        ],
+        directory
+      )
+      const info = probe('recording.mp4', directory)
+      assert.match(info, /1920x1080/)
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   }
-})
+)

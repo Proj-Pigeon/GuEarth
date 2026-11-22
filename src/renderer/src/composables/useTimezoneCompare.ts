@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import * as Cesium from 'cesium'
 import { useDrawingStore } from '@renderer/stores/drawing'
 import { useSolarStore } from '@renderer/stores/solar'
 import { formatClock, localSolarTime } from '@renderer/thematic/solarMath'
+import * as Cesium from 'cesium'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 export interface TimezonePick {
   label: 'A' | 'B'
@@ -37,7 +37,7 @@ function longitudeText(longitude: number): string {
 }
 
 export function useTimezoneCompare(viewer: Cesium.Viewer | undefined): UseTimezoneCompareResult {
-  const activeTool = useDrawingStore((state) => state.activeTool)
+  const activeTool = useDrawingStore(state => state.activeTool)
   const [comparison, setComparison] = useState<TimezoneComparison | null>(null)
   const viewerRef = useRef<Cesium.Viewer | undefined>(viewer)
   const dataSourceRef = useRef<Cesium.CustomDataSource | undefined>(undefined)
@@ -69,71 +69,94 @@ export function useTimezoneCompare(viewer: Cesium.Viewer | undefined): UseTimezo
     clearComparison()
   }, [clearComparison])
 
-  const addPick = useCallback((pick: TimezonePick, color: string): void => {
-    const current = currentViewer()
-    const dataSource = dataSourceRef.current
-    if (!current || !dataSource) return
-    const cesiumColor = Cesium.Color.fromCssColorString(color)
-    dataSource.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(pick.longitude, pick.latitude),
-      point: {
-        pixelSize: 10,
-        color: cesiumColor,
-        outlineColor: Cesium.Color.WHITE,
-        outlineWidth: 2,
-        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY
-      },
-      label: {
-        text: new Cesium.CallbackProperty(
-          () => `${pick.label} ${longitudeText(pick.longitude)} 地方时 ${formatClock(localSolarTime(utcHoursNow(), pick.longitude))}`,
-          false
-        ),
-        font: LABEL_FONT,
-        fillColor: cesiumColor,
-        outlineColor: Cesium.Color.WHITE,
-        outlineWidth: 2,
-        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-        pixelOffset: new Cesium.Cartesian2(0, -12),
-        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY
-      }
-    })
-    dataSource.entities.add({
-      polyline: {
-        positions: Cesium.Cartesian3.fromDegreesArray([pick.longitude, 84, pick.longitude, 0, pick.longitude, -84]),
-        clampToGround: true,
-        width: 1.5,
-        material: cesiumColor.withAlpha(0.55)
-      }
-    })
-  }, [currentViewer])
-
-  const handleClick = useCallback((movement: { position: Cesium.Cartesian2 }): void => {
-    const current = currentViewer()
-    if (!current) return
-    const picked = current.scene.pickPositionSupported ? current.scene.pickPosition(movement.position) : undefined
-    const cartesian = picked ?? current.camera.pickEllipsoid(movement.position)
-    if (!cartesian) return
-    const cartographic = Cesium.Cartographic.fromCartesian(cartesian)
-    const longitude = Cesium.Math.toDegrees(cartographic.longitude)
-    const latitude = Cesium.Math.toDegrees(cartographic.latitude)
-    if (picksRef.current.length >= 2) clearComparison()
-    picksRef.current.push({ label: picksRef.current.length === 0 ? 'A' : 'B', longitude, latitude })
-    if (!dataSourceRef.current) {
-      dataSourceRef.current = new Cesium.CustomDataSource('timezone-compare')
-      current.dataSources.add(dataSourceRef.current)
-    }
-    addPick(picksRef.current[picksRef.current.length - 1], picksRef.current.length === 1 ? PICK_A_COLOR : PICK_B_COLOR)
-    if (picksRef.current.length === 2) {
-      const rawDifference = (picksRef.current[1].longitude - picksRef.current[0].longitude) / 15
-      setComparison({
-        picks: [...picksRef.current],
-        differenceHours: ((((rawDifference + 12) % 24) + 24) % 24) - 12
+  const addPick = useCallback(
+    (pick: TimezonePick, color: string): void => {
+      const current = currentViewer()
+      const dataSource = dataSourceRef.current
+      if (!current || !dataSource) return
+      const cesiumColor = Cesium.Color.fromCssColorString(color)
+      dataSource.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(pick.longitude, pick.latitude),
+        point: {
+          pixelSize: 10,
+          color: cesiumColor,
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 2,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY
+        },
+        label: {
+          text: new Cesium.CallbackProperty(
+            () =>
+              `${pick.label} ${longitudeText(pick.longitude)} 地方时 ${formatClock(localSolarTime(utcHoursNow(), pick.longitude))}`,
+            false
+          ),
+          font: LABEL_FONT,
+          fillColor: cesiumColor,
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 2,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -12),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY
+        }
       })
-    }
-  }, [addPick, clearComparison, currentViewer])
+      dataSource.entities.add({
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArray([
+            pick.longitude,
+            84,
+            pick.longitude,
+            0,
+            pick.longitude,
+            -84
+          ]),
+          clampToGround: true,
+          width: 1.5,
+          material: cesiumColor.withAlpha(0.55)
+        }
+      })
+    },
+    [currentViewer]
+  )
+
+  const handleClick = useCallback(
+    (movement: { position: Cesium.Cartesian2 }): void => {
+      const current = currentViewer()
+      if (!current) return
+      const picked = current.scene.pickPositionSupported
+        ? current.scene.pickPosition(movement.position)
+        : undefined
+      const cartesian = picked ?? current.camera.pickEllipsoid(movement.position)
+      if (!cartesian) return
+      const cartographic = Cesium.Cartographic.fromCartesian(cartesian)
+      const longitude = Cesium.Math.toDegrees(cartographic.longitude)
+      const latitude = Cesium.Math.toDegrees(cartographic.latitude)
+      if (picksRef.current.length >= 2) clearComparison()
+      picksRef.current.push({
+        label: picksRef.current.length === 0 ? 'A' : 'B',
+        longitude,
+        latitude
+      })
+      if (!dataSourceRef.current) {
+        dataSourceRef.current = new Cesium.CustomDataSource('timezone-compare')
+        current.dataSources.add(dataSourceRef.current)
+      }
+      addPick(
+        picksRef.current[picksRef.current.length - 1],
+        picksRef.current.length === 1 ? PICK_A_COLOR : PICK_B_COLOR
+      )
+      if (picksRef.current.length === 2) {
+        const rawDifference = (picksRef.current[1].longitude - picksRef.current[0].longitude) / 15
+        setComparison({
+          picks: [...picksRef.current],
+          differenceHours: ((((rawDifference + 12) % 24) + 24) % 24) - 12
+        })
+      }
+    },
+    [addPick, clearComparison, currentViewer]
+  )
 
   useEffect(() => {
     const current = viewer && !viewer.isDestroyed() ? viewer : undefined

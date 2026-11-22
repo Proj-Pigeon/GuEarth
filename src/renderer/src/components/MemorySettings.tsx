@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { App as AntdApp, Button, Input, Popconfirm, Spin, Switch, Tag } from 'antd'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
-import type { AgentMemory } from '../../../preload'
 import { useAiStore } from '@renderer/stores/ai'
+import { App as AntdApp, Button, Input, Popconfirm, Spin, Switch, Tag } from 'antd'
+import { useEffect, useMemo, useState } from 'react'
+
+import type { AgentMemory } from '../../../preload'
+
 import styles from './MemorySettings.module.css'
 
 export interface MemorySettingsProps {
@@ -19,8 +21,8 @@ function formatTime(timestamp: number): string {
 
 export function MemorySettings({ active }: MemorySettingsProps) {
   const { message } = AntdApp.useApp()
-  const memoryEnabled = useAiStore((state) => state.settings.memoryEnabled)
-  const setMemoryEnabled = useAiStore((state) => state.setMemoryEnabled)
+  const memoryEnabled = useAiStore(state => state.settings.memoryEnabled)
+  const setMemoryEnabled = useAiStore(state => state.setMemoryEnabled)
 
   const [memories, setMemories] = useState<AgentMemory[]>([])
   const [draft, setDraft] = useState('')
@@ -36,7 +38,7 @@ export function MemorySettings({ active }: MemorySettingsProps) {
     setLoading(true)
     window.guEarth.ai.memory
       .list()
-      .then((list) => {
+      .then(list => {
         if (!cancelled) setMemories(list)
       })
       .catch(() => {
@@ -99,21 +101,21 @@ export function MemorySettings({ active }: MemorySettingsProps) {
         <Switch
           checked={memoryEnabled}
           loading={switchBusy}
-          aria-label="记忆功能开关"
-          onChange={(value) => void toggleEnabled(value)}
+          aria-label='记忆功能开关'
+          onChange={value => void toggleEnabled(value)}
         />
       </div>
 
       <div className={styles.memoryAdd}>
         <Input
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="添加偏好，如：我是高中地理老师，喜欢结合案例讲解"
+          onChange={event => setDraft(event.target.value)}
+          placeholder='添加偏好，如：我是高中地理老师，喜欢结合案例讲解'
           maxLength={300}
           onPressEnter={() => void addMemory()}
         />
         <Button
-          type="primary"
+          type='primary'
           loading={adding}
           disabled={!draft.trim()}
           icon={<PlusOutlined />}
@@ -128,25 +130,28 @@ export function MemorySettings({ active }: MemorySettingsProps) {
           <div className={styles.memoryEmpty}>暂无记录</div>
         ) : (
           <ul className={styles.memoryList}>
-            {sortedMemories.map((memory) => (
+            {sortedMemories.map(memory => (
               <li key={memory.id} className={styles.memoryItem}>
                 <div className={styles.memoryItemBody}>
                   <p className={styles.memoryItemContent}>{memory.content}</p>
                   <div className={styles.memoryItemMeta}>
-                    <Tag color={memory.source === 'agent' ? 'blue' : 'green'} className={styles.memoryItemTag}>
+                    <Tag
+                      color={memory.source === 'agent' ? 'blue' : 'green'}
+                      className={styles.memoryItemTag}
+                    >
                       {memory.source === 'agent' ? '助手保存' : '手动添加'}
                     </Tag>
                     <span className={styles.memoryItemTime}>{formatTime(memory.createdAt)}</span>
                   </div>
                 </div>
                 <Popconfirm
-                  title="删除这条记忆？"
-                  okText="删除"
-                  cancelText="取消"
+                  title='删除这条记忆？'
+                  okText='删除'
+                  cancelText='取消'
                   onConfirm={() => void removeMemory(memory)}
                 >
                   <Button
-                    type="text"
+                    type='text'
                     danger
                     icon={<DeleteOutlined />}
                     aria-label={`删除记忆 ${memory.content.slice(0, 12)}`}

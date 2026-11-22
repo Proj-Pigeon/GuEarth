@@ -10,40 +10,278 @@ export interface ProvincePopulation {
 export const POPULATION_CENSUS_YEAR = '2020年第七次全国人口普查'
 
 export const provincePopulation: ProvincePopulation[] = [
-  { name: '广东省', populationWan: 12601.25, areaWanKm2: 17.97, urbanizationPct: 74.15, huSide: 'east', note: '经济发达、就业机会多,外来人口大量流入,珠三角人口高度集聚' },
-  { name: '山东省', populationWan: 10152.75, areaWanKm2: 15.79, urbanizationPct: 63.94, huSide: 'east', note: '平原广阔、农业开发历史悠久,人口大省' },
-  { name: '河南省', populationWan: 9936.55, areaWanKm2: 16.7, urbanizationPct: 55.43, huSide: 'east', note: '黄淮平原农业发达,人口大省,劳务输出多' },
-  { name: '江苏省', populationWan: 8474.8, areaWanKm2: 10.72, urbanizationPct: 73.44, huSide: 'east', note: '地势平坦、水网密布,工农业俱发达' },
-  { name: '四川省', populationWan: 8367.49, areaWanKm2: 48.6, urbanizationPct: 56.73, huSide: 'cross', note: '人口集中于成都平原,西部山地高原稀疏' },
-  { name: '河北省', populationWan: 7461.02, areaWanKm2: 18.88, urbanizationPct: 60.07, huSide: 'east', note: '华北平原面积广,环绕京津' },
-  { name: '湖南省', populationWan: 6644.49, areaWanKm2: 21.18, urbanizationPct: 58.76, huSide: 'east', note: '洞庭湖流域农业发达' },
-  { name: '浙江省', populationWan: 6456.76, areaWanKm2: 10.55, urbanizationPct: 72.17, huSide: 'east', note: '沿海经济发达,城镇密集,外来流入多' },
-  { name: '安徽省', populationWan: 6102.72, areaWanKm2: 14.01, urbanizationPct: 58.33, huSide: 'east', note: '淮河与长江沿岸平原稠密,劳务输出大省' },
-  { name: '湖北省', populationWan: 5775.26, areaWanKm2: 18.59, urbanizationPct: 62.89, huSide: 'east', note: '江汉平原富庶,武汉集聚效应强' },
-  { name: '广西壮族自治区', populationWan: 5012.68, areaWanKm2: 23.76, urbanizationPct: 54.2, huSide: 'east', note: '盆地与河谷平原聚集,喀斯特山地限制承载' },
-  { name: '云南省', populationWan: 4720.93, areaWanKm2: 39.41, urbanizationPct: 50.05, huSide: 'cross', note: '山区广布,人口集中于山间坝子' },
-  { name: '江西省', populationWan: 4518.86, areaWanKm2: 16.69, urbanizationPct: 60.44, huSide: 'east', note: '鄱阳湖平原集中' },
-  { name: '辽宁省', populationWan: 4259.14, areaWanKm2: 14.86, urbanizationPct: 72.14, huSide: 'east', note: '老工业基地,辽河平原与沿海集中' },
-  { name: '福建省', populationWan: 4154.01, areaWanKm2: 12.4, urbanizationPct: 68.75, huSide: 'east', note: '八山一水一分田,沿海平原承载大部分人口' },
-  { name: '陕西省', populationWan: 3952.9, areaWanKm2: 20.56, urbanizationPct: 62.66, huSide: 'cross', note: '关中平原集中,陕北高原与秦岭山地稀疏' },
-  { name: '贵州省', populationWan: 3856.21, areaWanKm2: 17.62, urbanizationPct: 53.15, huSide: 'east', note: '喀斯特高原山地,人口集中于坝区' },
-  { name: '山西省', populationWan: 3491.56, areaWanKm2: 15.67, urbanizationPct: 62.53, huSide: 'east', note: '黄土高原,汾河谷地集中' },
-  { name: '重庆市', populationWan: 3205.42, areaWanKm2: 8.24, urbanizationPct: 69.46, huSide: 'east', note: '丘陵山地,沿长江与槽谷分布' },
-  { name: '黑龙江省', populationWan: 3185.01, areaWanKm2: 47.3, urbanizationPct: 65.61, huSide: 'east', note: '地广人稀,松嫩平原与农场集中' },
-  { name: '新疆维吾尔自治区', populationWan: 2585.23, areaWanKm2: 166, urbanizationPct: 56.53, huSide: 'west', note: '人口沿山麓绿洲与河流呈串珠状分布' },
-  { name: '甘肃省', populationWan: 2501.98, areaWanKm2: 42.58, urbanizationPct: 52.23, huSide: 'west', note: '河西走廊绿洲与黄河谷地集中' },
-  { name: '上海市', populationWan: 2487.09, areaWanKm2: 0.63, urbanizationPct: 89.3, huSide: 'east', note: '全国经济中心,城市化率居前,密度极高' },
-  { name: '吉林省', populationWan: 2407.35, areaWanKm2: 18.74, urbanizationPct: 62.64, huSide: 'east', note: '松嫩平原集中,东部山地稀疏' },
-  { name: '内蒙古自治区', populationWan: 2404.92, areaWanKm2: 118.3, urbanizationPct: 67.48, huSide: 'west', note: '高原牧区为主,人口沿黄河与交通干线分布' },
-  { name: '北京市', populationWan: 2189.31, areaWanKm2: 1.64, urbanizationPct: 87.55, huSide: 'east', note: '首都,政治文化中心' },
-  { name: '宁夏回族自治区', populationWan: 720.27, areaWanKm2: 5.19, urbanizationPct: 64.96, huSide: 'west', note: '黄河灌区(银川平原)集中' },
-  { name: '青海省', populationWan: 592.4, areaWanKm2: 72.23, urbanizationPct: 60.08, huSide: 'west', note: '高寒缺氧,集中于河湟谷地' },
-  { name: '海南省', populationWan: 1008.12, areaWanKm2: 3.54, urbanizationPct: 60.27, huSide: 'east', note: '岛屿经济,沿海平原集中' },
-  { name: '天津市', populationWan: 1386.6, areaWanKm2: 1.19, urbanizationPct: 84.7, huSide: 'east', note: '北方港口城市,海河平原' },
-  { name: '西藏自治区', populationWan: 364.81, areaWanKm2: 122.8, urbanizationPct: 35.73, huSide: 'west', note: '高寒缺氧,集中于雅鲁藏布江谷地' },
-  { name: '香港特别行政区', populationWan: 747.42, areaWanKm2: 0.11, urbanizationPct: null, huSide: 'east', note: '城市化率近100%,高度密集' },
-  { name: '台湾省', populationWan: 2356.12, areaWanKm2: 3.6, urbanizationPct: null, huSide: 'east', note: '西部平原密集,东部山地稀疏' },
-  { name: '澳门特别行政区', populationWan: 68.32, areaWanKm2: 0.0033, urbanizationPct: null, huSide: 'east', note: '全球人口密度最高的地区之一' }
+  {
+    name: '广东省',
+    populationWan: 12601.25,
+    areaWanKm2: 17.97,
+    urbanizationPct: 74.15,
+    huSide: 'east',
+    note: '经济发达、就业机会多,外来人口大量流入,珠三角人口高度集聚'
+  },
+  {
+    name: '山东省',
+    populationWan: 10152.75,
+    areaWanKm2: 15.79,
+    urbanizationPct: 63.94,
+    huSide: 'east',
+    note: '平原广阔、农业开发历史悠久,人口大省'
+  },
+  {
+    name: '河南省',
+    populationWan: 9936.55,
+    areaWanKm2: 16.7,
+    urbanizationPct: 55.43,
+    huSide: 'east',
+    note: '黄淮平原农业发达,人口大省,劳务输出多'
+  },
+  {
+    name: '江苏省',
+    populationWan: 8474.8,
+    areaWanKm2: 10.72,
+    urbanizationPct: 73.44,
+    huSide: 'east',
+    note: '地势平坦、水网密布,工农业俱发达'
+  },
+  {
+    name: '四川省',
+    populationWan: 8367.49,
+    areaWanKm2: 48.6,
+    urbanizationPct: 56.73,
+    huSide: 'cross',
+    note: '人口集中于成都平原,西部山地高原稀疏'
+  },
+  {
+    name: '河北省',
+    populationWan: 7461.02,
+    areaWanKm2: 18.88,
+    urbanizationPct: 60.07,
+    huSide: 'east',
+    note: '华北平原面积广,环绕京津'
+  },
+  {
+    name: '湖南省',
+    populationWan: 6644.49,
+    areaWanKm2: 21.18,
+    urbanizationPct: 58.76,
+    huSide: 'east',
+    note: '洞庭湖流域农业发达'
+  },
+  {
+    name: '浙江省',
+    populationWan: 6456.76,
+    areaWanKm2: 10.55,
+    urbanizationPct: 72.17,
+    huSide: 'east',
+    note: '沿海经济发达,城镇密集,外来流入多'
+  },
+  {
+    name: '安徽省',
+    populationWan: 6102.72,
+    areaWanKm2: 14.01,
+    urbanizationPct: 58.33,
+    huSide: 'east',
+    note: '淮河与长江沿岸平原稠密,劳务输出大省'
+  },
+  {
+    name: '湖北省',
+    populationWan: 5775.26,
+    areaWanKm2: 18.59,
+    urbanizationPct: 62.89,
+    huSide: 'east',
+    note: '江汉平原富庶,武汉集聚效应强'
+  },
+  {
+    name: '广西壮族自治区',
+    populationWan: 5012.68,
+    areaWanKm2: 23.76,
+    urbanizationPct: 54.2,
+    huSide: 'east',
+    note: '盆地与河谷平原聚集,喀斯特山地限制承载'
+  },
+  {
+    name: '云南省',
+    populationWan: 4720.93,
+    areaWanKm2: 39.41,
+    urbanizationPct: 50.05,
+    huSide: 'cross',
+    note: '山区广布,人口集中于山间坝子'
+  },
+  {
+    name: '江西省',
+    populationWan: 4518.86,
+    areaWanKm2: 16.69,
+    urbanizationPct: 60.44,
+    huSide: 'east',
+    note: '鄱阳湖平原集中'
+  },
+  {
+    name: '辽宁省',
+    populationWan: 4259.14,
+    areaWanKm2: 14.86,
+    urbanizationPct: 72.14,
+    huSide: 'east',
+    note: '老工业基地,辽河平原与沿海集中'
+  },
+  {
+    name: '福建省',
+    populationWan: 4154.01,
+    areaWanKm2: 12.4,
+    urbanizationPct: 68.75,
+    huSide: 'east',
+    note: '八山一水一分田,沿海平原承载大部分人口'
+  },
+  {
+    name: '陕西省',
+    populationWan: 3952.9,
+    areaWanKm2: 20.56,
+    urbanizationPct: 62.66,
+    huSide: 'cross',
+    note: '关中平原集中,陕北高原与秦岭山地稀疏'
+  },
+  {
+    name: '贵州省',
+    populationWan: 3856.21,
+    areaWanKm2: 17.62,
+    urbanizationPct: 53.15,
+    huSide: 'east',
+    note: '喀斯特高原山地,人口集中于坝区'
+  },
+  {
+    name: '山西省',
+    populationWan: 3491.56,
+    areaWanKm2: 15.67,
+    urbanizationPct: 62.53,
+    huSide: 'east',
+    note: '黄土高原,汾河谷地集中'
+  },
+  {
+    name: '重庆市',
+    populationWan: 3205.42,
+    areaWanKm2: 8.24,
+    urbanizationPct: 69.46,
+    huSide: 'east',
+    note: '丘陵山地,沿长江与槽谷分布'
+  },
+  {
+    name: '黑龙江省',
+    populationWan: 3185.01,
+    areaWanKm2: 47.3,
+    urbanizationPct: 65.61,
+    huSide: 'east',
+    note: '地广人稀,松嫩平原与农场集中'
+  },
+  {
+    name: '新疆维吾尔自治区',
+    populationWan: 2585.23,
+    areaWanKm2: 166,
+    urbanizationPct: 56.53,
+    huSide: 'west',
+    note: '人口沿山麓绿洲与河流呈串珠状分布'
+  },
+  {
+    name: '甘肃省',
+    populationWan: 2501.98,
+    areaWanKm2: 42.58,
+    urbanizationPct: 52.23,
+    huSide: 'west',
+    note: '河西走廊绿洲与黄河谷地集中'
+  },
+  {
+    name: '上海市',
+    populationWan: 2487.09,
+    areaWanKm2: 0.63,
+    urbanizationPct: 89.3,
+    huSide: 'east',
+    note: '全国经济中心,城市化率居前,密度极高'
+  },
+  {
+    name: '吉林省',
+    populationWan: 2407.35,
+    areaWanKm2: 18.74,
+    urbanizationPct: 62.64,
+    huSide: 'east',
+    note: '松嫩平原集中,东部山地稀疏'
+  },
+  {
+    name: '内蒙古自治区',
+    populationWan: 2404.92,
+    areaWanKm2: 118.3,
+    urbanizationPct: 67.48,
+    huSide: 'west',
+    note: '高原牧区为主,人口沿黄河与交通干线分布'
+  },
+  {
+    name: '北京市',
+    populationWan: 2189.31,
+    areaWanKm2: 1.64,
+    urbanizationPct: 87.55,
+    huSide: 'east',
+    note: '首都,政治文化中心'
+  },
+  {
+    name: '宁夏回族自治区',
+    populationWan: 720.27,
+    areaWanKm2: 5.19,
+    urbanizationPct: 64.96,
+    huSide: 'west',
+    note: '黄河灌区(银川平原)集中'
+  },
+  {
+    name: '青海省',
+    populationWan: 592.4,
+    areaWanKm2: 72.23,
+    urbanizationPct: 60.08,
+    huSide: 'west',
+    note: '高寒缺氧,集中于河湟谷地'
+  },
+  {
+    name: '海南省',
+    populationWan: 1008.12,
+    areaWanKm2: 3.54,
+    urbanizationPct: 60.27,
+    huSide: 'east',
+    note: '岛屿经济,沿海平原集中'
+  },
+  {
+    name: '天津市',
+    populationWan: 1386.6,
+    areaWanKm2: 1.19,
+    urbanizationPct: 84.7,
+    huSide: 'east',
+    note: '北方港口城市,海河平原'
+  },
+  {
+    name: '西藏自治区',
+    populationWan: 364.81,
+    areaWanKm2: 122.8,
+    urbanizationPct: 35.73,
+    huSide: 'west',
+    note: '高寒缺氧,集中于雅鲁藏布江谷地'
+  },
+  {
+    name: '香港特别行政区',
+    populationWan: 747.42,
+    areaWanKm2: 0.11,
+    urbanizationPct: null,
+    huSide: 'east',
+    note: '城市化率近100%,高度密集'
+  },
+  {
+    name: '台湾省',
+    populationWan: 2356.12,
+    areaWanKm2: 3.6,
+    urbanizationPct: null,
+    huSide: 'east',
+    note: '西部平原密集,东部山地稀疏'
+  },
+  {
+    name: '澳门特别行政区',
+    populationWan: 68.32,
+    areaWanKm2: 0.0033,
+    urbanizationPct: null,
+    huSide: 'east',
+    note: '全球人口密度最高的地区之一'
+  }
 ]
 
 export function densityOf(province: ProvincePopulation): number {
@@ -75,12 +313,12 @@ export function densityColor(density: number): string {
 
 function rankBy(name: string, value: (province: ProvincePopulation) => number): number {
   const sorted = [...provincePopulation].sort((a, b) => value(b) - value(a))
-  const index = sorted.findIndex((province) => province.name === name)
+  const index = sorted.findIndex(province => province.name === name)
   return index + 1
 }
 
 export function populationRank(name: string): number {
-  return rankBy(name, (province) => province.populationWan)
+  return rankBy(name, province => province.populationWan)
 }
 
 export function densityRank(name: string): number {
@@ -94,10 +332,11 @@ export function huSideLabelOf(huSide: ProvincePopulation['huSide']): string {
 }
 
 export function provinceSummary(name: string): string | null {
-  const province = provincePopulation.find((item) => item.name === name)
+  const province = provincePopulation.find(item => item.name === name)
   if (!province) return null
   const density = Math.round(densityOf(province))
-  const urbanization = province.urbanizationPct === null ? '—' : `${province.urbanizationPct.toFixed(1)}%`
+  const urbanization =
+    province.urbanizationPct === null ? '—' : `${province.urbanizationPct.toFixed(1)}%`
   const side = huSideLabelOf(province.huSide)
   return `人口 ${formatWan(province.populationWan)} · 陆域面积 ${province.areaWanKm2} 万km² · 人口密度约 ${density} 人/km²(全国第 ${densityRank(province.name)}) · 城镇化率 ${urbanization} · ${side} · ${province.note}`
 }
@@ -106,11 +345,35 @@ export function formatWan(value: number): string {
   return value >= 10000 ? `${(value / 10000).toFixed(2)} 亿` : `${Math.round(value * 100) / 100} 万`
 }
 
-export const pyramidAgeGroups = ['0-4', '5-9', '10-14', '15-19', '20-24', '25-29', '30-34', '35-39', '40-44', '45-49', '50-54', '55-59', '60-64', '65-69', '70-74', '75-79', '80+'] as const
+export const pyramidAgeGroups = [
+  '0-4',
+  '5-9',
+  '10-14',
+  '15-19',
+  '20-24',
+  '25-29',
+  '30-34',
+  '35-39',
+  '40-44',
+  '45-49',
+  '50-54',
+  '55-59',
+  '60-64',
+  '65-69',
+  '70-74',
+  '75-79',
+  '80+'
+] as const
 
 export const pyramid2020 = {
-  male: [4096.93, 4801.75, 4560.68, 3905.33, 3967.6, 4816.23, 6387.18, 5093.2, 4763.27, 5819.17, 6110.55, 5081.6, 3687.11, 3633.79, 2416.27, 1475.24, 1525.77],
-  female: [3691.46, 4222.66, 3964.92, 3363.08, 3526.57, 4368.51, 6027.34, 4808.09, 4532.26, 5603.32, 6005.88, 5058.48, 3651.18, 3766.76, 2542.73, 1648.64, 2054.36]
+  male: [
+    4096.93, 4801.75, 4560.68, 3905.33, 3967.6, 4816.23, 6387.18, 5093.2, 4763.27, 5819.17, 6110.55,
+    5081.6, 3687.11, 3633.79, 2416.27, 1475.24, 1525.77
+  ],
+  female: [
+    3691.46, 4222.66, 3964.92, 3363.08, 3526.57, 4368.51, 6027.34, 4808.09, 4532.26, 5603.32,
+    6005.88, 5058.48, 3651.18, 3766.76, 2542.73, 1648.64, 2054.36
+  ]
 }
 
 export const pyramidFacts = [
@@ -148,9 +411,24 @@ export const nationalPopulation = [
 ]
 
 export const urbanizationSeries: Array<[number, number]> = [
-  [1949, 10.64], [1955, 13.48], [1960, 19.75], [1965, 17.98], [1970, 17.38], [1975, 17.34],
-  [1978, 17.92], [1980, 19.39], [1982, 21.13], [1985, 23.71], [1990, 26.41], [1995, 29.04],
-  [2000, 36.22], [2005, 42.99], [2010, 49.95], [2015, 57.33], [2020, 63.89], [2023, 66.16]
+  [1949, 10.64],
+  [1955, 13.48],
+  [1960, 19.75],
+  [1965, 17.98],
+  [1970, 17.38],
+  [1975, 17.34],
+  [1978, 17.92],
+  [1980, 19.39],
+  [1982, 21.13],
+  [1985, 23.71],
+  [1990, 26.41],
+  [1995, 29.04],
+  [2000, 36.22],
+  [2005, 42.99],
+  [2010, 49.95],
+  [2015, 57.33],
+  [2020, 63.89],
+  [2023, 66.16]
 ]
 
 export const urbanizationFacts = [
@@ -197,20 +475,196 @@ export interface MigrationFlow {
 }
 
 export const migrationFlows: MigrationFlow[] = [
-  { fromName: '湖南', from: [112.94, 28.23], toName: '广东', to: [113.26, 23.13], path: [[112.94, 28.23], [113.55, 26.55], [113.92, 24.85], [113.26, 23.13]], weight: 'major' },
-  { fromName: '广西', from: [108.37, 22.82], toName: '广东', to: [113.26, 23.13], path: [[108.37, 22.82], [109.72, 24.55], [111.42, 24.42], [113.26, 23.13]], weight: 'major' },
-  { fromName: '湖北', from: [114.31, 30.6], toName: '广东', to: [113.26, 23.13], path: [[114.31, 30.6], [114.02, 28.25], [114.38, 25.72], [113.26, 23.13]], weight: 'major' },
-  { fromName: '河南', from: [113.63, 34.75], toName: '广东', to: [113.26, 23.13], path: [[113.63, 34.75], [114.72, 31.95], [115.78, 28.82], [114.72, 25.2], [113.26, 23.13]], weight: 'minor' },
-  { fromName: '江西', from: [115.86, 28.68], toName: '广东', to: [113.26, 23.13], path: [[115.86, 28.68], [115.42, 27.05], [114.88, 25.18], [113.26, 23.13]], weight: 'minor' },
-  { fromName: '四川', from: [104.07, 30.57], toName: '广东', to: [113.26, 23.13], path: [[104.07, 30.57], [106.62, 29.1], [109.2, 26.82], [111.28, 24.58], [113.26, 23.13]], weight: 'minor' },
-  { fromName: '安徽', from: [117.28, 31.86], toName: '江苏', to: [118.8, 32.06], path: [[117.28, 31.86], [117.82, 31.72], [118.8, 32.06]], weight: 'major' },
-  { fromName: '安徽', from: [117.28, 31.86], toName: '上海', to: [121.47, 31.23], path: [[117.28, 31.86], [118.62, 31.5], [120.02, 31.48], [121.47, 31.23]], weight: 'major' },
-  { fromName: '河南', from: [113.63, 34.75], toName: '江苏', to: [118.8, 32.06], path: [[113.63, 34.75], [115.08, 34.18], [116.72, 32.8], [118.8, 32.06]], weight: 'minor' },
-  { fromName: '贵州', from: [106.63, 26.65], toName: '浙江', to: [120.15, 30.27], path: [[106.63, 26.65], [108.62, 27.18], [112.88, 27.62], [116.35, 29.22], [120.15, 30.27]], weight: 'minor' },
-  { fromName: '江西', from: [115.86, 28.68], toName: '浙江', to: [120.15, 30.27], path: [[115.86, 28.68], [116.58, 28.92], [118.05, 29.18], [120.15, 30.27]], weight: 'minor' },
-  { fromName: '四川', from: [104.07, 30.57], toName: '浙江', to: [120.15, 30.27], path: [[104.07, 30.57], [106.42, 31.18], [110.52, 29.68], [115.02, 30.02], [120.15, 30.27]], weight: 'minor' },
-  { fromName: '甘肃', from: [103.83, 36.06], toName: '新疆', to: [87.62, 43.79], path: [[103.83, 36.06], [99.52, 38.72], [94.48, 41.02], [90.52, 42.76], [87.62, 43.79]], weight: 'minor', note: '劳务与建设兵团流动' },
-  { fromName: '黑龙江', from: [126.53, 45.8], toName: '海南', to: [110.2, 20.04], path: [[126.53, 45.8], [124.12, 39.52], [120.48, 33.5], [114.82, 27.02], [111.18, 23.02], [110.2, 20.04]], weight: 'minor', note: '候鸟式养老流动' }
+  {
+    fromName: '湖南',
+    from: [112.94, 28.23],
+    toName: '广东',
+    to: [113.26, 23.13],
+    path: [
+      [112.94, 28.23],
+      [113.55, 26.55],
+      [113.92, 24.85],
+      [113.26, 23.13]
+    ],
+    weight: 'major'
+  },
+  {
+    fromName: '广西',
+    from: [108.37, 22.82],
+    toName: '广东',
+    to: [113.26, 23.13],
+    path: [
+      [108.37, 22.82],
+      [109.72, 24.55],
+      [111.42, 24.42],
+      [113.26, 23.13]
+    ],
+    weight: 'major'
+  },
+  {
+    fromName: '湖北',
+    from: [114.31, 30.6],
+    toName: '广东',
+    to: [113.26, 23.13],
+    path: [
+      [114.31, 30.6],
+      [114.02, 28.25],
+      [114.38, 25.72],
+      [113.26, 23.13]
+    ],
+    weight: 'major'
+  },
+  {
+    fromName: '河南',
+    from: [113.63, 34.75],
+    toName: '广东',
+    to: [113.26, 23.13],
+    path: [
+      [113.63, 34.75],
+      [114.72, 31.95],
+      [115.78, 28.82],
+      [114.72, 25.2],
+      [113.26, 23.13]
+    ],
+    weight: 'minor'
+  },
+  {
+    fromName: '江西',
+    from: [115.86, 28.68],
+    toName: '广东',
+    to: [113.26, 23.13],
+    path: [
+      [115.86, 28.68],
+      [115.42, 27.05],
+      [114.88, 25.18],
+      [113.26, 23.13]
+    ],
+    weight: 'minor'
+  },
+  {
+    fromName: '四川',
+    from: [104.07, 30.57],
+    toName: '广东',
+    to: [113.26, 23.13],
+    path: [
+      [104.07, 30.57],
+      [106.62, 29.1],
+      [109.2, 26.82],
+      [111.28, 24.58],
+      [113.26, 23.13]
+    ],
+    weight: 'minor'
+  },
+  {
+    fromName: '安徽',
+    from: [117.28, 31.86],
+    toName: '江苏',
+    to: [118.8, 32.06],
+    path: [
+      [117.28, 31.86],
+      [117.82, 31.72],
+      [118.8, 32.06]
+    ],
+    weight: 'major'
+  },
+  {
+    fromName: '安徽',
+    from: [117.28, 31.86],
+    toName: '上海',
+    to: [121.47, 31.23],
+    path: [
+      [117.28, 31.86],
+      [118.62, 31.5],
+      [120.02, 31.48],
+      [121.47, 31.23]
+    ],
+    weight: 'major'
+  },
+  {
+    fromName: '河南',
+    from: [113.63, 34.75],
+    toName: '江苏',
+    to: [118.8, 32.06],
+    path: [
+      [113.63, 34.75],
+      [115.08, 34.18],
+      [116.72, 32.8],
+      [118.8, 32.06]
+    ],
+    weight: 'minor'
+  },
+  {
+    fromName: '贵州',
+    from: [106.63, 26.65],
+    toName: '浙江',
+    to: [120.15, 30.27],
+    path: [
+      [106.63, 26.65],
+      [108.62, 27.18],
+      [112.88, 27.62],
+      [116.35, 29.22],
+      [120.15, 30.27]
+    ],
+    weight: 'minor'
+  },
+  {
+    fromName: '江西',
+    from: [115.86, 28.68],
+    toName: '浙江',
+    to: [120.15, 30.27],
+    path: [
+      [115.86, 28.68],
+      [116.58, 28.92],
+      [118.05, 29.18],
+      [120.15, 30.27]
+    ],
+    weight: 'minor'
+  },
+  {
+    fromName: '四川',
+    from: [104.07, 30.57],
+    toName: '浙江',
+    to: [120.15, 30.27],
+    path: [
+      [104.07, 30.57],
+      [106.42, 31.18],
+      [110.52, 29.68],
+      [115.02, 30.02],
+      [120.15, 30.27]
+    ],
+    weight: 'minor'
+  },
+  {
+    fromName: '甘肃',
+    from: [103.83, 36.06],
+    toName: '新疆',
+    to: [87.62, 43.79],
+    path: [
+      [103.83, 36.06],
+      [99.52, 38.72],
+      [94.48, 41.02],
+      [90.52, 42.76],
+      [87.62, 43.79]
+    ],
+    weight: 'minor',
+    note: '劳务与建设兵团流动'
+  },
+  {
+    fromName: '黑龙江',
+    from: [126.53, 45.8],
+    toName: '海南',
+    to: [110.2, 20.04],
+    path: [
+      [126.53, 45.8],
+      [124.12, 39.52],
+      [120.48, 33.5],
+      [114.82, 27.02],
+      [111.18, 23.02],
+      [110.2, 20.04]
+    ],
+    weight: 'minor',
+    note: '候鸟式养老流动'
+  }
 ]
 
 export const migrationFacts = [
@@ -220,7 +674,10 @@ export const migrationFacts = [
   '迁移主线:由中西部内陆流向东部与南部沿海,由乡村流向城镇,由欠发达地区流向发达地区'
 ]
 
-export function smoothMigrationPath(points: Array<[number, number]>, samplesPerSegment = 12): Array<[number, number]> {
+export function smoothMigrationPath(
+  points: Array<[number, number]>,
+  samplesPerSegment = 12
+): Array<[number, number]> {
   if (points.length < 3) return [...points]
   const padded = [points[0], ...points, points[points.length - 1]]
   const result: Array<[number, number]> = []
@@ -234,8 +691,16 @@ export function smoothMigrationPath(points: Array<[number, number]>, samplesPerS
       const t2 = t * t
       const t3 = t2 * t
       result.push([
-        0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
-        0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)
+        0.5 *
+          (2 * p1[0] +
+            (-p0[0] + p2[0]) * t +
+            (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+            (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+        0.5 *
+          (2 * p1[1] +
+            (-p0[1] + p2[1]) * t +
+            (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+            (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)
       ])
     }
   }
@@ -243,7 +708,10 @@ export function smoothMigrationPath(points: Array<[number, number]>, samplesPerS
   return result
 }
 
-export function fanMigrationEndpoints(flows: MigrationFlow[], stepDeg = 0.9): Map<MigrationFlow, [number, number]> {
+export function fanMigrationEndpoints(
+  flows: MigrationFlow[],
+  stepDeg = 0.9
+): Map<MigrationFlow, [number, number]> {
   const groups = new Map<string, MigrationFlow[]>()
   for (const flow of flows) {
     const group = groups.get(flow.toName) ?? []
@@ -266,7 +734,10 @@ export function fanMigrationEndpoints(flows: MigrationFlow[], stepDeg = 0.9): Ma
       const dy = tipLat - prevLat
       const norm = Math.hypot(dx, dy) || 1
       const offset = (index - (sorted.length - 1) / 2) * stepDeg
-      endpoints.set(flow, [tipLon + ((-dy / norm) * offset) / cosLat, tipLat + (dx / norm) * offset])
+      endpoints.set(flow, [
+        tipLon + ((-dy / norm) * offset) / cosLat,
+        tipLat + (dx / norm) * offset
+      ])
     })
   }
   return endpoints

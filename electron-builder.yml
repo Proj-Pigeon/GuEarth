@@ -62,8 +62,8 @@ linux:
   artifactName: ${name}-${version}-${arch}.${ext}
   desktop:
     entry:
-      "Name[zh_CN]": 咕咕地球
-      "Comment[zh_CN]": 面向地理教学的三维数字地球
+      'Name[zh_CN]': 咕咕地球
+      'Comment[zh_CN]': 面向地理教学的三维数字地球
       Keywords: geography;education;globe;地理;教学
   target:
     - target: AppImage

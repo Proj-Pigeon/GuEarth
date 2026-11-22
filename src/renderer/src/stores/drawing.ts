@@ -1,8 +1,9 @@
+import { referencedShapeIds } from '@renderer/lib/annotationReferences'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import type { AnnotationDocument, AnnotationEntry } from '../../../preload'
-import { referencedShapeIds } from '@renderer/lib/annotationReferences'
+
 import { logger } from '../../../common/logger'
+import type { AnnotationDocument, AnnotationEntry } from '../../../preload'
 import { useFailureStore } from './failure'
 
 export type ShapeKind = 'point' | 'polyline' | 'polygon' | 'arrow' | 'text'
@@ -24,7 +25,10 @@ export interface GeoPosition {
   height: number
 }
 
-export interface DrawnShape extends Omit<import('../../../preload').StoredShape, 'kind' | 'positions'> {
+export interface DrawnShape extends Omit<
+  import('../../../preload').StoredShape,
+  'kind' | 'positions'
+> {
   kind: ShapeKind
   positions: GeoPosition[]
 }
@@ -45,14 +49,23 @@ export interface DrawingActions {
   addTransientShape: (shape: DrawnShape) => void
   updateShape: (
     id: string,
-    changes: Partial<Pick<DrawnShape, 'annotation' | 'color' | 'textColor' | 'fontFamily' | 'fontSize' | 'textFrame' | 'lineWidth'>>
+    changes: Partial<
+      Pick<
+        DrawnShape,
+        'annotation' | 'color' | 'textColor' | 'fontFamily' | 'fontSize' | 'textFrame' | 'lineWidth'
+      >
+    >
   ) => void
   removeShape: (id: string) => void
   clearAll: () => void
   addFolder: (name: string, parentId: string | null) => string | null
   renameFolder: (id: string, name: string) => boolean
   removeFolder: (id: string) => void
-  moveEntry: (id: string, targetId: string | null, placement: 'inside' | 'before' | 'after') => boolean
+  moveEntry: (
+    id: string,
+    targetId: string | null,
+    placement: 'inside' | 'before' | 'after'
+  ) => boolean
 }
 
 export type DrawingStore = DrawingState & DrawingActions
@@ -88,11 +101,14 @@ function subtreeDepth(entry: AnnotationEntry): number {
 }
 
 function containsEntry(entry: AnnotationEntry, id: string): boolean {
-  return entry.id === id || (entry.type === 'folder' && entry.children.some((child) => containsEntry(child, id)))
+  return (
+    entry.id === id ||
+    (entry.type === 'folder' && entry.children.some(child => containsEntry(child, id)))
+  )
 }
 
 function removeEntryById(entries: AnnotationEntry[], id: string): AnnotationEntry[] {
-  return entries.flatMap<AnnotationEntry>((entry) => {
+  return entries.flatMap<AnnotationEntry>(entry => {
     if (entry.id === id) return []
     if (entry.type === 'folder') {
       return [{ ...entry, children: removeEntryById(entry.children, id) }]
@@ -101,17 +117,25 @@ function removeEntryById(entries: AnnotationEntry[], id: string): AnnotationEntr
   })
 }
 
-function appendToFolder(entries: AnnotationEntry[], parentId: string | null, item: AnnotationEntry): AnnotationEntry[] {
+function appendToFolder(
+  entries: AnnotationEntry[],
+  parentId: string | null,
+  item: AnnotationEntry
+): AnnotationEntry[] {
   if (!parentId) return [...entries, item]
-  return entries.map((entry) => {
+  return entries.map(entry => {
     if (entry.type !== 'folder') return entry
     if (entry.id === parentId) return { ...entry, children: [...entry.children, item] }
     return { ...entry, children: appendToFolder(entry.children, parentId, item) }
   })
 }
 
-function renameFolderEntry(entries: AnnotationEntry[], id: string, name: string): AnnotationEntry[] {
-  return entries.map((entry) => {
+function renameFolderEntry(
+  entries: AnnotationEntry[],
+  id: string,
+  name: string
+): AnnotationEntry[] {
+  return entries.map(entry => {
     if (entry.type !== 'folder') return entry
     if (entry.id === id) return { ...entry, name }
     return { ...entry, children: renameFolderEntry(entry.children, id, name) }
@@ -119,9 +143,10 @@ function renameFolderEntry(entries: AnnotationEntry[], id: string, name: string)
 }
 
 function unwrapFolderEntry(entries: AnnotationEntry[], id: string): AnnotationEntry[] {
-  return entries.flatMap<AnnotationEntry>((entry) => {
+  return entries.flatMap<AnnotationEntry>(entry => {
     if (entry.id === id && entry.type === 'folder') return entry.children
-    if (entry.type === 'folder') return [{ ...entry, children: unwrapFolderEntry(entry.children, id) }]
+    if (entry.type === 'folder')
+      return [{ ...entry, children: unwrapFolderEntry(entry.children, id) }]
     return [entry]
   })
 }
@@ -132,12 +157,14 @@ function insertRelativeToEntry(
   placement: 'before' | 'after',
   item: AnnotationEntry
 ): AnnotationEntry[] {
-  return entries.flatMap<AnnotationEntry>((entry) => {
+  return entries.flatMap<AnnotationEntry>(entry => {
     if (entry.id === targetId) {
       return placement === 'before' ? [item, entry] : [entry, item]
     }
     if (entry.type === 'folder') {
-      return [{ ...entry, children: insertRelativeToEntry(entry.children, targetId, placement, item) }]
+      return [
+        { ...entry, children: insertRelativeToEntry(entry.children, targetId, placement, item) }
+      ]
     }
     return [entry]
   })
@@ -166,21 +193,30 @@ export const useDrawingStore = create<DrawingStore>()(
         saveTimer = undefined
         const state = get()
         const persistedIds = referencedShapeIds(state.entries)
-        const persisted = state.shapes.filter((shape) => persistedIds.has(shape.id))
-        const dropped = state.shapes.filter((shape) => !persistedIds.has(shape.id) && !transientShapeIds.has(shape.id))
+        const persisted = state.shapes.filter(shape => persistedIds.has(shape.id))
+        const dropped = state.shapes.filter(
+          shape => !persistedIds.has(shape.id) && !transientShapeIds.has(shape.id)
+        )
         if (dropped.length) {
-          logger.warn('annotations', `${dropped.length} 个标注图形没有目录引用，本次保存已跳过`, dropped.map((shape) => shape.id))
+          logger.warn(
+            'annotations',
+            `${dropped.length} 个标注图形没有目录引用，本次保存已跳过`,
+            dropped.map(shape => shape.id)
+          )
         }
         const snapshot: AnnotationDocument = {
           shapes: JSON.parse(JSON.stringify(persisted)) as DrawnShape[],
           entries: JSON.parse(JSON.stringify(state.entries)) as AnnotationEntry[]
         }
-        pendingSave = pendingSave.catch(() => undefined).then(async () => {
-          await window.guEarth.annotations.save(snapshot)
-          set({ saveError: '' })
-        }).catch(() => {
-          set({ saveError: '标注保存失败，请重试' })
-        })
+        pendingSave = pendingSave
+          .catch(() => undefined)
+          .then(async () => {
+            await window.guEarth.annotations.save(snapshot)
+            set({ saveError: '' })
+          })
+          .catch(() => {
+            set({ saveError: '标注保存失败，请重试' })
+          })
       }, 120)
     }
 
@@ -196,7 +232,11 @@ export const useDrawingStore = create<DrawingStore>()(
           })
           useFailureStore.getState().clearFailure('annotations')
         } catch {
-          useFailureStore.getState().reportFailure({ scope: 'annotations', message: '标注读取失败，暂时无法显示已保存的标注', retryable: true })
+          useFailureStore.getState().reportFailure({
+            scope: 'annotations',
+            message: '标注读取失败，暂时无法显示已保存的标注',
+            retryable: true
+          })
         }
       },
       setActiveTool(tool: DrawTool | null): void {
@@ -206,7 +246,7 @@ export const useDrawingStore = create<DrawingStore>()(
         set({ selectedShapeId: id })
       },
       addShape(shape: DrawnShape): void {
-        set((state) => ({
+        set(state => ({
           shapes: [...state.shapes, shape],
           entries: [...state.entries, { type: 'shape', id: shape.id }]
         }))
@@ -214,25 +254,36 @@ export const useDrawingStore = create<DrawingStore>()(
       },
       addTransientShape(shape: DrawnShape): void {
         transientShapeIds.add(shape.id)
-        set((state) => ({
+        set(state => ({
           shapes: [...state.shapes, shape]
         }))
       },
       updateShape(
         id: string,
-        changes: Partial<Pick<DrawnShape, 'annotation' | 'color' | 'textColor' | 'fontFamily' | 'fontSize' | 'textFrame' | 'lineWidth'>>
+        changes: Partial<
+          Pick<
+            DrawnShape,
+            | 'annotation'
+            | 'color'
+            | 'textColor'
+            | 'fontFamily'
+            | 'fontSize'
+            | 'textFrame'
+            | 'lineWidth'
+          >
+        >
       ): void {
-        if (!get().shapes.some((item) => item.id === id)) return
-        set((state) => ({
-          shapes: state.shapes.map((item) => (item.id === id ? { ...item, ...changes } : item))
+        if (!get().shapes.some(item => item.id === id)) return
+        set(state => ({
+          shapes: state.shapes.map(item => (item.id === id ? { ...item, ...changes } : item))
         }))
         persist()
       },
       removeShape(id: string): void {
-        if (!get().shapes.some((item) => item.id === id)) return
+        if (!get().shapes.some(item => item.id === id)) return
         const transient = transientShapeIds.delete(id)
-        set((state) => ({
-          shapes: state.shapes.filter((item) => item.id !== id),
+        set(state => ({
+          shapes: state.shapes.filter(item => item.id !== id),
           entries: removeEntryById(state.entries, id),
           selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId
         }))
@@ -253,10 +304,14 @@ export const useDrawingStore = create<DrawingStore>()(
         if (!trimmed) return null
         const currentEntries = get().entries
         const parent = parentId ? findEntry(currentEntries, parentId) : undefined
-        if (parentId && (!parent || parent.type !== 'folder' || folderDepth(currentEntries, parentId) >= 5)) return null
+        if (
+          parentId &&
+          (!parent || parent.type !== 'folder' || folderDepth(currentEntries, parentId) >= 5)
+        )
+          return null
         const id = crypto.randomUUID()
         const folder: AnnotationEntry = { type: 'folder', id, name: trimmed, children: [] }
-        set((state) => ({
+        set(state => ({
           entries: appendToFolder(state.entries, parentId, folder)
         }))
         persist()
@@ -266,7 +321,7 @@ export const useDrawingStore = create<DrawingStore>()(
         const entry = findEntry(get().entries, id)
         const trimmed = name.trim().slice(0, 80)
         if (!entry || entry.type !== 'folder' || !trimmed) return false
-        set((state) => ({
+        set(state => ({
           entries: renameFolderEntry(state.entries, id, trimmed)
         }))
         persist()
@@ -275,12 +330,16 @@ export const useDrawingStore = create<DrawingStore>()(
       removeFolder(id: string): void {
         const folder = findEntry(get().entries, id)
         if (!folder || folder.type !== 'folder') return
-        set((state) => ({
+        set(state => ({
           entries: unwrapFolderEntry(state.entries, id)
         }))
         persist()
       },
-      moveEntry(id: string, targetId: string | null, placement: 'inside' | 'before' | 'after'): boolean {
+      moveEntry(
+        id: string,
+        targetId: string | null,
+        placement: 'inside' | 'before' | 'after'
+      ): boolean {
         const currentEntries = get().entries
         const source = findEntry(currentEntries, id)
         if (!source || (targetId && containsEntry(source, targetId))) return false

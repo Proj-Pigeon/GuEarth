@@ -1,9 +1,23 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+
 import {
-  SEA_LEVEL_SCENARIOS, buildLandMask, cacheKeyOf, cellAreaKm2, coastalZones, gridPointsOf, heightCache,
-  inundationByZone, isLandCell, isInundated, recordSamples, seaLevelFacts, scenarioSummary,
-  setLandMask, totalGridCellCount, totalInundatedAreaKm2
+  SEA_LEVEL_SCENARIOS,
+  buildLandMask,
+  cacheKeyOf,
+  cellAreaKm2,
+  coastalZones,
+  gridPointsOf,
+  heightCache,
+  inundationByZone,
+  isLandCell,
+  isInundated,
+  recordSamples,
+  seaLevelFacts,
+  scenarioSummary,
+  setLandMask,
+  totalGridCellCount,
+  totalInundatedAreaKm2
 } from '../src/renderer/src/thematic/seaLevelRise.ts'
 
 test('coastal zones: bounding boxes in China bounds with sane grid sizes', () => {
@@ -13,7 +27,10 @@ test('coastal zones: bounding boxes in China bounds with sane grid sizes', () =>
   assert.equal(totalPoints, totalGridCellCount)
   for (const zone of coastalZones) {
     assert.ok(zone.west < zone.east && zone.south < zone.north, `${zone.id} bbox inverted`)
-    assert.ok(zone.west >= 108 && zone.east <= 124 && zone.south >= 20 && zone.north <= 41, `${zone.id} must sit on China's east coast`)
+    assert.ok(
+      zone.west >= 108 && zone.east <= 124 && zone.south >= 20 && zone.north <= 41,
+      `${zone.id} must sit on China's east coast`
+    )
     assert.ok(zone.step > 0.03 && zone.step <= 0.15, `${zone.id} step out of teaching range`)
     for (const [lon, lat] of gridPointsOf(zone)) {
       assert.ok(lon > zone.west && lon < zone.east && lat > zone.south && lat < zone.north)
@@ -41,8 +58,11 @@ test('area estimation scales with cos(latitude) and scenario totals react to the
   heightCache.clear()
   assert.equal(totalInundatedAreaKm2(1), 0)
   const points = gridPointsOf(zone)
-  recordSamples(points, points.map((_, index) => (index % 2 === 0 ? -30 : 0.5)))
-  const report = inundationByZone(1).find((item) => item.zone.id === zone.id)
+  recordSamples(
+    points,
+    points.map((_, index) => (index % 2 === 0 ? -30 : 0.5))
+  )
+  const report = inundationByZone(1).find(item => item.zone.id === zone.id)
   assert.ok(report)
   assert.equal(report.floodedCells, Math.ceil(points.length / 2))
   assert.ok(report.areaKm2 > 0)
@@ -59,24 +79,70 @@ test('cache keys are stable and scenarios list matches teaching values', () => {
 })
 
 test('land mask distinguishes mainland, island, lake and open sea', () => {
-  const mainland = { polygons: [[[[110, 30], [112, 30], [112, 32], [110, 32], [110, 30]]]] }
+  const mainland = {
+    polygons: [
+      [
+        [
+          [110, 30],
+          [112, 30],
+          [112, 32],
+          [110, 32],
+          [110, 30]
+        ]
+      ]
+    ]
+  }
   const mask = buildLandMask([mainland])
   assert.equal(mask(111, 31), true)
   assert.equal(mask(113, 31), false)
   assert.equal(mask(109.9, 31), false)
 
-  const withIsland = { polygons: [
-    [[[110, 30], [112, 30], [112, 32], [110, 32], [110, 30]]],
-    [[[113, 30], [113.5, 30], [113.5, 30.4], [113, 30.4], [113, 30]]]
-  ] }
+  const withIsland = {
+    polygons: [
+      [
+        [
+          [110, 30],
+          [112, 30],
+          [112, 32],
+          [110, 32],
+          [110, 30]
+        ]
+      ],
+      [
+        [
+          [113, 30],
+          [113.5, 30],
+          [113.5, 30.4],
+          [113, 30.4],
+          [113, 30]
+        ]
+      ]
+    ]
+  }
   const islandMask = buildLandMask([withIsland])
   assert.equal(islandMask(113.2, 30.2), true)
   assert.equal(islandMask(112.5, 31), false)
 
-  const withLake = { polygons: [[
-    [[110, 30], [112, 30], [112, 32], [110, 32], [110, 30]],
-    [[110.8, 30.8], [111.2, 30.8], [111.2, 31.2], [110.8, 31.2], [110.8, 30.8]]
-  ]] }
+  const withLake = {
+    polygons: [
+      [
+        [
+          [110, 30],
+          [112, 30],
+          [112, 32],
+          [110, 32],
+          [110, 30]
+        ],
+        [
+          [110.8, 30.8],
+          [111.2, 30.8],
+          [111.2, 31.2],
+          [110.8, 31.2],
+          [110.8, 30.8]
+        ]
+      ]
+    ]
+  }
   const lakeMask = buildLandMask([withLake])
   assert.equal(lakeMask(111, 31), false)
   assert.equal(lakeMask(110.5, 31), true)
@@ -87,16 +153,33 @@ test('inundation statistics never count open-sea cells', () => {
   const points = gridPointsOf(zone)
   heightCache.clear()
   setLandMask(null)
-  recordSamples(points, points.map(() => 0))
-  const seaReport = inundationByZone(1).find((item) => item.zone.id === zone.id)
+  recordSamples(
+    points,
+    points.map(() => 0)
+  )
+  const seaReport = inundationByZone(1).find(item => item.zone.id === zone.id)
   assert.ok(seaReport)
   assert.equal(seaReport.floodedCells, 0)
   assert.equal(seaReport.areaKm2, 0)
 
-  setLandMask(buildLandMask([{ polygons: [[[
-    [zone.west, zone.south], [zone.east, zone.south], [zone.east, zone.north], [zone.west, zone.north], [zone.west, zone.south]
-  ]]] }]))
-  const landReport = inundationByZone(1).find((item) => item.zone.id === zone.id)
+  setLandMask(
+    buildLandMask([
+      {
+        polygons: [
+          [
+            [
+              [zone.west, zone.south],
+              [zone.east, zone.south],
+              [zone.east, zone.north],
+              [zone.west, zone.north],
+              [zone.west, zone.south]
+            ]
+          ]
+        ]
+      }
+    ])
+  )
+  const landReport = inundationByZone(1).find(item => item.zone.id === zone.id)
   assert.ok(landReport)
   assert.equal(landReport.floodedCells, points.length)
   assert.ok(landReport.areaKm2 > 0)

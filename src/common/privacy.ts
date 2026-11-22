@@ -23,12 +23,15 @@ export const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
   aiTelemetryEnabled: false
 }
 
-export function resolvePrivacySettings(raw: Record<string, unknown> | null | undefined): PrivacySettings {
+export function resolvePrivacySettings(
+  raw: Record<string, unknown> | null | undefined
+): PrivacySettings {
   if (!raw) return { ...DEFAULT_PRIVACY_SETTINGS }
   return {
-    errorReportingEnabled: typeof raw.errorReportingEnabled === 'boolean'
-      ? raw.errorReportingEnabled
-      : DEFAULT_PRIVACY_SETTINGS.errorReportingEnabled,
+    errorReportingEnabled:
+      typeof raw.errorReportingEnabled === 'boolean'
+        ? raw.errorReportingEnabled
+        : DEFAULT_PRIVACY_SETTINGS.errorReportingEnabled,
     telemetryEnabled: raw.telemetryEnabled === true,
     aiTelemetryEnabled: raw.aiTelemetryEnabled === true
   }
@@ -40,7 +43,8 @@ export const PRIVACY_DISCLOSURES: readonly PrivacyDisclosureItem[] = [
     title: '自动化收集错误信息',
     summary: '应用发生崩溃、未捕获异常或进程故障时，自动上报错误堆栈与运行日志以帮助排查问题',
     confirmTitle: '开启“自动化收集错误信息”',
-    confirmIntro: '开启后，当应用发生崩溃、未捕获异常或关键进程故障时，可能会收集、处理并上传以下数据项：',
+    confirmIntro:
+      '开启后，当应用发生崩溃、未捕获异常或关键进程故障时，可能会收集、处理并上传以下数据项：',
     collectedItems: [
       '异常类型、错误消息与代码调用堆栈',
       '近期主进程与渲染进程诊断日志',
@@ -81,15 +85,19 @@ export const PRIVACY_DISCLOSURES: readonly PrivacyDisclosureItem[] = [
 ]
 
 export function privacyDisclosureFor(key: PrivacySettingKey): PrivacyDisclosureItem {
-  const item = PRIVACY_DISCLOSURES.find((entry) => entry.key === key)
+  const item = PRIVACY_DISCLOSURES.find(entry => entry.key === key)
   if (!item) throw new Error(`Unknown privacy setting key: ${key}`)
   return item
 }
 
-export function filterPosthogEvent<T extends { event?: string }>(event: T | null | undefined, privacy: PrivacySettings): T | null {
+export function filterPosthogEvent<T extends { event?: string }>(
+  event: T | null | undefined,
+  privacy: PrivacySettings
+): T | null {
   if (!event) return null
   const name = event.event ?? ''
   if (name === '$exception') return privacy.errorReportingEnabled ? event : null
-  if (name === 'ai_prompt_submitted' || name.startsWith('$ai_')) return privacy.aiTelemetryEnabled ? event : null
+  if (name === 'ai_prompt_submitted' || name.startsWith('$ai_'))
+    return privacy.aiTelemetryEnabled ? event : null
   return privacy.telemetryEnabled ? event : null
 }

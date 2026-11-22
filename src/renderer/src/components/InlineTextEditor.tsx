@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
-import * as Cesium from 'cesium'
 import type { DrawnShape } from '@renderer/stores/drawing'
+import * as Cesium from 'cesium'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
+
 import styles from './InlineTextEditor.module.css'
 
 export interface InlineTextEditorProps {
@@ -36,7 +37,13 @@ export function InlineTextEditor({ viewer, shape, onUpdate }: InlineTextEditorPr
     const root = rootRef.current
     const editor = editorRef.current
     if (!editor) return
-    if (!currentViewer || currentViewer.isDestroyed() || !root || !currentShape || currentShape.kind !== 'text') {
+    if (
+      !currentViewer ||
+      currentViewer.isDestroyed() ||
+      !root ||
+      !currentShape ||
+      currentShape.kind !== 'text'
+    ) {
       editor.style.visibility = 'hidden'
       return
     }
@@ -99,7 +106,16 @@ export function InlineTextEditor({ viewer, shape, onUpdate }: InlineTextEditorPr
     if (!shape || shape.kind !== 'text') return
     resizeEditor()
     updatePosition()
-  }, [shape?.annotation, shape?.positions, shape?.fontSize, shape?.fontFamily, shape?.textFrame, shape?.kind, resizeEditor, updatePosition])
+  }, [
+    shape?.annotation,
+    shape?.positions,
+    shape?.fontSize,
+    shape?.fontFamily,
+    shape?.textFrame,
+    shape?.kind,
+    resizeEditor,
+    updatePosition
+  ])
 
   const editorStyle = useMemo<CSSProperties>(() => {
     if (!shape || shape.kind !== 'text') return {}
@@ -123,9 +139,9 @@ export function InlineTextEditor({ viewer, shape, onUpdate }: InlineTextEditorPr
           className={styles.textEditor}
           rows={1}
           maxLength={200}
-          aria-label="编辑文本框"
-          placeholder="输入文本"
-          onChange={(event) => {
+          aria-label='编辑文本框'
+          placeholder='输入文本'
+          onChange={event => {
             onUpdate(event.target.value)
             resizeEditor()
           }}

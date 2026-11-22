@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings, type PrivacySettingKey, type PrivacySettings } from '../../../common/privacy'
+
+import {
+  DEFAULT_PRIVACY_SETTINGS,
+  resolvePrivacySettings,
+  type PrivacySettingKey,
+  type PrivacySettings
+} from '../../../common/privacy'
 import { applyRendererPrivacySettings } from '../lib/privacyRuntime'
 
 const PRIVACY_KEYS: readonly PrivacySettingKey[] = [
@@ -53,9 +59,11 @@ let appliedSeq: Record<PrivacySettingKey, number> = zeroPrivacyRecord()
 
 function applyLocal(next: PrivacySettings): void {
   const effective: PrivacySettings = {
-    errorReportingEnabled: pendingDisableCounts.errorReportingEnabled > 0 ? false : next.errorReportingEnabled,
+    errorReportingEnabled:
+      pendingDisableCounts.errorReportingEnabled > 0 ? false : next.errorReportingEnabled,
     telemetryEnabled: pendingDisableCounts.telemetryEnabled > 0 ? false : next.telemetryEnabled,
-    aiTelemetryEnabled: pendingDisableCounts.aiTelemetryEnabled > 0 ? false : next.aiTelemetryEnabled
+    aiTelemetryEnabled:
+      pendingDisableCounts.aiTelemetryEnabled > 0 ? false : next.aiTelemetryEnabled
   }
   usePrivacyStore.setState({
     errorReportingEnabled: effective.errorReportingEnabled,

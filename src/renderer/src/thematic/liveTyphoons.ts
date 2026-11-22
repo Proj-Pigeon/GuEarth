@@ -1,4 +1,5 @@
 import * as Cesium from 'cesium'
+
 import type { LiveStorm, StormPoint, TyphoonFeed } from '../../../common/onlineData'
 import type { TyphoonIntensityStyle } from './typhoonTracks'
 
@@ -12,34 +13,50 @@ export const liveTyphoonIntensityStyles: Record<string, TyphoonIntensityStyle> =
 }
 
 export const unknownTyphoonIntensityStyle: TyphoonIntensityStyle = {
-  name: '未知强度', color: 'rgba(0, 0, 0, 0.65)'
+  name: '未知强度',
+  color: 'rgba(0, 0, 0, 0.65)'
 }
 
 export function formatOnlineTime(value: string | number): string {
   const date = new Date(value)
-  return Number.isFinite(date.getTime()) ? date.toISOString().replace('T', ' ').replace('.000Z', ' UTC') : '时间未知'
+  return Number.isFinite(date.getTime())
+    ? date.toISOString().replace('T', ' ').replace('.000Z', ' UTC')
+    : '时间未知'
 }
 
 function intensityStyle(type: string): TyphoonIntensityStyle {
-  return Object.hasOwn(liveTyphoonIntensityStyles, type) ? liveTyphoonIntensityStyles[type] : unknownTyphoonIntensityStyle
+  return Object.hasOwn(liveTyphoonIntensityStyles, type)
+    ? liveTyphoonIntensityStyles[type]
+    : unknownTyphoonIntensityStyle
 }
 
 function validPoint(point: StormPoint): boolean {
-  return Number.isFinite(Date.parse(point.time))
-    && Number.isFinite(point.longitude) && Math.abs(point.longitude) <= 180
-    && Number.isFinite(point.latitude) && Math.abs(point.latitude) <= 90
+  return (
+    Number.isFinite(Date.parse(point.time)) &&
+    Number.isFinite(point.longitude) &&
+    Math.abs(point.longitude) <= 180 &&
+    Number.isFinite(point.latitude) &&
+    Math.abs(point.latitude) <= 90
+  )
 }
 
 function orderedPoints(points: StormPoint[]): StormPoint[] {
-  const byTime = new Map(points.filter(validPoint).map((point) => [Date.parse(point.time), point]))
+  const byTime = new Map(points.filter(validPoint).map(point => [Date.parse(point.time), point]))
   return [...byTime.values()].sort((a, b) => Date.parse(a.time) - Date.parse(b.time))
 }
 
-function pointProperties(storm: LiveStorm, point: StormPoint, kind: '实况' | '预报' | '最新中心', feed: TyphoonFeed, cached: boolean): Cesium.PropertyBag {
+function pointProperties(
+  storm: LiveStorm,
+  point: StormPoint,
+  kind: '实况' | '预报' | '最新中心',
+  feed: TyphoonFeed,
+  cached: boolean
+): Cesium.PropertyBag {
   const wind = point.windSpeed === null ? '未提供' : `${point.windSpeed} km/h`
   const pressure = point.pressure === null ? '未提供' : `${point.pressure} hPa`
   const source = `和风天气${feed.sources.length ? `（${feed.sources.join('、')}）` : ''}`
-  const publication = kind === '预报' && storm.now ? `最新实况时间：${formatOnlineTime(storm.now.time)}。` : ''
+  const publication =
+    kind === '预报' && storm.now ? `最新实况时间：${formatOnlineTime(storm.now.time)}。` : ''
   return new Cesium.PropertyBag({
     name: `${storm.name}（${storm.id}）·${kind}`,
     layerId: 'typhoon',
@@ -53,12 +70,18 @@ function pointProperties(storm: LiveStorm, point: StormPoint, kind: '实况' | '
   })
 }
 
-export function buildLiveTyphoons(dataSource: Cesium.CustomDataSource, feed: TyphoonFeed, cached: boolean): void {
+export function buildLiveTyphoons(
+  dataSource: Cesium.CustomDataSource,
+  feed: TyphoonFeed,
+  cached: boolean
+): void {
   for (const storm of feed.storms) {
     const latest = storm.now && validPoint(storm.now) ? storm.now : null
     const now = storm.active ? latest : null
     const observed = orderedPoints([...storm.track, ...(latest ? [latest] : [])])
-    const forecast = now ? orderedPoints(storm.forecast).filter((point) => Date.parse(point.time) > Date.parse(now.time)) : []
+    const forecast = now
+      ? orderedPoints(storm.forecast).filter(point => Date.parse(point.time) > Date.parse(now.time))
+      : []
 
     function addPath(points: StormPoint[], predicted: boolean): void {
       for (let index = 1; index < points.length; index += 1) {
@@ -68,10 +91,17 @@ export function buildLiveTyphoons(dataSource: Cesium.CustomDataSource, feed: Typ
         dataSource.entities.add({
           properties: pointProperties(storm, to, predicted ? '预报' : '实况', feed, cached),
           polyline: {
-            positions: Cesium.Cartesian3.fromDegreesArray([from.longitude, from.latitude, to.longitude, to.latitude]),
+            positions: Cesium.Cartesian3.fromDegreesArray([
+              from.longitude,
+              from.latitude,
+              to.longitude,
+              to.latitude
+            ]),
             clampToGround: true,
             width: 3,
-            material: predicted ? new Cesium.PolylineDashMaterialProperty({ color, dashLength: 16 }) : color
+            material: predicted
+              ? new Cesium.PolylineDashMaterialProperty({ color, dashLength: 16 })
+              : color
           }
         })
       }
@@ -91,18 +121,20 @@ export function buildLiveTyphoons(dataSource: Cesium.CustomDataSource, feed: Typ
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: Number.POSITIVE_INFINITY
         },
-        label: center ? {
-          text: `${storm.name}${storm.active ? '' : '（已结束）'}\n${formatOnlineTime(point.time)}${cached ? '\n缓存数据' : ''}`,
-          font: '600 12px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif',
-          fillColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.88)'),
-          showBackground: true,
-          backgroundColor: Cesium.Color.WHITE,
-          backgroundPadding: new Cesium.Cartesian2(8, 4),
-          pixelOffset: new Cesium.Cartesian2(0, -24),
-          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY
-        } : undefined
+        label: center
+          ? {
+              text: `${storm.name}${storm.active ? '' : '（已结束）'}\n${formatOnlineTime(point.time)}${cached ? '\n缓存数据' : ''}`,
+              font: '600 12px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif',
+              fillColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.88)'),
+              showBackground: true,
+              backgroundColor: Cesium.Color.WHITE,
+              backgroundPadding: new Cesium.Cartesian2(8, 4),
+              pixelOffset: new Cesium.Cartesian2(0, -24),
+              verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+              heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+              disableDepthTestDistance: Number.POSITIVE_INFINITY
+            }
+          : undefined
       })
     }
 

@@ -1,9 +1,20 @@
-import * as Cesium from 'cesium'
-import { bearingDeg, exaggeratedSurfaceHeightM, groundProfileImplausible, interpolateWaypoints, planTransectAltitudes, transectHops, transectLegsKm, transectTotalKm, type TransectWaypoint } from '@renderer/lib/transect'
-import { isAvailabilityStripped } from '../../../common/terrainAvailability'
-import { detailedSamplingTerrain } from '@renderer/terrain/terrainRegistry'
+import {
+  bearingDeg,
+  exaggeratedSurfaceHeightM,
+  groundProfileImplausible,
+  interpolateWaypoints,
+  planTransectAltitudes,
+  transectHops,
+  transectLegsKm,
+  transectTotalKm,
+  type TransectWaypoint
+} from '@renderer/lib/transect'
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useZonationStore } from '@renderer/stores/zonation'
+import { detailedSamplingTerrain } from '@renderer/terrain/terrainRegistry'
+import * as Cesium from 'cesium'
+
+import { isAvailabilityStripped } from '../../../common/terrainAvailability'
 
 const SAMPLE_DEADLINE_MS = 30000
 const SAMPLE_RETRY_DEADLINE_MS = 8000
@@ -61,18 +72,28 @@ interface ActiveRun {
 }
 
 let activeRun: ActiveRun | null = null
-let activeTransect: { viewer: Cesium.Viewer; entities: Cesium.Entity[]; token: symbol } | null = null
+let activeTransect: { viewer: Cesium.Viewer; entities: Cesium.Entity[]; token: symbol } | null =
+  null
 let animationInputLocks = 0
 const prewarmDimStates = new WeakMap<HTMLCanvasElement, { locks: number; original: string }>()
 let tileCacheOriginal: number | null = null
-const groundSampleCache = new WeakMap<Cesium.Viewer, { key: string; at: number; sample: TransectGroundSample; terrainProvider: Cesium.TerrainProvider; samplingProviderId: string }>()
+const groundSampleCache = new WeakMap<
+  Cesium.Viewer,
+  {
+    key: string
+    at: number
+    sample: TransectGroundSample
+    terrainProvider: Cesium.TerrainProvider
+    samplingProviderId: string
+  }
+>()
 
 function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 function nextFrame(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()))
+  return new Promise(resolve => requestAnimationFrame(() => resolve()))
 }
 
 function easeInOutCubic(t: number): number {
@@ -99,7 +120,14 @@ export function clearTransectOverlay(viewer?: Cesium.Viewer | null): void {
 function validateWaypoints(waypoints: TransectWaypoint[]): string | null {
   if (waypoints.length < 2 || waypoints.length > 6) return '剖面途经点需要 2-6 个'
   for (const [longitude, latitude] of waypoints) {
-    if (!Number.isFinite(longitude) || !Number.isFinite(latitude) || longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
+    if (
+      !Number.isFinite(longitude) ||
+      !Number.isFinite(latitude) ||
+      longitude < -180 ||
+      longitude > 180 ||
+      latitude < -90 ||
+      latitude > 90
+    ) {
       return '剖面途经点坐标无效，需要 WGS-84 经纬度'
     }
   }
@@ -127,14 +155,28 @@ function resolveSamplingTerrainProvider(viewer: Cesium.Viewer): Promise<Cesium.T
   return provider.catch(() => active)
 }
 
-export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: TransectWaypoint[], onProgress?: (progress: TransectFlightProgress) => void, expectedMaxGroundM?: number): Promise<TransectGroundSample> {
+export async function sampleTransectGround(
+  viewer: Cesium.Viewer,
+  waypoints: TransectWaypoint[],
+  onProgress?: (progress: TransectFlightProgress) => void,
+  expectedMaxGroundM?: number
+): Promise<TransectGroundSample> {
   const path = interpolateWaypoints(waypoints, samplesPerLeg(waypoints.length))
   const terrainProvider = viewer.terrainProvider
   const samplingProviderId = useGlobeStore.getState().terrainProviderId
   const key = JSON.stringify({ waypoints, expectedMaxGroundM })
   const cached = groundSampleCache.get(viewer)
-  if (cached && cached.key === key && cached.terrainProvider === terrainProvider && cached.samplingProviderId === samplingProviderId && Date.now() - cached.at < SAMPLE_CACHE_TTL_MS) return cached.sample
-  const cartographics = path.map(([longitude, latitude]) => Cesium.Cartographic.fromDegrees(longitude, latitude))
+  if (
+    cached &&
+    cached.key === key &&
+    cached.terrainProvider === terrainProvider &&
+    cached.samplingProviderId === samplingProviderId &&
+    Date.now() - cached.at < SAMPLE_CACHE_TTL_MS
+  )
+    return cached.sample
+  const cartographics = path.map(([longitude, latitude]) =>
+    Cesium.Cartographic.fromDegrees(longitude, latitude)
+  )
   onProgress?.({ stage: 'sampling', completed: 0, total: path.length })
   const samplingProvider = await resolveSamplingTerrainProvider(viewer)
   const outcome = await Promise.race([
@@ -147,7 +189,9 @@ export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: Tra
   let detailedSampling = outcome === 'resolved'
   if (outcome === 'rejected') {
     const retried = await Promise.race([
-      Cesium.sampleTerrainMostDetailed(samplingProvider, cartographics).then(() => true).catch(() => false),
+      Cesium.sampleTerrainMostDetailed(samplingProvider, cartographics)
+        .then(() => true)
+        .catch(() => false),
       delay(SAMPLE_RETRY_DEADLINE_MS).then(() => false)
     ])
     detailedSampling = retried
@@ -165,7 +209,9 @@ export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: Tra
   const finalHeights = heights.map((height, index) => {
     if (Number.isFinite(height)) return height
     const [longitude, latitude] = path[index]
-    const fallback = viewer.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(longitude, latitude))
+    const fallback = viewer.scene.globe.getHeight(
+      Cesium.Cartographic.fromDegrees(longitude, latitude)
+    )
     if (fallback !== undefined && Number.isFinite(fallback)) {
       fallbackCount += 1
       return fallback
@@ -173,9 +219,20 @@ export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: Tra
     holeCount += 1
     return 0
   })
-  const degraded = !detailedSampling || fallbackCount > 0 || holeCount > 0 || groundProfileImplausible(finalHeights, expectedMaxGroundM)
+  const degraded =
+    !detailedSampling ||
+    fallbackCount > 0 ||
+    holeCount > 0 ||
+    groundProfileImplausible(finalHeights, expectedMaxGroundM)
   const sample: TransectGroundSample = { path, heights: finalHeights, degraded }
-  if (!degraded) groundSampleCache.set(viewer, { key, at: Date.now(), sample, terrainProvider, samplingProviderId })
+  if (!degraded)
+    groundSampleCache.set(viewer, {
+      key,
+      at: Date.now(),
+      sample,
+      terrainProvider,
+      samplingProviderId
+    })
   return sample
 }
 
@@ -186,7 +243,7 @@ function waitForTilesLoaded(viewer: Cesium.Viewer, timeoutMs: number): Promise<v
     scene.requestRender()
   }
   if (scene.globe.tilesLoaded) return settle()
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     let finished = false
     const finish = (): void => {
       if (finished) return
@@ -204,7 +261,16 @@ function waitForTilesLoaded(viewer: Cesium.Viewer, timeoutMs: number): Promise<v
   })
 }
 
-async function sweepTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudes: number[], started: number, run: ActiveRun, plannedExaggeration: number, waitPerHop: boolean, onProgress?: (progress: TransectFlightProgress) => void): Promise<void> {
+async function sweepTransectTiles(
+  viewer: Cesium.Viewer,
+  path: TransectWaypoint[],
+  altitudes: number[],
+  started: number,
+  run: ActiveRun,
+  plannedExaggeration: number,
+  waitPerHop: boolean,
+  onProgress?: (progress: TransectFlightProgress) => void
+): Promise<void> {
   const scene = viewer.scene
   const headingAt = (index: number): number => {
     const neighbor = index < path.length - 1 ? path[index + 1] : path[index - 1]
@@ -222,7 +288,11 @@ async function sweepTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[
     const [longitude, latitude] = path[index]
     scene.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, altitudes[index]),
-      orientation: { heading: Cesium.Math.toRadians(headingAt(index)), pitch: Cesium.Math.toRadians(-18), roll: 0 }
+      orientation: {
+        heading: Cesium.Math.toRadians(headingAt(index)),
+        pitch: Cesium.Math.toRadians(-18),
+        roll: 0
+      }
     })
     scene.requestRender()
     onProgress?.({ stage: 'prewarm', completed: done, total: hops.length })
@@ -232,7 +302,14 @@ async function sweepTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[
   onProgress?.({ stage: 'prewarm', completed: hops.length, total: hops.length })
 }
 
-async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudes: number[], run: ActiveRun, plannedExaggeration: number, onProgress?: (progress: TransectFlightProgress) => void): Promise<void> {
+async function prewarmTransectTiles(
+  viewer: Cesium.Viewer,
+  path: TransectWaypoint[],
+  altitudes: number[],
+  run: ActiveRun,
+  plannedExaggeration: number,
+  onProgress?: (progress: TransectFlightProgress) => void
+): Promise<void> {
   const canvas = viewer.canvas
   let dim = prewarmDimStates.get(canvas)
   if (!dim) {
@@ -244,8 +321,26 @@ async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoin
   canvas.style.opacity = '0.15'
   const started = Date.now()
   try {
-    await sweepTransectTiles(viewer, path, altitudes, started, run, plannedExaggeration, false, onProgress)
-    await sweepTransectTiles(viewer, path, altitudes, started, run, plannedExaggeration, true, onProgress)
+    await sweepTransectTiles(
+      viewer,
+      path,
+      altitudes,
+      started,
+      run,
+      plannedExaggeration,
+      false,
+      onProgress
+    )
+    await sweepTransectTiles(
+      viewer,
+      path,
+      altitudes,
+      started,
+      run,
+      plannedExaggeration,
+      true,
+      onProgress
+    )
   } finally {
     dim.locks -= 1
     if (dim.locks === 0) canvas.style.opacity = dim.original
@@ -253,13 +348,20 @@ async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoin
   }
 }
 
-function replaceOverlay(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudes: number[], token: symbol): Cesium.Entity[] {
+function replaceOverlay(
+  viewer: Cesium.Viewer,
+  path: TransectWaypoint[],
+  altitudes: number[],
+  token: symbol
+): Cesium.Entity[] {
   clearTransectOverlay()
   const entities: Cesium.Entity[] = []
   entities.push(
     viewer.entities.add({
       polyline: {
-        positions: path.map(([longitude, latitude], index) => Cesium.Cartesian3.fromDegrees(longitude, latitude, altitudes[index])),
+        positions: path.map(([longitude, latitude], index) =>
+          Cesium.Cartesian3.fromDegrees(longitude, latitude, altitudes[index])
+        ),
         width: 3,
         material: Cesium.Color.fromCssColorString(TRANSECT_LINE_COLOR).withAlpha(0.75),
         clampToGround: false
@@ -270,7 +372,12 @@ function replaceOverlay(viewer: Cesium.Viewer, path: TransectWaypoint[], altitud
     entities.push(
       viewer.entities.add({
         position: Cesium.Cartesian3.fromDegrees(path[index][0], path[index][1], altitudes[index]),
-        point: { pixelSize: 9, color: Cesium.Color.fromCssColorString(TRANSECT_LINE_COLOR), outlineColor: Cesium.Color.WHITE.withAlpha(0.9), outlineWidth: 2 }
+        point: {
+          pixelSize: 9,
+          color: Cesium.Color.fromCssColorString(TRANSECT_LINE_COLOR),
+          outlineColor: Cesium.Color.WHITE.withAlpha(0.9),
+          outlineWidth: 2
+        }
       })
     )
   }
@@ -279,7 +386,15 @@ function replaceOverlay(viewer: Cesium.Viewer, path: TransectWaypoint[], altitud
   return entities
 }
 
-async function animateAlongTransect(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudes: number[], totalPathKm: number, run: ActiveRun, plannedExaggeration: number, onProgress?: (progress: TransectFlightProgress) => void): Promise<boolean> {
+async function animateAlongTransect(
+  viewer: Cesium.Viewer,
+  path: TransectWaypoint[],
+  altitudes: number[],
+  totalPathKm: number,
+  run: ActiveRun,
+  plannedExaggeration: number,
+  onProgress?: (progress: TransectFlightProgress) => void
+): Promise<boolean> {
   const scene = viewer.scene
   animationInputLocks += 1
   if (animationInputLocks === 1) scene.screenSpaceCameraController.enableInputs = false
@@ -298,7 +413,11 @@ async function animateAlongTransect(viewer: Cesium.Viewer, path: TransectWaypoin
   const legKm = transectLegsKm(path)
   const cumulativeKm: number[] = [0]
   for (const leg of legKm) cumulativeKm.push(cumulativeKm[cumulativeKm.length - 1] + leg)
-  const durationMs = Math.min(MAX_FLIGHT_DURATION_S, Math.max(MIN_FLIGHT_DURATION_S, totalPathKm / FLIGHT_SPEED_KM_PER_S)) * 1000
+  const durationMs =
+    Math.min(
+      MAX_FLIGHT_DURATION_S,
+      Math.max(MIN_FLIGHT_DURATION_S, totalPathKm / FLIGHT_SPEED_KM_PER_S)
+    ) * 1000
   const headingAt = (index: number): number => {
     const neighbor = index < path.length - 1 ? path[index + 1] : path[index - 1]
     return bearingDeg(path[index][0], path[index][1], neighbor[0], neighbor[1])
@@ -317,7 +436,8 @@ async function animateAlongTransect(viewer: Cesium.Viewer, path: TransectWaypoin
       let index = 0
       while (index < legKm.length - 1 && cumulativeKm[index + 1] < distanceKm) index += 1
       const legStart = cumulativeKm[index]
-      const fraction = legKm[index] > 0 ? Math.min(1, Math.max(0, (distanceKm - legStart) / legKm[index])) : 1
+      const fraction =
+        legKm[index] > 0 ? Math.min(1, Math.max(0, (distanceKm - legStart) / legKm[index])) : 1
       const [fromLon, fromLat] = path[index]
       const [toLon, toLat] = path[index + 1]
       const longitude = fromLon + (toLon - fromLon) * fraction
@@ -325,14 +445,23 @@ async function animateAlongTransect(viewer: Cesium.Viewer, path: TransectWaypoin
       const altitude = altitudes[index] + (altitudes[index + 1] - altitudes[index]) * fraction
       scene.camera.setView({
         destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, altitude),
-        orientation: { heading: Cesium.Math.toRadians(headingAt(index)), pitch: Cesium.Math.toRadians(-18), roll: 0 }
+        orientation: {
+          heading: Cesium.Math.toRadians(headingAt(index)),
+          pitch: Cesium.Math.toRadians(-18),
+          roll: 0
+        }
       })
       scene.requestRender()
       run.lastPathIndex = index
       if (index !== reportedIndex) {
         reportedIndex = index
         refreshCameraReadout()
-        onProgress?.({ stage: 'flying', completed: index, total: path.length - 1, altitudeM: Math.round(altitude) })
+        onProgress?.({
+          stage: 'flying',
+          completed: index,
+          total: path.length - 1,
+          altitudeM: Math.round(altitude)
+        })
       }
       if (t >= 1) {
         refreshCameraReadout()
@@ -346,12 +475,21 @@ async function animateAlongTransect(viewer: Cesium.Viewer, path: TransectWaypoin
   }
 }
 
-export async function flyTransect(viewer: Cesium.Viewer, waypoints: TransectWaypoint[], options: TransectFlightOptions = {}): Promise<TransectFlightResult | { error: string }> {
+export async function flyTransect(
+  viewer: Cesium.Viewer,
+  waypoints: TransectWaypoint[],
+  options: TransectFlightOptions = {}
+): Promise<TransectFlightResult | { error: string }> {
   if (viewer.isDestroyed()) return { error: '地球尚未就绪' }
   const invalid = validateWaypoints(waypoints)
   if (invalid) return { error: invalid }
   const requestedAltitude = options.altitudeM
-  if (requestedAltitude !== undefined && (!Number.isFinite(requestedAltitude) || requestedAltitude < 1000 || requestedAltitude > 20000000)) {
+  if (
+    requestedAltitude !== undefined &&
+    (!Number.isFinite(requestedAltitude) ||
+      requestedAltitude < 1000 ||
+      requestedAltitude > 20000000)
+  ) {
     return { error: 'altitudeM 需为 1000-20000000 的海拔高度（米）' }
   }
   if (activeRun) activeRun.interruptReason = 'superseded'
@@ -362,42 +500,122 @@ export async function flyTransect(viewer: Cesium.Viewer, waypoints: TransectWayp
   const zonationStore = useZonationStore.getState()
   const report = (progress: TransectFlightProgress): void => {
     onProgress?.(progress)
-    zonationStore.setFlightHud({ stage: progress.stage, completed: progress.completed, total: progress.total, altitudeM: progress.altitudeM })
+    zonationStore.setFlightHud({
+      stage: progress.stage,
+      completed: progress.completed,
+      total: progress.total,
+      altitudeM: progress.altitudeM
+    })
   }
   const scene = viewer.scene
   if (tileCacheOriginal === null) tileCacheOriginal = scene.globe.tileCacheSize
   scene.globe.tileCacheSize = Math.max(scene.globe.tileCacheSize, FLIGHT_TILE_CACHE_SIZE)
   const [startLon, startLat] = waypoints[0]
   scene.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(startLon, startLat, Math.min(2000000, Math.max(MIN_FLIGHT_ALTITUDE_M, scene.camera.positionCartographic.height))),
-    orientation: { heading: Cesium.Math.toRadians(bearingDeg(startLon, startLat, waypoints[1][0], waypoints[1][1])), pitch: Cesium.Math.toRadians(-18), roll: 0 },
+    destination: Cesium.Cartesian3.fromDegrees(
+      startLon,
+      startLat,
+      Math.min(2000000, Math.max(MIN_FLIGHT_ALTITUDE_M, scene.camera.positionCartographic.height))
+    ),
+    orientation: {
+      heading: Cesium.Math.toRadians(
+        bearingDeg(startLon, startLat, waypoints[1][0], waypoints[1][1])
+      ),
+      pitch: Cesium.Math.toRadians(-18),
+      roll: 0
+    },
     duration: 1.6
   })
   try {
     const exaggerationBeforeSampling = scene.verticalExaggeration
-    const { path, heights, degraded } = await sampleTransectGround(viewer, waypoints, report, options.expectedMaxGroundM)
-    if (run.cancelled) return { status: 'interrupted', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM: 0, legs: waypoints.length - 1, completedLegs: 0, reason: run.interruptReason }
+    const { path, heights, degraded } = await sampleTransectGround(
+      viewer,
+      waypoints,
+      report,
+      options.expectedMaxGroundM
+    )
+    if (run.cancelled)
+      return {
+        status: 'interrupted',
+        totalKm: Math.round(transectTotalKm(waypoints)),
+        flightAltitudeM: 0,
+        legs: waypoints.length - 1,
+        completedLegs: 0,
+        reason: run.interruptReason
+      }
     if (scene.verticalExaggeration !== exaggerationBeforeSampling) {
-      return { status: 'interrupted', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM: 0, legs: waypoints.length - 1, completedLegs: 0, reason: 'exaggeration-changed' }
+      return {
+        status: 'interrupted',
+        totalKm: Math.round(transectTotalKm(waypoints)),
+        flightAltitudeM: 0,
+        legs: waypoints.length - 1,
+        completedLegs: 0,
+        reason: 'exaggeration-changed'
+      }
     }
     const exaggeration = exaggerationBeforeSampling
     const relativeHeight = scene.verticalExaggerationRelativeHeight
-    const surfaces = heights.map((height) => exaggeratedSurfaceHeightM(height, exaggeration, relativeHeight))
-    const minimumAltitudeM = degraded ? MIN_BLIND_ALTITUDE_M * exaggeration + FLIGHT_CLEARANCE_M : MIN_FLIGHT_ALTITUDE_M
-    const altitudes = planTransectAltitudes(surfaces, FLIGHT_CLEARANCE_M, minimumAltitudeM, requestedAltitude)
+    const surfaces = heights.map(height =>
+      exaggeratedSurfaceHeightM(height, exaggeration, relativeHeight)
+    )
+    const minimumAltitudeM = degraded
+      ? MIN_BLIND_ALTITUDE_M * exaggeration + FLIGHT_CLEARANCE_M
+      : MIN_FLIGHT_ALTITUDE_M
+    const altitudes = planTransectAltitudes(
+      surfaces,
+      FLIGHT_CLEARANCE_M,
+      minimumAltitudeM,
+      requestedAltitude
+    )
     const flightAltitudeM = Math.round(Math.max(...altitudes))
     const maxGroundM = Math.round(Math.max(...heights))
     const diagnostics = { maxGroundM, degraded }
     replaceOverlay(viewer, path, altitudes, run.token)
     await prewarmTransectTiles(viewer, path, altitudes, run, exaggeration, report)
     if (run.cancelled) {
-      return { status: 'interrupted', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM, legs: waypoints.length - 1, completedLegs: 0, reason: run.interruptReason, ...diagnostics }
+      return {
+        status: 'interrupted',
+        totalKm: Math.round(transectTotalKm(waypoints)),
+        flightAltitudeM,
+        legs: waypoints.length - 1,
+        completedLegs: 0,
+        reason: run.interruptReason,
+        ...diagnostics
+      }
     }
-    const completed = await animateAlongTransect(viewer, path, altitudes, transectTotalKm(path), run, exaggeration, report)
-    const completedLegs = completed ? waypoints.length - 1 : Math.min(waypoints.length - 1, Math.round((run.lastPathIndex / Math.max(1, path.length - 1)) * (waypoints.length - 1)))
+    const completed = await animateAlongTransect(
+      viewer,
+      path,
+      altitudes,
+      transectTotalKm(path),
+      run,
+      exaggeration,
+      report
+    )
+    const completedLegs = completed
+      ? waypoints.length - 1
+      : Math.min(
+          waypoints.length - 1,
+          Math.round((run.lastPathIndex / Math.max(1, path.length - 1)) * (waypoints.length - 1))
+        )
     return completed
-      ? { status: 'ok', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM, legs: waypoints.length - 1, completedLegs, ...diagnostics }
-      : { status: 'interrupted', totalKm: Math.round(transectTotalKm(waypoints)), flightAltitudeM, legs: waypoints.length - 1, completedLegs, reason: run.interruptReason ?? 'cancelled', ...diagnostics }
+      ? {
+          status: 'ok',
+          totalKm: Math.round(transectTotalKm(waypoints)),
+          flightAltitudeM,
+          legs: waypoints.length - 1,
+          completedLegs,
+          ...diagnostics
+        }
+      : {
+          status: 'interrupted',
+          totalKm: Math.round(transectTotalKm(waypoints)),
+          flightAltitudeM,
+          legs: waypoints.length - 1,
+          completedLegs,
+          reason: run.interruptReason ?? 'cancelled',
+          ...diagnostics
+        }
   } finally {
     if (activeRun === run) {
       zonationStore.setFlightHud(null)

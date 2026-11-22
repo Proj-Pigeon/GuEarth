@@ -1,17 +1,19 @@
-import * as Sentry from '@sentry/electron/renderer'
-import { useEffect } from 'react'
-import { createRoot } from 'react-dom/client'
-import dayjs from 'dayjs'
-import 'dayjs/locale/zh-cn'
 import { StyleProvider } from '@ant-design/cssinjs'
+import * as Sentry from '@sentry/electron/renderer'
 import { App as AntdApp, ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
-import App from './App'
+import 'dayjs/locale/zh-cn'
+import dayjs from 'dayjs'
+import { useEffect } from 'react'
+import { createRoot } from 'react-dom/client'
+
+import { surfaceFailureAlreadyShown } from '../../common/globeSurface'
+
 import './assets/main.css'
 import './assets/touch.css'
 import { attachConsoleLogTee, logger } from '../../common/logger'
-import { surfaceFailureAlreadyShown } from '../../common/globeSurface'
 import { requestErrorRejectionLabel } from '../../common/resourceFailure'
+import App from './App'
 import { describeError, installGlobalErrorListeners, notifyCrashMessage } from './lib/crashReporter'
 import { isErrorReportingEnabled, onPrivacySettingsChange } from './lib/privacyRuntime'
 import { capturePosthogException, syncPosthogPrivacy } from './posthog'
@@ -24,13 +26,17 @@ Sentry.init({
   enabled: false,
   sendClientReports: false,
   ignoreErrors: [requestErrorRejectionLabel()],
-  integrations: (defaults) =>
-    defaults.filter((integration) => integration.name !== 'Breadcrumbs' && integration.name !== 'Console'),
+  integrations: defaults =>
+    defaults.filter(
+      integration => integration.name !== 'Breadcrumbs' && integration.name !== 'Console'
+    ),
   beforeSend(event) {
     const level = event.level ?? (event.exception ? 'error' : 'info')
     if ((level === 'error' || level === 'fatal') && !surfaceFailureAlreadyShown(event.extra)) {
       const exception = event.exception?.values?.at(-1)
-      notifyCrashMessage([exception?.type, exception?.value ?? event.message].filter(Boolean).join(': '))
+      notifyCrashMessage(
+        [exception?.type, exception?.value ?? event.message].filter(Boolean).join(': ')
+      )
     }
     if (!isErrorReportingEnabled()) return null
     event.extra = { ...event.extra, rendererLogs: logger.dump(80) }
@@ -38,7 +44,7 @@ Sentry.init({
   }
 })
 
-onPrivacySettingsChange((next) => {
+onPrivacySettingsChange(next => {
   const client = Sentry.getClient()
   if (client) client.getOptions().enabled = next.errorReportingEnabled
   syncPosthogPrivacy(next)
@@ -67,7 +73,7 @@ function handleRenderError(error: unknown, info?: { componentStack?: string }): 
 }
 
 function Root() {
-  const touchInteractionActive = useGlobeStore((state) => state.touchInteractionActive)
+  const touchInteractionActive = useGlobeStore(state => state.touchInteractionActive)
 
   useEffect(() => {
     document.documentElement.classList.toggle('touch-ui', touchInteractionActive)

@@ -40,7 +40,9 @@
   background: rgba(5, 5, 5, 0.12);
   content: '';
   transform: translateY(-50%);
-  transition: background 0.2s ease, height 0.2s ease;
+  transition:
+    background 0.2s ease,
+    height 0.2s ease;
 }
 
 .drawerResizeHandle:hover::after,

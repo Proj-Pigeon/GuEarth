@@ -74,10 +74,7 @@ test('electron-builder files config keeps koffi runtime JS modules while excludi
   const koffiEntry = resolve(koffiRoot, 'index.cjs')
   assert.ok(existsSync(koffiEntry))
 
-  const requiredFiles = [
-    resolve(koffiRoot, 'package.json'),
-    ...collectRelativeRequires(koffiEntry)
-  ]
+  const requiredFiles = [resolve(koffiRoot, 'package.json'), ...collectRelativeRequires(koffiEntry)]
   for (const absPath of requiredFiles) {
     const rel = relative(repoRoot, absPath).replaceAll('\\', '/')
     assert.ok(
@@ -103,13 +100,16 @@ test('electron-builder files config keeps koffi runtime JS modules while excludi
 
   const koromixDir = resolve(repoRoot, 'node_modules/@koromix')
   if (existsSync(koromixDir)) {
-    const nativeAddons = collectFiles(koromixDir).filter((file) => file.endsWith('.node'))
+    const nativeAddons = collectFiles(koromixDir).filter(file => file.endsWith('.node'))
     assert.ok(nativeAddons.length > 0)
     for (const addon of nativeAddons) {
       const rel = relative(repoRoot, addon).replaceAll('\\', '/')
-      assert.ok(isIncludedByBuilderPatterns(rel, filePatterns), `expected addon to be packaged: ${rel}`)
       assert.ok(
-        asarUnpackPatterns.some((pattern) => posix.matchesGlob(rel, pattern)),
+        isIncludedByBuilderPatterns(rel, filePatterns),
+        `expected addon to be packaged: ${rel}`
+      )
+      assert.ok(
+        asarUnpackPatterns.some(pattern => posix.matchesGlob(rel, pattern)),
         `expected addon to be asarUnpacked: ${rel}`
       )
     }
@@ -120,13 +120,17 @@ test('main and preload bundles only require builtins, electron, or packaged node
   const viteConfig = readFileSync(resolve(repoRoot, 'electron.vite.config.ts'), 'utf8')
   assert.match(viteConfig, /externalizeDeps:\s*false/)
 
-  const builtins = new Set(['electron', ...builtinModules, ...builtinModules.map((name) => `node:${name}`)])
+  const builtins = new Set([
+    'electron',
+    ...builtinModules,
+    ...builtinModules.map(name => `node:${name}`)
+  ])
   const packagedExternals = new Set(['koffi'])
 
   for (const dir of ['out/main', 'out/preload']) {
     const absDir = resolve(repoRoot, dir)
     if (!existsSync(absDir)) continue
-    for (const file of collectFiles(absDir).filter((entry) => /\.(c|m)?js$/.test(entry))) {
+    for (const file of collectFiles(absDir).filter(entry => /\.(c|m)?js$/.test(entry))) {
       const source = readFileSync(file, 'utf8')
       for (const match of source.matchAll(/(?:^|[^\w$.])require\(\s*['"]([^'"]+)['"]\s*\)/g)) {
         const specifier = match[1]

@@ -1,6 +1,14 @@
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react'
 import { Checkbox, ConfigProvider, Tour, type ConfigProviderProps, type TourProps } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type Ref
+} from 'react'
 
 export interface FirstUseGuideHandle {
   start: () => void
@@ -44,7 +52,7 @@ function getTarget(name: string): HTMLElement {
 }
 
 function waitNextFrame(): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     window.requestAnimationFrame(() => resolve())
   })
 }
@@ -145,7 +153,7 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
             <div>在这里添加 AI 服务商、密钥和模型并设为默认，即可开始对话。</div>
             <Checkbox
               checked={dontPromptAgain}
-              onChange={(event) => {
+              onChange={event => {
                 const checked = event.target.checked
                 dontPromptAgainRef.current = checked
                 setDontPromptAgain(checked)
@@ -168,7 +176,7 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
     onStepChangeRef.current?.(nextStep)
     await waitNextFrame()
     if ([6, 7, 8].includes(nextStep) || [6, 7, 8].includes(currentRef.current)) {
-      await new Promise((resolve) => window.setTimeout(resolve, 320))
+      await new Promise(resolve => window.setTimeout(resolve, 320))
     }
     if (!unmountedRef.current) {
       currentRef.current = nextStep
@@ -247,7 +255,7 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
         steps={steps}
         zIndex={1200}
         mask={{ color: 'rgba(0, 0, 0, 0.45)' }}
-        onChange={(nextStep) => void handleChange(nextStep)}
+        onChange={nextStep => void handleChange(nextStep)}
         onClose={handleClose}
         onFinish={handleFinish}
       />

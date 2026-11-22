@@ -4,10 +4,11 @@ import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
 import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
+
 import { JSDOM } from 'jsdom'
-import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
+import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -39,7 +40,10 @@ registerHooks({
     if (specifier === 'antd') {
       return { url: antdStubUrl, shortCircuit: true }
     }
-    if (specifier === '@renderer/utils/markdown' && context.parentURL.endsWith('/UpdateDialog.tsx')) {
+    if (
+      specifier === '@renderer/utils/markdown' &&
+      context.parentURL.endsWith('/UpdateDialog.tsx')
+    ) {
       return { url: 'virtual:update-dialog-markdown', shortCircuit: true }
     }
     if (specifier.startsWith('@renderer/')) {
@@ -120,11 +124,14 @@ test('tryRenderMarkdown renders valid markdown and returns null on blank, empty 
     }),
     null
   )
-  const nodes = tryRenderMarkdown('## 更新内容\n\n- 支持 `Markdown`\n- [详情](https://example.com)', renderMarkdown)
+  const nodes = tryRenderMarkdown(
+    '## 更新内容\n\n- 支持 `Markdown`\n- [详情](https://example.com)',
+    renderMarkdown
+  )
   assert.ok(Array.isArray(nodes) && nodes.length > 0)
 })
 
-test('UpdateDialog renders markdown release notes, hides blank notes, and falls back to plain text on failure', async (t) => {
+test('UpdateDialog renders markdown release notes, hides blank notes, and falls back to plain text on failure', async t => {
   forceMarkdownMode = 'normal'
   resetUpdaterStore()
   useUpdaterStore.setState({

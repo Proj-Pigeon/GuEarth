@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+
 import { withoutTileAvailability } from '../src/common/terrainAvailability.ts'
 
 function availabilityProbe() {
@@ -26,7 +27,8 @@ test('Cesium treats undefined tile availability as unknown, so a terrain provide
   const { state, terrain } = availabilityProbe()
   const wrapped = withoutTileAvailability(terrain)
   for (let level = 0; level < 8; level += 1) {
-    for (let x = 0; x < 4; x += 1) assert.equal(wrapped.getTileDataAvailable(x, x, level), undefined)
+    for (let x = 0; x < 4; x += 1)
+      assert.equal(wrapped.getTileDataAvailable(x, x, level), undefined)
   }
   assert.equal(state.availabilityRequests, 0)
 })
@@ -35,7 +37,8 @@ test('the availability flag is cleared too, so the geometry path stops requestin
   const { state, terrain } = availabilityProbe()
   const wrapped = withoutTileAvailability(terrain)
   assert.equal(wrapped._hasAvailability, false)
-  for (let level = 0; level < 4; level += 1) assert.equal(await wrapped.requestTileGeometry(0, 0, level), 'geometry')
+  for (let level = 0; level < 4; level += 1)
+    assert.equal(await wrapped.requestTileGeometry(0, 0, level), 'geometry')
   assert.equal(state.availabilityRequests, 0)
 })
 
@@ -55,5 +58,6 @@ test('the wrapped provider reports unknown availability for any coordinate or le
     [12, 7, 5],
     [999999, 999999, 22]
   ]
-  for (const [x, y, level] of probes) assert.equal(wrapped.getTileDataAvailable(x, y, level), undefined)
+  for (const [x, y, level] of probes)
+    assert.equal(wrapped.getTileDataAvailable(x, y, level), undefined)
 })

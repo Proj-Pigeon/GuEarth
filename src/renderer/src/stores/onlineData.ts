@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+
 import type { OnlineDataSnapshot } from '../../../common/onlineData'
 import { useFailureStore } from './failure'
 
@@ -54,7 +55,11 @@ function applySnapshot(data: OnlineDataSnapshot): void {
 }
 
 function ensureSubscribed(): () => void {
-  if (!unsubscribeOnlineData && typeof window !== 'undefined' && typeof window.guEarth?.datasets?.onOnlineData === 'function') {
+  if (
+    !unsubscribeOnlineData &&
+    typeof window !== 'undefined' &&
+    typeof window.guEarth?.datasets?.onOnlineData === 'function'
+  ) {
     unsubscribeOnlineData = window.guEarth.datasets.onOnlineData(applySnapshot)
   }
   return () => {

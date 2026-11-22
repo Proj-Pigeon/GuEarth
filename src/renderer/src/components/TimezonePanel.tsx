@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
 import { CloseOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
 import type { TimezoneComparison } from '@renderer/composables/useTimezoneCompare'
 import { useSolarStore } from '@renderer/stores/solar'
 import { formatClock, localSolarTime } from '@renderer/thematic/solarMath'
+import { Button } from 'antd'
+import { useMemo } from 'react'
+
 import styles from './TimezonePanel.module.css'
 
 export interface TimezonePanelProps {
@@ -16,9 +17,9 @@ function longitudeText(longitude: number): string {
 }
 
 export function TimezonePanel({ comparison, onClear }: TimezonePanelProps) {
-  const solarActive = useSolarStore((state) => state.active)
-  const solarUtcHour = useSolarStore((state) => state.utcHour)
-  const beijingClock = useSolarStore((state) => state.beijingClock)
+  const solarActive = useSolarStore(state => state.active)
+  const solarUtcHour = useSolarStore(state => state.utcHour)
+  const beijingClock = useSolarStore(state => state.beijingClock)
 
   const utcHours = useMemo(() => {
     if (solarActive) return solarUtcHour
@@ -26,7 +27,9 @@ export function TimezonePanel({ comparison, onClear }: TimezonePanelProps) {
     return now.getUTCHours() + now.getUTCMinutes() / 60
   }, [solarActive, solarUtcHour])
 
-  const timeSourceText = solarActive ? `按模拟时刻计算（北京 ${beijingClock}）` : '按当前真实时刻计算'
+  const timeSourceText = solarActive
+    ? `按模拟时刻计算（北京 ${beijingClock}）`
+    : '按当前真实时刻计算'
 
   const differenceText = useMemo(() => {
     const difference = comparison.differenceHours
@@ -43,10 +46,16 @@ export function TimezonePanel({ comparison, onClear }: TimezonePanelProps) {
   }
 
   return (
-    <div className={styles.timezonePanel} aria-label="时区对比">
+    <div className={styles.timezonePanel} aria-label='时区对比'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>地方时对比</span>
-        <Button type="text" size="small" aria-label="关闭时区对比" icon={<CloseOutlined />} onClick={onClear} />
+        <Button
+          type='text'
+          size='small'
+          aria-label='关闭时区对比'
+          icon={<CloseOutlined />}
+          onClick={onClear}
+        />
       </div>
       <div className={styles.pickRow}>
         <span className={`${styles.pickDot} ${styles.pickA}`} />
@@ -63,9 +72,12 @@ export function TimezonePanel({ comparison, onClear }: TimezonePanelProps) {
       <div className={styles.difference}>{differenceText}</div>
       <div className={styles.hint}>{timeSourceText}</div>
       <div className={styles.divider} />
-      <p className={styles.note}>地球自西向东自转，同纬度偏东地点先见日出，地方时更早。地方时 = UTC + 经度 ÷ 15。</p>
       <p className={styles.note}>
-        日界线有两条：180° 经线为人为日界线（自西向东越过日期减一天）；地方时 0 时所在经线为自然日界线（自西向东越过日期加一天）。
+        地球自西向东自转，同纬度偏东地点先见日出，地方时更早。地方时 = UTC + 经度 ÷ 15。
+      </p>
+      <p className={styles.note}>
+        日界线有两条：180° 经线为人为日界线（自西向东越过日期减一天）；地方时 0
+        时所在经线为自然日界线（自西向东越过日期加一天）。
       </p>
     </div>
   )

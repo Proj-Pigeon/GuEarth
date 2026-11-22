@@ -1,6 +1,7 @@
-import { safeStorage } from 'electron'
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
 import { join } from 'path'
+
+import { safeStorage } from 'electron'
 
 let credentialsPath = ''
 
@@ -32,7 +33,8 @@ export function assertEncryptionAvailable(): void {
 
 export function writeProviderKey(providerId: string, apiKey: string): void {
   assertEncryptionAvailable()
-  if (typeof apiKey !== 'string' || apiKey.length < 1 || apiKey.length > 4096) throw new Error('无效的供应商密钥')
+  if (typeof apiKey !== 'string' || apiKey.length < 1 || apiKey.length > 4096)
+    throw new Error('无效的供应商密钥')
   writeFileSync(credentialPath(providerId), safeStorage.encryptString(apiKey))
 }
 

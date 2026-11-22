@@ -1,6 +1,6 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
 import { init, use, type EChartsCoreOption, type EChartsType } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
+import { useEffect, useRef, type CSSProperties } from 'react'
 
 use([SVGRenderer])
 

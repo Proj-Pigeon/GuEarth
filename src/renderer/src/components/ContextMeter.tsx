@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react'
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   CompressOutlined,
   LoadingOutlined
 } from '@ant-design/icons'
-import { Button, Popover, Progress } from 'antd'
-import type { AiContextStats } from '../../../preload'
 import type { ContextCompressionStatus } from '@renderer/stores/ai'
+import { Button, Popover, Progress } from 'antd'
+import { useMemo, useState } from 'react'
+
+import type { AiContextStats } from '../../../preload'
+
 import styles from './ContextMeter.module.css'
 
 export interface ContextMeterProps {
@@ -66,10 +68,10 @@ export function ContextMeter({
         : notice || `${percent}%`
 
   const segments = useMemo<Segment[]>(() => {
-    const used = stats.categories.filter((category) => category.tokens > 0)
+    const used = stats.categories.filter(category => category.tokens > 0)
     const free = Math.max(0, stats.contextWindow - stats.usedTokens)
     return [
-      ...used.map((category) => ({
+      ...used.map(category => ({
         key: category.key,
         label: category.label,
         tokens: category.tokens,
@@ -82,7 +84,7 @@ export function ContextMeter({
   const windowShare = useMemo(
     () =>
       new Map(
-        segments.map((segment) => [
+        segments.map(segment => [
           segment.key,
           stats.contextWindow > 0 ? (segment.tokens / stats.contextWindow) * 100 : 0
         ])
@@ -99,7 +101,7 @@ export function ContextMeter({
         </span>
       </div>
       <div className={styles.contextBar}>
-        {segments.map((segment) => (
+        {segments.map(segment => (
           <span
             key={segment.key}
             className={styles.contextBarSegment}
@@ -108,7 +110,7 @@ export function ContextMeter({
         ))}
       </div>
       <div className={styles.contextLegend}>
-        {segments.map((segment) => (
+        {segments.map(segment => (
           <div key={segment.key} className={styles.contextLegendRow}>
             <span className={styles.contextLegendChip} style={{ background: segment.color }} />
             <span className={styles.contextLegendLabel}>{segment.label}</span>
@@ -120,8 +122,8 @@ export function ContextMeter({
         ))}
       </div>
       <Button
-        type="primary"
-        size="small"
+        type='primary'
+        size='small'
         block
         loading={status === 'compressing'}
         icon={<CompressOutlined />}
@@ -137,19 +139,19 @@ export function ContextMeter({
     <Popover
       open={open}
       onOpenChange={setOpen}
-      trigger="click"
-      placement="topLeft"
+      trigger='click'
+      placement='topLeft'
       content={popoverContent}
     >
       <button
-        type="button"
+        type='button'
         className={`context-meter ${styles.contextMeter}`}
         aria-expanded={open}
-        aria-label="查看上下文窗口"
+        aria-label='查看上下文窗口'
       >
         <span className={styles.contextRing}>
           <Progress
-            type="circle"
+            type='circle'
             percent={percent}
             size={18}
             strokeWidth={14}

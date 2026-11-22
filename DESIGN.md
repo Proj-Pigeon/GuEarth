@@ -263,18 +263,18 @@ Ant Design derives everything from one seed: **`{colors.primary}` `#1677FF`**.
 
 Semantic roles:
 
-| Token | Value | Use |
-| --- | --- | --- |
-| `colors.primary` | `#1677FF` | Primary actions, links, selection, focus ring |
-| `colors.on-primary` | `#FFFFFF` | Text/icons on primary fills |
-| `colors.ink` | `rgba(0,0,0,0.88)` | Primary text |
-| `colors.ink-secondary` | `rgba(0,0,0,0.65)` | Secondary text, labels |
-| `colors.ink-tertiary` | `rgba(0,0,0,0.45)` | Hints, placeholders, map credits |
-| `colors.ink-disabled` | `rgba(0,0,0,0.25)` | Disabled text |
-| `colors.canvas` | `#F5F5F5` | Ambient app background behind panels |
-| `colors.surface` | `#FFFFFF` | Panels, cards, inputs — floating layers |
-| `colors.hairline` | `rgba(5,5,5,0.06)` | Dividers, panel borders |
-| `colors.success` / `colors.warning` / `colors.error` / `colors.info` | `#52C41A` / `#FAAD14` / `#FF4D4F` / `#1677FF` | Status only |
+| Token                                                                | Value                                         | Use                                           |
+| -------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------- |
+| `colors.primary`                                                     | `#1677FF`                                     | Primary actions, links, selection, focus ring |
+| `colors.on-primary`                                                  | `#FFFFFF`                                     | Text/icons on primary fills                   |
+| `colors.ink`                                                         | `rgba(0,0,0,0.88)`                            | Primary text                                  |
+| `colors.ink-secondary`                                               | `rgba(0,0,0,0.65)`                            | Secondary text, labels                        |
+| `colors.ink-tertiary`                                                | `rgba(0,0,0,0.45)`                            | Hints, placeholders, map credits              |
+| `colors.ink-disabled`                                                | `rgba(0,0,0,0.25)`                            | Disabled text                                 |
+| `colors.canvas`                                                      | `#F5F5F5`                                     | Ambient app background behind panels          |
+| `colors.surface`                                                     | `#FFFFFF`                                     | Panels, cards, inputs — floating layers       |
+| `colors.hairline`                                                    | `rgba(5,5,5,0.06)`                            | Dividers, panel borders                       |
+| `colors.success` / `colors.warning` / `colors.error` / `colors.info` | `#52C41A` / `#FAAD14` / `#FF4D4F` / `#1677FF` | Status only                                   |
 
 Rules:
 
@@ -296,18 +296,18 @@ fontFamily.base = -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
 fontFamily.mono = 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace
 ```
 
-| Level | Size/Line | Weight | Use |
-| --- | --- | --- | --- |
-| `typography.display-lg` | 38/46 | 600 | Onboarding/empty states only |
-| `typography.heading-xl` | 30/38 | 600 | Full-screen dialog titles |
-| `typography.heading-lg` | 24/32 | 600 | Major panel titles |
-| `typography.heading-md` | 20/28 | 600 | Section titles |
-| `typography.heading-sm` | 16/24 | 600 | Card/panel titles |
-| `typography.body-md` | 14/22 | 400 | Default UI text |
-| `typography.body-sm` | 12/20 | 400 | Dense lists, secondary text |
-| `typography.caption` | 12/20 | 400 | Map credits, coordinates, hints |
-| `typography.button-md` | 14/22 | 400 | Buttons |
-| `typography.code-md` | 13/20 | 400 | Coordinates, measurements, data readouts |
+| Level                   | Size/Line | Weight | Use                                      |
+| ----------------------- | --------- | ------ | ---------------------------------------- |
+| `typography.display-lg` | 38/46     | 600    | Onboarding/empty states only             |
+| `typography.heading-xl` | 30/38     | 600    | Full-screen dialog titles                |
+| `typography.heading-lg` | 24/32     | 600    | Major panel titles                       |
+| `typography.heading-md` | 20/28     | 600    | Section titles                           |
+| `typography.heading-sm` | 16/24     | 600    | Card/panel titles                        |
+| `typography.body-md`    | 14/22     | 400    | Default UI text                          |
+| `typography.body-sm`    | 12/20     | 400    | Dense lists, secondary text              |
+| `typography.caption`    | 12/20     | 400    | Map credits, coordinates, hints          |
+| `typography.button-md`  | 14/22     | 400    | Buttons                                  |
+| `typography.code-md`    | 13/20     | 400    | Coordinates, measurements, data readouts |
 
 All coordinates, lat/lng values, distances and areas use `typography.code-md` — numeric teaching
 data must be tabular and monospaced.
@@ -339,26 +339,26 @@ Depth comes from **tone and borders first**, shadows second:
 
 Motion — three durations only, with Ant's standard easings:
 
-| Duration | Easing | Use |
-| --- | --- | --- |
-| `0.1s` | ease-out | Hover/active state changes |
-| `0.2s` | ease-in-out | Panel transitions, hover reveals |
-| `0.3s` | ease-in-out | Surface changes: dialog in/out, drawer slide |
+| Duration | Easing      | Use                                          |
+| -------- | ----------- | -------------------------------------------- |
+| `0.1s`   | ease-out    | Hover/active state changes                   |
+| `0.2s`   | ease-in-out | Panel transitions, hover reveals             |
+| `0.3s`   | ease-in-out | Surface changes: dialog in/out, drawer slide |
 
 Camera fly-to animations are scene content (Cesium), not UI motion; they follow their own
 curves and are exempt from the table above.
 
 ## Shapes
 
-| Token | Value | Use |
-| --- | --- | --- |
-| `rounded.none` | `0px` | Full-bleed surfaces flush to window edges |
-| `rounded.xs` | `2px` | Checkboxes, tiny indicators |
-| `rounded.sm` | `4px` | Tags, tooltips, toolbar items, inner chips |
-| `rounded.md` | `6px` | **Default**: buttons, inputs, selects, menus |
-| `rounded.lg` | `8px` | Cards, floating panels, drawers |
-| `rounded.xl` | `10px` | Modals, large dialogs |
-| `rounded.full` | `9999px` | Badges, avatars, pill toggles |
+| Token          | Value    | Use                                          |
+| -------------- | -------- | -------------------------------------------- |
+| `rounded.none` | `0px`    | Full-bleed surfaces flush to window edges    |
+| `rounded.xs`   | `2px`    | Checkboxes, tiny indicators                  |
+| `rounded.sm`   | `4px`    | Tags, tooltips, toolbar items, inner chips   |
+| `rounded.md`   | `6px`    | **Default**: buttons, inputs, selects, menus |
+| `rounded.lg`   | `8px`    | Cards, floating panels, drawers              |
+| `rounded.xl`   | `10px`   | Modals, large dialogs                        |
+| `rounded.full` | `9999px` | Badges, avatars, pill toggles                |
 
 Interactive state changes (hover/focus/active) are expressed through **color shifts and border
 color/thickness**, never size or weight changes.

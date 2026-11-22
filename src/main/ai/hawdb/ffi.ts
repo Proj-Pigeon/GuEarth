@@ -1,4 +1,5 @@
 import koffi from 'koffi'
+
 import { parseLosslessJson, stringifyParameters } from './jsonCodec'
 
 export interface HawdbOpenOptions {
@@ -32,7 +33,7 @@ export class HawdbQueryResult {
   }
 
   dicts(): Record<string, unknown>[] {
-    return this.rows.map((row) => {
+    return this.rows.map(row => {
       const record: Record<string, unknown> = {}
       for (let i = 0; i < this.columns.length; i += 1) {
         record[this.columns[i]] = row[i]
@@ -48,22 +49,95 @@ interface RawHawdbBuffer {
 }
 
 interface NativeSymbols {
-  hawdb_open: (path: Buffer, pathLen: number, options: Buffer, optionsLen: number, errOut: RawHawdbBuffer) => unknown
+  hawdb_open: (
+    path: Buffer,
+    pathLen: number,
+    options: Buffer,
+    optionsLen: number,
+    errOut: RawHawdbBuffer
+  ) => unknown
   hawdb_open_in_memory: (errOut: RawHawdbBuffer) => unknown
   hawdb_close: (db: unknown) => void
-  hawdb_query: (db: unknown, cypher: Buffer, cypherLen: number, params: Buffer, paramsLen: number, resultOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
-  hawdb_query_sql: (db: unknown, sql: Buffer, sqlLen: number, params: Buffer, paramsLen: number, resultOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
+  hawdb_query: (
+    db: unknown,
+    cypher: Buffer,
+    cypherLen: number,
+    params: Buffer,
+    paramsLen: number,
+    resultOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer
+  ) => boolean
+  hawdb_query_sql: (
+    db: unknown,
+    sql: Buffer,
+    sqlLen: number,
+    params: Buffer,
+    paramsLen: number,
+    resultOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer
+  ) => boolean
   hawdb_begin_transaction: (db: unknown, errOut: RawHawdbBuffer) => boolean
-  hawdb_transaction_query: (db: unknown, cypher: Buffer, cypherLen: number, params: Buffer, paramsLen: number, resultOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
-  hawdb_transaction_query_sql: (db: unknown, sql: Buffer, sqlLen: number, params: Buffer, paramsLen: number, resultOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
-  hawdb_commit_transaction: (db: unknown, resultOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
+  hawdb_transaction_query: (
+    db: unknown,
+    cypher: Buffer,
+    cypherLen: number,
+    params: Buffer,
+    paramsLen: number,
+    resultOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer
+  ) => boolean
+  hawdb_transaction_query_sql: (
+    db: unknown,
+    sql: Buffer,
+    sqlLen: number,
+    params: Buffer,
+    paramsLen: number,
+    resultOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer
+  ) => boolean
+  hawdb_commit_transaction: (
+    db: unknown,
+    resultOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer
+  ) => boolean
   hawdb_rollback_transaction: (db: unknown, errOut: RawHawdbBuffer) => boolean
-  hawdb_export: (db: unknown, dest: Buffer, destLen: number, reportOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
-  hawdb_import: (src: Buffer, srcLen: number, dest: Buffer, destLen: number, reportOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
-  hawdb_verify_dump: (path: Buffer, pathLen: number, reportOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
+  hawdb_export: (
+    db: unknown,
+    dest: Buffer,
+    destLen: number,
+    reportOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer
+  ) => boolean
+  hawdb_import: (
+    src: Buffer,
+    srcLen: number,
+    dest: Buffer,
+    destLen: number,
+    reportOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer
+  ) => boolean
+  hawdb_verify_dump: (
+    path: Buffer,
+    pathLen: number,
+    reportOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer
+  ) => boolean
   hawdb_confirm_dump_publication: (dest: Buffer, destLen: number, errOut: RawHawdbBuffer) => boolean
-  hawdb_backup: (db: unknown, dest: Buffer, destLen: number, reportOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
-  hawdb_restore: (src: Buffer, srcLen: number, dest: Buffer, destLen: number, reportOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
+  hawdb_backup: (
+    db: unknown,
+    dest: Buffer,
+    destLen: number,
+    reportOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer
+  ) => boolean
+  hawdb_restore: (
+    src: Buffer,
+    srcLen: number,
+    dest: Buffer,
+    destLen: number,
+    reportOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer
+  ) => boolean
   hawdb_scrub: (db: unknown, reportOut: RawHawdbBuffer, errOut: RawHawdbBuffer) => boolean
   hawdb_format_version: () => number
   hawdb_dump_format_version: () => number
@@ -100,9 +174,12 @@ function serializeOpenOptions(options?: HawdbOpenOptions): string {
   const payload: Record<string, unknown> = {}
   if (options.readOnly !== undefined) payload.read_only = options.readOnly
   if (options.durability !== undefined) payload.durability = options.durability
-  if (options.maxReadResultRows !== undefined) payload.max_read_result_rows = options.maxReadResultRows
-  if (options.maxReadIntermediateRows !== undefined) payload.max_read_intermediate_rows = options.maxReadIntermediateRows
-  if (options.maxReadResultPayloadBytes !== undefined) payload.max_read_result_payload_bytes = options.maxReadResultPayloadBytes
+  if (options.maxReadResultRows !== undefined)
+    payload.max_read_result_rows = options.maxReadResultRows
+  if (options.maxReadIntermediateRows !== undefined)
+    payload.max_read_intermediate_rows = options.maxReadIntermediateRows
+  if (options.maxReadResultPayloadBytes !== undefined)
+    payload.max_read_result_payload_bytes = options.maxReadResultPayloadBytes
   if (options.relationalMonotonicAppendFastPath !== undefined) {
     payload.relational_monotonic_append_fast_path = options.relationalMonotonicAppendFastPath
   }
@@ -114,7 +191,7 @@ function decodeResultPayload(text: string | null): HawdbQueryResult {
   const parsed = parseLosslessJson(text)
   if (typeof parsed !== 'object' || parsed === null) return new HawdbQueryResult([], [])
   const record = parsed as Record<string, unknown>
-  const columns = Array.isArray(record.columns) ? record.columns.map((item) => String(item)) : []
+  const columns = Array.isArray(record.columns) ? record.columns.map(item => String(item)) : []
   const rows = Array.isArray(record.rows) ? (record.rows as unknown[][]) : []
   return new HawdbQueryResult(columns, rows)
 }
@@ -169,13 +246,15 @@ export class HawdbDatabase {
 
   query(cypher: string, params?: Record<string, unknown>): HawdbQueryResult {
     this.assertOpen()
-    if (this.inTransaction) throw new HawdbError('active_transaction', '事务进行中请使用事务句柄执行查询')
+    if (this.inTransaction)
+      throw new HawdbError('active_transaction', '事务进行中请使用事务句柄执行查询')
     return this.library.runQuery(this.handle, cypher, params ?? {}, false, false)
   }
 
   querySQL(sql: string, params?: unknown[]): HawdbQueryResult {
     this.assertOpen()
-    if (this.inTransaction) throw new HawdbError('active_transaction', '事务进行中请使用事务句柄执行查询')
+    if (this.inTransaction)
+      throw new HawdbError('active_transaction', '事务进行中请使用事务句柄执行查询')
     return this.library.runQuery(this.handle, sql, params ?? [], false, true)
   }
 
@@ -244,23 +323,55 @@ export class HawdbLibrary {
     ensureBufferStruct()
     this.lib = koffi.load(libraryPath)
     this.symbols = {
-      hawdb_open: this.lib.func('void * hawdb_open(const uint8_t *path, size_t path_len, const uint8_t *options_json, size_t options_len, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_open_in_memory: this.lib.func('void * hawdb_open_in_memory(_Inout_ HawdbBuffer *err_out)'),
+      hawdb_open: this.lib.func(
+        'void * hawdb_open(const uint8_t *path, size_t path_len, const uint8_t *options_json, size_t options_len, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_open_in_memory: this.lib.func(
+        'void * hawdb_open_in_memory(_Inout_ HawdbBuffer *err_out)'
+      ),
       hawdb_close: this.lib.func('void hawdb_close(void *db)'),
-      hawdb_query: this.lib.func('bool hawdb_query(void *db, const uint8_t *cypher, size_t cypher_len, const uint8_t *params_json, size_t params_len, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_query_sql: this.lib.func('bool hawdb_query_sql(void *db, const uint8_t *sql, size_t sql_len, const uint8_t *params_json, size_t params_len, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_begin_transaction: this.lib.func('bool hawdb_begin_transaction(void *db, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_transaction_query: this.lib.func('bool hawdb_transaction_query(void *db, const uint8_t *cypher, size_t cypher_len, const uint8_t *params_json, size_t params_len, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_transaction_query_sql: this.lib.func('bool hawdb_transaction_query_sql(void *db, const uint8_t *sql, size_t sql_len, const uint8_t *params_json, size_t params_len, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_commit_transaction: this.lib.func('bool hawdb_commit_transaction(void *db, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_rollback_transaction: this.lib.func('bool hawdb_rollback_transaction(void *db, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_export: this.lib.func('bool hawdb_export(void *db, const uint8_t *dest, size_t dest_len, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_import: this.lib.func('bool hawdb_import(const uint8_t *src, size_t src_len, const uint8_t *dest, size_t dest_len, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_verify_dump: this.lib.func('bool hawdb_verify_dump(const uint8_t *path, size_t path_len, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_confirm_dump_publication: this.lib.func('bool hawdb_confirm_dump_publication(const uint8_t *dest, size_t dest_len, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_backup: this.lib.func('bool hawdb_backup(void *db, const uint8_t *dest, size_t dest_len, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_restore: this.lib.func('bool hawdb_restore(const uint8_t *src, size_t src_len, const uint8_t *dest, size_t dest_len, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'),
-      hawdb_scrub: this.lib.func('bool hawdb_scrub(void *db, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'),
+      hawdb_query: this.lib.func(
+        'bool hawdb_query(void *db, const uint8_t *cypher, size_t cypher_len, const uint8_t *params_json, size_t params_len, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_query_sql: this.lib.func(
+        'bool hawdb_query_sql(void *db, const uint8_t *sql, size_t sql_len, const uint8_t *params_json, size_t params_len, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_begin_transaction: this.lib.func(
+        'bool hawdb_begin_transaction(void *db, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_transaction_query: this.lib.func(
+        'bool hawdb_transaction_query(void *db, const uint8_t *cypher, size_t cypher_len, const uint8_t *params_json, size_t params_len, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_transaction_query_sql: this.lib.func(
+        'bool hawdb_transaction_query_sql(void *db, const uint8_t *sql, size_t sql_len, const uint8_t *params_json, size_t params_len, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_commit_transaction: this.lib.func(
+        'bool hawdb_commit_transaction(void *db, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_rollback_transaction: this.lib.func(
+        'bool hawdb_rollback_transaction(void *db, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_export: this.lib.func(
+        'bool hawdb_export(void *db, const uint8_t *dest, size_t dest_len, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_import: this.lib.func(
+        'bool hawdb_import(const uint8_t *src, size_t src_len, const uint8_t *dest, size_t dest_len, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_verify_dump: this.lib.func(
+        'bool hawdb_verify_dump(const uint8_t *path, size_t path_len, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_confirm_dump_publication: this.lib.func(
+        'bool hawdb_confirm_dump_publication(const uint8_t *dest, size_t dest_len, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_backup: this.lib.func(
+        'bool hawdb_backup(void *db, const uint8_t *dest, size_t dest_len, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_restore: this.lib.func(
+        'bool hawdb_restore(const uint8_t *src, size_t src_len, const uint8_t *dest, size_t dest_len, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'
+      ),
+      hawdb_scrub: this.lib.func(
+        'bool hawdb_scrub(void *db, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'
+      ),
       hawdb_format_version: this.lib.func('uint32_t hawdb_format_version()'),
       hawdb_dump_format_version: this.lib.func('uint32_t hawdb_dump_format_version()'),
       hawdb_version: this.lib.func('void hawdb_version(_Inout_ HawdbBuffer *out)'),
@@ -328,7 +439,13 @@ export class HawdbLibrary {
     const pathBytes = encodeUtf8(path)
     const optionBytes = encodeUtf8(serializeOpenOptions(options))
     const errOut = emptyBuffer()
-    const handle = this.symbols.hawdb_open(pathBytes.buf, pathBytes.len, optionBytes.buf, optionBytes.len, errOut)
+    const handle = this.symbols.hawdb_open(
+      pathBytes.buf,
+      pathBytes.len,
+      optionBytes.buf,
+      optionBytes.len,
+      errOut
+    )
     if (!handle) throw this.errorFrom(errOut, `无法打开 HawDB 数据库：${path}`)
     const stray = this.takeBuffer(errOut)
     if (stray !== null) {
@@ -359,19 +476,57 @@ export class HawdbLibrary {
     if (!this.closed) this.symbols.hawdb_close(handle)
   }
 
-  runQuery(handle: unknown, statement: string, params: unknown, inTransaction: boolean, sql: boolean): HawdbQueryResult {
+  runQuery(
+    handle: unknown,
+    statement: string,
+    params: unknown,
+    inTransaction: boolean,
+    sql: boolean
+  ): HawdbQueryResult {
     this.assertOpen()
     const stmtBytes = encodeUtf8(statement)
     const paramBytes = encodeUtf8(stringifyParameters(params))
     const resultOut = emptyBuffer()
     const errOut = emptyBuffer()
     const ok = sql
-      ? (inTransaction
-        ? this.symbols.hawdb_transaction_query_sql(handle, stmtBytes.buf, stmtBytes.len, paramBytes.buf, paramBytes.len, resultOut, errOut)
-        : this.symbols.hawdb_query_sql(handle, stmtBytes.buf, stmtBytes.len, paramBytes.buf, paramBytes.len, resultOut, errOut))
-      : (inTransaction
-        ? this.symbols.hawdb_transaction_query(handle, stmtBytes.buf, stmtBytes.len, paramBytes.buf, paramBytes.len, resultOut, errOut)
-        : this.symbols.hawdb_query(handle, stmtBytes.buf, stmtBytes.len, paramBytes.buf, paramBytes.len, resultOut, errOut))
+      ? inTransaction
+        ? this.symbols.hawdb_transaction_query_sql(
+            handle,
+            stmtBytes.buf,
+            stmtBytes.len,
+            paramBytes.buf,
+            paramBytes.len,
+            resultOut,
+            errOut
+          )
+        : this.symbols.hawdb_query_sql(
+            handle,
+            stmtBytes.buf,
+            stmtBytes.len,
+            paramBytes.buf,
+            paramBytes.len,
+            resultOut,
+            errOut
+          )
+      : inTransaction
+        ? this.symbols.hawdb_transaction_query(
+            handle,
+            stmtBytes.buf,
+            stmtBytes.len,
+            paramBytes.buf,
+            paramBytes.len,
+            resultOut,
+            errOut
+          )
+        : this.symbols.hawdb_query(
+            handle,
+            stmtBytes.buf,
+            stmtBytes.len,
+            paramBytes.buf,
+            paramBytes.len,
+            resultOut,
+            errOut
+          )
     if (!ok) {
       this.takeBuffer(resultOut)
       throw this.errorFrom(errOut, sql ? 'HawDB SQL 执行失败' : 'HawDB Cypher 执行失败')
@@ -412,7 +567,12 @@ export class HawdbLibrary {
     if (stray !== null) throw new HawdbError('ffi', stray)
   }
 
-  private parseReport(reportOut: RawHawdbBuffer, errOut: RawHawdbBuffer, ok: boolean, fallback: string): Record<string, unknown> {
+  private parseReport(
+    reportOut: RawHawdbBuffer,
+    errOut: RawHawdbBuffer,
+    ok: boolean,
+    fallback: string
+  ): Record<string, unknown> {
     this.assertOpen()
     if (!ok) {
       this.takeBuffer(reportOut)
@@ -439,7 +599,14 @@ export class HawdbLibrary {
     const destBytes = encodeUtf8(destination)
     const reportOut = emptyBuffer()
     const errOut = emptyBuffer()
-    const ok = this.symbols.hawdb_import(srcBytes.buf, srcBytes.len, destBytes.buf, destBytes.len, reportOut, errOut)
+    const ok = this.symbols.hawdb_import(
+      srcBytes.buf,
+      srcBytes.len,
+      destBytes.buf,
+      destBytes.len,
+      reportOut,
+      errOut
+    )
     return this.parseReport(reportOut, errOut, ok, '导入 HawDB 转储失败')
   }
 

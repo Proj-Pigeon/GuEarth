@@ -1,17 +1,19 @@
-import { useState } from 'react'
-import { App as AntdApp, Button } from 'antd'
 import { CopyOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useUpdaterStore } from '@renderer/stores/updater'
+import { App as AntdApp, Button } from 'antd'
+import { useState } from 'react'
+
 import { logger } from '../../../../common/logger'
+
 import styles from './AboutSettings.module.css'
 
 export interface AboutSettingsProps {}
 
 export function AboutSettings(_props: AboutSettingsProps) {
   const { message } = AntdApp.useApp()
-  const currentVersion = useUpdaterStore((state) => state.currentVersion)
-  const checking = useUpdaterStore((state) => state.checking)
-  const checkNow = useUpdaterStore((state) => state.checkNow)
+  const currentVersion = useUpdaterStore(state => state.currentVersion)
+  const checking = useUpdaterStore(state => state.checking)
+  const checkNow = useUpdaterStore(state => state.checkNow)
 
   const [copying, setCopying] = useState(false)
 
@@ -31,7 +33,7 @@ export function AboutSettings(_props: AboutSettingsProps) {
   }
 
   return (
-    <section className={styles.settingsSection} data-settings-section="" aria-label="关于">
+    <section className={styles.settingsSection} data-settings-section='' aria-label='关于'>
       <h3 className={styles.sectionTitle}>关于</h3>
 
       <div className={styles.settingsBlock}>

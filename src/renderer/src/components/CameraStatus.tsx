@@ -1,4 +1,5 @@
 import type { CameraReadout } from '@renderer/stores/globe'
+
 import styles from './CameraStatus.module.css'
 
 export interface CameraStatusProps {

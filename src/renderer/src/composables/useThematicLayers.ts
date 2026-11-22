@@ -1,34 +1,89 @@
-import { useEffect, useRef } from 'react'
-import { useVisibleAnimation } from './useVisibleAnimation'
-import * as Cesium from 'cesium'
-import type { EarthquakeEvent, EarthquakeFeed, ProvinceGeoDocument } from '../../../preload'
-import { thematicLayerCatalog, useClimateStore, type ThematicLayerId } from '@renderer/stores/climate'
-import { useSolarStore } from '@renderer/stores/solar'
+import { ensureSeaLevelSamples } from '@renderer/composables/seaLevelSampling'
+import {
+  thematicLayerCatalog,
+  useClimateStore,
+  type ThematicLayerId
+} from '@renderer/stores/climate'
 import { useFailureStore } from '@renderer/stores/failure'
-import { beltLabel, beltLabelPosition, beltOpacity, beltRing } from '@renderer/thematic/rainBelt'
-import { summerMonsoonArrows, winterMonsoonArrows } from '@renderer/thematic/monsoonArrows'
-import { oceanCurrents, pathPointAt } from '@renderer/thematic/oceanCurrents'
+import { useGlobeStore } from '@renderer/stores/globe'
+import { useOnlineDataStore } from '@renderer/stores/onlineData'
+import { useSolarStore } from '@renderer/stores/solar'
+import { useTransportStore } from '@renderer/stores/transport'
+import {
+  agriCategoryOf,
+  agriculturalRegions,
+  agriFacts,
+  agriRegionSummary
+} from '@renderer/thematic/agriculturalRegions'
 import { climateZones } from '@renderer/thematic/climateZones'
 import { coriolisDemos, sampleTrack } from '@renderer/thematic/coriolis'
-import { beltCenter, beltRingDegrees, pressureBelts, windBeltLatitude, windBelts, type PressureBeltSpec, type WindBeltSpec } from '@renderer/thematic/pressureBelts'
+import { ensoAnomalyColor, ensoPhaseMeta } from '@renderer/thematic/ensoPhases'
+import { HSR_COLOR, hsrFacts, hsrLines } from '@renderer/thematic/hsrLines'
+import {
+  industrialBases,
+  industrialTransferFacts,
+  industrialTransferFlows
+} from '@renderer/thematic/industrialBases'
 import { koppenZones } from '@renderer/thematic/koppenZones'
-import { nearestBoundary, plateBoundaries, plateBoundaryKindName } from '@renderer/thematic/plateBoundaries'
-import { volcanoes } from '@renderer/thematic/volcanoes'
+import { buildLiveTyphoons } from '@renderer/thematic/liveTyphoons'
+import { summerMonsoonArrows, winterMonsoonArrows } from '@renderer/thematic/monsoonArrows'
+import { oceanCurrents, pathPointAt } from '@renderer/thematic/oceanCurrents'
+import {
+  nearestBoundary,
+  plateBoundaries,
+  plateBoundaryKindName
+} from '@renderer/thematic/plateBoundaries'
+import {
+  densityColor,
+  densityOf,
+  fanMigrationEndpoints,
+  huLineEndpoints,
+  huLineFacts,
+  huLinePath,
+  migrationFacts,
+  migrationFlows,
+  provincePopulation,
+  provinceSummary,
+  smoothMigrationPath
+} from '@renderer/thematic/populationCensus'
+import {
+  beltCenter,
+  beltRingDegrees,
+  pressureBelts,
+  windBeltLatitude,
+  windBelts,
+  type PressureBeltSpec,
+  type WindBeltSpec
+} from '@renderer/thematic/pressureBelts'
+import { beltLabel, beltLabelPosition, beltOpacity, beltRing } from '@renderer/thematic/rainBelt'
+import {
+  cacheKeyOf,
+  coastalZones,
+  gridPointsOf,
+  heightCache,
+  isLandCell,
+  isInundated,
+  scenarioSummary,
+  SEA_COLOR,
+  useSeaLevelStore
+} from '@renderer/thematic/seaLevelRise'
+import { subsolarPointDeg } from '@renderer/thematic/solarMath'
 import { temperatureZoneBands, temperatureZoneLines } from '@renderer/thematic/temperatureZones'
 import { typhoonIntensityStyles, typhoonTracks } from '@renderer/thematic/typhoonTracks'
-import { buildLiveTyphoons } from '@renderer/thematic/liveTyphoons'
-import { useOnlineDataStore } from '@renderer/stores/onlineData'
-import { ensoAnomalyColor, ensoPhaseMeta } from '@renderer/thematic/ensoPhases'
-import { subsolarPointDeg } from '@renderer/thematic/solarMath'
-import { densityColor, densityOf, fanMigrationEndpoints, huLineEndpoints, huLineFacts, huLinePath, migrationFacts, migrationFlows, provincePopulation, provinceSummary, smoothMigrationPath } from '@renderer/thematic/populationCensus'
-import { cityTierOf, DEFAULT_FUNCTIONAL_ZONE_CITY_ID, FUNCTIONAL_ZONES, functionalZoneCities, functionalZoneCityById, urbanCities } from '@renderer/thematic/urbanCities'
-import { agriCategoryOf, agriculturalRegions, agriFacts, agriRegionSummary } from '@renderer/thematic/agriculturalRegions'
-import { industrialBases, industrialTransferFacts, industrialTransferFlows } from '@renderer/thematic/industrialBases'
-import { HSR_COLOR, hsrFacts, hsrLines } from '@renderer/thematic/hsrLines'
-import { cacheKeyOf, coastalZones, gridPointsOf, heightCache, isLandCell, isInundated, scenarioSummary, SEA_COLOR, useSeaLevelStore } from '@renderer/thematic/seaLevelRise'
-import { ensureSeaLevelSamples } from '@renderer/composables/seaLevelSampling'
-import { useGlobeStore } from '@renderer/stores/globe'
-import { useTransportStore } from '@renderer/stores/transport'
+import {
+  cityTierOf,
+  DEFAULT_FUNCTIONAL_ZONE_CITY_ID,
+  FUNCTIONAL_ZONES,
+  functionalZoneCities,
+  functionalZoneCityById,
+  urbanCities
+} from '@renderer/thematic/urbanCities'
+import { volcanoes } from '@renderer/thematic/volcanoes'
+import * as Cesium from 'cesium'
+import { useEffect, useRef } from 'react'
+
+import type { EarthquakeEvent, EarthquakeFeed, ProvinceGeoDocument } from '../../../preload'
+import { useVisibleAnimation } from './useVisibleAnimation'
 
 const WARM_COLOR = '#f5222d'
 const COLD_COLOR = '#1677ff'
@@ -52,7 +107,8 @@ const FRONTAL_CYCLONE_LON = 125
 const FRONTAL_CYCLONE_LAT = 34
 const BELT_LABEL_LON = 150
 const WIND_ARROW_LONS = [-150, -90, -30, 30, 90, 150]
-const LABEL_FONT_FAMILY = '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif'
+const LABEL_FONT_FAMILY =
+  '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif'
 const HU_LINE_COLOR = '#531dab'
 const MIGRATION_FLOW_COLOR = '#fa8c16'
 const PROVINCE_BORDER_COLOR = 'rgba(0, 0, 0, 0.35)'
@@ -75,7 +131,9 @@ function toCartesians(points: Array<[number, number]>): Cesium.Cartesian3[] {
 }
 
 function toRingCartesians(points: Array<[number, number]>): Cesium.Cartesian3[] {
-  return toCartesians(points).filter((cartesian, index, all) => index === 0 || !Cesium.Cartesian3.equals(cartesian, all[index - 1]))
+  return toCartesians(points).filter(
+    (cartesian, index, all) => index === 0 || !Cesium.Cartesian3.equals(cartesian, all[index - 1])
+  )
 }
 
 interface LabeledPolygonRegionSpec {
@@ -92,7 +150,10 @@ interface LabeledPolygonRegionSpec {
   labelMaxDistance?: number
 }
 
-function addLabeledPolygonRegion(dataSource: Cesium.CustomDataSource, spec: LabeledPolygonRegionSpec): void {
+function addLabeledPolygonRegion(
+  dataSource: Cesium.CustomDataSource,
+  spec: LabeledPolygonRegionSpec
+): void {
   for (const ring of spec.rings) {
     dataSource.entities.add({
       properties: spec.properties,
@@ -123,9 +184,10 @@ function addLabeledPolygonRegion(dataSource: Cesium.CustomDataSource, spec: Labe
       backgroundPadding: new Cesium.Cartesian2(spec.labelPadding[0], spec.labelPadding[1]),
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      distanceDisplayCondition: spec.labelMaxDistance !== undefined
-        ? new Cesium.DistanceDisplayCondition(0, spec.labelMaxDistance)
-        : undefined
+      distanceDisplayCondition:
+        spec.labelMaxDistance !== undefined
+          ? new Cesium.DistanceDisplayCondition(0, spec.labelMaxDistance)
+          : undefined
     }
   })
 }
@@ -144,7 +206,10 @@ interface LabeledPointOverlaySpec {
   labelMaxDistance?: number
 }
 
-function addLabeledPointOverlay(dataSource: Cesium.CustomDataSource, spec: LabeledPointOverlaySpec): void {
+function addLabeledPointOverlay(
+  dataSource: Cesium.CustomDataSource,
+  spec: LabeledPointOverlaySpec
+): void {
   dataSource.entities.add({
     properties: spec.properties,
     position: Cesium.Cartesian3.fromDegrees(spec.longitude, spec.latitude),
@@ -166,14 +231,19 @@ function addLabeledPointOverlay(dataSource: Cesium.CustomDataSource, spec: Label
       pixelOffset: new Cesium.Cartesian2(spec.pixelOffset?.[0] ?? 0, spec.pixelOffset?.[1] ?? -18),
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      distanceDisplayCondition: spec.labelMaxDistance !== undefined
-        ? new Cesium.DistanceDisplayCondition(0, spec.labelMaxDistance)
-        : undefined
+      distanceDisplayCondition:
+        spec.labelMaxDistance !== undefined
+          ? new Cesium.DistanceDisplayCondition(0, spec.labelMaxDistance)
+          : undefined
     }
   })
 }
 
-function arrowHeadPositions(from: [number, number], to: [number, number], size: number): Cesium.Cartesian3[] {
+function arrowHeadPositions(
+  from: [number, number],
+  to: [number, number],
+  size: number
+): Cesium.Cartesian3[] {
   const latMidRad = (((from[1] + to[1]) / 2) * Math.PI) / 180
   const cosLat = Math.max(0.25, Math.cos(latMidRad))
   const dx = (to[0] - from[0]) * cosLat
@@ -188,9 +258,12 @@ function arrowHeadPositions(from: [number, number], to: [number, number], size: 
   const baseLon = to[0] - (dirX * size * 1.6) / cosLat
   const baseLat = to[1] - dirY * size * 1.6
   return Cesium.Cartesian3.fromDegreesArray([
-    tipLon, tipLat,
-    baseLon + (perpX * size) / cosLat, baseLat + perpY * size,
-    baseLon - (perpX * size) / cosLat, baseLat - perpY * size
+    tipLon,
+    tipLat,
+    baseLon + (perpX * size) / cosLat,
+    baseLat + perpY * size,
+    baseLon - (perpX * size) / cosLat,
+    baseLat - perpY * size
   ])
 }
 
@@ -215,7 +288,10 @@ interface MonsoonRibbonSegment {
   alpha: number
 }
 
-function monsoonRibbonSegments(smooth: Array<[number, number]>, maxWidthDeg: number): { segments: MonsoonRibbonSegment[]; head: Cesium.Cartesian3[] } {
+function monsoonRibbonSegments(
+  smooth: Array<[number, number]>,
+  maxWidthDeg: number
+): { segments: MonsoonRibbonSegment[]; head: Cesium.Cartesian3[] } {
   const headBase = ribbonHeadBaseFrac(smooth, maxWidthDeg)
   const sampled = Array.from({ length: MONSOON_RIBBON_SAMPLES + 1 }, (_, i) => {
     const t = i / MONSOON_RIBBON_SAMPLES
@@ -242,10 +318,16 @@ function monsoonRibbonSegments(smooth: Array<[number, number]>, maxWidthDeg: num
   for (let s = 0; s < MONSOON_RIBBON_SEGMENTS; s += 1) {
     const from = boundaries[s]
     const to = boundaries[s + 1]
-    const leftRing = sampled.slice(from, to + 1).map((p) => [p.left, p.leftLat])
-    const rightRing = sampled.slice(from, to + 1).reverse().map((p) => [p.right, p.rightLat])
+    const leftRing = sampled.slice(from, to + 1).map(p => [p.left, p.leftLat])
+    const rightRing = sampled
+      .slice(from, to + 1)
+      .reverse()
+      .map(p => [p.right, p.rightLat])
     const alpha = monsoonAlphaProfile(((from + to) / 2 / MONSOON_RIBBON_SAMPLES) ** 0.85)
-    segments.push({ positions: Cesium.Cartesian3.fromDegreesArray(leftRing.concat(rightRing).flat()), alpha })
+    segments.push({
+      positions: Cesium.Cartesian3.fromDegreesArray(leftRing.concat(rightRing).flat()),
+      alpha
+    })
   }
   const base = pathPointAt(smooth, headBase).position
   const tip = pathPointAt(smooth, 1).position
@@ -276,7 +358,10 @@ function migrationPathLength(path: Array<[number, number]>): number {
   return length
 }
 
-function migrationArrowHeadPositions(path: Array<[number, number]>, size: number): Cesium.Cartesian3[] {
+function migrationArrowHeadPositions(
+  path: Array<[number, number]>,
+  size: number
+): Cesium.Cartesian3[] {
   const tip = pathPointAt(path, 1)
   const cosLat = Math.max(0.25, Math.cos((tip.position[1] * Math.PI) / 180))
   const [dirX, dirY] = tip.direction
@@ -287,9 +372,12 @@ function migrationArrowHeadPositions(path: Array<[number, number]>, size: number
   const perpX = -dirY
   const perpY = dirX
   return Cesium.Cartesian3.fromDegreesArray([
-    tip.position[0], tip.position[1],
-    baseLon + (perpX * halfWidth) / cosLat, baseLat + perpY * halfWidth,
-    baseLon - (perpX * halfWidth) / cosLat, baseLat - perpY * halfWidth
+    tip.position[0],
+    tip.position[1],
+    baseLon + (perpX * halfWidth) / cosLat,
+    baseLat + perpY * halfWidth,
+    baseLon - (perpX * halfWidth) / cosLat,
+    baseLat - perpY * halfWidth
   ])
 }
 
@@ -301,10 +389,7 @@ function migrationLabelAt(path: Array<[number, number]>, offset: number): [numbe
   const point = pathPointAt(path, 0.52)
   const cosLat = Math.max(0.25, Math.cos((point.position[1] * Math.PI) / 180))
   const [dirX, dirY] = point.direction
-  return [
-    point.position[0] + (dirY * offset) / cosLat,
-    point.position[1] - dirX * offset
-  ]
+  return [point.position[0] + (dirY * offset) / cosLat, point.position[1] - dirX * offset]
 }
 
 export interface ThematicLayerOptions {
@@ -327,25 +412,36 @@ function attachThematicLayers(
   function refreshRainBelt(month: number): void {
     const entity = rainBeltEntity
     if (!entity?.polygon || !entity.label) return
-    entity.polygon.hierarchy = new Cesium.ConstantProperty(new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(beltRing(month))))
-    entity.polygon.material = new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString(RAIN_BELT_COLOR).withAlpha(beltOpacity(month) * 0.7))
+    entity.polygon.hierarchy = new Cesium.ConstantProperty(
+      new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(beltRing(month)))
+    )
+    entity.polygon.material = new Cesium.ColorMaterialProperty(
+      Cesium.Color.fromCssColorString(RAIN_BELT_COLOR).withAlpha(beltOpacity(month) * 0.7)
+    )
     entity.polygon.show = new Cesium.ConstantProperty(beltOpacity(month) > 0.02)
     const [lon, lat] = beltLabelPosition(month)
     entity.position = new Cesium.ConstantPositionProperty(Cesium.Cartesian3.fromDegrees(lon, lat))
     entity.label.text = new Cesium.ConstantProperty(beltLabel(month))
-    entity.label.show = new Cesium.ConstantProperty(beltOpacity(month) > 0.05 && beltLabel(month) !== '')
+    entity.label.show = new Cesium.ConstantProperty(
+      beltOpacity(month) > 0.05 && beltLabel(month) !== ''
+    )
   }
 
   function refreshSubsolarPoint(): void {
     if (!subsolarEntity?.label) return
     const point = subsolarPointDeg(useSolarStore.getState().utcMs)
-    subsolarEntity.position = new Cesium.ConstantPositionProperty(Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude))
-    subsolarEntity.label.text = new Cesium.ConstantProperty(`直射点 ${Math.abs(point.latitude).toFixed(1)}°${point.latitude >= 0 ? 'N' : 'S'}`)
+    subsolarEntity.position = new Cesium.ConstantPositionProperty(
+      Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude)
+    )
+    subsolarEntity.label.text = new Cesium.ConstantProperty(
+      `直射点 ${Math.abs(point.latitude).toFixed(1)}°${point.latitude >= 0 ? 'N' : 'S'}`
+    )
   }
 
   function refreshSeasonalCurrents(): void {
     const { summerStrength, winterStrength } = useClimateStore.getState()
-    for (const { entity, season } of seasonalCurrents) entity.show = (season === 'summer' ? summerStrength : winterStrength) > 0.5
+    for (const { entity, season } of seasonalCurrents)
+      entity.show = (season === 'summer' ? summerStrength : winterStrength) > 0.5
   }
 
   function buildRainBelt(dataSource: Cesium.CustomDataSource): void {
@@ -369,7 +465,10 @@ function attachThematicLayers(
     refreshRainBelt(useClimateStore.getState().month)
   }
 
-  function buildMonsoonArrows(dataSource: Cesium.CustomDataSource, season: 'summer' | 'winter'): void {
+  function buildMonsoonArrows(
+    dataSource: Cesium.CustomDataSource,
+    season: 'summer' | 'winter'
+  ): void {
     const color = Cesium.Color.fromCssColorString(season === 'summer' ? WARM_COLOR : COLD_COLOR)
     const arrows = season === 'summer' ? summerMonsoonArrows : winterMonsoonArrows
     const labeled = new Set<string>()
@@ -412,7 +511,9 @@ function attachThematicLayers(
 
   function buildOceanCurrents(dataSource: Cesium.CustomDataSource): void {
     for (const current of oceanCurrents) {
-      const color = Cesium.Color.fromCssColorString(current.kind === 'warm' ? WARM_COLOR : COLD_COLOR)
+      const color = Cesium.Color.fromCssColorString(
+        current.kind === 'warm' ? WARM_COLOR : COLD_COLOR
+      )
       const add = (options: Cesium.Entity.ConstructorOptions): void => {
         const entity = dataSource.entities.add(options)
         if (current.season) seasonalCurrents.push({ entity, season: current.season })
@@ -430,7 +531,9 @@ function attachThematicLayers(
         const front = pathPointAt(current.path, fraction + 0.03)
         add({
           polygon: {
-            hierarchy: new Cesium.PolygonHierarchy(arrowHeadPositions(back.position, front.position, 1.5)),
+            hierarchy: new Cesium.PolygonHierarchy(
+              arrowHeadPositions(back.position, front.position, 1.5)
+            ),
             material: color.withAlpha(0.9)
           }
         })
@@ -492,7 +595,9 @@ function attachThematicLayers(
   function buildCoriolis(dataSource: Cesium.CustomDataSource): void {
     const inertialColor = Cesium.Color.fromCssColorString(CORIOLIS_INERTIAL_COLOR)
     for (const demo of coriolisDemos) {
-      const deflectedColor = Cesium.Color.fromCssColorString(demo.id === 'north' ? CORIOLIS_NORTH_COLOR : CORIOLIS_SOUTH_COLOR)
+      const deflectedColor = Cesium.Color.fromCssColorString(
+        demo.id === 'north' ? CORIOLIS_NORTH_COLOR : CORIOLIS_SOUTH_COLOR
+      )
       dataSource.entities.add({
         polyline: {
           positions: toCartesians(demo.inertial),
@@ -512,13 +617,19 @@ function attachThematicLayers(
       for (const track of [demo.inertial, demo.deflected]) {
         const isDeflected = track === demo.deflected
         dataSource.entities.add({
-          position: new Cesium.CallbackPositionProperty(() => {
-            const [lon, lat] = sampleTrack(track, coriolisProgressRef.current)
-            return Cesium.Cartesian3.fromDegrees(lon, lat)
-          }, false, Cesium.ReferenceFrame.FIXED),
+          position: new Cesium.CallbackPositionProperty(
+            () => {
+              const [lon, lat] = sampleTrack(track, coriolisProgressRef.current)
+              return Cesium.Cartesian3.fromDegrees(lon, lat)
+            },
+            false,
+            Cesium.ReferenceFrame.FIXED
+          ),
           point: {
             pixelSize: 9,
-            color: isDeflected ? deflectedColor : Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.65)'),
+            color: isDeflected
+              ? deflectedColor
+              : Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.65)'),
             outlineColor: Cesium.Color.WHITE,
             outlineWidth: 2,
             heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
@@ -570,20 +681,38 @@ function attachThematicLayers(
   function refreshPressureBeltGeometry(month: number): void {
     for (const link of beltLinks) {
       const cartesians = Cesium.Cartesian3.fromDegreesArray(beltRingDegrees(link.spec, month))
-      if (link.entity.polygon) link.entity.polygon.hierarchy = new Cesium.ConstantProperty(new Cesium.PolygonHierarchy(cartesians))
-      if (link.entity.polyline) link.entity.polyline.positions = new Cesium.ConstantProperty(cartesians)
-      link.entity.position = new Cesium.ConstantPositionProperty(Cesium.Cartesian3.fromDegrees(BELT_LABEL_LON, beltCenter(link.spec, month)))
+      if (link.entity.polygon)
+        link.entity.polygon.hierarchy = new Cesium.ConstantProperty(
+          new Cesium.PolygonHierarchy(cartesians)
+        )
+      if (link.entity.polyline)
+        link.entity.polyline.positions = new Cesium.ConstantProperty(cartesians)
+      link.entity.position = new Cesium.ConstantPositionProperty(
+        Cesium.Cartesian3.fromDegrees(BELT_LABEL_LON, beltCenter(link.spec, month))
+      )
     }
     for (const link of windArrowLinks) {
       const latitude = windBeltLatitude(link.spec, month)
-      const from: [number, number] = [link.lon + link.spec.tailOffset[0], latitude + link.spec.tailOffset[1]]
-      const to: [number, number] = [link.lon + link.spec.headOffset[0], latitude + link.spec.headOffset[1]]
+      const from: [number, number] = [
+        link.lon + link.spec.tailOffset[0],
+        latitude + link.spec.tailOffset[1]
+      ]
+      const to: [number, number] = [
+        link.lon + link.spec.headOffset[0],
+        latitude + link.spec.headOffset[1]
+      ]
       const cartesians = Cesium.Cartesian3.fromDegreesArray([from[0], from[1], to[0], to[1]])
-      if (link.entity.polyline) link.entity.polyline.positions = new Cesium.ConstantProperty(cartesians)
-      if (link.entity.polygon) link.entity.polygon.hierarchy = new Cesium.ConstantProperty(new Cesium.PolygonHierarchy(arrowHeadPositions(from, to, 1.6)))
+      if (link.entity.polyline)
+        link.entity.polyline.positions = new Cesium.ConstantProperty(cartesians)
+      if (link.entity.polygon)
+        link.entity.polygon.hierarchy = new Cesium.ConstantProperty(
+          new Cesium.PolygonHierarchy(arrowHeadPositions(from, to, 1.6))
+        )
     }
     for (const link of windLabelLinks) {
-      link.entity.position = new Cesium.ConstantPositionProperty(Cesium.Cartesian3.fromDegrees(BELT_LABEL_LON, windBeltLatitude(link.spec, month)))
+      link.entity.position = new Cesium.ConstantPositionProperty(
+        Cesium.Cartesian3.fromDegrees(BELT_LABEL_LON, windBeltLatitude(link.spec, month))
+      )
     }
   }
 
@@ -593,10 +722,16 @@ function attachThematicLayers(
       beltLinks.push({
         spec,
         entity: dataSource.entities.add({
-          properties: new Cesium.PropertyBag({ name: spec.name, layerId: 'pressure-belts', summary: spec.summary }),
+          properties: new Cesium.PropertyBag({
+            name: spec.name,
+            layerId: 'pressure-belts',
+            summary: spec.summary
+          }),
           polygon: {
             hierarchy: new Cesium.PolygonHierarchy([]),
-            material: new Cesium.ColorMaterialProperty(color.withAlpha(spec.kind === 'low' ? 0.14 : 0.1))
+            material: new Cesium.ColorMaterialProperty(
+              color.withAlpha(spec.kind === 'low' ? 0.14 : 0.1)
+            )
           },
           polyline: {
             positions: [],
@@ -620,14 +755,23 @@ function attachThematicLayers(
     }
     for (const spec of windBelts) {
       const color = Cesium.Color.fromCssColorString(WIND_BELT_COLOR)
-      const properties = new Cesium.PropertyBag({ name: spec.name, layerId: 'pressure-belts', summary: spec.summary })
+      const properties = new Cesium.PropertyBag({
+        name: spec.name,
+        layerId: 'pressure-belts',
+        summary: spec.summary
+      })
       for (const lon of WIND_ARROW_LONS) {
         windArrowLinks.push({
           spec,
           lon,
           entity: dataSource.entities.add({
             properties,
-            polyline: { positions: [], clampToGround: true, width: 3, material: color.withAlpha(0.85) },
+            polyline: {
+              positions: [],
+              clampToGround: true,
+              width: 3,
+              material: color.withAlpha(0.85)
+            },
             polygon: { hierarchy: new Cesium.PolygonHierarchy([]), material: color.withAlpha(0.9) }
           })
         })
@@ -657,15 +801,32 @@ function attachThematicLayers(
     for (const zone of koppenZones) {
       const fillColor = Cesium.Color.fromCssColorString(zone.color)
       const edgeColor = Cesium.Color.fromCssColorString(zone.borderColor ?? zone.color)
-      const properties = new Cesium.PropertyBag({ name: zone.name, layerId: 'koppen-zones', summary: zone.summary })
+      const properties = new Cesium.PropertyBag({
+        name: zone.name,
+        layerId: 'koppen-zones',
+        summary: zone.summary
+      })
       for (const [west, east, south, north] of zone.boxes) {
-        const ring: Array<[number, number]> = [[west, south], [east, south], [east, north], [west, north]]
+        const ring: Array<[number, number]> = [
+          [west, south],
+          [east, south],
+          [east, north],
+          [west, north]
+        ]
         const ringPositions = toRingCartesians([...ring, ring[0]])
         if (ringPositions.length < 4) continue
         dataSource.entities.add({
           properties,
-          polygon: { hierarchy: new Cesium.PolygonHierarchy(toRingCartesians(ring)), material: new Cesium.ColorMaterialProperty(fillColor.withAlpha(0.3)) },
-          polyline: { positions: ringPositions, clampToGround: true, width: 1.5, material: edgeColor.withAlpha(0.85) }
+          polygon: {
+            hierarchy: new Cesium.PolygonHierarchy(toRingCartesians(ring)),
+            material: new Cesium.ColorMaterialProperty(fillColor.withAlpha(0.3))
+          },
+          polyline: {
+            positions: ringPositions,
+            clampToGround: true,
+            width: 1.5,
+            material: edgeColor.withAlpha(0.85)
+          }
         })
       }
       dataSource.entities.add({
@@ -690,7 +851,8 @@ function attachThematicLayers(
       properties: new Cesium.PropertyBag({
         name: '锋面气旋（北半球温带气旋）',
         layerId: 'frontal-cyclone',
-        summary: '温带气旋多形成于中纬西风带的极锋上：冷暖空气相遇形成锋面，锋面上产生波动并发展为低压中心，北半球气流逆时针向中心辐合，波动东段为暖锋、西南段为冷锋。暖锋前暖气团沿锋面爬升，形成连续性降水的宽阔雨带；冷锋锋后冷空气推动锋面快速东移，多大风与阵性降水、雨带狭窄。气旋整体自西向东移动，先后经历：暖锋过境（连续性降水）→ 暖气团控制（气温升、气压降）→ 冷锋过境（大风、雨雪）→ 冷气团控制（气温降、气压升）。'
+        summary:
+          '温带气旋多形成于中纬西风带的极锋上：冷暖空气相遇形成锋面，锋面上产生波动并发展为低压中心，北半球气流逆时针向中心辐合，波动东段为暖锋、西南段为冷锋。暖锋前暖气团沿锋面爬升，形成连续性降水的宽阔雨带；冷锋锋后冷空气推动锋面快速东移，多大风与阵性降水、雨带狭窄。气旋整体自西向东移动，先后经历：暖锋过境（连续性降水）→ 暖气团控制（气温升、气压降）→ 冷锋过境（大风、雨雪）→ 冷气团控制（气温降、气压升）。'
       }),
       position: Cesium.Cartesian3.fromDegrees(FRONTAL_CYCLONE_LON, FRONTAL_CYCLONE_LAT),
       point: {
@@ -706,7 +868,11 @@ function attachThematicLayers(
 
   function plateBoundaryColor(kind: 'divergent' | 'convergent' | 'transform'): Cesium.Color {
     return Cesium.Color.fromCssColorString(
-      kind === 'divergent' ? PLATE_DIVERGENT_COLOR : kind === 'convergent' ? PLATE_CONVERGENT_COLOR : PLATE_TRANSFORM_COLOR
+      kind === 'divergent'
+        ? PLATE_DIVERGENT_COLOR
+        : kind === 'convergent'
+          ? PLATE_CONVERGENT_COLOR
+          : PLATE_TRANSFORM_COLOR
     )
   }
 
@@ -720,9 +886,10 @@ function attachThematicLayers(
   function earthquakeSummary(event: EarthquakeEvent): string {
     const nearest = nearestBoundary(event.longitude, event.latitude)
     const distanceKm = Math.round(nearest.distanceKm)
-    const boundaryNote = distanceKm <= 600
-      ? `震中位于「${nearest.boundary.name}」（${plateBoundaryKindName[nearest.boundary.kind]}）约 ${distanceKm} 千米处，与板块运动关系密切。`
-      : `震中距最近的板块边界「${nearest.boundary.name}」约 ${distanceKm} 千米，属板块内部（板缘远端）的地震活动。`
+    const boundaryNote =
+      distanceKm <= 600
+        ? `震中位于「${nearest.boundary.name}」（${plateBoundaryKindName[nearest.boundary.kind]}）约 ${distanceKm} 千米处，与板块运动关系密切。`
+        : `震中距最近的板块边界「${nearest.boundary.name}」约 ${distanceKm} 千米，属板块内部（板缘远端）的地震活动。`
     return `${event.place}发生 M${event.magnitude} 地震，震源深度约 ${event.depthKm} 千米。${boundaryNote}地震是地壳应力积累超过岩层强度后快速释放能量并以地震波传播的结果，全球地震大多分布于板块边界及其附近。`
   }
 
@@ -755,19 +922,32 @@ function attachThematicLayers(
     if (!current.isDestroyed()) current.scene.requestRender()
   }
 
-  async function loadEarthquakeEntities(dataSource: Cesium.CustomDataSource, refresh = false): Promise<void> {
+  async function loadEarthquakeEntities(
+    dataSource: Cesium.CustomDataSource,
+    refresh = false
+  ): Promise<void> {
     let feed: EarthquakeFeed
     try {
       feed = await window.guEarth.datasets.getEarthquakes(refresh)
     } catch {
       if (!disposed && sources.get('plate-tectonics') === dataSource) {
-        useFailureStore.getState().reportFailure({ scope: 'dataset', message: '近期地震数据加载失败，暂仅显示板块边界与火山', detail: '请检查网络后点击重试', retryable: true })
+        useFailureStore.getState().reportFailure({
+          scope: 'dataset',
+          message: '近期地震数据加载失败，暂仅显示板块边界与火山',
+          detail: '请检查网络后点击重试',
+          retryable: true
+        })
       }
       return
     }
     if (disposed || current.isDestroyed() || sources.get('plate-tectonics') !== dataSource) return
     if (feed.stale) {
-      useFailureStore.getState().reportFailure({ scope: 'dataset', message: '地震数据更新失败，暂显示缓存数据', detail: '请检查网络后点击重试', retryable: true })
+      useFailureStore.getState().reportFailure({
+        scope: 'dataset',
+        message: '地震数据更新失败，暂显示缓存数据',
+        detail: '请检查网络后点击重试',
+        retryable: true
+      })
     } else {
       useFailureStore.getState().clearFailure('dataset')
     }
@@ -823,11 +1003,16 @@ function attachThematicLayers(
       dataSource.entities.add({
         properties,
         polygon: {
-          hierarchy: new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray([
-            volcano.lon, volcano.lat + 0.55,
-            volcano.lon - 0.42, volcano.lat - 0.3,
-            volcano.lon + 0.42, volcano.lat - 0.3
-          ])),
+          hierarchy: new Cesium.PolygonHierarchy(
+            Cesium.Cartesian3.fromDegreesArray([
+              volcano.lon,
+              volcano.lat + 0.55,
+              volcano.lon - 0.42,
+              volcano.lat - 0.3,
+              volcano.lon + 0.42,
+              volcano.lat - 0.3
+            ])
+          ),
           material: color.withAlpha(0.95)
         }
       })
@@ -854,16 +1039,29 @@ function attachThematicLayers(
   function buildTemperatureZones(dataSource: Cesium.CustomDataSource): void {
     for (const band of temperatureZoneBands) {
       const color = Cesium.Color.fromCssColorString(band.color)
-      const properties = new Cesium.PropertyBag({ name: band.name, layerId: 'temperature-zones', summary: band.summary })
+      const properties = new Cesium.PropertyBag({
+        name: band.name,
+        layerId: 'temperature-zones',
+        summary: band.summary
+      })
       for (const west of [-180, -90, 0, 90]) {
         const south = Math.max(-89.9, band.south)
         const north = Math.min(89.9, band.north)
         dataSource.entities.add({
           properties,
           polygon: {
-            hierarchy: new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray([
-              west, south, west + 90, south, west + 90, north, west, north
-            ])),
+            hierarchy: new Cesium.PolygonHierarchy(
+              Cesium.Cartesian3.fromDegreesArray([
+                west,
+                south,
+                west + 90,
+                south,
+                west + 90,
+                north,
+                west,
+                north
+              ])
+            ),
             material: new Cesium.ColorMaterialProperty(color.withAlpha(0.12))
           }
         })
@@ -885,11 +1083,26 @@ function attachThematicLayers(
     }
     const lineColor = Cesium.Color.fromCssColorString(ZONE_LINE_COLOR)
     for (const line of temperatureZoneLines) {
-      const properties = new Cesium.PropertyBag({ name: line.name, layerId: 'temperature-zones', summary: line.summary })
+      const properties = new Cesium.PropertyBag({
+        name: line.name,
+        layerId: 'temperature-zones',
+        summary: line.summary
+      })
       dataSource.entities.add({
         properties,
         polyline: {
-          positions: Cesium.Cartesian3.fromDegreesArray([-180, line.latitude, -90, line.latitude, 0, line.latitude, 90, line.latitude, 180, line.latitude]),
+          positions: Cesium.Cartesian3.fromDegreesArray([
+            -180,
+            line.latitude,
+            -90,
+            line.latitude,
+            0,
+            line.latitude,
+            90,
+            line.latitude,
+            180,
+            line.latitude
+          ]),
           clampToGround: true,
           width: 2,
           material: new Cesium.PolylineDashMaterialProperty({ color: lineColor })
@@ -915,7 +1128,8 @@ function attachThematicLayers(
       properties: new Cesium.PropertyBag({
         name: '太阳直射点',
         layerId: 'temperature-zones',
-        summary: '太阳光线垂直照射的地面位置。直射点以直射纬度在最北 23.5°N 与最南 23.5°S 之间做回归运动：春分指向赤道，夏至最北，秋分返回赤道，冬至最南，周期为一个回归年。调节日期、时刻或播放「回归运动」即可观察其移动。'
+        summary:
+          '太阳光线垂直照射的地面位置。直射点以直射纬度在最北 23.5°N 与最南 23.5°S 之间做回归运动：春分指向赤道，夏至最北，秋分返回赤道，冬至最南，周期为一个回归年。调节日期、时刻或播放「回归运动」即可观察其移动。'
       }),
       position: Cesium.Cartesian3.ZERO,
       point: {
@@ -945,14 +1159,16 @@ function attachThematicLayers(
     const { snapshot, typhoonMode, ensureTyphoons } = useOnlineDataStore.getState()
     if (snapshot?.typhoonConfigured !== false && typhoonMode === 'live') {
       if (snapshot?.typhoonStatus === 'pending') void ensureTyphoons()
-      if (snapshot?.typhoons) buildLiveTyphoons(dataSource, snapshot.typhoons, Boolean(snapshot.typhoonError))
+      if (snapshot?.typhoons)
+        buildLiveTyphoons(dataSource, snapshot.typhoons, Boolean(snapshot.typhoonError))
       return
     }
     dataSource.entities.add({
       properties: new Cesium.PropertyBag({
         name: '台风（热带气旋）结构锚点',
         layerId: 'typhoon',
-        summary: '台风是形成于热带、副热带洋面上强度达到一定级别的热带气旋（中心风力 12 级以上），西北太平洋是全球台风发生最多的海区。结构自内向外分为三部分：台风眼（中心 10~50 千米范围内无风少云、气压最低）、眼墙（环绕眼区的高耸对流云墙，狂风暴雨最强烈）、外围漩涡风雨区（螺旋云雨带，风速与降水向外减弱）。北半球气流逆时针向中心辐合旋转，夏秋季（7~10 月）最活跃。'
+        summary:
+          '台风是形成于热带、副热带洋面上强度达到一定级别的热带气旋（中心风力 12 级以上），西北太平洋是全球台风发生最多的海区。结构自内向外分为三部分：台风眼（中心 10~50 千米范围内无风少云、气压最低）、眼墙（环绕眼区的高耸对流云墙，狂风暴雨最强烈）、外围漩涡风雨区（螺旋云雨带，风速与降水向外减弱）。北半球气流逆时针向中心辐合旋转，夏秋季（7~10 月）最活跃。'
       }),
       position: Cesium.Cartesian3.fromDegrees(TYPHOON_ANCHOR_LON, TYPHOON_ANCHOR_LAT),
       point: {
@@ -966,7 +1182,11 @@ function attachThematicLayers(
     })
     for (const track of typhoonTracks) {
       const trackColor = Cesium.Color.fromCssColorString(TYPHOON_TRACK_COLOR)
-      const properties = new Cesium.PropertyBag({ name: `${track.year} 年第${track.name}台风路径`, layerId: 'typhoon', summary: track.summary })
+      const properties = new Cesium.PropertyBag({
+        name: `${track.year} 年第${track.name}台风路径`,
+        layerId: 'typhoon',
+        summary: track.summary
+      })
       for (let index = 0; index < track.points.length - 1; index += 1) {
         const from = track.points[index]
         const to = track.points[index + 1]
@@ -974,14 +1194,23 @@ function attachThematicLayers(
           Object.keys(typhoonIntensityStyles).indexOf(from.intensity),
           Object.keys(typhoonIntensityStyles).indexOf(to.intensity)
         )
-        const intensityKey = Object.keys(typhoonIntensityStyles)[stronger] as keyof typeof typhoonIntensityStyles
+        const intensityKey = Object.keys(typhoonIntensityStyles)[
+          stronger
+        ] as keyof typeof typhoonIntensityStyles
         dataSource.entities.add({
           properties,
           polyline: {
-            positions: Cesium.Cartesian3.fromDegreesArray([from.longitude, from.latitude, to.longitude, to.latitude]),
+            positions: Cesium.Cartesian3.fromDegreesArray([
+              from.longitude,
+              from.latitude,
+              to.longitude,
+              to.latitude
+            ]),
             clampToGround: true,
             width: 3.5,
-            material: Cesium.Color.fromCssColorString(typhoonIntensityStyles[intensityKey].color).withAlpha(0.9)
+            material: Cesium.Color.fromCssColorString(
+              typhoonIntensityStyles[intensityKey].color
+            ).withAlpha(0.9)
           }
         })
       }
@@ -1030,10 +1259,15 @@ function attachThematicLayers(
         properties: new Cesium.PropertyBag({
           name: `ENSO 海温距平：${phase.name}`,
           layerId: 'enso',
-          summary: `${phase.summary} 对地理格局的影响：${phase.impacts.map((line) => line).join('；')}。`
+          summary: `${phase.summary} 对地理格局的影响：${phase.impacts.map(line => line).join('；')}。`
         }),
         rectangle: {
-          coordinates: Cesium.Rectangle.fromDegrees(item.west, -ENSO_BAND_LATITUDE, item.east, ENSO_BAND_LATITUDE),
+          coordinates: Cesium.Rectangle.fromDegrees(
+            item.west,
+            -ENSO_BAND_LATITUDE,
+            item.east,
+            ENSO_BAND_LATITUDE
+          ),
           material: Cesium.Color.fromCssColorString(ensoAnomalyColor(item.anomaly)).withAlpha(0.8)
         }
       })
@@ -1042,10 +1276,13 @@ function attachThematicLayers(
       properties: new Cesium.PropertyBag({
         name: 'Niño3.4 关键监测区',
         layerId: 'enso',
-        summary: 'Niño3.4 区（5°N–5°S，170°W–120°W）海温距平是判定厄尔尼诺与拉尼娜的主要指标：距平持续 ≥ +0.5℃ 判定为厄尔尼诺事件，≤ -0.5℃ 判定为拉尼娜事件。'
+        summary:
+          'Niño3.4 区（5°N–5°S，170°W–120°W）海温距平是判定厄尔尼诺与拉尼娜的主要指标：距平持续 ≥ +0.5℃ 判定为厄尔尼诺事件，≤ -0.5℃ 判定为拉尼娜事件。'
       }),
       polyline: {
-        positions: Cesium.Cartesian3.fromDegreesArray([-170, -5, -120, -5, -120, 5, -170, 5, -170, -5]),
+        positions: Cesium.Cartesian3.fromDegreesArray([
+          -170, -5, -120, -5, -120, 5, -170, 5, -170, -5
+        ]),
         clampToGround: true,
         width: 2.5,
         material: Cesium.Color.fromCssColorString('#531dab')
@@ -1127,7 +1364,9 @@ function attachThematicLayers(
       dataSource.entities.add({
         properties,
         polyline: {
-          positions: Cesium.Cartesian3.fromDegreesArrayHeights(path.flatMap((point, index) => [point[0], point[1], heights[index]])),
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights(
+            path.flatMap((point, index) => [point[0], point[1], heights[index]])
+          ),
           arcType: Cesium.ArcType.NONE,
           width: flow.weight === 'major' ? 3.5 : 2.2,
           material: color.withAlpha(flow.weight === 'major' ? 0.9 : 0.72)
@@ -1143,7 +1382,8 @@ function attachThematicLayers(
           material: color.withAlpha(0.96)
         }
       })
-      const primaryLabel = flow.weight === 'major' || flow.fromName === '甘肃' || flow.fromName === '黑龙江'
+      const primaryLabel =
+        flow.weight === 'major' || flow.fromName === '甘肃' || flow.fromName === '黑龙江'
       const [lon, lat] = migrationLabelAt(path, primaryLabel ? 0.9 : 0.75)
       dataSource.entities.add({
         properties,
@@ -1156,13 +1396,21 @@ function attachThematicLayers(
           backgroundColor: Cesium.Color.WHITE.withAlpha(0.78),
           backgroundPadding: new Cesium.Cartesian2(6, 3),
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, primaryLabel ? 15000000 : 4200000)
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
+            0,
+            primaryLabel ? 15000000 : 4200000
+          )
         }
       })
     }
   }
 
-  function circleRingDegrees(longitude: number, latitude: number, km: number, segments = 48): Array<[number, number]> {
+  function circleRingDegrees(
+    longitude: number,
+    latitude: number,
+    km: number,
+    segments = 48
+  ): Array<[number, number]> {
     const ring: Array<[number, number]> = []
     const latRad = (latitude * Math.PI) / 180
     const degPerKmLng = 111.32 * Math.cos(latRad)
@@ -1185,7 +1433,16 @@ function attachThematicLayers(
         layerId: 'city-tiers',
         summary: `${city.role}。常住人口 ${city.populationWan} 万${city.urbanizationPct !== null ? `，城镇化率 ${city.urbanizationPct}%` : ''}。${tier.description}。`
       })
-      const pointSize = city.tier === 'national-center' ? 14 : city.tier === 'regional-center' ? 12 : city.tier === 'provincial-center' ? 10 : city.tier === 'prefecture' ? 8 : 6
+      const pointSize =
+        city.tier === 'national-center'
+          ? 14
+          : city.tier === 'regional-center'
+            ? 12
+            : city.tier === 'provincial-center'
+              ? 10
+              : city.tier === 'prefecture'
+                ? 8
+                : 6
       addLabeledPointOverlay(dataSource, {
         properties,
         longitude: city.longitude,
@@ -1194,7 +1451,9 @@ function attachThematicLayers(
         labelText: city.name,
         pixelSize: pointSize,
         labelFontWeight: city.tier === 'county' ? 400 : 600,
-        labelFillColor: Cesium.Color.fromCssColorString(city.tier === 'county' ? 'rgba(0,0,0,0.65)' : tier.color),
+        labelFillColor: Cesium.Color.fromCssColorString(
+          city.tier === 'county' ? 'rgba(0,0,0,0.65)' : tier.color
+        ),
         backgroundAlpha: 0.72,
         pixelOffset: [0, -(pointSize + 9)],
         labelMaxDistance: city.tier === 'county' ? 6500000 : 17000000
@@ -1213,16 +1472,21 @@ function attachThematicLayers(
   }
 
   function buildFunctionalZones(dataSource: Cesium.CustomDataSource): void {
-    const city = functionalZoneCityById(useClimateStore.getState().functionalZoneCityId) ?? functionalZoneCityById(DEFAULT_FUNCTIONAL_ZONE_CITY_ID) ?? functionalZoneCities[0]
+    const city =
+      functionalZoneCityById(useClimateStore.getState().functionalZoneCityId) ??
+      functionalZoneCityById(DEFAULT_FUNCTIONAL_ZONE_CITY_ID) ??
+      functionalZoneCities[0]
     for (const district of city.districts) {
-      const spec = FUNCTIONAL_ZONES.find((item) => item.kind === district.kind) ?? FUNCTIONAL_ZONES[0]
+      const spec = FUNCTIONAL_ZONES.find(item => item.kind === district.kind) ?? FUNCTIONAL_ZONES[0]
       const color = Cesium.Color.fromCssColorString(spec.color)
       const properties = new Cesium.PropertyBag({
         name: `${district.name}（${spec.name}）`,
         layerId: 'functional-zones',
         summary: `${district.note}。${spec.summary}`
       })
-      const ringCartesians = toRingCartesians(circleRingDegrees(district.longitude, district.latitude, district.radiusKm, 48))
+      const ringCartesians = toRingCartesians(
+        circleRingDegrees(district.longitude, district.latitude, district.radiusKm, 48)
+      )
       dataSource.entities.add({
         properties,
         polygon: {
@@ -1322,7 +1586,9 @@ function attachThematicLayers(
       dataSource.entities.add({
         properties,
         polyline: {
-          positions: Cesium.Cartesian3.fromDegreesArrayHeights(path.flatMap((point, index) => [point[0], point[1], heights[index]])),
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights(
+            path.flatMap((point, index) => [point[0], point[1], heights[index]])
+          ),
           arcType: Cesium.ArcType.NONE,
           width: flow.weight === 'major' ? 3.5 : 2.2,
           material: color.withAlpha(flow.weight === 'major' ? 0.9 : 0.72)
@@ -1331,7 +1597,9 @@ function attachThematicLayers(
       dataSource.entities.add({
         properties,
         polygon: {
-          hierarchy: new Cesium.PolygonHierarchy(migrationArrowHeadPositions(path, migrationHeadSize(path))),
+          hierarchy: new Cesium.PolygonHierarchy(
+            migrationArrowHeadPositions(path, migrationHeadSize(path))
+          ),
           height: 0,
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           material: color.withAlpha(0.96)
@@ -1350,7 +1618,10 @@ function attachThematicLayers(
           backgroundColor: Cesium.Color.WHITE.withAlpha(0.78),
           backgroundPadding: new Cesium.Cartesian2(6, 3),
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, primaryLabel ? 15000000 : 4600000)
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
+            0,
+            primaryLabel ? 15000000 : 4600000
+          )
         }
       })
     }
@@ -1365,7 +1636,10 @@ function attachThematicLayers(
         layerId: 'hsr-network',
         summary: `${line.note}。全长约 ${line.lengthKm} 公里，设计时速 ${line.designSpeed} 公里。${overview}`
       })
-      const opened = new Cesium.CallbackProperty(() => line.openedYear <= Math.floor(useTransportStore.getState().year), false)
+      const opened = new Cesium.CallbackProperty(
+        () => line.openedYear <= Math.floor(useTransportStore.getState().year),
+        false
+      )
       dataSource.entities.add({
         properties,
         polyline: {
@@ -1389,7 +1663,10 @@ function attachThematicLayers(
           backgroundPadding: new Cesium.Cartesian2(5, 3),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, line.lengthKm > 1000 ? 12000000 : 7500000),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(
+            0,
+            line.lengthKm > 1000 ? 12000000 : 7500000
+          ),
           show: opened
         }
       })
@@ -1411,11 +1688,21 @@ function attachThematicLayers(
     }
     if (disposed || current.isDestroyed() || sources.get('sea-level-rise') !== dataSource) return
     if (outcome === 'terrain-required') {
-      useFailureStore.getState().reportFailure({ scope: 'sea-level-terrain', message: '请先在「图层管理 → 3D 地形」中开启「全球 3D 地形」', detail: '需要 3D 地形数据才能模拟淹没范围', retryable: true })
+      useFailureStore.getState().reportFailure({
+        scope: 'sea-level-terrain',
+        message: '请先在「图层管理 → 3D 地形」中开启「全球 3D 地形」',
+        detail: '需要 3D 地形数据才能模拟淹没范围',
+        retryable: true
+      })
       return
     }
     if (outcome === 'failed') {
-      useFailureStore.getState().reportFailure({ scope: 'sea-level-terrain', message: '地形数据加载失败，淹没模拟暂不可用', detail: '请检查网络后重试', retryable: true })
+      useFailureStore.getState().reportFailure({
+        scope: 'sea-level-terrain',
+        message: '地形数据加载失败，淹没模拟暂不可用',
+        detail: '请检查网络后重试',
+        retryable: true
+      })
       return
     }
     useFailureStore.getState().clearFailure('sea-level-terrain')
@@ -1430,13 +1717,23 @@ function attachThematicLayers(
       for (const zone of coastalZones) {
         for (const [lon, lat] of gridPointsOf(zone)) {
           const height = heightCache.get(cacheKeyOf(lon, lat))
-          if (height === undefined || !isLandCell(lon, lat, height) || !isInundated(height, rise)) continue
+          if (height === undefined || !isLandCell(lon, lat, height) || !isInundated(height, rise))
+            continue
           const half = zone.step / 2
           dataSource.entities.add({
             properties,
             polygon: {
               hierarchy: new Cesium.PolygonHierarchy(
-                Cesium.Cartesian3.fromDegreesArray([lon - half, lat - half, lon + half, lat - half, lon + half, lat + half, lon - half, lat + half])
+                Cesium.Cartesian3.fromDegreesArray([
+                  lon - half,
+                  lat - half,
+                  lon + half,
+                  lat - half,
+                  lon + half,
+                  lat + half,
+                  lon - half,
+                  lat + half
+                ])
               ),
               height: rise,
               material: color.withAlpha(0.5)
@@ -1514,16 +1811,21 @@ function attachThematicLayers(
   }
 
   function functionalZoneView(): LayerView {
-    const city = functionalZoneCityById(useClimateStore.getState().functionalZoneCityId) ?? functionalZoneCityById(DEFAULT_FUNCTIONAL_ZONE_CITY_ID) ?? functionalZoneCities[0]
+    const city =
+      functionalZoneCityById(useClimateStore.getState().functionalZoneCityId) ??
+      functionalZoneCityById(DEFAULT_FUNCTIONAL_ZONE_CITY_ID) ??
+      functionalZoneCities[0]
     return { longitude: city.longitude, latitude: city.latitude, height: city.viewHeight }
   }
 
   function provinceRingsToHierarchy(rings: number[][][]): Cesium.PolygonHierarchy | null {
-    const [outer, ...holes] = rings.map((ring) => toRingCartesians(ring.map(([lon, lat]) => [lon, lat] as [number, number])))
+    const [outer, ...holes] = rings.map(ring =>
+      toRingCartesians(ring.map(([lon, lat]) => [lon, lat] as [number, number]))
+    )
     if (!outer || outer.length < 3) return null
     return new Cesium.PolygonHierarchy(
       outer,
-      holes.filter((hole) => hole.length >= 3).map((hole) => new Cesium.PolygonHierarchy(hole))
+      holes.filter(hole => hole.length >= 3).map(hole => new Cesium.PolygonHierarchy(hole))
     )
   }
 
@@ -1533,15 +1835,21 @@ function attachThematicLayers(
       document = await window.guEarth.datasets.getProvinces()
     } catch {
       if (!disposed && sources.get('province-population') === dataSource) {
-        useFailureStore.getState().reportFailure({ scope: 'province-dataset', message: '省级行政区划数据加载失败，人口密度图层不完整', detail: '重启应用可重新加载内置数据', retryable: false })
+        useFailureStore.getState().reportFailure({
+          scope: 'province-dataset',
+          message: '省级行政区划数据加载失败，人口密度图层不完整',
+          detail: '重启应用可重新加载内置数据',
+          retryable: false
+        })
       }
       return
     }
-    if (disposed || current.isDestroyed() || sources.get('province-population') !== dataSource) return
+    if (disposed || current.isDestroyed() || sources.get('province-population') !== dataSource)
+      return
     useFailureStore.getState().clearFailure('province-dataset')
     buildEntities(dataSource, () => {
       for (const feature of document.features) {
-        const population = provincePopulation.find((item) => item.name === feature.name)
+        const population = provincePopulation.find(item => item.name === feature.name)
         if (!population) continue
         const fillColor = Cesium.Color.fromCssColorString(densityColor(densityOf(population)))
         const borderColor = Cesium.Color.fromCssColorString(PROVINCE_BORDER_COLOR)
@@ -1555,10 +1863,18 @@ function attachThematicLayers(
           if (!hierarchy) continue
           dataSource.entities.add({
             properties,
-            polygon: { hierarchy, material: new Cesium.ColorMaterialProperty(fillColor.withAlpha(0.65)) }
+            polygon: {
+              hierarchy,
+              material: new Cesium.ColorMaterialProperty(fillColor.withAlpha(0.65))
+            }
           })
           dataSource.entities.add({
-            polyline: { positions: hierarchy.positions, clampToGround: true, width: 1.2, material: borderColor }
+            polyline: {
+              positions: hierarchy.positions,
+              clampToGround: true,
+              width: 1.2,
+              material: borderColor
+            }
           })
         }
       }
@@ -1576,15 +1892,15 @@ function attachThematicLayers(
     'koppen-zones': buildKoppenZones,
     'frontal-cyclone': buildFrontalCyclone,
     'rain-belt': buildRainBelt,
-    'summer-monsoon': (dataSource) => buildMonsoonArrows(dataSource, 'summer'),
-    'winter-monsoon': (dataSource) => buildMonsoonArrows(dataSource, 'winter'),
+    'summer-monsoon': dataSource => buildMonsoonArrows(dataSource, 'summer'),
+    'winter-monsoon': dataSource => buildMonsoonArrows(dataSource, 'winter'),
     'ocean-currents': buildOceanCurrents,
     'climate-zones': buildClimateZones,
     'coriolis-demo': buildCoriolis,
     'plate-tectonics': buildPlateTectonics,
     'temperature-zones': buildTemperatureZones,
-    'typhoon': buildTyphoon,
-    'enso': buildEnso,
+    typhoon: buildTyphoon,
+    enso: buildEnso,
     'province-population': buildProvincePopulation,
     'hu-line': buildHuLine,
     'migration-flows': buildMigrationFlows,
@@ -1609,8 +1925,8 @@ function attachThematicLayers(
     'coriolis-demo': { longitude: 100, latitude: 0, height: 12000000 },
     'plate-tectonics': { longitude: 180, latitude: 5, height: 17000000 },
     'temperature-zones': { longitude: 20, latitude: 0, height: 17000000 },
-    'typhoon': { longitude: 132, latitude: 18, height: 10500000 },
-    'enso': { longitude: -155, latitude: 0, height: 9500000 },
+    typhoon: { longitude: 132, latitude: 18, height: 10500000 },
+    enso: { longitude: -155, latitude: 0, height: 9500000 },
     'province-population': { longitude: 104, latitude: 35, height: 11000000 },
     'hu-line': { longitude: 112, latitude: 36, height: 9000000 },
     'migration-flows': { longitude: 110, latitude: 30, height: 10000000 },
@@ -1674,8 +1990,16 @@ function attachThematicLayers(
           }
           current.scene.requestRender()
         })
-        const view = autoFocusRef.current ? (layer.id === 'functional-zones' ? functionalZoneView() : enableViews[layer.id]) : undefined
-        if (view) current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height), duration: 1.2 })
+        const view = autoFocusRef.current
+          ? layer.id === 'functional-zones'
+            ? functionalZoneView()
+            : enableViews[layer.id]
+          : undefined
+        if (view)
+          current.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height),
+            duration: 1.2
+          })
       } else if (!enabled && existing) {
         sources.delete(layer.id)
         current.dataSources.remove(existing, true)
@@ -1717,11 +2041,11 @@ function attachThematicLayers(
   })
 
   const unsubscribes: Array<() => void> = [
-    useClimateStore.subscribe((state) => state.overlays, syncOverlays),
-    useOnlineDataStore.subscribe((state) => state.snapshot, refreshTyphoon),
-    useOnlineDataStore.subscribe((state) => state.typhoonMode, refreshTyphoon),
+    useClimateStore.subscribe(state => state.overlays, syncOverlays),
+    useOnlineDataStore.subscribe(state => state.snapshot, refreshTyphoon),
+    useOnlineDataStore.subscribe(state => state.typhoonMode, refreshTyphoon),
     useClimateStore.subscribe(
-      (state) => state.ensoPhase,
+      state => state.ensoPhase,
       () => {
         const source = sources.get('enso')
         if (disposed || current.isDestroyed() || !source) return
@@ -1732,42 +2056,54 @@ function attachThematicLayers(
         current.scene.requestRender()
       }
     ),
-    useClimateStore.subscribe((state) => Math.round(state.month * 4) / 4, refreshPressureBeltGeometry),
     useClimateStore.subscribe(
-      (state) => Math.round(state.month * 20) / 20,
-      (month) => {
+      state => Math.round(state.month * 4) / 4,
+      refreshPressureBeltGeometry
+    ),
+    useClimateStore.subscribe(
+      state => Math.round(state.month * 20) / 20,
+      month => {
         refreshRainBelt(month)
         requestRender()
       }
     ),
-    useClimateStore.subscribe((state) => state.summerStrength > 0.5, onSeasonalStrengthChange),
-    useClimateStore.subscribe((state) => state.winterStrength > 0.5, onSeasonalStrengthChange),
+    useClimateStore.subscribe(state => state.summerStrength > 0.5, onSeasonalStrengthChange),
+    useClimateStore.subscribe(state => state.winterStrength > 0.5, onSeasonalStrengthChange),
     useSolarStore.subscribe(
-      (state) => state.utcMs,
+      state => state.utcMs,
       () => {
         refreshSubsolarPoint()
         requestRender()
       }
     ),
-    useClimateStore.subscribe((state) => state.seaLevelRise, rebuildSeaLevelRise),
+    useClimateStore.subscribe(state => state.seaLevelRise, rebuildSeaLevelRise),
     useSeaLevelStore.subscribe(
-      (state) => state.version,
+      state => state.version,
       () => {
         if (seaLevelSamplingCount === 0 && sources.get('sea-level-rise')) rebuildSeaLevelRise()
       }
     ),
     useClimateStore.subscribe(
-      (state) => state.functionalZoneCityId,
+      state => state.functionalZoneCityId,
       () => {
         rebuildFunctionalZones()
-        if (!autoFocusRef.current || disposed || current.isDestroyed() || !sources.get('functional-zones')) return
+        if (
+          !autoFocusRef.current ||
+          disposed ||
+          current.isDestroyed() ||
+          !sources.get('functional-zones')
+        )
+          return
         const view = functionalZoneView()
-        current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height), duration: 1.2 })
+        current.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height),
+          duration: 1.2
+        })
       }
     ),
-    useTransportStore.subscribe((state) => state.year, requestRender),
+    useTransportStore.subscribe(state => state.year, requestRender),
     useGlobeStore.subscribe(
-      (state) => state.activeTerrainId,
+      state => state.activeTerrainId,
       () => {
         if (sources.get('sea-level-rise')) rebuildSeaLevelRise()
       }
@@ -1783,8 +2119,11 @@ function attachThematicLayers(
   }
 }
 
-export function useThematicLayers(viewer: Cesium.Viewer | undefined, options?: ThematicLayerOptions): void {
-  const coriolisEnabled = useClimateStore((state) => state.overlays['coriolis-demo'])
+export function useThematicLayers(
+  viewer: Cesium.Viewer | undefined,
+  options?: ThematicLayerOptions
+): void {
+  const coriolisEnabled = useClimateStore(state => state.overlays['coriolis-demo'])
   const coriolisProgressRef = useRef(0)
   const viewerRef = useRef<Cesium.Viewer | undefined>(viewer)
   const autoFocusRef = useRef(options?.autoFocus !== false)
@@ -1792,7 +2131,7 @@ export function useThematicLayers(viewer: Cesium.Viewer | undefined, options?: T
   viewerRef.current = viewer
   autoFocusRef.current = options?.autoFocus !== false
 
-  useVisibleAnimation(coriolisEnabled && Boolean(viewer), (dt) => {
+  useVisibleAnimation(coriolisEnabled && Boolean(viewer), dt => {
     if (dt > 0) coriolisProgressRef.current = (coriolisProgressRef.current + dt / 10) % 1
     const current = viewerRef.current
     if (current && !current.isDestroyed()) current.scene.requestRender()

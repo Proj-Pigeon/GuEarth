@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
@@ -8,9 +7,12 @@ import {
   PlusOutlined,
   SaveOutlined
 } from '@ant-design/icons'
-import { Alert, Button, Drawer, Empty, Input, InputNumber, Modal, Popconfirm, Tooltip } from 'antd'
 import { thematicLayerCatalog } from '@renderer/stores/climate'
+import { Alert, Button, Drawer, Empty, Input, InputNumber, Modal, Popconfirm, Tooltip } from 'antd'
+import { useState } from 'react'
+
 import type { TeachingScene } from '../../../preload'
+
 import styles from './SceneBookmarksPanel.module.css'
 
 export interface SceneEditPayload {
@@ -33,7 +35,7 @@ export interface SceneBookmarksPanelProps {
 }
 
 const layerNameOf = (id: string): string =>
-  thematicLayerCatalog.find((layer) => layer.id === id)?.name ?? id
+  thematicLayerCatalog.find(layer => layer.id === id)?.name ?? id
 
 const narrationPreview = (scene: TeachingScene): string =>
   scene.narration.length > 42 ? `${scene.narration.slice(0, 42)}…` : scene.narration
@@ -103,7 +105,7 @@ export function SceneBookmarksPanel({
     <>
       <Drawer
         open={open}
-        placement="right"
+        placement='right'
         size={360}
         mask={false}
         closable={false}
@@ -111,22 +113,31 @@ export function SceneBookmarksPanel({
         title={
           <div className={styles.panelTitle}>
             <h2>教学场景</h2>
-            <Button type="text" aria-label="关闭教学场景" icon={<CloseOutlined />} onClick={onClose} />
+            <Button
+              type='text'
+              aria-label='关闭教学场景'
+              icon={<CloseOutlined />}
+              onClick={onClose}
+            />
           </div>
         }
         onClose={onClose}
       >
         <div className={styles.panelToolbar}>
-          <Button type="primary" block icon={<PlusOutlined />} onClick={openSave}>
+          <Button type='primary' block icon={<PlusOutlined />} onClick={openSave}>
             保存当前画面为场景
           </Button>
-          {saveError && <Alert type="error" showIcon title={saveError} className={styles.panelAlert} />}
+          {saveError && (
+            <Alert type='error' showIcon title={saveError} className={styles.panelAlert} />
+          )}
         </div>
         <div className={styles.sceneList}>
           {!scenes.length ? (
             <div className={styles.sceneEmpty}>
-              <Empty description="还没有教学场景">
-                <span className={styles.sceneEmptyHint}>将当前视角与图层保存为场景，方便课堂播放。</span>
+              <Empty description='还没有教学场景'>
+                <span className={styles.sceneEmptyHint}>
+                  将当前视角与图层保存为场景，方便课堂播放。
+                </span>
               </Empty>
             </div>
           ) : (
@@ -141,69 +152,74 @@ export function SceneBookmarksPanel({
                     </div>
                     {tags.length > 0 && (
                       <div className={styles.sceneTags}>
-                        {tags.map((tag) => (
+                        {tags.map(tag => (
                           <span key={tag} className={styles.sceneTag}>
                             {tag}
                           </span>
                         ))}
-                        {scene.snapshot.simTime && <span className={styles.sceneTagTime}>昼夜模拟</span>}
+                        {scene.snapshot.simTime && (
+                          <span className={styles.sceneTagTime}>昼夜模拟</span>
+                        )}
                       </div>
                     )}
-                    {scene.narration && <div className={styles.sceneNarration}>{narrationPreview(scene)}</div>}
+                    {scene.narration && (
+                      <div className={styles.sceneNarration}>{narrationPreview(scene)}</div>
+                    )}
                     <div className={styles.sceneMeta}>
-                      停留 {Math.round(scene.dwellMs / 1000)} 秒 · {Math.round(scene.flyDurationMs / 1000)} 秒飞行
+                      停留 {Math.round(scene.dwellMs / 1000)} 秒 ·{' '}
+                      {Math.round(scene.flyDurationMs / 1000)} 秒飞行
                     </div>
                   </div>
                   <div className={styles.sceneItemActions}>
-                    <Tooltip title="预览此场景">
+                    <Tooltip title='预览此场景'>
                       <Button
-                        type="text"
+                        type='text'
                         className={styles.sceneAction}
-                        aria-label="预览此场景"
+                        aria-label='预览此场景'
                         icon={<EyeOutlined />}
                         onClick={() => onPreview(scene.id)}
                       />
                     </Tooltip>
-                    <Tooltip title="编辑">
+                    <Tooltip title='编辑'>
                       <Button
-                        type="text"
+                        type='text'
                         className={styles.sceneAction}
-                        aria-label="编辑场景"
+                        aria-label='编辑场景'
                         icon={<SaveOutlined />}
                         onClick={() => openEdit(scene)}
                       />
                     </Tooltip>
-                    <Tooltip title="上移">
+                    <Tooltip title='上移'>
                       <Button
-                        type="text"
+                        type='text'
                         className={styles.sceneAction}
                         disabled={index === 0}
-                        aria-label="上移场景"
+                        aria-label='上移场景'
                         icon={<ArrowUpOutlined />}
                         onClick={() => onMove(scene.id, -1)}
                       />
                     </Tooltip>
-                    <Tooltip title="下移">
+                    <Tooltip title='下移'>
                       <Button
-                        type="text"
+                        type='text'
                         className={styles.sceneAction}
                         disabled={index === scenes.length - 1}
-                        aria-label="下移场景"
+                        aria-label='下移场景'
                         icon={<ArrowDownOutlined />}
                         onClick={() => onMove(scene.id, 1)}
                       />
                     </Tooltip>
                     <Popconfirm
-                      title="删除此场景？"
-                      okText="删除"
+                      title='删除此场景？'
+                      okText='删除'
                       okButtonProps={{ danger: true }}
-                      cancelText="取消"
+                      cancelText='取消'
                       onConfirm={() => onRemove(scene.id)}
                     >
                       <Button
-                        type="text"
+                        type='text'
                         className={styles.sceneAction}
-                        aria-label="删除场景"
+                        aria-label='删除场景'
                         icon={<CloseOutlined />}
                       />
                     </Popconfirm>
@@ -215,7 +231,7 @@ export function SceneBookmarksPanel({
         </div>
         <div className={styles.panelFooter}>
           <Button
-            type="primary"
+            type='primary'
             className={styles.footerButton}
             disabled={!canPlay}
             icon={<PlayCircleOutlined />}
@@ -223,16 +239,20 @@ export function SceneBookmarksPanel({
           >
             逐幕播放
           </Button>
-          <Button className={styles.footerButton} disabled={!canPlay} onClick={() => onPlay('auto')}>
+          <Button
+            className={styles.footerButton}
+            disabled={!canPlay}
+            onClick={() => onPlay('auto')}
+          >
             自动播放
           </Button>
         </div>
       </Drawer>
       <Modal
         open={saveVisible}
-        title="保存教学场景"
-        okText="保存"
-        cancelText="取消"
+        title='保存教学场景'
+        okText='保存'
+        cancelText='取消'
         onOk={confirmSave}
         onCancel={() => setSaveVisible(false)}
       >
@@ -240,9 +260,9 @@ export function SceneBookmarksPanel({
           <span className={styles.fieldLabel}>场景名称</span>
           <Input
             value={saveName}
-            placeholder="如：全球气压带与风带"
+            placeholder='如：全球气压带与风带'
             maxLength={80}
-            onChange={(event) => setSaveName(event.target.value)}
+            onChange={event => setSaveName(event.target.value)}
             onPressEnter={confirmSave}
           />
         </div>
@@ -250,19 +270,19 @@ export function SceneBookmarksPanel({
           <span className={styles.fieldLabel}>旁白字幕（可选）</span>
           <Input.TextArea
             value={saveNarration}
-            placeholder="播放时显示在画面下方的讲解词"
+            placeholder='播放时显示在画面下方的讲解词'
             rows={3}
             maxLength={500}
             showCount
-            onChange={(event) => setSaveNarration(event.target.value)}
+            onChange={event => setSaveNarration(event.target.value)}
           />
         </div>
       </Modal>
       <Modal
         open={editVisible}
-        title="编辑场景"
-        okText="保存"
-        cancelText="取消"
+        title='编辑场景'
+        okText='保存'
+        cancelText='取消'
         onOk={confirmEdit}
         onCancel={() => setEditVisible(false)}
       >
@@ -271,7 +291,7 @@ export function SceneBookmarksPanel({
           <Input
             value={editName}
             maxLength={80}
-            onChange={(event) => setEditName(event.target.value)}
+            onChange={event => setEditName(event.target.value)}
             onPressEnter={confirmEdit}
           />
         </div>
@@ -282,7 +302,7 @@ export function SceneBookmarksPanel({
             rows={3}
             maxLength={500}
             showCount
-            onChange={(event) => setEditNarration(event.target.value)}
+            onChange={event => setEditNarration(event.target.value)}
           />
         </div>
         <div className={styles.field}>
@@ -292,7 +312,7 @@ export function SceneBookmarksPanel({
             min={1}
             max={60}
             className={styles.dwellInput}
-            onChange={(value) => setEditDwellSeconds(typeof value === 'number' ? value : 6)}
+            onChange={value => setEditDwellSeconds(typeof value === 'number' ? value : 6)}
           />
         </div>
       </Modal>

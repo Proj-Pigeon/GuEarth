@@ -1,47 +1,986 @@
 [
-  {"id":"earth-rotation","type":"process","name":"地球自转","aliases":["自转","昼夜交替"],"keywords":["昼夜","太阳东升西落","地转偏向力"],"module":"地球的运动","grade":"高中","definition":"地球绕自转轴自西向东旋转，周期约为一个恒星日。地球自转产生昼夜交替，并使地表水平运动物体发生地转偏向。","features":["同一时刻不同经度地方时不同","北半球水平运动物体向右偏，南半球向左偏"],"commonConfusions":["昼夜交替主要由地球自转造成，四季变化主要与地球公转和黄赤交角有关"],"sources":[{"title":"NASA Space Place: Seasons","url":"https://spaceplace.nasa.gov/seasons/en/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"earth-revolution","type":"process","name":"地球公转","aliases":["公转","绕日运动"],"keywords":["轨道","太阳","四季","黄赤交角"],"module":"地球的运动","grade":"高中","definition":"地球沿近似椭圆轨道绕太阳运行，公转和地轴倾斜共同造成太阳直射点周年移动以及季节变化。","features":["地轴方向在周年运动中近似保持不变","同一地点一年中正午太阳高度和昼夜长短发生周期变化"],"sources":[{"title":"NASA Space Place: Seasons","url":"https://spaceplace.nasa.gov/seasons/en/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"earth-tilt","type":"process","name":"黄赤交角","aliases":["地轴倾角","地球倾角"],"keywords":["23.5度","太阳直射点","回归线","极圈"],"module":"地球的运动","grade":"高中","definition":"地球自转轴相对于公转轨道面法线存在约23.5度的倾角。它与地球公转共同导致太阳直射点在南北回归线之间移动。","features":["决定太阳直射点的南北移动范围","是季节变化和昼夜长短周年变化的重要原因"],"sources":[{"title":"NASA Space Place: Seasons","url":"https://spaceplace.nasa.gov/seasons/en/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"solar-declination","type":"process","name":"太阳直射点","aliases":["太阳直射纬度","太阳直射位置"],"keywords":["赤道","回归线","夏至","冬至","分点"],"module":"地球的运动","grade":"高中","definition":"太阳直射点是太阳光线与地球表面垂直的位置。由于黄赤交角和地球公转，直射点在南北回归线之间作周年移动。","features":["春分和秋分附近位于赤道","北半球夏至附近到达北回归线，冬至附近到达南回归线"],"sources":[{"title":"美国海军天文台地球季节数据","url":"https://aa.usno.navy.mil/data/Earth_Seasons","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"solar-equinox","type":"process","name":"春分和秋分","aliases":["二分日","分点"],"keywords":["赤道直射","昼夜等长","春分","秋分"],"module":"地球的运动","grade":"高中","definition":"春分和秋分是太阳直射点位于赤道附近的时段，全球大多数地区昼夜长度接近相等。","features":["太阳直射赤道附近","太阳从正东方向附近升起、从正西方向附近落下是近似描述"],"sources":[{"title":"NASA: Embracing the Equinox","url":"https://science.nasa.gov/solar-system/skywatching/night-sky-network/embracing-the-equinox/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"solar-solstice","type":"process","name":"夏至和冬至","aliases":["二至日","至点"],"keywords":["回归线","昼长","夜长","极昼","极夜"],"module":"地球的运动","grade":"高中","definition":"夏至和冬至是太阳直射点到达北回归线或南回归线附近的时段，分别对应相应半球白昼最长或最短的时段。","features":["北半球夏至附近北半球昼长达到年内较大值","南北半球季节相反"],"sources":[{"title":"美国海军天文台地球季节数据","url":"https://aa.usno.navy.mil/data/Earth_Seasons","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"daylight-length","type":"process","name":"昼夜长短变化","aliases":["昼长变化","日照时长"],"keywords":["纬度","季节","昼长","太阳高度"],"module":"地球的运动","grade":"高中","definition":"昼夜长短取决于太阳直射点位置和观察地纬度。某半球朝向太阳时，该半球通常昼长夜短，且纬度越高季节性差异越明显。","features":["赤道附近全年昼夜接近等长","高纬度地区可能出现极昼和极夜"],"sources":[{"title":"NASA Space Place: Seasons","url":"https://spaceplace.nasa.gov/seasons/en/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"solar-noon-altitude","type":"process","name":"正午太阳高度","aliases":["太阳高度角","正午太阳高度角"],"keywords":["纬度差","太阳直射点","天顶","太阳高度"],"module":"地球的运动","grade":"高中","definition":"正午太阳高度是当地地方时正午前后太阳光线与当地水平面的夹角。它受观察地纬度和太阳直射点纬度共同影响。","features":["太阳直射处正午太阳高度最大","离直射点纬度差越大，正午太阳高度通常越小"],"sources":[{"title":"NASA Space Place: Seasons","url":"https://spaceplace.nasa.gov/seasons/en/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"local-time","type":"process","name":"地方时","aliases":["地方太阳时","经度时差"],"keywords":["经度","15度","UTC","时差"],"module":"地球的运动","grade":"高中","definition":"地方时是以当地太阳位置为依据的时间。同一时刻经度不同的地点地方时不同，通常每相差15度经度约相差1小时。","features":["东经地点地方时通常早于西经地点","地方时不等同于统一划分的标准时区时间"],"sources":[{"title":"美国海军天文台时间系统资料","url":"https://aa.usno.navy.mil/faq/uts","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"pressure-belts","type":"process","name":"全球气压带","aliases":["七个气压带","气压带"],"keywords":["赤道低压","副热带高压","副极地低压","极地高压","三圈环流"],"module":"地球上的大气","grade":"高中","definition":"全球气压带是受地球受热不均、地球自转和大气环流共同影响形成的纬向气压分布带。典型划分包括赤道低压带、副热带高压带、副极地低压带和极地高压带。","features":["气压带大体呈纬向分布","气压带会随太阳直射点季节性南北移动"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"wind-belts","type":"process","name":"全球风带","aliases":["六个风带","行星风系"],"keywords":["信风","西风","极地东风","三圈环流"],"module":"地球上的大气","grade":"高中","definition":"全球风带是在气压带之间形成的盛行风带，主要包括东北信风、东南信风、中纬西风和极地东风等。","features":["风向受气压梯度力和地转偏向力共同影响","风带与气候类型和洋流分布密切相关"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"coriolis-effect","type":"process","name":"地转偏向力","aliases":["科里奥利力","地转偏向"],"keywords":["北半球右偏","南半球左偏","赤道","风向"],"module":"地球上的大气","grade":"高中","definition":"地转偏向力是地球自转参考系中运动物体表现出的偏转效应。它使北半球水平运动物体向右偏，南半球向左偏，赤道附近效应较弱。","features":["不改变物体运动速度的大小，主要改变运动方向","对风、洋流和大型天气系统的运动方向有重要影响"],"sources":[{"title":"NOAA Ocean Service: Coriolis Effect","url":"https://oceanservice.noaa.gov/education/tutorial_currents/04currents1.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"thermal-circulation","type":"process","name":"热力环流","aliases":["热力环流示意","海陆风"],"keywords":["冷热不均","气压差","上升气流","下沉气流","海陆风"],"module":"地球上的大气","grade":"高中","definition":"热力环流是由地表冷热不均造成空气垂直运动和水平气压差，进而形成空气循环的现象。海陆风、山谷风和城市热岛环流都可用其解释。","features":["受热处空气膨胀上升，近地面形成相对低压","冷却处空气下沉，近地面形成相对高压"],"sources":[{"title":"中国气象局气象科普资源","url":"https://www.cma.gov.cn/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"monsoon","type":"process","name":"季风","aliases":["季风环流","夏季风","冬季风"],"keywords":["海陆热力差异","季节反转","亚洲季风","降水"],"module":"地球上的大气","grade":"高中","definition":"季风是盛行风向随季节发生明显反转或显著变化的风系，形成通常与海陆热力差异、气压带风带季节移动和地形共同有关。","features":["夏季陆地升温快，常形成由海向陆的湿润气流","冬季陆地降温快，常形成由陆向海的较干冷气流"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"front","type":"process","name":"锋面","aliases":["冷锋","暖锋","准静止锋"],"keywords":["冷气团","暖气团","锋面雨","天气变化"],"module":"地球上的大气","grade":"高中","definition":"锋面是冷暖气团相遇形成的狭窄过渡带。冷锋、暖锋和准静止锋的移动方向和抬升方式不同，会造成不同的云雨和气温变化。","features":["暖气团沿锋面上升可形成云雨","锋面附近天气变化通常比单一气团内部更明显"],"sources":[{"title":"中国气象局气象科普资源","url":"https://www.cma.gov.cn/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"cyclone-anticyclone","type":"process","name":"气旋与反气旋","aliases":["低压","高压","温带气旋"],"keywords":["辐合","辐散","上升","下沉","天气系统"],"module":"地球上的大气","grade":"高中","definition":"气旋中心气压较低，近地面空气通常辐合上升；反气旋中心气压较高，近地面空气通常辐散下沉。两者是重要的天气系统。","features":["气旋上升运动有利于云雨形成","反气旋下沉运动通常对应较稳定天气，但高压边缘也可能带来强风"],"sources":[{"title":"中国气象局气象科普资源","url":"https://www.cma.gov.cn/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"koppen-climate","type":"process","name":"柯本气候分类","aliases":["Köppen气候分类","世界气候类型"],"keywords":["气温","降水","植被","气候区"],"module":"地球上的大气","grade":"高中","definition":"柯本气候分类以气温和降水的年内变化为主要依据，并结合植被分布特征划分全球气候类型。","features":["通过月均气温和降水季节分配识别气候类型","同一气候类型仍可能受海拔、洋流和局地地形影响而表现不同"],"sources":[{"title":"NOAA Climate.gov","url":"https://www.climate.gov/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"water-cycle","type":"process","name":"水循环","aliases":["全球水循环","水分循环"],"keywords":["蒸发","降水","径流","下渗","水汽输送"],"module":"地球上的水","grade":"高中","definition":"水循环是水在地球各圈层之间通过蒸发、凝结、降水、径流、下渗和蒸腾等过程不断迁移和转化的循环。","features":["海陆间水循环联系海洋和陆地","水循环影响能量交换、地貌塑造和生态系统"],"sources":[{"title":"USGS Water Cycle Diagrams","url":"https://www.usgs.gov/water-science-school/science/water-cycle-diagrams","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"runoff","type":"process","name":"地表径流","aliases":["径流","地表水流"],"keywords":["降水","流域","汇流","河流","产流"],"module":"地球上的水","grade":"高中","definition":"地表径流是降水或融水沿地表流动并汇入河流、湖泊或海洋的水流。其大小受降水、下垫面、植被、坡度和人类活动影响。","features":["地表径流是河流补给的重要来源","植被减少和地表硬化通常会改变产流和汇流过程"],"sources":[{"title":"USGS Water Science School","url":"https://www.usgs.gov/special-topics/water-science-school","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"river-basin","type":"process","name":"流域与分水岭","aliases":["流域","分水线","水系"],"keywords":["集水区","河网","分水岭","河流"],"module":"地球上的水","grade":"高中","definition":"流域是汇集地表水和地下水并流入同一水体的区域，分水岭是相邻流域之间的分界线。","features":["流域具有相对完整的水文联系","地形起伏决定地表径流汇流方向和分水岭位置"],"sources":[{"title":"USGS Water Science School","url":"https://www.usgs.gov/special-topics/water-science-school","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"ocean-current","type":"process","name":"洋流","aliases":["海流","海洋环流"],"keywords":["暖流","寒流","风海流","密度流","上升流"],"module":"地球上的水","grade":"高中","definition":"洋流是海水沿相对稳定方向的大规模运动，主要受盛行风、海水密度差异、地转偏向力和海陆轮廓等影响。","features":["暖流和寒流会影响沿岸气温与降水","洋流可输送热量和营养盐，并影响渔场分布"],"sources":[{"title":"NOAA Ocean Service: Ocean Currents","url":"https://oceanservice.noaa.gov/education/tutorial_currents/welcome.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"enso","type":"process","name":"厄尔尼诺与拉尼娜","aliases":["ENSO","El Niño","La Niña"],"keywords":["赤道太平洋","海温异常","沃克环流","年际变化"],"module":"地球上的水","grade":"高中","definition":"ENSO 是热带太平洋海气系统的年际变化。厄尔尼诺通常表现为中东部热带太平洋海温偏暖，拉尼娜通常表现为该区域海温偏冷，并伴随大气环流变化。","features":["会通过海气相互作用影响全球部分地区降水和温度","不是每年发生，也不是单一地点的天气现象"],"sources":[{"title":"NOAA Education: El Niño and La Niña","url":"https://www.noaa.gov/education/resource-collections/weather-atmosphere/el-nino","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"plate-convergence","type":"process","name":"汇聚型板块边界","aliases":["汇聚边界","俯冲边界"],"keywords":["碰撞","俯冲","海沟","山脉","火山弧"],"module":"地表形态的塑造","grade":"高中","definition":"汇聚型板块边界是板块相向运动的边界。海洋板块俯冲到另一板块之下可形成海沟和火山弧，两个大陆板块碰撞可形成大型褶皱山脉。","features":["地震活动常较强且震源深度分布范围较大","海洋板块俯冲区常同时出现海沟和火山带"],"sources":[{"title":"USGS: Plate Tectonics and People","url":"https://pubs.usgs.gov/gip/dynamic/tectonics.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"plate-divergence","type":"process","name":"离散型板块边界","aliases":["离散边界","张裂边界"],"keywords":["洋中脊","裂谷","洋底扩张","岩浆上涌"],"module":"地表形态的塑造","grade":"高中","definition":"离散型板块边界是板块相背运动的边界，软流层物质上涌并形成新的岩石圈，常见地貌包括洋中脊和大陆裂谷。","features":["洋中脊是海洋地壳形成的重要区域","大陆离散阶段可形成裂谷和火山活动带"],"sources":[{"title":"USGS: Plate Tectonics and People","url":"https://pubs.usgs.gov/gip/dynamic/tectonics.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"transform-boundary","type":"process","name":"转换型板块边界","aliases":["转换边界","走滑断层"],"keywords":["水平错动","剪切","断层","地震"],"module":"地表形态的塑造","grade":"高中","definition":"转换型板块边界是两个板块沿边界相对水平错动的区域，通常不直接产生或消耗大量岩石圈，但可能发生强烈地震。","features":["以剪切和走滑运动为主","地表常见线性断层和错动地貌"],"sources":[{"title":"USGS: Plate Tectonics and People","url":"https://pubs.usgs.gov/gip/dynamic/tectonics.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"earthquake-focus-epicenter","type":"terminology","name":"震源与震中","aliases":["震源","震中","地震位置"],"keywords":["地震","地下","地表","震源深度"],"module":"地表形态的塑造","grade":"高中","definition":"震源是地球内部最初发生破裂和释放能量的位置，震中是震源在地表的垂直投影点。","features":["震源深度是震源到地表的垂直距离","震中不是地震真正发生的地下位置"],"sources":[{"title":"USGS Earthquake Hazards Program","url":"https://earthquake.usgs.gov/learn/glossary/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"latitude-longitude","type":"terminology","name":"经度与纬度","aliases":["地理坐标","经纬度"],"keywords":["坐标","赤道","本初子午线","位置"],"module":"地图与地理工具","grade":"初中","definition":"纬度表示地点相对于赤道的南北位置，经度表示地点相对于本初子午线的东西位置，二者共同确定地球表面位置。","features":["纬度范围通常为南北90度","经度范围通常为东西180度","GuEarth 的飞行工具使用 WGS-84 经纬度"],"sources":[{"title":"美国国家地理空间情报局 WGS 84","url":"https://earth-info.nga.mil/index.php?dir=wgs84&action=wgs84","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"contour-line","type":"terminology","name":"等高线","aliases":["等高线地形图","等高线图"],"keywords":["海拔","高程","地形图","坡度","山谷"],"module":"地图与地理工具","grade":"初中","definition":"等高线是地形图上连接海拔相同各点的线。通过等高线的疏密、弯曲和闭合形态可以判读地形起伏。","features":["等高线密集处坡度较陡","等高线稀疏处坡度较缓","封闭等高线可表示山顶或盆地，需结合数值判断"],"sources":[{"title":"美国国家公园管理局地形图说明","url":"https://www.nps.gov/subjects/geology/park-maps.htm","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"slope-aspect","type":"terminology","name":"坡度与坡向","aliases":["坡面","地形坡度","地形坡向"],"keywords":["地形","太阳辐射","迎风坡","背风坡","山地"],"module":"地图与地理工具","grade":"高中","definition":"坡度表示地表倾斜程度，坡向表示坡面朝向。二者会影响太阳辐射、径流、土壤和植被分布。","features":["坡度影响径流速度和土壤侵蚀","坡向影响日照和水热条件","迎风坡和背风坡还受盛行风与地形抬升影响"],"sources":[{"title":"美国国家公园管理局地形图说明","url":"https://www.nps.gov/subjects/geology/park-maps.htm","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"tool-fly-to","type":"tool","name":"飞行定位工具","aliases":["fly_to","飞到地点","地图飞行","switch_flight_stop"],"keywords":["定位","展示地点","视点高度","经纬度","地点切换"],"module":"地图与地理工具","grade":"通用","definition":"飞行定位工具根据 WGS-84 经度、纬度和视点高度把 Cesium 相机移动到目标位置；传入多个地点时可一次创建地点列表，默认停留在第 1 个地点供用户通过底部切换器查看。","features":["大区域全景使用较高视点","城市和地貌细节使用较低视点","需要展示多个典型案例时应在一次调用中通过 locations 传入全部地点，停留在第一个地点讲解","除非用户在聊天中明确要求切换，否则不要擅自切换到下一个地点"],"sources":[{"title":"GuEarth 工具接口与项目实现","url":"https://github.com/HikaruQwQ/GuEarth","type":"project"}],"status":"reviewed","updatedAt":"2026-11-16"},
-  {"id":"tool-query-terrain","type":"tool","name":"地形查询工具","aliases":["query_terrain","查询海拔","地形高程"],"keywords":["海拔","高程","地形","高度"],"module":"地图与地理工具","grade":"通用","definition":"地形查询工具读取目标经纬度附近的 Cesium 地形高程，用于辅助判断山地、峡谷和高原等地貌。","features":["查询结果是当前地形数据的估计值","不能把查询不到的高程编造成精确观测值"],"sources":[{"title":"GuEarth 工具接口与项目实现","url":"https://github.com/HikaruQwQ/GuEarth","type":"project"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"tool-set-layer","type":"tool","name":"专题图层工具","aliases":["set_layer","打开专题图层","图层开关"],"keywords":["气压带","气候","洋流","板块","专题图层"],"module":"地图与地理工具","grade":"通用","definition":"专题图层工具用于打开或关闭 GuEarth 中的气压带风带、气候类型、锋面气旋、洋流、板块等教学图层。","features":["图层展示的是教学示意或数据图层","图层要素的详细成因应结合知识库条目解释"],"sources":[{"title":"GuEarth 专题图层实现","url":"https://github.com/HikaruQwQ/GuEarth","type":"project"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"tool-set-sim-time","type":"tool","name":"太阳模拟时间工具","aliases":["set_sim_time","模拟日期","晨昏线"],"keywords":["昼夜","日期","时间","太阳光照","极昼"],"module":"地图与地理工具","grade":"通用","definition":"太阳模拟时间工具设置地球光照所使用的日期和北京时间，用于展示昼夜、晨昏线和季节性光照变化。","features":["设置时间后可结合 fly_to 查看全球晨昏线","比较夏至、冬至和分点时应保持观察视角和时刻含义清晰"],"sources":[{"title":"GuEarth 工具接口与项目实现","url":"https://github.com/HikaruQwQ/GuEarth","type":"project"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"tool-query-solar","type":"tool","name":"太阳量查询工具","aliases":["query_solar","昼长查询","太阳高度查询"],"keywords":["纬度","昼长","正午太阳高度","日出日落"],"module":"地图与地理工具","grade":"通用","definition":"太阳量查询工具根据日期和纬度计算或返回昼长、日出日落和正午太阳高度等教学量。","features":["适合比较不同纬度在同一日期的光照差异","计算结果应注明日期、纬度和时间基准"],"sources":[{"title":"GuEarth 太阳数学模块","url":"https://github.com/HikaruQwQ/GuEarth","type":"project"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"tool-find-peaks","type":"tool","name":"名山高峰查找工具","aliases":["find_peaks","查找山峰","名山查询"],"keywords":["山峰","海拔","名山","方位","距离"],"module":"地图与地理工具","grade":"通用","definition":"名山高峰查找工具在指定经纬度与半径内检索内置名山名录（覆盖中国主要山脉代表名山与世界各大洲代表高峰），返回名称、海拔、相对查询中心的方位与距离，结果按海拔从高到低排序。","features":["默认以当前视角中心为查询中心，半径省略时为 300 千米，可放宽至 3000 千米","名录包含中国主要山脉最高峰与名山、世界各大洲代表高峰和著名火山","范围内无结果会返回最近的备选，需要展示多个山峰时用 fly_to 的 locations 一次创建地点列表并停留在第 1 座讲解"],"sources":[{"title":"GuEarth 工具接口与项目实现","url":"https://github.com/HikaruQwQ/GuEarth","type":"project"}],"status":"reviewed","updatedAt":"2026-11-16"},
-  {"id":"tool-fly-transect","type":"tool","name":"剖面飞行工具","aliases":["fly_transect","剖面飞行","沿线飞行"],"keywords":["剖面","地形起伏","山脉","垂直带谱"],"module":"地图与地理工具","grade":"通用","definition":"剖面飞行工具让视角沿剖面线（内置山脉预设剖面或自定义途经点）保持地形安全高度依次飞行，并在地球上保留剖面线，用于观察地形起伏与垂直地域分异。","features":["内置珠穆朗玛峰、天山博格达峰、乞力马扎罗山、阿尔卑斯勃朗峰、长白山剖面","飞行高度按沿线地形最高点自动抬升，不会切入山体","配合山地垂直带谱剖面面板使用可对照带谱讲解"],"sources":[{"title":"GuEarth 工具接口与项目实现","url":"https://github.com/HikaruQwQ/GuEarth","type":"project"}],"status":"reviewed","updatedAt":"2026-10-24"},
-  {"id":"place-guilin","type":"place","name":"桂林漓江","aliases":["漓江","桂林喀斯特"],"keywords":["喀斯特","峰林","峰丛","广西"],"module":"地表形态的塑造","grade":"高中","definition":"桂林漓江是中国南方喀斯特峰林、峰丛和河流景观的典型案例。","typicalPlaces":[{"name":"桂林漓江","longitude":110.3,"latitude":25.3,"note":"喀斯特峰林与河流组合景观"}],"sources":[{"title":"UNESCO Global Geoparks","url":"https://www.unesco.org/en/iggp/geoparks","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-danxia-mountain","type":"place","name":"广东丹霞山","aliases":["丹霞山","丹霞地貌命名地"],"keywords":["丹霞","红层","砂岩","广东"],"module":"地表形态的塑造","grade":"高中","definition":"广东丹霞山是红色陆相碎屑岩经构造抬升、流水侵蚀和崩塌改造形成的丹霞地貌典型区域。","typicalPlaces":[{"name":"广东丹霞山","longitude":113.7,"latitude":24.9,"note":"丹霞地貌命名地和典型案例"}],"sources":[{"title":"UNESCO Global Geoparks","url":"https://www.unesco.org/en/iggp/geoparks","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-loess-plateau","type":"place","name":"黄土高原","aliases":["黄土高原地区","黄土沟壑区"],"keywords":["黄土","沟壑","水土流失","塬梁峁"],"module":"地表形态的塑造","grade":"高中","definition":"黄土高原是研究风力沉积、流水侵蚀和水土保持关系的典型区域。","typicalPlaces":[{"name":"黄土高原","longitude":110.0,"latitude":37.5,"note":"黄土地貌和水土流失典型区域"}],"sources":[{"title":"义务教育地理课程标准（2022年版）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-yangtze-delta","type":"place","name":"长江三角洲","aliases":["长三角","长江口三角洲"],"keywords":["三角洲","河口","沉积","长江"],"module":"地表形态的塑造","grade":"高中","definition":"长江三角洲是河流入海后泥沙沉积和海岸动力共同作用形成的典型河口三角洲区域。","typicalPlaces":[{"name":"长江三角洲","longitude":121.0,"latitude":31.0,"note":"中国东部典型河口三角洲"}],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-himalaya","type":"place","name":"喜马拉雅山脉","aliases":["喜马拉雅","青藏高原南缘"],"keywords":["板块碰撞","褶皱山","高山","印度板块"],"module":"地表形态的塑造","grade":"高中","definition":"喜马拉雅山脉是印度板块与欧亚板块持续汇聚碰撞形成的世界著名高大褶皱山脉。","typicalPlaces":[{"name":"喜马拉雅山脉","longitude":86.9,"latitude":28.0,"note":"大陆板块碰撞和高山地貌典型区域"}],"sources":[{"title":"USGS Plate Tectonics","url":"https://pubs.usgs.gov/gip/dynamic/tectonics.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-east-african-rift","type":"place","name":"东非大裂谷","aliases":["东非裂谷","非洲大陆裂谷"],"keywords":["裂谷","离散边界","大陆张裂","火山"],"module":"地表形态的塑造","grade":"高中","definition":"东非大裂谷是大陆岩石圈张裂和离散作用发育的典型区域，伴有断层、火山和湖泊等地貌。","typicalPlaces":[{"name":"东非大裂谷","longitude":36.0,"latitude":2.0,"note":"大陆裂谷发育的典型区域"}],"sources":[{"title":"USGS Plate Tectonics","url":"https://pubs.usgs.gov/gip/dynamic/tectonics.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-andes","type":"place","name":"安第斯山脉","aliases":["安第斯","南美洲西部山脉"],"keywords":["俯冲","海沟","火山弧","南美洲"],"module":"地表形态的塑造","grade":"高中","definition":"安第斯山脉位于南美洲西缘，是海洋板块向南美大陆板块之下俯冲形成的大陆边缘山脉和火山带。","typicalPlaces":[{"name":"安第斯山脉","longitude":-70.0,"latitude":-20.0,"note":"海洋板块俯冲型山脉和火山带"}],"sources":[{"title":"USGS Plate Tectonics","url":"https://pubs.usgs.gov/gip/dynamic/tectonics.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-hawaii","type":"place","name":"夏威夷火山群","aliases":["夏威夷","热点火山"],"keywords":["热点","盾状火山","熔岩","太平洋"],"module":"地表形态的塑造","grade":"高中","definition":"夏威夷火山群是热点火山作用形成的典型区域，可用于说明火山并不全部分布在板块边界。","typicalPlaces":[{"name":"夏威夷火山群","longitude":-155.3,"latitude":19.4,"note":"热点和盾状火山典型区域"}],"sources":[{"title":"USGS Volcano Hazards Program","url":"https://www.usgs.gov/programs/VHP","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-alps","type":"place","name":"阿尔卑斯山","aliases":["阿尔卑斯","欧洲冰川地貌"],"keywords":["冰川","U形谷","冰斗","欧洲"],"module":"地表形态的塑造","grade":"高中","definition":"阿尔卑斯山是研究山地冰川、冰蚀地貌和高山垂直自然带的典型区域。","typicalPlaces":[{"name":"阿尔卑斯山","longitude":10.0,"latitude":46.5,"note":"欧洲典型山地冰川区域"}],"sources":[{"title":"NPS Glaciers and Glacial Landforms","url":"https://www.nps.gov/subjects/geology/glacial-landforms.htm","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"}
+  {
+    "id": "earth-rotation",
+    "type": "process",
+    "name": "地球自转",
+    "aliases": ["自转", "昼夜交替"],
+    "keywords": ["昼夜", "太阳东升西落", "地转偏向力"],
+    "module": "地球的运动",
+    "grade": "高中",
+    "definition": "地球绕自转轴自西向东旋转，周期约为一个恒星日。地球自转产生昼夜交替，并使地表水平运动物体发生地转偏向。",
+    "features": ["同一时刻不同经度地方时不同", "北半球水平运动物体向右偏，南半球向左偏"],
+    "commonConfusions": ["昼夜交替主要由地球自转造成，四季变化主要与地球公转和黄赤交角有关"],
+    "sources": [
+      {
+        "title": "NASA Space Place: Seasons",
+        "url": "https://spaceplace.nasa.gov/seasons/en/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "earth-revolution",
+    "type": "process",
+    "name": "地球公转",
+    "aliases": ["公转", "绕日运动"],
+    "keywords": ["轨道", "太阳", "四季", "黄赤交角"],
+    "module": "地球的运动",
+    "grade": "高中",
+    "definition": "地球沿近似椭圆轨道绕太阳运行，公转和地轴倾斜共同造成太阳直射点周年移动以及季节变化。",
+    "features": [
+      "地轴方向在周年运动中近似保持不变",
+      "同一地点一年中正午太阳高度和昼夜长短发生周期变化"
+    ],
+    "sources": [
+      {
+        "title": "NASA Space Place: Seasons",
+        "url": "https://spaceplace.nasa.gov/seasons/en/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "earth-tilt",
+    "type": "process",
+    "name": "黄赤交角",
+    "aliases": ["地轴倾角", "地球倾角"],
+    "keywords": ["23.5度", "太阳直射点", "回归线", "极圈"],
+    "module": "地球的运动",
+    "grade": "高中",
+    "definition": "地球自转轴相对于公转轨道面法线存在约23.5度的倾角。它与地球公转共同导致太阳直射点在南北回归线之间移动。",
+    "features": ["决定太阳直射点的南北移动范围", "是季节变化和昼夜长短周年变化的重要原因"],
+    "sources": [
+      {
+        "title": "NASA Space Place: Seasons",
+        "url": "https://spaceplace.nasa.gov/seasons/en/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "solar-declination",
+    "type": "process",
+    "name": "太阳直射点",
+    "aliases": ["太阳直射纬度", "太阳直射位置"],
+    "keywords": ["赤道", "回归线", "夏至", "冬至", "分点"],
+    "module": "地球的运动",
+    "grade": "高中",
+    "definition": "太阳直射点是太阳光线与地球表面垂直的位置。由于黄赤交角和地球公转，直射点在南北回归线之间作周年移动。",
+    "features": ["春分和秋分附近位于赤道", "北半球夏至附近到达北回归线，冬至附近到达南回归线"],
+    "sources": [
+      {
+        "title": "美国海军天文台地球季节数据",
+        "url": "https://aa.usno.navy.mil/data/Earth_Seasons",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "solar-equinox",
+    "type": "process",
+    "name": "春分和秋分",
+    "aliases": ["二分日", "分点"],
+    "keywords": ["赤道直射", "昼夜等长", "春分", "秋分"],
+    "module": "地球的运动",
+    "grade": "高中",
+    "definition": "春分和秋分是太阳直射点位于赤道附近的时段，全球大多数地区昼夜长度接近相等。",
+    "features": ["太阳直射赤道附近", "太阳从正东方向附近升起、从正西方向附近落下是近似描述"],
+    "sources": [
+      {
+        "title": "NASA: Embracing the Equinox",
+        "url": "https://science.nasa.gov/solar-system/skywatching/night-sky-network/embracing-the-equinox/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "solar-solstice",
+    "type": "process",
+    "name": "夏至和冬至",
+    "aliases": ["二至日", "至点"],
+    "keywords": ["回归线", "昼长", "夜长", "极昼", "极夜"],
+    "module": "地球的运动",
+    "grade": "高中",
+    "definition": "夏至和冬至是太阳直射点到达北回归线或南回归线附近的时段，分别对应相应半球白昼最长或最短的时段。",
+    "features": ["北半球夏至附近北半球昼长达到年内较大值", "南北半球季节相反"],
+    "sources": [
+      {
+        "title": "美国海军天文台地球季节数据",
+        "url": "https://aa.usno.navy.mil/data/Earth_Seasons",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "daylight-length",
+    "type": "process",
+    "name": "昼夜长短变化",
+    "aliases": ["昼长变化", "日照时长"],
+    "keywords": ["纬度", "季节", "昼长", "太阳高度"],
+    "module": "地球的运动",
+    "grade": "高中",
+    "definition": "昼夜长短取决于太阳直射点位置和观察地纬度。某半球朝向太阳时，该半球通常昼长夜短，且纬度越高季节性差异越明显。",
+    "features": ["赤道附近全年昼夜接近等长", "高纬度地区可能出现极昼和极夜"],
+    "sources": [
+      {
+        "title": "NASA Space Place: Seasons",
+        "url": "https://spaceplace.nasa.gov/seasons/en/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "solar-noon-altitude",
+    "type": "process",
+    "name": "正午太阳高度",
+    "aliases": ["太阳高度角", "正午太阳高度角"],
+    "keywords": ["纬度差", "太阳直射点", "天顶", "太阳高度"],
+    "module": "地球的运动",
+    "grade": "高中",
+    "definition": "正午太阳高度是当地地方时正午前后太阳光线与当地水平面的夹角。它受观察地纬度和太阳直射点纬度共同影响。",
+    "features": ["太阳直射处正午太阳高度最大", "离直射点纬度差越大，正午太阳高度通常越小"],
+    "sources": [
+      {
+        "title": "NASA Space Place: Seasons",
+        "url": "https://spaceplace.nasa.gov/seasons/en/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "local-time",
+    "type": "process",
+    "name": "地方时",
+    "aliases": ["地方太阳时", "经度时差"],
+    "keywords": ["经度", "15度", "UTC", "时差"],
+    "module": "地球的运动",
+    "grade": "高中",
+    "definition": "地方时是以当地太阳位置为依据的时间。同一时刻经度不同的地点地方时不同，通常每相差15度经度约相差1小时。",
+    "features": ["东经地点地方时通常早于西经地点", "地方时不等同于统一划分的标准时区时间"],
+    "sources": [
+      {
+        "title": "美国海军天文台时间系统资料",
+        "url": "https://aa.usno.navy.mil/faq/uts",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "pressure-belts",
+    "type": "process",
+    "name": "全球气压带",
+    "aliases": ["七个气压带", "气压带"],
+    "keywords": ["赤道低压", "副热带高压", "副极地低压", "极地高压", "三圈环流"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "全球气压带是受地球受热不均、地球自转和大气环流共同影响形成的纬向气压分布带。典型划分包括赤道低压带、副热带高压带、副极地低压带和极地高压带。",
+    "features": ["气压带大体呈纬向分布", "气压带会随太阳直射点季节性南北移动"],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "wind-belts",
+    "type": "process",
+    "name": "全球风带",
+    "aliases": ["六个风带", "行星风系"],
+    "keywords": ["信风", "西风", "极地东风", "三圈环流"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "全球风带是在气压带之间形成的盛行风带，主要包括东北信风、东南信风、中纬西风和极地东风等。",
+    "features": ["风向受气压梯度力和地转偏向力共同影响", "风带与气候类型和洋流分布密切相关"],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "coriolis-effect",
+    "type": "process",
+    "name": "地转偏向力",
+    "aliases": ["科里奥利力", "地转偏向"],
+    "keywords": ["北半球右偏", "南半球左偏", "赤道", "风向"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "地转偏向力是地球自转参考系中运动物体表现出的偏转效应。它使北半球水平运动物体向右偏，南半球向左偏，赤道附近效应较弱。",
+    "features": [
+      "不改变物体运动速度的大小，主要改变运动方向",
+      "对风、洋流和大型天气系统的运动方向有重要影响"
+    ],
+    "sources": [
+      {
+        "title": "NOAA Ocean Service: Coriolis Effect",
+        "url": "https://oceanservice.noaa.gov/education/tutorial_currents/04currents1.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "thermal-circulation",
+    "type": "process",
+    "name": "热力环流",
+    "aliases": ["热力环流示意", "海陆风"],
+    "keywords": ["冷热不均", "气压差", "上升气流", "下沉气流", "海陆风"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "热力环流是由地表冷热不均造成空气垂直运动和水平气压差，进而形成空气循环的现象。海陆风、山谷风和城市热岛环流都可用其解释。",
+    "features": ["受热处空气膨胀上升，近地面形成相对低压", "冷却处空气下沉，近地面形成相对高压"],
+    "sources": [
+      { "title": "中国气象局气象科普资源", "url": "https://www.cma.gov.cn/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "monsoon",
+    "type": "process",
+    "name": "季风",
+    "aliases": ["季风环流", "夏季风", "冬季风"],
+    "keywords": ["海陆热力差异", "季节反转", "亚洲季风", "降水"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "季风是盛行风向随季节发生明显反转或显著变化的风系，形成通常与海陆热力差异、气压带风带季节移动和地形共同有关。",
+    "features": [
+      "夏季陆地升温快，常形成由海向陆的湿润气流",
+      "冬季陆地降温快，常形成由陆向海的较干冷气流"
+    ],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "front",
+    "type": "process",
+    "name": "锋面",
+    "aliases": ["冷锋", "暖锋", "准静止锋"],
+    "keywords": ["冷气团", "暖气团", "锋面雨", "天气变化"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "锋面是冷暖气团相遇形成的狭窄过渡带。冷锋、暖锋和准静止锋的移动方向和抬升方式不同，会造成不同的云雨和气温变化。",
+    "features": ["暖气团沿锋面上升可形成云雨", "锋面附近天气变化通常比单一气团内部更明显"],
+    "sources": [
+      { "title": "中国气象局气象科普资源", "url": "https://www.cma.gov.cn/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "cyclone-anticyclone",
+    "type": "process",
+    "name": "气旋与反气旋",
+    "aliases": ["低压", "高压", "温带气旋"],
+    "keywords": ["辐合", "辐散", "上升", "下沉", "天气系统"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "气旋中心气压较低，近地面空气通常辐合上升；反气旋中心气压较高，近地面空气通常辐散下沉。两者是重要的天气系统。",
+    "features": [
+      "气旋上升运动有利于云雨形成",
+      "反气旋下沉运动通常对应较稳定天气，但高压边缘也可能带来强风"
+    ],
+    "sources": [
+      { "title": "中国气象局气象科普资源", "url": "https://www.cma.gov.cn/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "koppen-climate",
+    "type": "process",
+    "name": "柯本气候分类",
+    "aliases": ["Köppen气候分类", "世界气候类型"],
+    "keywords": ["气温", "降水", "植被", "气候区"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "柯本气候分类以气温和降水的年内变化为主要依据，并结合植被分布特征划分全球气候类型。",
+    "features": [
+      "通过月均气温和降水季节分配识别气候类型",
+      "同一气候类型仍可能受海拔、洋流和局地地形影响而表现不同"
+    ],
+    "sources": [
+      { "title": "NOAA Climate.gov", "url": "https://www.climate.gov/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "water-cycle",
+    "type": "process",
+    "name": "水循环",
+    "aliases": ["全球水循环", "水分循环"],
+    "keywords": ["蒸发", "降水", "径流", "下渗", "水汽输送"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "水循环是水在地球各圈层之间通过蒸发、凝结、降水、径流、下渗和蒸腾等过程不断迁移和转化的循环。",
+    "features": ["海陆间水循环联系海洋和陆地", "水循环影响能量交换、地貌塑造和生态系统"],
+    "sources": [
+      {
+        "title": "USGS Water Cycle Diagrams",
+        "url": "https://www.usgs.gov/water-science-school/science/water-cycle-diagrams",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "runoff",
+    "type": "process",
+    "name": "地表径流",
+    "aliases": ["径流", "地表水流"],
+    "keywords": ["降水", "流域", "汇流", "河流", "产流"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "地表径流是降水或融水沿地表流动并汇入河流、湖泊或海洋的水流。其大小受降水、下垫面、植被、坡度和人类活动影响。",
+    "features": ["地表径流是河流补给的重要来源", "植被减少和地表硬化通常会改变产流和汇流过程"],
+    "sources": [
+      {
+        "title": "USGS Water Science School",
+        "url": "https://www.usgs.gov/special-topics/water-science-school",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "river-basin",
+    "type": "process",
+    "name": "流域与分水岭",
+    "aliases": ["流域", "分水线", "水系"],
+    "keywords": ["集水区", "河网", "分水岭", "河流"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "流域是汇集地表水和地下水并流入同一水体的区域，分水岭是相邻流域之间的分界线。",
+    "features": ["流域具有相对完整的水文联系", "地形起伏决定地表径流汇流方向和分水岭位置"],
+    "sources": [
+      {
+        "title": "USGS Water Science School",
+        "url": "https://www.usgs.gov/special-topics/water-science-school",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "ocean-current",
+    "type": "process",
+    "name": "洋流",
+    "aliases": ["海流", "海洋环流"],
+    "keywords": ["暖流", "寒流", "风海流", "密度流", "上升流"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "洋流是海水沿相对稳定方向的大规模运动，主要受盛行风、海水密度差异、地转偏向力和海陆轮廓等影响。",
+    "features": ["暖流和寒流会影响沿岸气温与降水", "洋流可输送热量和营养盐，并影响渔场分布"],
+    "sources": [
+      {
+        "title": "NOAA Ocean Service: Ocean Currents",
+        "url": "https://oceanservice.noaa.gov/education/tutorial_currents/welcome.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "enso",
+    "type": "process",
+    "name": "厄尔尼诺与拉尼娜",
+    "aliases": ["ENSO", "El Niño", "La Niña"],
+    "keywords": ["赤道太平洋", "海温异常", "沃克环流", "年际变化"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "ENSO 是热带太平洋海气系统的年际变化。厄尔尼诺通常表现为中东部热带太平洋海温偏暖，拉尼娜通常表现为该区域海温偏冷，并伴随大气环流变化。",
+    "features": [
+      "会通过海气相互作用影响全球部分地区降水和温度",
+      "不是每年发生，也不是单一地点的天气现象"
+    ],
+    "sources": [
+      {
+        "title": "NOAA Education: El Niño and La Niña",
+        "url": "https://www.noaa.gov/education/resource-collections/weather-atmosphere/el-nino",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "plate-convergence",
+    "type": "process",
+    "name": "汇聚型板块边界",
+    "aliases": ["汇聚边界", "俯冲边界"],
+    "keywords": ["碰撞", "俯冲", "海沟", "山脉", "火山弧"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "汇聚型板块边界是板块相向运动的边界。海洋板块俯冲到另一板块之下可形成海沟和火山弧，两个大陆板块碰撞可形成大型褶皱山脉。",
+    "features": ["地震活动常较强且震源深度分布范围较大", "海洋板块俯冲区常同时出现海沟和火山带"],
+    "sources": [
+      {
+        "title": "USGS: Plate Tectonics and People",
+        "url": "https://pubs.usgs.gov/gip/dynamic/tectonics.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "plate-divergence",
+    "type": "process",
+    "name": "离散型板块边界",
+    "aliases": ["离散边界", "张裂边界"],
+    "keywords": ["洋中脊", "裂谷", "洋底扩张", "岩浆上涌"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "离散型板块边界是板块相背运动的边界，软流层物质上涌并形成新的岩石圈，常见地貌包括洋中脊和大陆裂谷。",
+    "features": ["洋中脊是海洋地壳形成的重要区域", "大陆离散阶段可形成裂谷和火山活动带"],
+    "sources": [
+      {
+        "title": "USGS: Plate Tectonics and People",
+        "url": "https://pubs.usgs.gov/gip/dynamic/tectonics.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "transform-boundary",
+    "type": "process",
+    "name": "转换型板块边界",
+    "aliases": ["转换边界", "走滑断层"],
+    "keywords": ["水平错动", "剪切", "断层", "地震"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "转换型板块边界是两个板块沿边界相对水平错动的区域，通常不直接产生或消耗大量岩石圈，但可能发生强烈地震。",
+    "features": ["以剪切和走滑运动为主", "地表常见线性断层和错动地貌"],
+    "sources": [
+      {
+        "title": "USGS: Plate Tectonics and People",
+        "url": "https://pubs.usgs.gov/gip/dynamic/tectonics.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "earthquake-focus-epicenter",
+    "type": "terminology",
+    "name": "震源与震中",
+    "aliases": ["震源", "震中", "地震位置"],
+    "keywords": ["地震", "地下", "地表", "震源深度"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "震源是地球内部最初发生破裂和释放能量的位置，震中是震源在地表的垂直投影点。",
+    "features": ["震源深度是震源到地表的垂直距离", "震中不是地震真正发生的地下位置"],
+    "sources": [
+      {
+        "title": "USGS Earthquake Hazards Program",
+        "url": "https://earthquake.usgs.gov/learn/glossary/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "latitude-longitude",
+    "type": "terminology",
+    "name": "经度与纬度",
+    "aliases": ["地理坐标", "经纬度"],
+    "keywords": ["坐标", "赤道", "本初子午线", "位置"],
+    "module": "地图与地理工具",
+    "grade": "初中",
+    "definition": "纬度表示地点相对于赤道的南北位置，经度表示地点相对于本初子午线的东西位置，二者共同确定地球表面位置。",
+    "features": [
+      "纬度范围通常为南北90度",
+      "经度范围通常为东西180度",
+      "GuEarth 的飞行工具使用 WGS-84 经纬度"
+    ],
+    "sources": [
+      {
+        "title": "美国国家地理空间情报局 WGS 84",
+        "url": "https://earth-info.nga.mil/index.php?dir=wgs84&action=wgs84",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "contour-line",
+    "type": "terminology",
+    "name": "等高线",
+    "aliases": ["等高线地形图", "等高线图"],
+    "keywords": ["海拔", "高程", "地形图", "坡度", "山谷"],
+    "module": "地图与地理工具",
+    "grade": "初中",
+    "definition": "等高线是地形图上连接海拔相同各点的线。通过等高线的疏密、弯曲和闭合形态可以判读地形起伏。",
+    "features": [
+      "等高线密集处坡度较陡",
+      "等高线稀疏处坡度较缓",
+      "封闭等高线可表示山顶或盆地，需结合数值判断"
+    ],
+    "sources": [
+      {
+        "title": "美国国家公园管理局地形图说明",
+        "url": "https://www.nps.gov/subjects/geology/park-maps.htm",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "slope-aspect",
+    "type": "terminology",
+    "name": "坡度与坡向",
+    "aliases": ["坡面", "地形坡度", "地形坡向"],
+    "keywords": ["地形", "太阳辐射", "迎风坡", "背风坡", "山地"],
+    "module": "地图与地理工具",
+    "grade": "高中",
+    "definition": "坡度表示地表倾斜程度，坡向表示坡面朝向。二者会影响太阳辐射、径流、土壤和植被分布。",
+    "features": [
+      "坡度影响径流速度和土壤侵蚀",
+      "坡向影响日照和水热条件",
+      "迎风坡和背风坡还受盛行风与地形抬升影响"
+    ],
+    "sources": [
+      {
+        "title": "美国国家公园管理局地形图说明",
+        "url": "https://www.nps.gov/subjects/geology/park-maps.htm",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "tool-fly-to",
+    "type": "tool",
+    "name": "飞行定位工具",
+    "aliases": ["fly_to", "飞到地点", "地图飞行", "switch_flight_stop"],
+    "keywords": ["定位", "展示地点", "视点高度", "经纬度", "地点切换"],
+    "module": "地图与地理工具",
+    "grade": "通用",
+    "definition": "飞行定位工具根据 WGS-84 经度、纬度和视点高度把 Cesium 相机移动到目标位置；传入多个地点时可一次创建地点列表，默认停留在第 1 个地点供用户通过底部切换器查看。",
+    "features": [
+      "大区域全景使用较高视点",
+      "城市和地貌细节使用较低视点",
+      "需要展示多个典型案例时应在一次调用中通过 locations 传入全部地点，停留在第一个地点讲解",
+      "除非用户在聊天中明确要求切换，否则不要擅自切换到下一个地点"
+    ],
+    "sources": [
+      {
+        "title": "GuEarth 工具接口与项目实现",
+        "url": "https://github.com/HikaruQwQ/GuEarth",
+        "type": "project"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-11-16"
+  },
+  {
+    "id": "tool-query-terrain",
+    "type": "tool",
+    "name": "地形查询工具",
+    "aliases": ["query_terrain", "查询海拔", "地形高程"],
+    "keywords": ["海拔", "高程", "地形", "高度"],
+    "module": "地图与地理工具",
+    "grade": "通用",
+    "definition": "地形查询工具读取目标经纬度附近的 Cesium 地形高程，用于辅助判断山地、峡谷和高原等地貌。",
+    "features": ["查询结果是当前地形数据的估计值", "不能把查询不到的高程编造成精确观测值"],
+    "sources": [
+      {
+        "title": "GuEarth 工具接口与项目实现",
+        "url": "https://github.com/HikaruQwQ/GuEarth",
+        "type": "project"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "tool-set-layer",
+    "type": "tool",
+    "name": "专题图层工具",
+    "aliases": ["set_layer", "打开专题图层", "图层开关"],
+    "keywords": ["气压带", "气候", "洋流", "板块", "专题图层"],
+    "module": "地图与地理工具",
+    "grade": "通用",
+    "definition": "专题图层工具用于打开或关闭 GuEarth 中的气压带风带、气候类型、锋面气旋、洋流、板块等教学图层。",
+    "features": ["图层展示的是教学示意或数据图层", "图层要素的详细成因应结合知识库条目解释"],
+    "sources": [
+      {
+        "title": "GuEarth 专题图层实现",
+        "url": "https://github.com/HikaruQwQ/GuEarth",
+        "type": "project"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "tool-set-sim-time",
+    "type": "tool",
+    "name": "太阳模拟时间工具",
+    "aliases": ["set_sim_time", "模拟日期", "晨昏线"],
+    "keywords": ["昼夜", "日期", "时间", "太阳光照", "极昼"],
+    "module": "地图与地理工具",
+    "grade": "通用",
+    "definition": "太阳模拟时间工具设置地球光照所使用的日期和北京时间，用于展示昼夜、晨昏线和季节性光照变化。",
+    "features": [
+      "设置时间后可结合 fly_to 查看全球晨昏线",
+      "比较夏至、冬至和分点时应保持观察视角和时刻含义清晰"
+    ],
+    "sources": [
+      {
+        "title": "GuEarth 工具接口与项目实现",
+        "url": "https://github.com/HikaruQwQ/GuEarth",
+        "type": "project"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "tool-query-solar",
+    "type": "tool",
+    "name": "太阳量查询工具",
+    "aliases": ["query_solar", "昼长查询", "太阳高度查询"],
+    "keywords": ["纬度", "昼长", "正午太阳高度", "日出日落"],
+    "module": "地图与地理工具",
+    "grade": "通用",
+    "definition": "太阳量查询工具根据日期和纬度计算或返回昼长、日出日落和正午太阳高度等教学量。",
+    "features": ["适合比较不同纬度在同一日期的光照差异", "计算结果应注明日期、纬度和时间基准"],
+    "sources": [
+      {
+        "title": "GuEarth 太阳数学模块",
+        "url": "https://github.com/HikaruQwQ/GuEarth",
+        "type": "project"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "tool-find-peaks",
+    "type": "tool",
+    "name": "名山高峰查找工具",
+    "aliases": ["find_peaks", "查找山峰", "名山查询"],
+    "keywords": ["山峰", "海拔", "名山", "方位", "距离"],
+    "module": "地图与地理工具",
+    "grade": "通用",
+    "definition": "名山高峰查找工具在指定经纬度与半径内检索内置名山名录（覆盖中国主要山脉代表名山与世界各大洲代表高峰），返回名称、海拔、相对查询中心的方位与距离，结果按海拔从高到低排序。",
+    "features": [
+      "默认以当前视角中心为查询中心，半径省略时为 300 千米，可放宽至 3000 千米",
+      "名录包含中国主要山脉最高峰与名山、世界各大洲代表高峰和著名火山",
+      "范围内无结果会返回最近的备选，需要展示多个山峰时用 fly_to 的 locations 一次创建地点列表并停留在第 1 座讲解"
+    ],
+    "sources": [
+      {
+        "title": "GuEarth 工具接口与项目实现",
+        "url": "https://github.com/HikaruQwQ/GuEarth",
+        "type": "project"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-11-16"
+  },
+  {
+    "id": "tool-fly-transect",
+    "type": "tool",
+    "name": "剖面飞行工具",
+    "aliases": ["fly_transect", "剖面飞行", "沿线飞行"],
+    "keywords": ["剖面", "地形起伏", "山脉", "垂直带谱"],
+    "module": "地图与地理工具",
+    "grade": "通用",
+    "definition": "剖面飞行工具让视角沿剖面线（内置山脉预设剖面或自定义途经点）保持地形安全高度依次飞行，并在地球上保留剖面线，用于观察地形起伏与垂直地域分异。",
+    "features": [
+      "内置珠穆朗玛峰、天山博格达峰、乞力马扎罗山、阿尔卑斯勃朗峰、长白山剖面",
+      "飞行高度按沿线地形最高点自动抬升，不会切入山体",
+      "配合山地垂直带谱剖面面板使用可对照带谱讲解"
+    ],
+    "sources": [
+      {
+        "title": "GuEarth 工具接口与项目实现",
+        "url": "https://github.com/HikaruQwQ/GuEarth",
+        "type": "project"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-24"
+  },
+  {
+    "id": "place-guilin",
+    "type": "place",
+    "name": "桂林漓江",
+    "aliases": ["漓江", "桂林喀斯特"],
+    "keywords": ["喀斯特", "峰林", "峰丛", "广西"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "桂林漓江是中国南方喀斯特峰林、峰丛和河流景观的典型案例。",
+    "typicalPlaces": [
+      {
+        "name": "桂林漓江",
+        "longitude": 110.3,
+        "latitude": 25.3,
+        "note": "喀斯特峰林与河流组合景观"
+      }
+    ],
+    "sources": [
+      {
+        "title": "UNESCO Global Geoparks",
+        "url": "https://www.unesco.org/en/iggp/geoparks",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-danxia-mountain",
+    "type": "place",
+    "name": "广东丹霞山",
+    "aliases": ["丹霞山", "丹霞地貌命名地"],
+    "keywords": ["丹霞", "红层", "砂岩", "广东"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "广东丹霞山是红色陆相碎屑岩经构造抬升、流水侵蚀和崩塌改造形成的丹霞地貌典型区域。",
+    "typicalPlaces": [
+      {
+        "name": "广东丹霞山",
+        "longitude": 113.7,
+        "latitude": 24.9,
+        "note": "丹霞地貌命名地和典型案例"
+      }
+    ],
+    "sources": [
+      {
+        "title": "UNESCO Global Geoparks",
+        "url": "https://www.unesco.org/en/iggp/geoparks",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-loess-plateau",
+    "type": "place",
+    "name": "黄土高原",
+    "aliases": ["黄土高原地区", "黄土沟壑区"],
+    "keywords": ["黄土", "沟壑", "水土流失", "塬梁峁"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "黄土高原是研究风力沉积、流水侵蚀和水土保持关系的典型区域。",
+    "typicalPlaces": [
+      {
+        "name": "黄土高原",
+        "longitude": 110.0,
+        "latitude": 37.5,
+        "note": "黄土地貌和水土流失典型区域"
+      }
+    ],
+    "sources": [
+      {
+        "title": "义务教育地理课程标准（2022年版）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-yangtze-delta",
+    "type": "place",
+    "name": "长江三角洲",
+    "aliases": ["长三角", "长江口三角洲"],
+    "keywords": ["三角洲", "河口", "沉积", "长江"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "长江三角洲是河流入海后泥沙沉积和海岸动力共同作用形成的典型河口三角洲区域。",
+    "typicalPlaces": [
+      {
+        "name": "长江三角洲",
+        "longitude": 121.0,
+        "latitude": 31.0,
+        "note": "中国东部典型河口三角洲"
+      }
+    ],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-himalaya",
+    "type": "place",
+    "name": "喜马拉雅山脉",
+    "aliases": ["喜马拉雅", "青藏高原南缘"],
+    "keywords": ["板块碰撞", "褶皱山", "高山", "印度板块"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "喜马拉雅山脉是印度板块与欧亚板块持续汇聚碰撞形成的世界著名高大褶皱山脉。",
+    "typicalPlaces": [
+      {
+        "name": "喜马拉雅山脉",
+        "longitude": 86.9,
+        "latitude": 28.0,
+        "note": "大陆板块碰撞和高山地貌典型区域"
+      }
+    ],
+    "sources": [
+      {
+        "title": "USGS Plate Tectonics",
+        "url": "https://pubs.usgs.gov/gip/dynamic/tectonics.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-east-african-rift",
+    "type": "place",
+    "name": "东非大裂谷",
+    "aliases": ["东非裂谷", "非洲大陆裂谷"],
+    "keywords": ["裂谷", "离散边界", "大陆张裂", "火山"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "东非大裂谷是大陆岩石圈张裂和离散作用发育的典型区域，伴有断层、火山和湖泊等地貌。",
+    "typicalPlaces": [
+      { "name": "东非大裂谷", "longitude": 36.0, "latitude": 2.0, "note": "大陆裂谷发育的典型区域" }
+    ],
+    "sources": [
+      {
+        "title": "USGS Plate Tectonics",
+        "url": "https://pubs.usgs.gov/gip/dynamic/tectonics.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-andes",
+    "type": "place",
+    "name": "安第斯山脉",
+    "aliases": ["安第斯", "南美洲西部山脉"],
+    "keywords": ["俯冲", "海沟", "火山弧", "南美洲"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "安第斯山脉位于南美洲西缘，是海洋板块向南美大陆板块之下俯冲形成的大陆边缘山脉和火山带。",
+    "typicalPlaces": [
+      {
+        "name": "安第斯山脉",
+        "longitude": -70.0,
+        "latitude": -20.0,
+        "note": "海洋板块俯冲型山脉和火山带"
+      }
+    ],
+    "sources": [
+      {
+        "title": "USGS Plate Tectonics",
+        "url": "https://pubs.usgs.gov/gip/dynamic/tectonics.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-hawaii",
+    "type": "place",
+    "name": "夏威夷火山群",
+    "aliases": ["夏威夷", "热点火山"],
+    "keywords": ["热点", "盾状火山", "熔岩", "太平洋"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "夏威夷火山群是热点火山作用形成的典型区域，可用于说明火山并不全部分布在板块边界。",
+    "typicalPlaces": [
+      {
+        "name": "夏威夷火山群",
+        "longitude": -155.3,
+        "latitude": 19.4,
+        "note": "热点和盾状火山典型区域"
+      }
+    ],
+    "sources": [
+      {
+        "title": "USGS Volcano Hazards Program",
+        "url": "https://www.usgs.gov/programs/VHP",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-alps",
+    "type": "place",
+    "name": "阿尔卑斯山",
+    "aliases": ["阿尔卑斯", "欧洲冰川地貌"],
+    "keywords": ["冰川", "U形谷", "冰斗", "欧洲"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "阿尔卑斯山是研究山地冰川、冰蚀地貌和高山垂直自然带的典型区域。",
+    "typicalPlaces": [
+      { "name": "阿尔卑斯山", "longitude": 10.0, "latitude": 46.5, "note": "欧洲典型山地冰川区域" }
+    ],
+    "sources": [
+      {
+        "title": "NPS Glaciers and Glacial Landforms",
+        "url": "https://www.nps.gov/subjects/geology/glacial-landforms.htm",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  }
 ]

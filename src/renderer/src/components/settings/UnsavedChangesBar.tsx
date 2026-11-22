@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Button } from 'antd'
 import { ExclamationCircleFilled } from '@ant-design/icons'
+import { Button } from 'antd'
+import { useEffect, useState } from 'react'
+
 import styles from './UnsavedChangesBar.module.css'
 
 export interface UnsavedChangesBarProps {
@@ -34,20 +35,20 @@ export function UnsavedChangesBar({ open, saving, onSave, onDiscard }: UnsavedCh
   return (
     <div
       className={visible ? `${styles.unsavedBar} ${styles.unsavedBarVisible}` : styles.unsavedBar}
-      role="region"
-      aria-label="未保存的改动"
-      aria-live="polite"
+      role='region'
+      aria-label='未保存的改动'
+      aria-live='polite'
       onTransitionEnd={() => {
         if (!open) setRendered(false)
       }}
     >
-      <ExclamationCircleFilled className={styles.unsavedBarIcon} aria-hidden="true" />
+      <ExclamationCircleFilled className={styles.unsavedBarIcon} aria-hidden='true' />
       <span className={styles.unsavedBarText}>您似乎有新的改动！</span>
       <div className={styles.unsavedBarActions}>
         <Button disabled={saving} onClick={onDiscard}>
           舍弃
         </Button>
-        <Button type="primary" loading={saving} onClick={onSave}>
+        <Button type='primary' loading={saving} onClick={onSave}>
           保存
         </Button>
       </div>

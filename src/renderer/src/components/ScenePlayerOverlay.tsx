@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
-import { Button, Segmented, Spin } from 'antd'
 import { StepForwardOutlined } from '@ant-design/icons'
-import { useScenesStore, type RecordingPrewarmQuality } from '@renderer/stores/scenes'
 import type { PlayerState } from '@renderer/composables/useScenePlayer'
+import { useScenesStore, type RecordingPrewarmQuality } from '@renderer/stores/scenes'
+import { Button, Segmented, Spin } from 'antd'
+import { useEffect } from 'react'
+
 import styles from './ScenePlayerOverlay.module.css'
 
 export interface ScenePlayerOverlayProps {
@@ -18,9 +19,9 @@ const prewarmQualityOptions: Array<{ label: string; value: RecordingPrewarmQuali
 ]
 
 export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverlayProps) {
-  const recording = useScenesStore((state) => state.recording)
-  const setRecording = useScenesStore((state) => state.setRecording)
-  const skipRecordingPrewarm = useScenesStore((state) => state.skipRecordingPrewarm)
+  const recording = useScenesStore(state => state.recording)
+  const setRecording = useScenesStore(state => state.setRecording)
+  const skipRecordingPrewarm = useScenesStore(state => state.skipRecordingPrewarm)
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent): void {
@@ -46,14 +47,16 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
   const prewarmNotice = recording.prewarmMessage || '正在准备录制…'
   const prewarmTotal = recording.prewarmTotal || player.prewarmTotal
   const prewarmStep = recording.prewarmStep || player.prewarmIndex
-  const prewarmProgress = prewarmTotal > 0 ? `${Math.min(prewarmStep, prewarmTotal)} / ${prewarmTotal}` : ''
+  const prewarmProgress =
+    prewarmTotal > 0 ? `${Math.min(prewarmStep, prewarmTotal)} / ${prewarmTotal}` : ''
   const prewarmWarning = recording.prewarmTimedOut
     ? recording.prewarmMessage || '网络较慢，部分地图细节将在录制时继续加载。'
     : ''
 
   let recordNotice = ''
   if (recording.state === 'preparing') recordNotice = '正在准备录制…'
-  else if (recording.state === 'recording') recordNotice = `录制中 ${recording.currentStep}/${recording.totalSteps}`
+  else if (recording.state === 'recording')
+    recordNotice = `录制中 ${recording.currentStep}/${recording.totalSteps}`
   else if (recording.state === 'saving') recordNotice = '正在保存视频…'
   else if (recording.state === 'error') recordNotice = `录制失败：${recording.error}`
 
@@ -62,7 +65,9 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
       {player.prewarming ? (
         <div className={styles.prewarmMask}>
           <Spin />
-          <div className={styles.prewarmText}>{isRecordingPreparing ? prewarmNotice : '正在准备课程资源…'}</div>
+          <div className={styles.prewarmText}>
+            {isRecordingPreparing ? prewarmNotice : '正在准备课程资源…'}
+          </div>
           {prewarmProgress && <div className={styles.prewarmProgress}>{prewarmProgress}</div>}
           {isRecordingPreparing && (
             <div className={styles.prewarmQuality}>
@@ -70,8 +75,8 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
               <Segmented<RecordingPrewarmQuality>
                 value={recording.prewarmQuality}
                 options={prewarmQualityOptions}
-                size="small"
-                onChange={(value) => setRecording({ prewarmQuality: value })}
+                size='small'
+                onChange={value => setRecording({ prewarmQuality: value })}
               />
             </div>
           )}
@@ -79,8 +84,8 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
           {isRecordingPreparing && (
             <div className={styles.prewarmActions}>
               <Button
-                size="small"
-                onClick={(event) => {
+                size='small'
+                onClick={event => {
                   event.stopPropagation()
                   skipRecordingPrewarm()
                 }}
@@ -88,9 +93,9 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
                 跳过预加载
               </Button>
               <Button
-                size="small"
+                size='small'
                 danger
-                onClick={(event) => {
+                onClick={event => {
                   event.stopPropagation()
                   onStop()
                 }}
@@ -102,9 +107,9 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
         </div>
       ) : (
         <>
-          <div className={styles.stageHit} aria-label="下一幕" onClick={onNext} />
+          <div className={styles.stageHit} aria-label='下一幕' onClick={onNext} />
           <div className={styles.sceneTop}>
-            {recordingActive && <span className={styles.recDot} aria-hidden="true" />}
+            {recordingActive && <span className={styles.recDot} aria-hidden='true' />}
             <span className={styles.sceneTitle}>{player.title || '教学演示'}</span>
             <span className={styles.sceneCounter}>
               {player.currentIndex + 1} / {player.total}
@@ -121,7 +126,7 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
           <div className={styles.sceneControls}>
             <Button
               icon={<StepForwardOutlined />}
-              onClick={(event) => {
+              onClick={event => {
                 event.stopPropagation()
                 onNext()
               }}
@@ -130,7 +135,7 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
             </Button>
             <Button
               danger
-              onClick={(event) => {
+              onClick={event => {
                 event.stopPropagation()
                 onStop()
               }}

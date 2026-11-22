@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { readJson, serialQueue, writeJson } from '../jsonStore'
+
 import type { AgentMemory } from '../../preload'
+import { readJson, serialQueue, writeJson } from '../jsonStore'
 import type { EoqHawdbClient } from './hawdb/client'
-import type { MemoryRecallMatch } from './hawdb/protocol'
 import { extractQueryTerms, normalizeLookupText } from './hawdb/graphBuilder'
+import type { MemoryRecallMatch } from './hawdb/protocol'
 
 export const MAX_MEMORIES = 100
 export const MAX_MEMORY_CONTENT_LENGTH = 300
@@ -16,13 +17,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function normalizeMemory(value: unknown): AgentMemory | null {
   if (!isRecord(value)) return null
   const id = typeof value.id === 'string' ? value.id.trim() : ''
-  const content = typeof value.content === 'string' ? value.content.trim().slice(0, MAX_MEMORY_CONTENT_LENGTH) : ''
+  const content =
+    typeof value.content === 'string'
+      ? value.content.trim().slice(0, MAX_MEMORY_CONTENT_LENGTH)
+      : ''
   if (!ID_PATTERN.test(id) || !content) return null
   return {
     id,
     content,
     source: value.source === 'agent' ? 'agent' : 'user',
-    createdAt: typeof value.createdAt === 'number' && Number.isFinite(value.createdAt) ? Math.round(value.createdAt) : Date.now()
+    createdAt:
+      typeof value.createdAt === 'number' && Number.isFinite(value.createdAt)
+        ? Math.round(value.createdAt)
+        : Date.now()
   }
 }
 
@@ -80,9 +87,11 @@ export class AiMemoryStore {
         this.memories = [...this.memories, memory]
         return memory
       }
-      const trimmed = typeof content === 'string' ? content.trim().slice(0, MAX_MEMORY_CONTENT_LENGTH) : ''
+      const trimmed =
+        typeof content === 'string' ? content.trim().slice(0, MAX_MEMORY_CONTENT_LENGTH) : ''
       if (!trimmed) throw new Error('记忆内容不能为空')
-      if (this.memories.length >= MAX_MEMORIES) throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)
+      if (this.memories.length >= MAX_MEMORIES)
+        throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)
       const memory: AgentMemory = {
         id: `m${randomUUID()}`,
         content: trimmed,
@@ -100,10 +109,10 @@ export class AiMemoryStore {
     return this.enqueue(async () => {
       if (this.assertBackend() === 'hawdb') {
         const deleted = await this.hawdb!.deleteMemory(id)
-        if (deleted) this.memories = this.memories.filter((memory) => memory.id !== id)
+        if (deleted) this.memories = this.memories.filter(memory => memory.id !== id)
         return deleted
       }
-      const next = this.memories.filter((memory) => memory.id !== id)
+      const next = this.memories.filter(memory => memory.id !== id)
       if (next.length === this.memories.length) return false
       await writeJson(this.path, next)
       this.memories = next
@@ -119,12 +128,12 @@ export class AiMemoryStore {
     }
     const terms = extractQueryTerms(clean)
     return this.memories
-      .map((memory) => {
+      .map(memory => {
         const normalized = normalizeLookupText(memory.content)
         const score = terms.reduce((sum, term) => sum + (normalized.includes(term) ? 1 : 0), 0)
         return { ...memory, score }
       })
-      .filter((item) => item.score > 0)
+      .filter(item => item.score > 0)
       .sort((left, right) => right.score - left.score || right.createdAt - left.createdAt)
       .slice(0, Math.min(20, Math.max(1, Math.round(limit))))
   }

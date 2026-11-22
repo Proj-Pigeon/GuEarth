@@ -1,5 +1,5 @@
-import { readFile, rename, unlink, writeFile } from 'fs/promises'
 import { randomUUID } from 'crypto'
+import { readFile, rename, unlink, writeFile } from 'fs/promises'
 
 const pending = new Set<Promise<unknown>>()
 
@@ -9,7 +9,10 @@ export function serialQueue() {
     const result = tail.then(operation)
     tail = result.catch(() => undefined)
     pending.add(result)
-    void result.then(() => pending.delete(result), () => pending.delete(result))
+    void result.then(
+      () => pending.delete(result),
+      () => pending.delete(result)
+    )
     return result
   }
 }
@@ -32,8 +35,9 @@ export async function writeAtomic(path: string, data: string | Buffer): Promise<
         break
       } catch (error) {
         const code = (error as NodeJS.ErrnoException).code
-        if (attempt >= 4 || !['EACCES', 'EBUSY', 'EEXIST', 'EPERM'].includes(code ?? '')) throw error
-        await new Promise((resolve) => setTimeout(resolve, 20 * (attempt + 1)))
+        if (attempt >= 4 || !['EACCES', 'EBUSY', 'EEXIST', 'EPERM'].includes(code ?? ''))
+          throw error
+        await new Promise(resolve => setTimeout(resolve, 20 * (attempt + 1)))
       }
     }
   } finally {

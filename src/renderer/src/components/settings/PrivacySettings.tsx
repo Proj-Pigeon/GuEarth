@@ -1,19 +1,25 @@
-import { useEffect, useState } from 'react'
-import { App as AntdApp, Button, Modal, Switch, Tag } from 'antd'
-import { PRIVACY_DISCLOSURES, privacyDisclosureFor, type PrivacySettingKey } from '../../../../common/privacy'
 import { usePrivacyStore } from '@renderer/stores/privacy'
+import { App as AntdApp, Button, Modal, Switch, Tag } from 'antd'
+import { useEffect, useState } from 'react'
+
+import {
+  PRIVACY_DISCLOSURES,
+  privacyDisclosureFor,
+  type PrivacySettingKey
+} from '../../../../common/privacy'
+
 import styles from './PrivacySettings.module.css'
 
 export interface PrivacySettingsProps {}
 
 export function PrivacySettings(_props: PrivacySettingsProps) {
   const { message } = AntdApp.useApp()
-  const errorReportingEnabled = usePrivacyStore((state) => state.errorReportingEnabled)
-  const telemetryEnabled = usePrivacyStore((state) => state.telemetryEnabled)
-  const aiTelemetryEnabled = usePrivacyStore((state) => state.aiTelemetryEnabled)
-  const hydrated = usePrivacyStore((state) => state.hydrated)
-  const hydrate = usePrivacyStore((state) => state.hydrate)
-  const setPrivacySetting = usePrivacyStore((state) => state.setPrivacySetting)
+  const errorReportingEnabled = usePrivacyStore(state => state.errorReportingEnabled)
+  const telemetryEnabled = usePrivacyStore(state => state.telemetryEnabled)
+  const aiTelemetryEnabled = usePrivacyStore(state => state.aiTelemetryEnabled)
+  const hydrated = usePrivacyStore(state => state.hydrated)
+  const hydrate = usePrivacyStore(state => state.hydrate)
+  const setPrivacySetting = usePrivacyStore(state => state.setPrivacySetting)
 
   const [savingKey, setSavingKey] = useState<PrivacySettingKey | null>(null)
   const [pendingKey, setPendingKey] = useState<PrivacySettingKey | null>(null)
@@ -70,10 +76,10 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
   }
 
   return (
-    <section className={styles.settingsSection} data-settings-section="" aria-label="隐私设置">
+    <section className={styles.settingsSection} data-settings-section='' aria-label='隐私设置'>
       <h3 className={styles.sectionTitle}>隐私</h3>
 
-      {PRIVACY_DISCLOSURES.map((item) => {
+      {PRIVACY_DISCLOSURES.map(item => {
         const enabled = isEnabled(item.key)
         return (
           <div key={item.key} className={styles.settingsBlock}>
@@ -90,7 +96,7 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
                 loading={savingKey === item.key}
                 disabled={!hydrated || confirmLoading}
                 aria-label={item.title}
-                onChange={(checked) => void handleSwitchChange(item.key, checked)}
+                onChange={checked => void handleSwitchChange(item.key, checked)}
               />
             </div>
           </div>
@@ -112,7 +118,7 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
             <Button disabled={confirmLoading} onClick={cancelEnable}>
               取消
             </Button>
-            <Button type="primary" loading={confirmLoading} onClick={() => void confirmEnable()}>
+            <Button type='primary' loading={confirmLoading} onClick={() => void confirmEnable()}>
               已知晓并开启
             </Button>
           </div>

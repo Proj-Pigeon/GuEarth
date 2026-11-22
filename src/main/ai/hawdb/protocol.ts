@@ -1,4 +1,8 @@
-import type { AgentMemory, StoredAiConversation, StoredAiConversationSummary } from '../../../preload'
+import type {
+  AgentMemory,
+  StoredAiConversation,
+  StoredAiConversationSummary
+} from '../../../preload'
 import type { KnowledgeEntry, KnowledgeMatch } from '../knowledge'
 
 export type HawdbStorageMode = 'disk' | 'memory-snapshot'
@@ -65,8 +69,16 @@ export type HawdbWorkerRequest =
   | { id: number; op: 'history:get'; payload: { id: string } }
   | { id: number; op: 'history:save'; payload: { conversation: unknown } }
   | { id: number; op: 'history:delete'; payload: { id: string } }
-  | { id: number; op: 'history:search'; payload: { query: string; limit?: number; excludeId?: string } }
-  | { id: number; op: 'knowledge:retrieve'; payload: { query: string; module?: string; topK?: number } }
+  | {
+      id: number
+      op: 'history:search'
+      payload: { query: string; limit?: number; excludeId?: string }
+    }
+  | {
+      id: number
+      op: 'knowledge:retrieve'
+      payload: { query: string; module?: string; topK?: number }
+    }
 
 export type HawdbWorkerResponse =
   | { id: number; ok: true; result: unknown }

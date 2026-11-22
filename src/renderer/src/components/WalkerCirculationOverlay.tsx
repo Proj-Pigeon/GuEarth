@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react'
-import * as Cesium from 'cesium'
 import { ensoPhaseMeta, type EnsoPhase } from '@renderer/thematic/ensoPhases'
+import * as Cesium from 'cesium'
+import { useEffect, useRef } from 'react'
+
 import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
+
 import styles from './WalkerCirculationOverlay.module.css'
 
 export interface WalkerCirculationOverlayProps {
@@ -91,89 +93,154 @@ export function WalkerCirculationOverlay({ viewer, phase }: WalkerCirculationOve
   }, [viewer])
 
   return (
-    <div ref={overlayRef} className={styles.walkerOverlay} style={{ display: 'none' }} aria-hidden="true">
-      <svg viewBox="0 0 380 200" width="380" height="200">
+    <div
+      ref={overlayRef}
+      className={styles.walkerOverlay}
+      style={{ display: 'none' }}
+      aria-hidden='true'
+    >
+      <svg viewBox='0 0 380 200' width='380' height='200'>
         <defs>
-          <linearGradient id="wk-ocean" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#69b1ff" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#0958d9" stopOpacity="0.55" />
+          <linearGradient id='wk-ocean' x1='0' y1='0' x2='0' y2='1'>
+            <stop offset='0%' stopColor='#69b1ff' stopOpacity='0.5' />
+            <stop offset='100%' stopColor='#0958d9' stopOpacity='0.55' />
           </linearGradient>
-          <linearGradient id="wk-warm" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#ffa39e" stopOpacity="0.55" />
-            <stop offset="100%" stopColor="#ffa39e" stopOpacity="0" />
+          <linearGradient id='wk-warm' x1='0' y1='0' x2='1' y2='0'>
+            <stop offset='0%' stopColor='#ffa39e' stopOpacity='0.55' />
+            <stop offset='100%' stopColor='#ffa39e' stopOpacity='0' />
           </linearGradient>
-          <marker id="wk-head" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 Z" fill={dc.neutralArrow} />
+          <marker id='wk-head' markerWidth='7' markerHeight='7' refX='5.5' refY='3.5' orient='auto'>
+            <path d='M0,0 L7,3.5 L0,7 Z' fill={dc.neutralArrow} />
           </marker>
         </defs>
-        <rect x="2" y="2" width="376" height="196" rx="12" fill="rgba(255,255,255,0.92)" stroke={dc.hairline} />
-        <rect x="12" y="12" width="356" height="150" rx="8" fill="rgba(22,119,255,0.05)" />
-        <path d="M 12 162 L 368 162 L 368 188 L 12 188 Z" fill="url(#wk-ocean)" />
+        <rect
+          x='2'
+          y='2'
+          width='376'
+          height='196'
+          rx='12'
+          fill='rgba(255,255,255,0.92)'
+          stroke={dc.hairline}
+        />
+        <rect x='12' y='12' width='356' height='150' rx='8' fill='rgba(22,119,255,0.05)' />
+        <path d='M 12 162 L 368 162 L 368 188 L 12 188 Z' fill='url(#wk-ocean)' />
         {phase !== 'el-nino' ? (
-          <path d="M 12 162 L 120 162 Q 160 130 200 128 L 368 162 Z" fill="url(#wk-warm)" />
+          <path d='M 12 162 L 120 162 Q 160 130 200 128 L 368 162 Z' fill='url(#wk-warm)' />
         ) : (
-          <path d="M 12 162 L 368 162 L 368 140 Q 260 126 190 128 Q 100 130 12 150 Z" fill="url(#wk-warm)" />
+          <path
+            d='M 12 162 L 368 162 L 368 140 Q 260 126 190 128 Q 100 130 12 150 Z'
+            fill='url(#wk-warm)'
+          />
         )}
         <path
           d={thermoclines[phase]}
-          fill="none"
+          fill='none'
           stroke={dc.warmAir}
-          strokeWidth="1.4"
-          strokeDasharray="5 4"
-          opacity="0.7"
+          strokeWidth='1.4'
+          strokeDasharray='5 4'
+          opacity='0.7'
         />
         <g>
           {phaseFlows[phase].map((flow, index) => (
             <path
               key={index}
               d={flow.d}
-              fill="none"
+              fill='none'
               stroke={flow.color}
               strokeWidth={flow.width}
               strokeDasharray={flow.dashed ? '6 5' : undefined}
               opacity={flow.faded ? 0.65 : 1}
-              strokeLinecap="round"
-              markerEnd="url(#wk-head)"
+              strokeLinecap='round'
+              markerEnd='url(#wk-head)'
               className={styles.walkerFlow}
             />
           ))}
         </g>
         <g fontFamily={diagramFont}>
-          <text x="66" y="184" fontSize="10.5" fill={dc.inkSecondary}>
+          <text x='66' y='184' fontSize='10.5' fill={dc.inkSecondary}>
             西太平洋·暖池
           </text>
-          <text x="312" y="184" fontSize="10.5" fill={dc.inkSecondary} textAnchor="middle">
+          <text x='312' y='184' fontSize='10.5' fill={dc.inkSecondary} textAnchor='middle'>
             东太平洋（南美沿岸）
           </text>
           {phase !== 'el-nino' ? (
-            <text x="74" y="96" fontSize="11" fontWeight="600" fill={dc.warmAir} textAnchor="middle">
+            <text
+              x='74'
+              y='96'
+              fontSize='11'
+              fontWeight='600'
+              fill={dc.warmAir}
+              textAnchor='middle'
+            >
               上升气流
             </text>
           ) : (
-            <text x="176" y="100" fontSize="11" fontWeight="600" fill={dc.warmAir} textAnchor="middle">
+            <text
+              x='176'
+              y='100'
+              fontSize='11'
+              fontWeight='600'
+              fill={dc.warmAir}
+              textAnchor='middle'
+            >
               上升气流东移
             </text>
           )}
-          <text x="330" y="100" fontSize="11" fontWeight="600" fill={dc.coldAir} textAnchor="middle">
+          <text
+            x='330'
+            y='100'
+            fontSize='11'
+            fontWeight='600'
+            fill={dc.coldAir}
+            textAnchor='middle'
+          >
             下沉气流
           </text>
-          <text x="195" y="24" fontSize="11" fontWeight="600" fill={dc.vaporFlow} textAnchor="middle">
+          <text
+            x='195'
+            y='24'
+            fontSize='11'
+            fontWeight='600'
+            fill={dc.vaporFlow}
+            textAnchor='middle'
+          >
             高空向东流
           </text>
           {phase !== 'el-nino' ? (
-            <text x="195" y="146" fontSize="11" fontWeight="600" fill={dc.vaporFlow} textAnchor="middle">
+            <text
+              x='195'
+              y='146'
+              fontSize='11'
+              fontWeight='600'
+              fill={dc.vaporFlow}
+              textAnchor='middle'
+            >
               信风（近地面自东向西）
             </text>
           ) : (
-            <text x="150" y="140" fontSize="11" fontWeight="600" fill={dc.vaporFlow} textAnchor="middle">
+            <text
+              x='150'
+              y='140'
+              fontSize='11'
+              fontWeight='600'
+              fill={dc.vaporFlow}
+              textAnchor='middle'
+            >
               信风减弱甚至转向
             </text>
           )}
-          <text x="368" y="172" fontSize="9.5" fill={dc.warmAir} textAnchor="end" opacity="0.8">
+          <text x='368' y='172' fontSize='9.5' fill={dc.warmAir} textAnchor='end' opacity='0.8'>
             温跃层
           </text>
         </g>
-        <text x="190" y="196" textAnchor="middle" fontSize="10.5" fill={dc.inkTertiary} fontFamily={diagramFont}>
+        <text
+          x='190'
+          y='196'
+          textAnchor='middle'
+          fontSize='10.5'
+          fill={dc.inkTertiary}
+          fontFamily={diagramFont}
+        >
           沃克环流剖面示意（{ensoPhaseMeta[phase].name}）
         </text>
       </svg>

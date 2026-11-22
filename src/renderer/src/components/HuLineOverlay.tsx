@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
-import * as Cesium from 'cesium'
 import { huComparison } from '@renderer/thematic/populationCensus'
+import * as Cesium from 'cesium'
+import { useEffect, useRef } from 'react'
+
 import styles from './HuLineOverlay.module.css'
 
 export interface HuLineOverlayProps {
@@ -80,7 +81,7 @@ export function HuLineOverlay({ viewer }: HuLineOverlayProps) {
 
   return (
     <>
-      <div ref={eastRef} className={styles.huCard} style={{ display: 'none' }} aria-hidden="true">
+      <div ref={eastRef} className={styles.huCard} style={{ display: 'none' }} aria-hidden='true'>
         <div className={styles.huCardTitle}>胡线以东</div>
         <div className={styles.huCardRow}>
           <span>面积</span>
@@ -91,7 +92,7 @@ export function HuLineOverlay({ viewer }: HuLineOverlayProps) {
           <span className={styles.huCardValueStrong}>{huComparison.eastPopPct}%</span>
         </div>
       </div>
-      <div ref={westRef} className={styles.huCard} style={{ display: 'none' }} aria-hidden="true">
+      <div ref={westRef} className={styles.huCard} style={{ display: 'none' }} aria-hidden='true'>
         <div className={styles.huCardTitle}>胡线以西</div>
         <div className={styles.huCardRow}>
           <span>面积</span>

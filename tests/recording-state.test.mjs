@@ -1,22 +1,43 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
-import { ENSO_PHASES, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS } from '../src/common/thematicState.ts'
+
+import {
+  ENSO_PHASES,
+  HSR_END_YEAR,
+  HSR_START_YEAR,
+  SEA_LEVEL_SCENARIOS
+} from '../src/common/thematicState.ts'
 import { ensoPhaseOptions } from '../src/renderer/src/thematic/ensoPhases.ts'
-import { HSR_END_YEAR as rendererEndYear, HSR_START_YEAR as rendererStartYear } from '../src/renderer/src/thematic/hsrLines.ts'
+import {
+  HSR_END_YEAR as rendererEndYear,
+  HSR_START_YEAR as rendererStartYear
+} from '../src/renderer/src/thematic/hsrLines.ts'
 import { SEA_LEVEL_SCENARIOS as rendererScenarios } from '../src/renderer/src/thematic/seaLevelRise.ts'
 
 const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
 const preloadSource = await readFile(new URL('../src/preload/index.ts', import.meta.url), 'utf8')
-const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
-const scenePlayerSource = await readFile(new URL('../src/renderer/src/composables/useScenePlayer.ts', import.meta.url), 'utf8')
-const appSource = await readFile(new URL('../src/renderer/src/ai/registerGlobeTools.ts', import.meta.url), 'utf8')
+const offscreenSource = await readFile(
+  new URL('../src/renderer/src/offscreen.tsx', import.meta.url),
+  'utf8'
+)
+const scenePlayerSource = await readFile(
+  new URL('../src/renderer/src/composables/useScenePlayer.ts', import.meta.url),
+  'utf8'
+)
+const appSource = await readFile(
+  new URL('../src/renderer/src/ai/registerGlobeTools.ts', import.meta.url),
+  'utf8'
+)
 
 test('the shared thematic state bounds match the renderer copies', () => {
   assert.deepEqual([...SEA_LEVEL_SCENARIOS], [...rendererScenarios])
   assert.equal(HSR_START_YEAR, rendererStartYear)
   assert.equal(HSR_END_YEAR, rendererEndYear)
-  assert.deepEqual([...ENSO_PHASES], ensoPhaseOptions.map((option) => option.value))
+  assert.deepEqual(
+    [...ENSO_PHASES],
+    ensoPhaseOptions.map(option => option.value)
+  )
 })
 
 test('scene snapshots carry the mutable thematic layer state', () => {
@@ -49,9 +70,17 @@ test('AI recording scripts can set the thematic state per step', () => {
 })
 
 test('an omitted or null transportYear falls back to the current year instead of clamping to the start', () => {
-  assert.ok(appSource.includes("if (value === null || value === undefined || value === '') return undefined"))
+  assert.ok(
+    appSource.includes(
+      "if (value === null || value === undefined || value === '') return undefined"
+    )
+  )
   assert.ok(appSource.includes('const requestedYear = optionalFiniteNumber(record.transportYear)'))
-  assert.ok(appSource.includes('const transportYear = requestedYear === undefined ? transportStore.year : Math.round(Math.min(HSR_END_YEAR, Math.max(HSR_START_YEAR, requestedYear)))'))
+  assert.ok(
+    appSource.includes(
+      'const transportYear = requestedYear === undefined ? transportStore.year : Math.round(Math.min(HSR_END_YEAR, Math.max(HSR_START_YEAR, requestedYear)))'
+    )
+  )
   assert.ok(!appSource.includes('const requestedYear = Number(record.transportYear)'))
   assert.ok(!appSource.includes('Number.isFinite(requestedYear)'))
 })
@@ -59,7 +88,10 @@ test('an omitted or null transportYear falls back to the current year instead of
 test('scene snapshots carry the basemap style instead of hardcoding standard', () => {
   assert.match(preloadSource, /styleId\?: string/)
   assert.match(mainSource, /styleId: normalizeStyleId\(value\.styleId\)/)
-  assert.match(scenePlayerSource, /styleId: globeStore\.providerStyles\[globeStore\.selectedLayerId\]/)
+  assert.match(
+    scenePlayerSource,
+    /styleId: globeStore\.providerStyles\[globeStore\.selectedLayerId\]/
+  )
   assert.match(scenePlayerSource, /styleId: step\.styleId/)
   assert.match(appSource, /styleId: store\.providerStyles\[store\.selectedLayerId\]/)
   assert.match(offscreenSource, /const styleId = styleFor\(basemapId, snapshot\.styleId \?\? ''\)/)

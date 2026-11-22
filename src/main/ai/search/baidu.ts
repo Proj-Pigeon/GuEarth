@@ -1,6 +1,8 @@
 import type { AiSearchReference } from '../../../preload'
 
-export type WebSearchResult = { query: string; references: AiSearchReference[]; error?: never } | { query: string; error: string; references?: never }
+export type WebSearchResult =
+  | { query: string; references: AiSearchReference[]; error?: never }
+  | { query: string; error: string; references?: never }
 export type SearchFetch = (url: string, init: RequestInit) => Promise<Response>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -32,13 +34,28 @@ function referenceFrom(value: unknown): AiSearchReference | null {
 }
 
 function providerError(body: unknown, apiKey: string): string {
-  if (!isRecord(body) || body.code === undefined || body.code === null || body.code === 0 || body.code === '0') return ''
-  const code = typeof body.code === 'number' || typeof body.code === 'string' ? String(body.code) : ''
+  if (
+    !isRecord(body) ||
+    body.code === undefined ||
+    body.code === null ||
+    body.code === 0 ||
+    body.code === '0'
+  )
+    return ''
+  const code =
+    typeof body.code === 'number' || typeof body.code === 'string' ? String(body.code) : ''
   const message = typeof body.message === 'string' ? body.message : '未知错误'
-  return `百度千帆搜索失败：${message}${code ? ` (${code})` : ''}`.replaceAll(apiKey, '[已隐藏]').slice(0, 400)
+  return `百度千帆搜索失败：${message}${code ? ` (${code})` : ''}`
+    .replaceAll(apiKey, '[已隐藏]')
+    .slice(0, 400)
 }
 
-export async function searchBaiduWeb(query: string, apiKey: string, signal: AbortSignal, fetch: SearchFetch): Promise<WebSearchResult> {
+export async function searchBaiduWeb(
+  query: string,
+  apiKey: string,
+  signal: AbortSignal,
+  fetch: SearchFetch
+): Promise<WebSearchResult> {
   const timeout = AbortSignal.timeout(15_000)
   const requestSignal = AbortSignal.any([signal, timeout])
   try {
@@ -60,7 +77,8 @@ export async function searchBaiduWeb(query: string, apiKey: string, signal: Abor
     const error = providerError(body, apiKey)
     if (error) return { query, error }
     if (!response.ok) return { query, error: `百度千帆搜索请求失败 (HTTP ${response.status})` }
-    if (!isRecord(body) || !Array.isArray(body.references)) return { query, error: '百度千帆返回了无效搜索数据' }
+    if (!isRecord(body) || !Array.isArray(body.references))
+      return { query, error: '百度千帆返回了无效搜索数据' }
     const references: AiSearchReference[] = []
     const urls = new Set<string>()
     for (const value of body.references) {

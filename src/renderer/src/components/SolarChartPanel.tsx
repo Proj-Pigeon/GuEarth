@@ -1,9 +1,17 @@
-import { useMemo, useState } from 'react'
 import { CloseOutlined } from '@ant-design/icons'
-import { Button, Segmented, Slider } from 'antd'
 import { useSolarStore } from '@renderer/stores/solar'
-import { dayLength, declinationForDate, monthStartDayOfYear, noonAltitudeDeg, solarDeclinationDeg } from '@renderer/thematic/solarMath'
+import {
+  dayLength,
+  declinationForDate,
+  monthStartDayOfYear,
+  noonAltitudeDeg,
+  solarDeclinationDeg
+} from '@renderer/thematic/solarMath'
+import { Button, Segmented, Slider } from 'antd'
+import { useMemo, useState } from 'react'
+
 import LineChart, { type ChartSeries } from './charts/LineChart'
+
 import styles from './SolarChartPanel.module.css'
 
 export interface SolarChartPanelProps {
@@ -27,20 +35,26 @@ function latLabel(value: number): string {
   return `${Math.abs(value)}°${value > 0 ? 'N' : value < 0 ? 'S' : ''}`
 }
 
-const latitudeFormatter = (value: number): string => (value === 0 ? '0°' : `${Math.abs(value)}°${value > 0 ? 'N' : 'S'}`)
+const latitudeFormatter = (value: number): string =>
+  value === 0 ? '0°' : `${Math.abs(value)}°${value > 0 ? 'N' : 'S'}`
 
 const dateFormatter = (value: number): string => {
-  const index = monthStarts.findIndex((start, i) => value >= start && value < (monthStarts[i + 1] ?? 366))
+  const index = monthStarts.findIndex(
+    (start, i) => value >= start && value < (monthStarts[i + 1] ?? 366)
+  )
   return index >= 0 ? `${index + 1}月` : ''
 }
 
 export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {
-  const date = useSolarStore((state) => state.date)
-  const parts = useSolarStore((state) => state.parts)
+  const date = useSolarStore(state => state.date)
+  const parts = useSolarStore(state => state.parts)
   const [mode, setMode] = useState<'latitude' | 'date'>('latitude')
   const [latitude, setLatitude] = useState(40)
 
-  const declination = useMemo(() => declinationForDate(parts.month, parts.day), [parts.month, parts.day])
+  const declination = useMemo(
+    () => declinationForDate(parts.month, parts.day),
+    [parts.month, parts.day]
+  )
   const declinationText = `${Math.abs(declination).toFixed(1)}°${declination >= 0 ? 'N' : 'S'}`
 
   const dayLengthSeries = useMemo<ChartSeries[]>(() => {
@@ -50,7 +64,8 @@ export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {
       return [{ name: '昼长', color: DAY_LENGTH_COLOR, points, markY: [12] }]
     }
     const points: Array<[number, number]> = []
-    for (let day = 1; day <= 365; day += 2) points.push([day, dayLength(latitude, solarDeclinationDeg(day)).hours])
+    for (let day = 1; day <= 365; day += 2)
+      points.push([day, dayLength(latitude, solarDeclinationDeg(day)).hours])
     return [{ name: `昼长（${latLabel(latitude)}）`, color: DAY_LENGTH_COLOR, points, markY: [12] }]
   }, [mode, declination, latitude])
 
@@ -61,26 +76,38 @@ export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {
       return [{ name: '正午太阳高度', color: ALTITUDE_COLOR, points, markY: [0] }]
     }
     const points: Array<[number, number]> = []
-    for (let day = 1; day <= 365; day += 2) points.push([day, noonAltitudeDeg(latitude, solarDeclinationDeg(day))])
-    return [{ name: `正午太阳高度（${latLabel(latitude)}）`, color: ALTITUDE_COLOR, points, markY: [0] }]
+    for (let day = 1; day <= 365; day += 2)
+      points.push([day, noonAltitudeDeg(latitude, solarDeclinationDeg(day))])
+    return [
+      { name: `正午太阳高度（${latLabel(latitude)}）`, color: ALTITUDE_COLOR, points, markY: [0] }
+    ]
   }, [mode, declination, latitude])
 
   const dayLengthTitle = mode === 'latitude' ? `昼长随纬度变化（${date}）` : '昼长随日期变化'
-  const altitudeTitle = mode === 'latitude' ? `正午太阳高度随纬度变化（${date}）` : '正午太阳高度随日期变化'
-  const rootClassName = className ? `${styles.solarChartPanel} ${className}` : styles.solarChartPanel
+  const altitudeTitle =
+    mode === 'latitude' ? `正午太阳高度随纬度变化（${date}）` : '正午太阳高度随日期变化'
+  const rootClassName = className
+    ? `${styles.solarChartPanel} ${className}`
+    : styles.solarChartPanel
 
   return (
     <div className={rootClassName}>
       <div className={styles.chartHeader}>
         <Segmented
           value={mode}
-          size="small"
+          size='small'
           options={modeOptions}
-          aria-label="曲线模式"
-          onChange={(value) => setMode(value as 'latitude' | 'date')}
+          aria-label='曲线模式'
+          onChange={value => setMode(value as 'latitude' | 'date')}
         />
         <span className={styles.declination}>太阳直射点 {declinationText}</span>
-        <Button type="text" size="small" aria-label="关闭曲线面板" icon={<CloseOutlined />} onClick={onClose} />
+        <Button
+          type='text'
+          size='small'
+          aria-label='关闭曲线面板'
+          icon={<CloseOutlined />}
+          onClick={onClose}
+        />
       </div>
       {mode === 'date' && (
         <div className={styles.latitudeRow}>
@@ -92,8 +119,8 @@ export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {
             step={5}
             marks={latitudeMarks}
             className={styles.latitudeSlider}
-            ariaLabelForHandle="纬度选择"
-            onChange={(value) => setLatitude(value)}
+            ariaLabelForHandle='纬度选择'
+            onChange={value => setLatitude(value)}
           />
           <span className={styles.latitudeValue}>{latLabel(latitude)}</span>
         </div>
@@ -105,7 +132,7 @@ export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {
         xMax={mode === 'latitude' ? 90 : 365}
         xName={mode === 'latitude' ? '纬度' : '日期'}
         xFormatter={mode === 'latitude' ? latitudeFormatter : dateFormatter}
-        yName="小时"
+        yName='小时'
         yMin={0}
         yMax={24}
         height={168}
@@ -117,7 +144,7 @@ export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {
         xMax={mode === 'latitude' ? 90 : 365}
         xName={mode === 'latitude' ? '纬度' : '日期'}
         xFormatter={mode === 'latitude' ? latitudeFormatter : dateFormatter}
-        yName="度"
+        yName='度'
         yMin={-90}
         yMax={90}
         height={168}

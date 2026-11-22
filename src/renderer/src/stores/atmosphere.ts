@@ -20,7 +20,7 @@ export function createInitialAtmosphereState(): AtmosphereState {
 }
 
 export const useAtmosphereStore = create<AtmosphereStore>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector(set => ({
     ...createInitialAtmosphereState(),
     setPanel(value: AtmospherePanel | null): void {
       set({ panel: value })

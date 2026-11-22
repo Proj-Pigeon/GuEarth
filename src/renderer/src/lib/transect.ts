@@ -4,7 +4,12 @@ function toRadians(deg: number): number {
   return (deg * Math.PI) / 180
 }
 
-export function greatCircleKm(fromLon: number, fromLat: number, toLon: number, toLat: number): number {
+export function greatCircleKm(
+  fromLon: number,
+  fromLat: number,
+  toLon: number,
+  toLat: number
+): number {
   const lat1 = toRadians(fromLat)
   const lat2 = toRadians(toLat)
   const dLat = lat2 - lat1
@@ -24,7 +29,10 @@ export function bearingDeg(fromLon: number, fromLat: number, toLon: number, toLa
 
 export type TransectWaypoint = [number, number]
 
-export function interpolateWaypoints(waypoints: TransectWaypoint[], samplesPerLeg: number): TransectWaypoint[] {
+export function interpolateWaypoints(
+  waypoints: TransectWaypoint[],
+  samplesPerLeg: number
+): TransectWaypoint[] {
   const perLeg = Math.max(1, Math.floor(samplesPerLeg))
   const points: TransectWaypoint[] = []
   for (let index = 0; index < waypoints.length - 1; index += 1) {
@@ -52,7 +60,11 @@ export function transectTotalKm(points: TransectWaypoint[]): number {
   return transectLegsKm(points).reduce((sum, leg) => sum + leg, 0)
 }
 
-export function exaggeratedSurfaceHeightM(groundM: number, verticalExaggeration: number, relativeHeightM: number): number {
+export function exaggeratedSurfaceHeightM(
+  groundM: number,
+  verticalExaggeration: number,
+  relativeHeightM: number
+): number {
   return (groundM - relativeHeightM) * verticalExaggeration + relativeHeightM
 }
 
@@ -65,7 +77,12 @@ export function transectHops(sampleCount: number, maxHops: number): number[] {
   return hops
 }
 
-export function planTransectAltitudes(surfaceHeightsM: number[], clearanceM: number, minimumM: number, requestedM?: number): number[] {
+export function planTransectAltitudes(
+  surfaceHeightsM: number[],
+  clearanceM: number,
+  minimumM: number,
+  requestedM?: number
+): number[] {
   if (surfaceHeightsM.length === 0) return []
   const floorAt = (surfaceM: number): number => {
     const floor = Math.max(surfaceM + clearanceM, minimumM)
@@ -79,7 +96,7 @@ export function planTransectAltitudes(surfaceHeightsM: number[], clearanceM: num
     }
     return max
   })
-  const planned = localMax.map((surface) => floorAt(surface))
+  const planned = localMax.map(surface => floorAt(surface))
   const smoothed = planned.map((altitude, index) => {
     let sum = altitude
     let count = 1
@@ -99,7 +116,12 @@ export function planTransectAltitudes(surfaceHeightsM: number[], clearanceM: num
 export const GROUND_PROFILE_PLAUSIBLE_RATIO = 0.7
 
 export function groundProfileImplausible(heights: number[], expectedMaxGroundM?: number): boolean {
-  if (expectedMaxGroundM === undefined || !Number.isFinite(expectedMaxGroundM) || expectedMaxGroundM <= 0) return false
+  if (
+    expectedMaxGroundM === undefined ||
+    !Number.isFinite(expectedMaxGroundM) ||
+    expectedMaxGroundM <= 0
+  )
+    return false
   if (heights.length === 0) return false
   return Math.max(...heights) < expectedMaxGroundM * GROUND_PROFILE_PLAUSIBLE_RATIO
 }

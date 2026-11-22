@@ -1,4 +1,3 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import {
   createStreamingDelayState,
   renderMarkdown,
@@ -7,6 +6,8 @@ import {
   settleStreamingDelayState,
   type StreamingDelayState
 } from '@renderer/utils/markdown'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+
 import styles from './StreamingMarkdown.module.css'
 
 const STREAM_RENDER_INTERVAL_MS = 50

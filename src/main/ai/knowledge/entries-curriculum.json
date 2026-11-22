@@ -1,33 +1,645 @@
 [
-  {"id":"climate-tropical-rainforest","type":"process","name":"热带雨林气候","aliases":["热带湿润气候"],"keywords":["全年高温多雨","赤道低压","热带雨林"],"module":"地球上的大气","grade":"高中","definition":"热带雨林气候全年高温，降水全年较多且季节变化小，常分布在赤道附近低纬地区。","features":["常年受赤道低压或上升气流影响","植被通常具有多层、常绿和物种丰富等特征"],"sources":[{"title":"NOAA Climate.gov","url":"https://www.climate.gov/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"climate-tropical-savanna","type":"process","name":"热带草原气候","aliases":["热带干湿季气候","萨瓦纳气候"],"keywords":["干湿季","热带草原","赤道低压","信风"],"module":"地球上的大气","grade":"高中","definition":"热带草原气候全年高温，有明显干湿季，通常位于赤道低压带和副热带高压带季节移动影响的区域。","features":["湿季受上升气流或湿润气流影响","干季受下沉气流或较干气流影响"],"sources":[{"title":"NOAA Climate.gov","url":"https://www.climate.gov/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"climate-tropical-desert","type":"process","name":"热带沙漠气候","aliases":["热带干旱气候"],"keywords":["全年高温少雨","副热带高压","沙漠","寒流"],"module":"地球上的大气","grade":"高中","definition":"热带沙漠气候全年高温、降水稀少，常分布在副热带高压控制区，也可受寒流、信风离岸和大陆位置影响。","features":["空气下沉不利于云雨形成","大陆西岸寒流可能加强沿岸干旱"],"sources":[{"title":"NOAA Climate.gov","url":"https://www.climate.gov/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"climate-monsoon-subtropical","type":"process","name":"亚热带季风气候","aliases":["亚热带湿润气候","亚热带季风湿润气候"],"keywords":["夏季高温多雨","冬季温和少雨","季风","亚热带"],"module":"地球上的大气","grade":"高中","definition":"亚热带季风气候通常夏季高温多雨、冬季温和，降水季节分配受季风和锋面活动影响。","features":["雨热同期","海陆位置和季风强弱会造成区域差异"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"climate-mediterranean","type":"process","name":"地中海气候","aliases":["地中海型气候"],"keywords":["夏季炎热干燥","冬季温和多雨","副热带高压","西风带"],"module":"地球上的大气","grade":"高中","definition":"地中海气候夏季受副热带高压控制而炎热干燥，冬季受西风带或锋面活动影响而温和多雨。","features":["雨热不同期","大陆西岸中低纬地区较典型"],"sources":[{"title":"NOAA Climate.gov","url":"https://www.climate.gov/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"climate-oceanic","type":"process","name":"温带海洋性气候","aliases":["海洋性气候"],"keywords":["全年温和湿润","西风带","海洋影响","年温差小"],"module":"地球上的大气","grade":"高中","definition":"温带海洋性气候受海洋调节和西风影响，通常全年温和湿润、年温差较小，降水季节分配较均匀。","features":["沿大陆西岸中纬度地区较典型","暖流和海洋性气流可增强温和湿润特征"],"sources":[{"title":"NOAA Climate.gov","url":"https://www.climate.gov/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"climate-temperate-monsoon","type":"process","name":"温带季风气候","aliases":["温带季风"],"keywords":["夏季高温多雨","冬季寒冷干燥","季风","温带"],"module":"地球上的大气","grade":"高中","definition":"温带季风气候夏季受来自海洋的湿润气流影响，冬季受来自大陆的冷干气流影响，四季变化明显。","features":["雨热同期","冬夏风向和性质差异明显","降水年际变化可能较大"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"climate-temperate-continental","type":"process","name":"温带大陆性气候","aliases":["温带大陆性气候区"],"keywords":["年温差大","降水少","大陆内部","距海远"],"module":"地球上的大气","grade":"高中","definition":"温带大陆性气候受大陆内部位置和海洋水汽影响弱等因素影响，通常年温差较大，降水较少且季节差异明显。","features":["距海远和地形阻挡会削弱海洋水汽输入","自然植被常随水分条件由森林过渡到草原和荒漠"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"river-v-shaped-valley","type":"landform","name":"V形谷","aliases":["河流侵蚀谷","河谷"],"keywords":["河流下切","流水侵蚀","峡谷","山地"],"module":"地表形态的塑造","grade":"高中","definition":"V形谷是河流下切侵蚀较强、侧向侵蚀较弱时形成的谷地横剖面形态，常见于河流上游山区。","features":["谷底狭窄、谷坡较陡","可结合河流纵剖面和地形坡度判读"],"commonConfusions":["V形谷主要与河流下切有关，U形谷主要与冰川侵蚀有关"],"sources":[{"title":"NPS Park Landforms","url":"https://www.nps.gov/subjects/geology/landforms.htm","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"river-floodplain","type":"landform","name":"河漫滩","aliases":["洪泛平原","河流泛滥平原"],"keywords":["河流侧蚀","泛滥","沉积","河谷"],"module":"地表形态的塑造","grade":"高中","definition":"河漫滩是河流洪水期可能被淹没、由河流沉积物堆积形成的谷底平缓地带。","features":["地势低平、沉积物较新","通常位于河道两侧，受洪水和河流摆动影响"],"sources":[{"title":"USGS Water Science School","url":"https://www.usgs.gov/special-topics/water-science-school","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"river-terrace","type":"landform","name":"河流阶地","aliases":["阶地","河流侵蚀阶地"],"keywords":["河流下切","地壳抬升","基准面下降","阶梯状"],"module":"地表形态的塑造","grade":"高中","definition":"河流阶地是河流谷地两侧呈阶梯状分布的平坦地面，通常由河流下切、地壳抬升或基准面变化使旧河漫滩相对抬高形成。","features":["阶地面相对平坦，阶地前缘较陡","多级阶地可反映河流和构造的阶段性变化"],"sources":[{"title":"USGS National Geologic Map Database","url":"https://ngmdb.usgs.gov/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"river-meander","type":"landform","name":"曲流与牛轭湖","aliases":["河曲","牛轭湖","曲流地貌"],"keywords":["侧蚀","沉积","凹岸","凸岸","河流"],"module":"地表形态的塑造","grade":"高中","definition":"曲流是河道弯曲摆动形成的河流形态，凹岸流速较大、侵蚀较强，凸岸流速较小、沉积较多；曲流被截弯取直后可形成牛轭湖。","features":["凹岸侵蚀、凸岸沉积是常用判读规律","常见于河流中下游坡度较缓地段"],"sources":[{"title":"USGS Water Science School","url":"https://www.usgs.gov/special-topics/water-science-school","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"coastal-cliff","type":"landform","name":"海蚀崖和海蚀平台","aliases":["海蚀地貌","海蚀崖"],"keywords":["海浪侵蚀","海岸","海蚀洞","海蚀柱"],"module":"地表形态的塑造","grade":"高中","definition":"海蚀崖和海蚀平台是海浪长期冲蚀海岸基岩形成的海岸侵蚀地貌。海蚀洞、海蚀拱桥和海蚀柱可由差异侵蚀进一步形成。","features":["常见于基岩海岸","海蚀平台通常位于海蚀崖前缘的较平坦岩面"],"sources":[{"title":"NPS Beaches and Coastal Landforms","url":"https://www.nps.gov/subjects/geology/coastal-landforms.htm","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"dune","type":"landform","name":"沙丘","aliases":["风积沙丘","新月形沙丘"],"keywords":["风力搬运","风积","沙漠","迎风坡","背风坡"],"module":"地表形态的塑造","grade":"高中","definition":"沙丘是风力搬运的沙粒在风速减弱、障碍物或地表条件变化处堆积形成的风积地貌。","features":["形态受风向、风速、沙源和植被影响","新月形沙丘常具有向下风向突出的翼部"],"sources":[{"title":"NPS Park Landforms","url":"https://www.nps.gov/subjects/geology/landforms.htm","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"glacial-u-valley","type":"landform","name":"U形谷","aliases":["冰川槽谷","冰蚀谷"],"keywords":["冰川侵蚀","冰蚀","谷地","冰川"],"module":"地表形态的塑造","grade":"高中","definition":"U形谷是山地冰川运动过程中对原有谷地进行强烈磨蚀和掘蚀后形成的宽阔谷地。","features":["谷底较宽、谷坡较陡，横剖面近似U形","常可见冰川擦痕、悬谷和冰碛物"],"sources":[{"title":"NPS Glaciers and Glacial Landforms","url":"https://www.nps.gov/subjects/geology/glacial-landforms.htm","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"karst-cave","type":"landform","name":"溶洞与地下河","aliases":["岩溶洞穴","地下水溶蚀"],"keywords":["喀斯特","地下水","溶蚀","石钟乳","石笋"],"module":"地表形态的塑造","grade":"高中","definition":"溶洞与地下河是地下水沿可溶性岩石裂隙流动并长期溶蚀、侵蚀形成的地下喀斯特形态。","features":["洞穴沉积物可形成石钟乳、石笋等形态","地下水位和岩层裂隙会影响洞穴发育"],"sources":[{"title":"NPS Park Landforms","url":"https://www.nps.gov/subjects/geology/landforms.htm","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"water-evaporation","type":"process","name":"蒸发与蒸腾","aliases":["蒸散发","水分蒸发"],"keywords":["水循环","太阳辐射","植被","水汽"],"module":"地球上的水","grade":"高中","definition":"蒸发是液态水转化为水汽的过程，蒸腾是植物向大气释放水汽的过程，二者共同构成陆地水分返回大气的重要途径。","features":["受温度、风速、湿度、辐射和植被影响","蒸腾作用将生态系统与水循环联系起来"],"sources":[{"title":"USGS Water Cycle Diagrams","url":"https://www.usgs.gov/water-science-school/science/water-cycle-diagrams","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"water-infiltration","type":"process","name":"下渗与地下水","aliases":["下渗","地下径流","地下水补给"],"keywords":["土壤","孔隙","地下水","径流","水循环"],"module":"地球上的水","grade":"高中","definition":"下渗是水从地表进入土壤或岩石孔隙的过程，部分下渗水可补给地下水并形成地下径流。","features":["土壤渗透性、植被和地表覆盖影响下渗","城市硬化地面通常减少下渗并增加地表径流"],"sources":[{"title":"USGS Water Science School","url":"https://www.usgs.gov/special-topics/water-science-school","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"water-river-supply","type":"process","name":"河流补给类型","aliases":["雨水补给","冰雪融水补给","地下水补给"],"keywords":["河流径流","降水","融水","地下水","汛期"],"module":"地球上的水","grade":"高中","definition":"河流补给是河流获得水量的过程，常见类型包括雨水补给、冰雪融水补给和地下水补给，不同补给方式决定径流季节变化。","features":["雨水补给常与降水季节一致","冰雪融水补给在高温季节可能增强","地下水补给通常相对稳定"],"sources":[{"title":"USGS Water Science School","url":"https://www.usgs.gov/special-topics/water-science-school","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"regional-latitudinal","type":"process","name":"纬度地带性","aliases":["纬度地域分异","从赤道到两极的分异"],"keywords":["热量","太阳辐射","自然带","纬度"],"module":"自然环境的地域分异","grade":"高中","definition":"纬度地带性是自然环境要素和自然带大致沿纬度方向有规律变化的地域分异现象，主要受太阳辐射从低纬向高纬递减影响。","features":["热量是重要控制因素","典型表现是从赤道向两极的植被和土壤带变化"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"regional-longitudinal","type":"process","name":"干湿度地带性","aliases":["经度地带性","从沿海到内陆的分异"],"keywords":["水分","降水","距海远近","植被带"],"module":"自然环境的地域分异","grade":"高中","definition":"干湿度地带性是自然环境从沿海向内陆因水分条件变化而发生的地域分异，常表现为森林、草原和荒漠等植被景观变化。","features":["水分是重要控制因素","海陆位置、盛行风和地形共同影响水汽输入"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"regional-vertical","type":"process","name":"垂直地域分异","aliases":["山地垂直带谱","垂直地带性"],"keywords":["海拔","自然带","山地","基带","雪线"],"module":"自然环境的地域分异","grade":"高中","definition":"垂直地域分异是山地随海拔升高，热量和水分条件变化而出现自然带有规律更替的现象。","features":["山麓自然带通常与当地水平自然带相近","垂直带谱受纬度、山体高度、坡向和水分条件影响"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"regional-integrity","type":"process","name":"自然环境整体性","aliases":["自然地理环境整体性","地理要素相互作用"],"keywords":["大气圈","水圈","岩石圈","生物圈","相互影响"],"module":"自然环境的整体性","grade":"高中","definition":"自然环境整体性强调大气、水、岩石、生物和土壤等要素相互联系、相互制约，一个要素的变化可能通过物质和能量交换影响其他要素。","features":["解释环境变化时需要综合考虑多个自然要素","区域生态问题常体现要素之间的反馈关系"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"curriculum-earth-motion","type":"curriculum","name":"地球的运动教学模块","aliases":["地球运动章节","太阳光照教学"],"keywords":["自转","公转","太阳直射点","昼夜","时区"],"module":"地球的运动","grade":"高中","definition":"本模块围绕地球自转、公转、黄赤交角、太阳直射点、昼夜长短、正午太阳高度和地方时等内容组织教学。","features":["适合使用太阳模拟时间、晨昏线和太阳量查询工具","推荐结合夏至、冬至和分点进行对比"],"sources":[{"title":"教育部普通高中课程标准通知","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"curriculum-atmosphere","type":"curriculum","name":"地球上的大气教学模块","aliases":["大气模块","气候教学"],"keywords":["气压带","风带","季风","天气系统","气候"],"module":"地球上的大气","grade":"高中","definition":"本模块围绕大气受热、热力环流、全球气压带风带、季风、天气系统和气候类型形成机制组织教学。","features":["可结合气压带风带、季风、降水雨带、锋面气旋和气候图层","回答气候成因时应结合气压带风带、海陆位置和地形"],"sources":[{"title":"教育部普通高中课程标准通知","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"curriculum-water","type":"curriculum","name":"地球上的水教学模块","aliases":["水圈模块","水循环与洋流"],"keywords":["水循环","河流","洋流","海气相互作用"],"module":"地球上的水","grade":"高中","definition":"本模块围绕水循环、陆地水体、河流补给、洋流和海气相互作用组织教学。","features":["可结合洋流图层和未来 ENSO 图层","动态地震和海洋数据应与稳定知识条目分开"],"sources":[{"title":"教育部普通高中课程标准通知","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"curriculum-landform","type":"curriculum","name":"地表形态的塑造教学模块","aliases":["地貌模块","地表形态章节"],"keywords":["内力作用","外力作用","地貌","板块","流水","风化"],"module":"地表形态的塑造","grade":"高中","definition":"本模块围绕内力作用、外力作用、板块构造、地震火山和流水、风力、冰川、海浪等外力塑造的地貌组织教学。","features":["可结合板块、地震火山和地貌案例进行空间解释","地貌回答应同时说明形态证据和形成过程"],"sources":[{"title":"教育部普通高中课程标准通知","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-grand-canyon","type":"place","name":"科罗拉多大峡谷","aliases":["美国大峡谷","Grand Canyon"],"keywords":["河流下切","峡谷","科罗拉多河","流水侵蚀"],"module":"地表形态的塑造","grade":"高中","definition":"科罗拉多大峡谷是河流长期下切侵蚀并受地壳抬升影响形成的峡谷地貌典型案例。","typicalPlaces":[{"name":"科罗拉多大峡谷","longitude":-112.1,"latitude":36.1,"note":"河流下切和地层出露的典型峡谷"}],"sources":[{"title":"NPS Grand Canyon Geology","url":"https://www.nps.gov/grca/learn/nature/geologicformations.htm","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-norway-fjord","type":"place","name":"挪威峡湾","aliases":["挪威峡湾地貌","峡湾"],"keywords":["冰川侵蚀","U形谷","海岸","峡湾"],"module":"地表形态的塑造","grade":"高中","definition":"挪威峡湾是冰川槽谷被海水淹没后形成的典型海岸地貌，可用于联系冰川侵蚀和海岸地貌。","typicalPlaces":[{"name":"挪威峡湾","longitude":7.0,"latitude":61.0,"note":"冰川槽谷与海岸组合景观"}],"sources":[{"title":"NPS Glaciers and Glacial Landforms","url":"https://www.nps.gov/subjects/geology/glacial-landforms.htm","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-mariana-trench","type":"place","name":"马里亚纳海沟","aliases":["马里亚纳海沟","Mariana Trench"],"keywords":["海沟","俯冲","板块边界","太平洋"],"module":"地表形态的塑造","grade":"高中","definition":"马里亚纳海沟是海洋板块俯冲环境中的深海沟，可用于解释汇聚型板块边界和海沟形成。","typicalPlaces":[{"name":"马里亚纳海沟","longitude":142.2,"latitude":11.3,"note":"海洋板块俯冲形成的深海沟"}],"sources":[{"title":"NOAA Ocean Exploration","url":"https://oceanexplorer.noaa.gov/facts/mariana-trench.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-great-barrier-reef","type":"place","name":"大堡礁","aliases":["澳大利亚大堡礁","Great Barrier Reef"],"keywords":["珊瑚礁","海洋生态","澳大利亚","海岸"],"module":"地球上的水","grade":"高中","definition":"澳大利亚大堡礁是世界著名珊瑚礁系统，可用于讨论海洋环境、珊瑚礁形成条件和海洋生态保护。","typicalPlaces":[{"name":"大堡礁","longitude":147.7,"latitude":-18.3,"note":"热带海洋珊瑚礁生态系统典型区域"}],"sources":[{"title":"Australian Institute of Marine Science","url":"https://www.aims.gov.au/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"}
+  {
+    "id": "climate-tropical-rainforest",
+    "type": "process",
+    "name": "热带雨林气候",
+    "aliases": ["热带湿润气候"],
+    "keywords": ["全年高温多雨", "赤道低压", "热带雨林"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "热带雨林气候全年高温，降水全年较多且季节变化小，常分布在赤道附近低纬地区。",
+    "features": ["常年受赤道低压或上升气流影响", "植被通常具有多层、常绿和物种丰富等特征"],
+    "sources": [
+      { "title": "NOAA Climate.gov", "url": "https://www.climate.gov/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "climate-tropical-savanna",
+    "type": "process",
+    "name": "热带草原气候",
+    "aliases": ["热带干湿季气候", "萨瓦纳气候"],
+    "keywords": ["干湿季", "热带草原", "赤道低压", "信风"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "热带草原气候全年高温，有明显干湿季，通常位于赤道低压带和副热带高压带季节移动影响的区域。",
+    "features": ["湿季受上升气流或湿润气流影响", "干季受下沉气流或较干气流影响"],
+    "sources": [
+      { "title": "NOAA Climate.gov", "url": "https://www.climate.gov/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "climate-tropical-desert",
+    "type": "process",
+    "name": "热带沙漠气候",
+    "aliases": ["热带干旱气候"],
+    "keywords": ["全年高温少雨", "副热带高压", "沙漠", "寒流"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "热带沙漠气候全年高温、降水稀少，常分布在副热带高压控制区，也可受寒流、信风离岸和大陆位置影响。",
+    "features": ["空气下沉不利于云雨形成", "大陆西岸寒流可能加强沿岸干旱"],
+    "sources": [
+      { "title": "NOAA Climate.gov", "url": "https://www.climate.gov/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "climate-monsoon-subtropical",
+    "type": "process",
+    "name": "亚热带季风气候",
+    "aliases": ["亚热带湿润气候", "亚热带季风湿润气候"],
+    "keywords": ["夏季高温多雨", "冬季温和少雨", "季风", "亚热带"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "亚热带季风气候通常夏季高温多雨、冬季温和，降水季节分配受季风和锋面活动影响。",
+    "features": ["雨热同期", "海陆位置和季风强弱会造成区域差异"],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "climate-mediterranean",
+    "type": "process",
+    "name": "地中海气候",
+    "aliases": ["地中海型气候"],
+    "keywords": ["夏季炎热干燥", "冬季温和多雨", "副热带高压", "西风带"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "地中海气候夏季受副热带高压控制而炎热干燥，冬季受西风带或锋面活动影响而温和多雨。",
+    "features": ["雨热不同期", "大陆西岸中低纬地区较典型"],
+    "sources": [
+      { "title": "NOAA Climate.gov", "url": "https://www.climate.gov/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "climate-oceanic",
+    "type": "process",
+    "name": "温带海洋性气候",
+    "aliases": ["海洋性气候"],
+    "keywords": ["全年温和湿润", "西风带", "海洋影响", "年温差小"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "温带海洋性气候受海洋调节和西风影响，通常全年温和湿润、年温差较小，降水季节分配较均匀。",
+    "features": ["沿大陆西岸中纬度地区较典型", "暖流和海洋性气流可增强温和湿润特征"],
+    "sources": [
+      { "title": "NOAA Climate.gov", "url": "https://www.climate.gov/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "climate-temperate-monsoon",
+    "type": "process",
+    "name": "温带季风气候",
+    "aliases": ["温带季风"],
+    "keywords": ["夏季高温多雨", "冬季寒冷干燥", "季风", "温带"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "温带季风气候夏季受来自海洋的湿润气流影响，冬季受来自大陆的冷干气流影响，四季变化明显。",
+    "features": ["雨热同期", "冬夏风向和性质差异明显", "降水年际变化可能较大"],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "climate-temperate-continental",
+    "type": "process",
+    "name": "温带大陆性气候",
+    "aliases": ["温带大陆性气候区"],
+    "keywords": ["年温差大", "降水少", "大陆内部", "距海远"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "温带大陆性气候受大陆内部位置和海洋水汽影响弱等因素影响，通常年温差较大，降水较少且季节差异明显。",
+    "features": [
+      "距海远和地形阻挡会削弱海洋水汽输入",
+      "自然植被常随水分条件由森林过渡到草原和荒漠"
+    ],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "river-v-shaped-valley",
+    "type": "landform",
+    "name": "V形谷",
+    "aliases": ["河流侵蚀谷", "河谷"],
+    "keywords": ["河流下切", "流水侵蚀", "峡谷", "山地"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "V形谷是河流下切侵蚀较强、侧向侵蚀较弱时形成的谷地横剖面形态，常见于河流上游山区。",
+    "features": ["谷底狭窄、谷坡较陡", "可结合河流纵剖面和地形坡度判读"],
+    "commonConfusions": ["V形谷主要与河流下切有关，U形谷主要与冰川侵蚀有关"],
+    "sources": [
+      {
+        "title": "NPS Park Landforms",
+        "url": "https://www.nps.gov/subjects/geology/landforms.htm",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "river-floodplain",
+    "type": "landform",
+    "name": "河漫滩",
+    "aliases": ["洪泛平原", "河流泛滥平原"],
+    "keywords": ["河流侧蚀", "泛滥", "沉积", "河谷"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "河漫滩是河流洪水期可能被淹没、由河流沉积物堆积形成的谷底平缓地带。",
+    "features": ["地势低平、沉积物较新", "通常位于河道两侧，受洪水和河流摆动影响"],
+    "sources": [
+      {
+        "title": "USGS Water Science School",
+        "url": "https://www.usgs.gov/special-topics/water-science-school",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "river-terrace",
+    "type": "landform",
+    "name": "河流阶地",
+    "aliases": ["阶地", "河流侵蚀阶地"],
+    "keywords": ["河流下切", "地壳抬升", "基准面下降", "阶梯状"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "河流阶地是河流谷地两侧呈阶梯状分布的平坦地面，通常由河流下切、地壳抬升或基准面变化使旧河漫滩相对抬高形成。",
+    "features": ["阶地面相对平坦，阶地前缘较陡", "多级阶地可反映河流和构造的阶段性变化"],
+    "sources": [
+      {
+        "title": "USGS National Geologic Map Database",
+        "url": "https://ngmdb.usgs.gov/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "river-meander",
+    "type": "landform",
+    "name": "曲流与牛轭湖",
+    "aliases": ["河曲", "牛轭湖", "曲流地貌"],
+    "keywords": ["侧蚀", "沉积", "凹岸", "凸岸", "河流"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "曲流是河道弯曲摆动形成的河流形态，凹岸流速较大、侵蚀较强，凸岸流速较小、沉积较多；曲流被截弯取直后可形成牛轭湖。",
+    "features": ["凹岸侵蚀、凸岸沉积是常用判读规律", "常见于河流中下游坡度较缓地段"],
+    "sources": [
+      {
+        "title": "USGS Water Science School",
+        "url": "https://www.usgs.gov/special-topics/water-science-school",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "coastal-cliff",
+    "type": "landform",
+    "name": "海蚀崖和海蚀平台",
+    "aliases": ["海蚀地貌", "海蚀崖"],
+    "keywords": ["海浪侵蚀", "海岸", "海蚀洞", "海蚀柱"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "海蚀崖和海蚀平台是海浪长期冲蚀海岸基岩形成的海岸侵蚀地貌。海蚀洞、海蚀拱桥和海蚀柱可由差异侵蚀进一步形成。",
+    "features": ["常见于基岩海岸", "海蚀平台通常位于海蚀崖前缘的较平坦岩面"],
+    "sources": [
+      {
+        "title": "NPS Beaches and Coastal Landforms",
+        "url": "https://www.nps.gov/subjects/geology/coastal-landforms.htm",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "dune",
+    "type": "landform",
+    "name": "沙丘",
+    "aliases": ["风积沙丘", "新月形沙丘"],
+    "keywords": ["风力搬运", "风积", "沙漠", "迎风坡", "背风坡"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "沙丘是风力搬运的沙粒在风速减弱、障碍物或地表条件变化处堆积形成的风积地貌。",
+    "features": ["形态受风向、风速、沙源和植被影响", "新月形沙丘常具有向下风向突出的翼部"],
+    "sources": [
+      {
+        "title": "NPS Park Landforms",
+        "url": "https://www.nps.gov/subjects/geology/landforms.htm",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "glacial-u-valley",
+    "type": "landform",
+    "name": "U形谷",
+    "aliases": ["冰川槽谷", "冰蚀谷"],
+    "keywords": ["冰川侵蚀", "冰蚀", "谷地", "冰川"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "U形谷是山地冰川运动过程中对原有谷地进行强烈磨蚀和掘蚀后形成的宽阔谷地。",
+    "features": ["谷底较宽、谷坡较陡，横剖面近似U形", "常可见冰川擦痕、悬谷和冰碛物"],
+    "sources": [
+      {
+        "title": "NPS Glaciers and Glacial Landforms",
+        "url": "https://www.nps.gov/subjects/geology/glacial-landforms.htm",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "karst-cave",
+    "type": "landform",
+    "name": "溶洞与地下河",
+    "aliases": ["岩溶洞穴", "地下水溶蚀"],
+    "keywords": ["喀斯特", "地下水", "溶蚀", "石钟乳", "石笋"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "溶洞与地下河是地下水沿可溶性岩石裂隙流动并长期溶蚀、侵蚀形成的地下喀斯特形态。",
+    "features": ["洞穴沉积物可形成石钟乳、石笋等形态", "地下水位和岩层裂隙会影响洞穴发育"],
+    "sources": [
+      {
+        "title": "NPS Park Landforms",
+        "url": "https://www.nps.gov/subjects/geology/landforms.htm",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "water-evaporation",
+    "type": "process",
+    "name": "蒸发与蒸腾",
+    "aliases": ["蒸散发", "水分蒸发"],
+    "keywords": ["水循环", "太阳辐射", "植被", "水汽"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "蒸发是液态水转化为水汽的过程，蒸腾是植物向大气释放水汽的过程，二者共同构成陆地水分返回大气的重要途径。",
+    "features": ["受温度、风速、湿度、辐射和植被影响", "蒸腾作用将生态系统与水循环联系起来"],
+    "sources": [
+      {
+        "title": "USGS Water Cycle Diagrams",
+        "url": "https://www.usgs.gov/water-science-school/science/water-cycle-diagrams",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "water-infiltration",
+    "type": "process",
+    "name": "下渗与地下水",
+    "aliases": ["下渗", "地下径流", "地下水补给"],
+    "keywords": ["土壤", "孔隙", "地下水", "径流", "水循环"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "下渗是水从地表进入土壤或岩石孔隙的过程，部分下渗水可补给地下水并形成地下径流。",
+    "features": ["土壤渗透性、植被和地表覆盖影响下渗", "城市硬化地面通常减少下渗并增加地表径流"],
+    "sources": [
+      {
+        "title": "USGS Water Science School",
+        "url": "https://www.usgs.gov/special-topics/water-science-school",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "water-river-supply",
+    "type": "process",
+    "name": "河流补给类型",
+    "aliases": ["雨水补给", "冰雪融水补给", "地下水补给"],
+    "keywords": ["河流径流", "降水", "融水", "地下水", "汛期"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "河流补给是河流获得水量的过程，常见类型包括雨水补给、冰雪融水补给和地下水补给，不同补给方式决定径流季节变化。",
+    "features": [
+      "雨水补给常与降水季节一致",
+      "冰雪融水补给在高温季节可能增强",
+      "地下水补给通常相对稳定"
+    ],
+    "sources": [
+      {
+        "title": "USGS Water Science School",
+        "url": "https://www.usgs.gov/special-topics/water-science-school",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "regional-latitudinal",
+    "type": "process",
+    "name": "纬度地带性",
+    "aliases": ["纬度地域分异", "从赤道到两极的分异"],
+    "keywords": ["热量", "太阳辐射", "自然带", "纬度"],
+    "module": "自然环境的地域分异",
+    "grade": "高中",
+    "definition": "纬度地带性是自然环境要素和自然带大致沿纬度方向有规律变化的地域分异现象，主要受太阳辐射从低纬向高纬递减影响。",
+    "features": ["热量是重要控制因素", "典型表现是从赤道向两极的植被和土壤带变化"],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "regional-longitudinal",
+    "type": "process",
+    "name": "干湿度地带性",
+    "aliases": ["经度地带性", "从沿海到内陆的分异"],
+    "keywords": ["水分", "降水", "距海远近", "植被带"],
+    "module": "自然环境的地域分异",
+    "grade": "高中",
+    "definition": "干湿度地带性是自然环境从沿海向内陆因水分条件变化而发生的地域分异，常表现为森林、草原和荒漠等植被景观变化。",
+    "features": ["水分是重要控制因素", "海陆位置、盛行风和地形共同影响水汽输入"],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "regional-vertical",
+    "type": "process",
+    "name": "垂直地域分异",
+    "aliases": ["山地垂直带谱", "垂直地带性"],
+    "keywords": ["海拔", "自然带", "山地", "基带", "雪线"],
+    "module": "自然环境的地域分异",
+    "grade": "高中",
+    "definition": "垂直地域分异是山地随海拔升高，热量和水分条件变化而出现自然带有规律更替的现象。",
+    "features": [
+      "山麓自然带通常与当地水平自然带相近",
+      "垂直带谱受纬度、山体高度、坡向和水分条件影响"
+    ],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "regional-integrity",
+    "type": "process",
+    "name": "自然环境整体性",
+    "aliases": ["自然地理环境整体性", "地理要素相互作用"],
+    "keywords": ["大气圈", "水圈", "岩石圈", "生物圈", "相互影响"],
+    "module": "自然环境的整体性",
+    "grade": "高中",
+    "definition": "自然环境整体性强调大气、水、岩石、生物和土壤等要素相互联系、相互制约，一个要素的变化可能通过物质和能量交换影响其他要素。",
+    "features": ["解释环境变化时需要综合考虑多个自然要素", "区域生态问题常体现要素之间的反馈关系"],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "curriculum-earth-motion",
+    "type": "curriculum",
+    "name": "地球的运动教学模块",
+    "aliases": ["地球运动章节", "太阳光照教学"],
+    "keywords": ["自转", "公转", "太阳直射点", "昼夜", "时区"],
+    "module": "地球的运动",
+    "grade": "高中",
+    "definition": "本模块围绕地球自转、公转、黄赤交角、太阳直射点、昼夜长短、正午太阳高度和地方时等内容组织教学。",
+    "features": [
+      "适合使用太阳模拟时间、晨昏线和太阳量查询工具",
+      "推荐结合夏至、冬至和分点进行对比"
+    ],
+    "sources": [
+      {
+        "title": "教育部普通高中课程标准通知",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "curriculum-atmosphere",
+    "type": "curriculum",
+    "name": "地球上的大气教学模块",
+    "aliases": ["大气模块", "气候教学"],
+    "keywords": ["气压带", "风带", "季风", "天气系统", "气候"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "本模块围绕大气受热、热力环流、全球气压带风带、季风、天气系统和气候类型形成机制组织教学。",
+    "features": [
+      "可结合气压带风带、季风、降水雨带、锋面气旋和气候图层",
+      "回答气候成因时应结合气压带风带、海陆位置和地形"
+    ],
+    "sources": [
+      {
+        "title": "教育部普通高中课程标准通知",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "curriculum-water",
+    "type": "curriculum",
+    "name": "地球上的水教学模块",
+    "aliases": ["水圈模块", "水循环与洋流"],
+    "keywords": ["水循环", "河流", "洋流", "海气相互作用"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "本模块围绕水循环、陆地水体、河流补给、洋流和海气相互作用组织教学。",
+    "features": ["可结合洋流图层和未来 ENSO 图层", "动态地震和海洋数据应与稳定知识条目分开"],
+    "sources": [
+      {
+        "title": "教育部普通高中课程标准通知",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "curriculum-landform",
+    "type": "curriculum",
+    "name": "地表形态的塑造教学模块",
+    "aliases": ["地貌模块", "地表形态章节"],
+    "keywords": ["内力作用", "外力作用", "地貌", "板块", "流水", "风化"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "本模块围绕内力作用、外力作用、板块构造、地震火山和流水、风力、冰川、海浪等外力塑造的地貌组织教学。",
+    "features": [
+      "可结合板块、地震火山和地貌案例进行空间解释",
+      "地貌回答应同时说明形态证据和形成过程"
+    ],
+    "sources": [
+      {
+        "title": "教育部普通高中课程标准通知",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-grand-canyon",
+    "type": "place",
+    "name": "科罗拉多大峡谷",
+    "aliases": ["美国大峡谷", "Grand Canyon"],
+    "keywords": ["河流下切", "峡谷", "科罗拉多河", "流水侵蚀"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "科罗拉多大峡谷是河流长期下切侵蚀并受地壳抬升影响形成的峡谷地貌典型案例。",
+    "typicalPlaces": [
+      {
+        "name": "科罗拉多大峡谷",
+        "longitude": -112.1,
+        "latitude": 36.1,
+        "note": "河流下切和地层出露的典型峡谷"
+      }
+    ],
+    "sources": [
+      {
+        "title": "NPS Grand Canyon Geology",
+        "url": "https://www.nps.gov/grca/learn/nature/geologicformations.htm",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-norway-fjord",
+    "type": "place",
+    "name": "挪威峡湾",
+    "aliases": ["挪威峡湾地貌", "峡湾"],
+    "keywords": ["冰川侵蚀", "U形谷", "海岸", "峡湾"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "挪威峡湾是冰川槽谷被海水淹没后形成的典型海岸地貌，可用于联系冰川侵蚀和海岸地貌。",
+    "typicalPlaces": [
+      { "name": "挪威峡湾", "longitude": 7.0, "latitude": 61.0, "note": "冰川槽谷与海岸组合景观" }
+    ],
+    "sources": [
+      {
+        "title": "NPS Glaciers and Glacial Landforms",
+        "url": "https://www.nps.gov/subjects/geology/glacial-landforms.htm",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-mariana-trench",
+    "type": "place",
+    "name": "马里亚纳海沟",
+    "aliases": ["马里亚纳海沟", "Mariana Trench"],
+    "keywords": ["海沟", "俯冲", "板块边界", "太平洋"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "马里亚纳海沟是海洋板块俯冲环境中的深海沟，可用于解释汇聚型板块边界和海沟形成。",
+    "typicalPlaces": [
+      {
+        "name": "马里亚纳海沟",
+        "longitude": 142.2,
+        "latitude": 11.3,
+        "note": "海洋板块俯冲形成的深海沟"
+      }
+    ],
+    "sources": [
+      {
+        "title": "NOAA Ocean Exploration",
+        "url": "https://oceanexplorer.noaa.gov/facts/mariana-trench.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-great-barrier-reef",
+    "type": "place",
+    "name": "大堡礁",
+    "aliases": ["澳大利亚大堡礁", "Great Barrier Reef"],
+    "keywords": ["珊瑚礁", "海洋生态", "澳大利亚", "海岸"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "澳大利亚大堡礁是世界著名珊瑚礁系统，可用于讨论海洋环境、珊瑚礁形成条件和海洋生态保护。",
+    "typicalPlaces": [
+      {
+        "name": "大堡礁",
+        "longitude": 147.7,
+        "latitude": -18.3,
+        "note": "热带海洋珊瑚礁生态系统典型区域"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Australian Institute of Marine Science",
+        "url": "https://www.aims.gov.au/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  }
 ]

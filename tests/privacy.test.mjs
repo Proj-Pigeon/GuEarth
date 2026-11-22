@@ -1,15 +1,9 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
+import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
-import {
-  DEFAULT_PRIVACY_SETTINGS,
-  PRIVACY_DISCLOSURES,
-  filterPosthogEvent,
-  privacyDisclosureFor,
-  resolvePrivacySettings
-} from '../src/common/privacy.ts'
+
 import {
   formatTelemetryToolCalls,
   normalizeModelTestOutput,
@@ -18,14 +12,26 @@ import {
   sanitizeTelemetryToolSpan,
   stripMemoryFromPrompt
 } from '../src/common/aiTelemetry.ts'
+import {
+  DEFAULT_PRIVACY_SETTINGS,
+  PRIVACY_DISCLOSURES,
+  filterPosthogEvent,
+  privacyDisclosureFor,
+  resolvePrivacySettings
+} from '../src/common/privacy.ts'
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier.startsWith('@renderer/')) return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)
+    if (specifier.startsWith('@renderer/'))
+      return nextResolve(
+        pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href,
+        context
+      )
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier))
+        return nextResolve(`${specifier}.ts`, context)
       throw error
     }
   }
@@ -38,17 +44,31 @@ test('privacy defaults enable error reporting and disable telemetry/AI reporting
     aiTelemetryEnabled: false
   })
   assert.deepEqual(resolvePrivacySettings(undefined), DEFAULT_PRIVACY_SETTINGS)
-  assert.deepEqual(resolvePrivacySettings({ errorReportingEnabled: 'false', telemetryEnabled: 1, aiTelemetryEnabled: null }), DEFAULT_PRIVACY_SETTINGS)
-  assert.deepEqual(resolvePrivacySettings({ errorReportingEnabled: false, telemetryEnabled: false, aiTelemetryEnabled: true }), {
-    errorReportingEnabled: false,
-    telemetryEnabled: false,
-    aiTelemetryEnabled: true
-  })
+  assert.deepEqual(
+    resolvePrivacySettings({
+      errorReportingEnabled: 'false',
+      telemetryEnabled: 1,
+      aiTelemetryEnabled: null
+    }),
+    DEFAULT_PRIVACY_SETTINGS
+  )
+  assert.deepEqual(
+    resolvePrivacySettings({
+      errorReportingEnabled: false,
+      telemetryEnabled: false,
+      aiTelemetryEnabled: true
+    }),
+    {
+      errorReportingEnabled: false,
+      telemetryEnabled: false,
+      aiTelemetryEnabled: true
+    }
+  )
 })
 
 test('privacy disclosures cover all three switches with non-empty collected data lists', () => {
   assert.deepEqual(
-    PRIVACY_DISCLOSURES.map((item) => item.title),
+    PRIVACY_DISCLOSURES.map(item => item.title),
     ['自动化收集错误信息', '上报遥测信息', '上报 AI 使用信息']
   )
   for (const key of ['errorReportingEnabled', 'telemetryEnabled', 'aiTelemetryEnabled']) {
@@ -69,7 +89,11 @@ test('filterPosthogEvent routes exception, AI, and product telemetry events inde
   const aiGenerationEvent = { event: '$ai_generation' }
   const productEvent = { event: 'scene_saved' }
 
-  const allDisabled = { errorReportingEnabled: false, telemetryEnabled: false, aiTelemetryEnabled: false }
+  const allDisabled = {
+    errorReportingEnabled: false,
+    telemetryEnabled: false,
+    aiTelemetryEnabled: false
+  }
   assert.equal(filterPosthogEvent(exceptionEvent, allDisabled), null)
   assert.equal(filterPosthogEvent(aiPromptEvent, allDisabled), null)
   assert.equal(filterPosthogEvent(aiGenerationEvent, allDisabled), null)
@@ -80,7 +104,11 @@ test('filterPosthogEvent routes exception, AI, and product telemetry events inde
   assert.equal(filterPosthogEvent(aiPromptEvent, DEFAULT_PRIVACY_SETTINGS), null)
   assert.equal(filterPosthogEvent(aiGenerationEvent, DEFAULT_PRIVACY_SETTINGS), null)
 
-  const onlyTelemetry = { errorReportingEnabled: false, telemetryEnabled: true, aiTelemetryEnabled: false }
+  const onlyTelemetry = {
+    errorReportingEnabled: false,
+    telemetryEnabled: true,
+    aiTelemetryEnabled: false
+  }
   assert.equal(filterPosthogEvent(exceptionEvent, onlyTelemetry), null)
   assert.equal(filterPosthogEvent(productEvent, onlyTelemetry), productEvent)
   assert.equal(filterPosthogEvent(aiPromptEvent, onlyTelemetry), null)
@@ -93,10 +121,14 @@ test('filterPosthogEvent routes exception, AI, and product telemetry events inde
 })
 
 test('AI telemetry sanitizer removes long-term memory, base64 images, save_memory content, and API keys', () => {
-  const systemWithMemory = '你是地理助手。\n长期记忆：\n- 已保存的用户记忆：\n- mem_1：我在北京海淀教高中地理'
+  const systemWithMemory =
+    '你是地理助手。\n长期记忆：\n- 已保存的用户记忆：\n- mem_1：我在北京海淀教高中地理'
   assert.equal(stripMemoryFromPrompt(systemWithMemory), '你是地理助手。')
 
-  assert.equal(redactApiKey('请求失败：sk-secret-123 被拒绝', 'sk-secret-123'), '请求失败：[redacted] 被拒绝')
+  assert.equal(
+    redactApiKey('请求失败：sk-secret-123 被拒绝', 'sk-secret-123'),
+    '请求失败：[redacted] 被拒绝'
+  )
 
   const sanitizedMessages = sanitizeTelemetryMessages([
     { role: 'system', content: systemWithMemory },
@@ -105,7 +137,11 @@ test('AI telemetry sanitizer removes long-term memory, base64 images, save_memor
       role: 'assistant',
       content: '',
       toolCalls: [
-        { id: 'call_1', name: 'save_memory', arguments: JSON.stringify({ content: '用户喜欢高原地貌' }) },
+        {
+          id: 'call_1',
+          name: 'save_memory',
+          arguments: JSON.stringify({ content: '用户喜欢高原地貌' })
+        },
         { id: 'call_2', name: 'capture_globe_view', arguments: '{}' }
       ]
     },
@@ -113,7 +149,12 @@ test('AI telemetry sanitizer removes long-term memory, base64 images, save_memor
       role: 'tool',
       callId: 'call_1',
       name: 'save_memory',
-      content: JSON.stringify({ memorySaved: true, id: 'm1', content: '用户喜欢高原地貌', message: '已写入记忆' })
+      content: JSON.stringify({
+        memorySaved: true,
+        id: 'm1',
+        content: '用户喜欢高原地貌',
+        message: '已写入记忆'
+      })
     },
     {
       role: 'tool',
@@ -130,7 +171,11 @@ test('AI telemetry sanitizer removes long-term memory, base64 images, save_memor
   assert.doesNotMatch(serialized, /SUPER_SECRET_BASE64_IMAGE_PAYLOAD/)
 
   assert.deepEqual(sanitizedMessages[2].tool_calls, [
-    { id: 'call_1', type: 'function', function: { name: 'save_memory', arguments: '{"content":"[redacted]"}' } },
+    {
+      id: 'call_1',
+      type: 'function',
+      function: { name: 'save_memory', arguments: '{"content":"[redacted]"}' }
+    },
     { id: 'call_2', type: 'function', function: { name: 'capture_globe_view', arguments: '{}' } }
   ])
   assert.equal(sanitizedMessages[3].tool_call_id, 'call_1')
@@ -146,18 +191,26 @@ test('AI telemetry sanitizer removes long-term memory, base64 images, save_memor
   assert.equal(span.input.content, '[redacted]')
   assert.equal(span.output.content, '[redacted]')
 
-  assert.deepEqual(formatTelemetryToolCalls([{ id: 'c1', name: 'search_place', arguments: '{"q":"泰山"}' }]), [
-    { id: 'c1', type: 'function', function: { name: 'search_place', arguments: '{"q":"泰山"}' } }
-  ])
+  assert.deepEqual(
+    formatTelemetryToolCalls([{ id: 'c1', name: 'search_place', arguments: '{"q":"泰山"}' }]),
+    [{ id: 'c1', type: 'function', function: { name: 'search_place', arguments: '{"q":"泰山"}' } }]
+  )
 })
 
 test('normalizeModelTestOutput converts OpenAI and Anthropic payloads to assistant message arrays', () => {
   assert.deepEqual(
-    normalizeModelTestOutput('openai', { choices: [{ message: { role: 'assistant', content: 'hello' } }] }),
+    normalizeModelTestOutput('openai', {
+      choices: [{ message: { role: 'assistant', content: 'hello' } }]
+    }),
     [{ role: 'assistant', content: 'hello' }]
   )
   assert.deepEqual(
-    normalizeModelTestOutput('anthropic', { content: [{ type: 'text', text: 'hi ' }, { type: 'text', text: 'there' }] }),
+    normalizeModelTestOutput('anthropic', {
+      content: [
+        { type: 'text', text: 'hi ' },
+        { type: 'text', text: 'there' }
+      ]
+    }),
     [{ role: 'assistant', content: 'hi there' }]
   )
 })
@@ -170,7 +223,7 @@ test('privacy store persists changes and fails closed on IPC update errors', asy
     guEarth: {
       settings: {
         get: async () => ({ ...stored }),
-        update: async (patch) => {
+        update: async patch => {
           if (failUpdate) throw new Error('disk full')
           stored = { ...stored, ...patch }
           return { ...stored }
@@ -179,7 +232,8 @@ test('privacy store persists changes and fails closed on IPC update errors', asy
     }
   }
 
-  const { usePrivacyStore, resetPrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
+  const { usePrivacyStore, resetPrivacyStore } =
+    await import('../src/renderer/src/stores/privacy.ts')
   const { getPrivacySettings } = await import('../src/renderer/src/lib/privacyRuntime.ts')
 
   resetPrivacyStore()
@@ -226,7 +280,7 @@ test('privacy store keeps error reporting disabled on hydrate failure and allows
           if (failGet) throw new Error('ipc unavailable')
           return { ...stored }
         },
-        update: async (patch) => {
+        update: async patch => {
           stored = { ...stored, ...patch }
           return { ...stored }
         }
@@ -234,9 +288,15 @@ test('privacy store keeps error reporting disabled on hydrate failure and allows
     }
   }
 
-  const { usePrivacyStore, resetPrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
-  const { applyRendererPrivacySettings, getPrivacySettings } = await import('../src/renderer/src/lib/privacyRuntime.ts')
-  applyRendererPrivacySettings({ errorReportingEnabled: false, telemetryEnabled: false, aiTelemetryEnabled: false })
+  const { usePrivacyStore, resetPrivacyStore } =
+    await import('../src/renderer/src/stores/privacy.ts')
+  const { applyRendererPrivacySettings, getPrivacySettings } =
+    await import('../src/renderer/src/lib/privacyRuntime.ts')
+  applyRendererPrivacySettings({
+    errorReportingEnabled: false,
+    telemetryEnabled: false,
+    aiTelemetryEnabled: false
+  })
 
   resetPrivacyStore()
   const store = () => usePrivacyStore.getState()
@@ -263,14 +323,16 @@ test('privacy store preserves pending disable when an earlier overlapping update
     guEarth: {
       settings: {
         get: async () => ({ ...stored }),
-        update: (patch) => new Promise((resolve) => {
-          resolvers.push({ patch, resolve })
-        })
+        update: patch =>
+          new Promise(resolve => {
+            resolvers.push({ patch, resolve })
+          })
       }
     }
   }
 
-  const { usePrivacyStore, resetPrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
+  const { usePrivacyStore, resetPrivacyStore } =
+    await import('../src/renderer/src/stores/privacy.ts')
   const { getPrivacySettings } = await import('../src/renderer/src/lib/privacyRuntime.ts')
 
   resetPrivacyStore()
@@ -286,20 +348,32 @@ test('privacy store preserves pending disable when an earlier overlapping update
   assert.equal(getPrivacySettings().errorReportingEnabled, false)
   assert.equal(resolvers.length, 2)
 
-  resolvers[0].resolve({ errorReportingEnabled: true, telemetryEnabled: true, aiTelemetryEnabled: false })
+  resolvers[0].resolve({
+    errorReportingEnabled: true,
+    telemetryEnabled: true,
+    aiTelemetryEnabled: false
+  })
   assert.equal(await enableTelemetry, true)
   assert.equal(store().telemetryEnabled, true)
   assert.equal(store().errorReportingEnabled, false)
   assert.equal(getPrivacySettings().errorReportingEnabled, false)
 
-  resolvers[1].resolve({ errorReportingEnabled: false, telemetryEnabled: true, aiTelemetryEnabled: false })
+  resolvers[1].resolve({
+    errorReportingEnabled: false,
+    telemetryEnabled: true,
+    aiTelemetryEnabled: false
+  })
   assert.equal(await disableErrorReporting, true)
   assert.equal(store().telemetryEnabled, true)
   assert.equal(store().errorReportingEnabled, false)
   assert.equal(getPrivacySettings().errorReportingEnabled, false)
 
   const enableAi = store().setPrivacySetting('aiTelemetryEnabled', true)
-  resolvers[2].resolve({ errorReportingEnabled: false, telemetryEnabled: true, aiTelemetryEnabled: true })
+  resolvers[2].resolve({
+    errorReportingEnabled: false,
+    telemetryEnabled: true,
+    aiTelemetryEnabled: true
+  })
   assert.equal(await enableAi, true)
   assert.equal(store().aiTelemetryEnabled, true)
   assert.equal(store().errorReportingEnabled, false)

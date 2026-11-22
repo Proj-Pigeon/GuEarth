@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import {
   AimOutlined,
   AppstoreOutlined,
@@ -18,9 +17,11 @@ import {
   SettingOutlined,
   TagsOutlined
 } from '@ant-design/icons'
-import { Badge, Button, Progress, Tooltip } from 'antd'
 import type { DrawTool } from '@renderer/stores/drawing'
 import type { UpdateStatus } from '@renderer/stores/updater'
+import { Badge, Button, Progress, Tooltip } from 'antd'
+import type { ReactNode } from 'react'
+
 import styles from './GlobeToolbar.module.css'
 
 export interface GlobeToolbarProps {
@@ -94,63 +95,65 @@ export function GlobeToolbar({
   return (
     <div className={styles.toolbar}>
       <div className={styles.toolbarGroup}>
-        <Tooltip title="回到初始视角" placement="top">
+        <Tooltip title='回到初始视角' placement='top'>
           <Button
-            type="text"
+            type='text'
             className={styles.toolbarBtn}
-            aria-label="回到初始视角"
-            data-guide-target="home"
+            aria-label='回到初始视角'
+            data-guide-target='home'
             icon={<HomeOutlined />}
             onClick={onHome}
           />
         </Tooltip>
-        <Tooltip title="图层管理" placement="top">
+        <Tooltip title='图层管理' placement='top'>
           <Button
-            type="text"
+            type='text'
             className={styles.toolbarBtn}
-            aria-label="图层管理"
-            data-guide-target="layers"
+            aria-label='图层管理'
+            data-guide-target='layers'
             icon={<AppstoreOutlined />}
             onClick={onOpenLayers}
           />
         </Tooltip>
-        <Tooltip title={labTooltip} placement="top">
+        <Tooltip title={labTooltip} placement='top'>
           <Button
-            type="text"
-            className={labActive ? `${styles.toolbarBtn} ${styles.toolbarBtnActive}` : styles.toolbarBtn}
+            type='text'
+            className={
+              labActive ? `${styles.toolbarBtn} ${styles.toolbarBtnActive}` : styles.toolbarBtn
+            }
             disabled={nightBasemapActive}
-            aria-label="地理实验室"
-            data-guide-target="lab"
+            aria-label='地理实验室'
+            data-guide-target='lab'
             icon={<ExperimentOutlined />}
             onClick={onToggleLab}
           />
         </Tooltip>
-        <Tooltip title="教学场景" placement="top">
+        <Tooltip title='教学场景' placement='top'>
           <Button
-            type="text"
+            type='text'
             className={styles.toolbarBtn}
-            aria-label="教学场景"
+            aria-label='教学场景'
             icon={<PlaySquareOutlined />}
             onClick={onOpenScenes}
           />
         </Tooltip>
       </div>
       <div className={styles.toolbarGroup}>
-        <Tooltip title="标注管理" placement="top">
+        <Tooltip title='标注管理' placement='top'>
           <Button
-            type="text"
+            type='text'
             className={styles.toolbarBtn}
-            aria-label="标注管理"
-            data-guide-target="annotations"
+            aria-label='标注管理'
+            data-guide-target='annotations'
             icon={<TagsOutlined />}
             onClick={onOpenAnnotations}
           />
         </Tooltip>
-        <div className={styles.toolbarTools} data-guide-target="drawing-tools">
-          {tools.map((item) => (
-            <Tooltip key={item.id} title={item.label} placement="top">
+        <div className={styles.toolbarTools} data-guide-target='drawing-tools'>
+          {tools.map(item => (
+            <Tooltip key={item.id} title={item.label} placement='top'>
               <Button
-                type="text"
+                type='text'
                 className={
                   activeTool === item.id
                     ? `${styles.toolbarBtn} ${styles.toolbarBtnActive}`
@@ -162,12 +165,12 @@ export function GlobeToolbar({
               />
             </Tooltip>
           ))}
-          <Tooltip title="清除全部标注" placement="top">
+          <Tooltip title='清除全部标注' placement='top'>
             <Button
-              type="text"
+              type='text'
               className={styles.toolbarBtn}
               disabled={!shapeCount}
-              aria-label="清除全部标注"
+              aria-label='清除全部标注'
               icon={<ClearOutlined />}
               onClick={onClearShapes}
             />
@@ -176,11 +179,11 @@ export function GlobeToolbar({
       </div>
       <div className={styles.toolbarFloating}>
         {levelViewVisible && (
-          <Tooltip title={levelViewTooltip} placement="top">
+          <Tooltip title={levelViewTooltip} placement='top'>
             <Button
               className={styles.toolbarCircle}
               type={levelViewActive ? 'primary' : 'default'}
-              shape="circle"
+              shape='circle'
               aria-label={levelViewTooltip}
               icon={levelViewIcon}
               onClick={onToggleLevelView}
@@ -188,13 +191,13 @@ export function GlobeToolbar({
           </Tooltip>
         )}
         {updateVisible && (
-          <Tooltip title={updateTooltip} placement="top">
+          <Tooltip title={updateTooltip} placement='top'>
             {updateStatus === 'available' ? (
-              <Badge dot color="#1677ff" offset={[-6, 6]}>
+              <Badge dot color='#1677ff' offset={[-6, 6]}>
                 <Button
                   className={styles.toolbarCircle}
-                  type="default"
-                  shape="circle"
+                  type='default'
+                  shape='circle'
                   aria-label={updateTooltip}
                   icon={<DownloadOutlined />}
                   onClick={onUpdateClick}
@@ -203,13 +206,13 @@ export function GlobeToolbar({
             ) : updateStatus === 'downloading' ? (
               <Button
                 className={styles.toolbarCircle}
-                type="default"
-                shape="circle"
+                type='default'
+                shape='circle'
                 aria-label={updateTooltip}
                 onClick={onUpdateClick}
               >
                 <Progress
-                  type="circle"
+                  type='circle'
                   percent={updatePercent}
                   size={22}
                   strokeWidth={3}
@@ -219,8 +222,8 @@ export function GlobeToolbar({
             ) : (
               <Button
                 className={styles.toolbarCircle}
-                type="primary"
-                shape="circle"
+                type='primary'
+                shape='circle'
                 aria-label={updateTooltip}
                 icon={<CheckCircleOutlined />}
                 onClick={onUpdateClick}
@@ -228,24 +231,24 @@ export function GlobeToolbar({
             )}
           </Tooltip>
         )}
-        <Tooltip title="EOQ 智能助手" placement="top">
+        <Tooltip title='EOQ 智能助手' placement='top'>
           <Button
-            type="default"
-            shape="circle"
+            type='default'
+            shape='circle'
             className={styles.toolbarCircle}
-            aria-label="EOQ 智能助手"
-            data-guide-target="assistant"
+            aria-label='EOQ 智能助手'
+            data-guide-target='assistant'
             icon={<RobotOutlined />}
             onClick={onOpenAssistant}
           />
         </Tooltip>
-        <Tooltip title="设置" placement="top">
+        <Tooltip title='设置' placement='top'>
           <Button
-            type="default"
-            shape="circle"
+            type='default'
+            shape='circle'
             className={styles.toolbarCircle}
-            aria-label="设置"
-            data-guide-target="settings"
+            aria-label='设置'
+            data-guide-target='settings'
             icon={<SettingOutlined />}
             onClick={onOpenSettings}
           />

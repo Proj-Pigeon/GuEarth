@@ -4,8 +4,14 @@ import { test } from 'node:test'
 
 import { wrapText } from '../src/renderer/src/offscreenText.ts'
 
-const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
-const viewerSource = await readFile(new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url), 'utf8')
+const offscreenSource = await readFile(
+  new URL('../src/renderer/src/offscreen.tsx', import.meta.url),
+  'utf8'
+)
+const viewerSource = await readFile(
+  new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url),
+  'utf8'
+)
 const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
 
 function sliceBetween(source, start, end) {
@@ -16,7 +22,7 @@ function sliceBetween(source, start, end) {
   return source.slice(from, to)
 }
 
-const subtitleContext = { measureText: (text) => ({ width: text.length * 10 }) }
+const subtitleContext = { measureText: text => ({ width: text.length * 10 }) }
 
 test('subtitle wrapping breaks lines on real newline characters', () => {
   assert.deepEqual(wrapText(subtitleContext, 'abc\ndef', 1000), ['abc', 'def'])
@@ -43,23 +49,45 @@ test('offscreen imports the subtitle text helper instead of defining it', () => 
 test('a failed basemap does not abort the rest of the scene snapshot and is not retried', () => {
   assert.match(offscreenSource, /const failedImageryKeys = new Set<string>\(\)/)
 
-  const applySnapshotBody = sliceBetween(offscreenSource, 'async function applySnapshot(', 'function applySceneState(')
+  const applySnapshotBody = sliceBetween(
+    offscreenSource,
+    'async function applySnapshot(',
+    'function applySceneState('
+  )
   const catchBody = sliceBetween(applySnapshotBody, '} catch {', 'imageryLayers.forEach')
   assert.match(catchBody, /failedImageryKeys\.add\(imageryKey\)/)
   assert.match(catchBody, /reportNotice\(`录制画面的底图[^\r\n]*\)/)
   assert.doesNotMatch(catchBody, /return/)
 
-  assert.match(applySnapshotBody, /if \(!imageryLayers\.has\(imageryKey\) && !failedImageryKeys\.has\(imageryKey\)\)/)
+  assert.match(
+    applySnapshotBody,
+    /if \(!imageryLayers\.has\(imageryKey\) && !failedImageryKeys\.has\(imageryKey\)\)/
+  )
 
   const noticeAt = applySnapshotBody.indexOf('reportNotice(`录制画面的底图')
-  const remainingState = ['climateStore.setEnsoPhase', 'climateStore.setSeaLevelRise', 'transportStore.setYear', 'climateStore.setOverlay', 'climateStore.setMonth', 'solarStore.setActive(true)', 'solarStore.setMotionPanel']
+  const remainingState = [
+    'climateStore.setEnsoPhase',
+    'climateStore.setSeaLevelRise',
+    'transportStore.setYear',
+    'climateStore.setOverlay',
+    'climateStore.setMonth',
+    'solarStore.setActive(true)',
+    'solarStore.setMotionPanel'
+  ]
   for (const call of remainingState) {
     const at = applySnapshotBody.indexOf(call)
     assert.ok(at > noticeAt, `${call} must still run after a basemap failure`)
   }
-  assert.match(applySnapshotBody, /imageryLayers\.forEach\(\(layer, id\) => \{ layer\.show = id === imageryKey \}\)/)
+  assert.match(
+    applySnapshotBody,
+    /imageryLayers\.forEach\(\(layer, id\) => \{ layer\.show = id === imageryKey \}\)/
+  )
 
-  const prepareBody = sliceBetween(offscreenSource, 'async function prepare(', 'async function play(')
+  const prepareBody = sliceBetween(
+    offscreenSource,
+    'async function prepare(',
+    'async function play('
+  )
   assert.match(prepareBody, /failedImageryKeys\.clear\(\)/)
   assert.match(prepareBody, /terrainLighting = script\.terrain\.lighting/)
 })
@@ -67,11 +95,24 @@ test('a failed basemap does not abort the rest of the scene snapshot and is not 
 test('the recorded film matches the visible window lighting rule', () => {
   assert.match(offscreenSource, /let terrainLighting = false/)
   assert.match(offscreenSource, /terrainLighting = script\.terrain\.lighting/)
-  assert.match(offscreenSource, /viewer\.scene\.globe\.enableLighting = terrainLighting \|\| snapshot\.simTime !== null/)
+  assert.match(
+    offscreenSource,
+    /viewer\.scene\.globe\.enableLighting = terrainLighting \|\| snapshot\.simTime !== null/
+  )
 
-  const applyTerrainBody = sliceBetween(offscreenSource, 'async function applyTerrain(', 'function reportProgress(')
-  assert.match(applyTerrainBody, /viewer\.scene\.globe\.enableLighting = terrainLighting\r?\n\s+viewer\.scene\.requestRender\(\)/)
+  const applyTerrainBody = sliceBetween(
+    offscreenSource,
+    'async function applyTerrain(',
+    'function reportProgress('
+  )
+  assert.match(
+    applyTerrainBody,
+    /viewer\.scene\.globe\.enableLighting = terrainLighting\r?\n\s+viewer\.scene\.requestRender\(\)/
+  )
 
-  assert.match(viewerSource, /currentViewer\.scene\.globe\.enableLighting = store\.terrainLighting \|\| solarStore\.active/)
+  assert.match(
+    viewerSource,
+    /currentViewer\.scene\.globe\.enableLighting = store\.terrainLighting \|\| solarStore\.active/
+  )
   assert.match(mainSource, /lighting: value\.lighting === true/)
 })

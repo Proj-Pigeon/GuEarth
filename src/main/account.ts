@@ -1,7 +1,9 @@
-import { app, BrowserWindow, ipcMain, net, shell } from 'electron'
 import { randomBytes } from 'crypto'
 import { hostname } from 'os'
 import { join } from 'path'
+
+import { app, BrowserWindow, ipcMain, net, shell } from 'electron'
+
 import { logger } from '../common/logger'
 import {
   accountPhaseLabel,
@@ -36,8 +38,8 @@ import {
   type PassportEndpoints,
   type PassportTokenResponse
 } from '../common/passport'
-import { clearProviderKey, readProviderKey, writeProviderKey } from './keyVault'
 import { readJson, serialQueue, writeJson } from './jsonStore'
+import { clearProviderKey, readProviderKey, writeProviderKey } from './keyVault'
 
 const REQUEST_TIMEOUT_MS = 15_000
 const DISCOVERY_TTL_MS = 5 * 60_000
@@ -79,7 +81,10 @@ let restoring = false
 const enqueueAccount = serialQueue()
 
 function passportIssuer(): string {
-  return normalizeIssuer(process.env['GUEARTH_PASSPORT_ISSUER'] ?? PASSPORT_DEFAULT_ISSUER) || PASSPORT_DEFAULT_ISSUER
+  return (
+    normalizeIssuer(process.env['GUEARTH_PASSPORT_ISSUER'] ?? PASSPORT_DEFAULT_ISSUER) ||
+    PASSPORT_DEFAULT_ISSUER
+  )
 }
 
 function passportAccountOrigin(): string {
@@ -139,7 +144,11 @@ function requestSignal(signal?: AbortSignal): AbortSignal {
   return signal ? AbortSignal.any([signal, timeout]) : timeout
 }
 
-async function postForm(url: string, body: URLSearchParams, signal: AbortSignal): Promise<Response> {
+async function postForm(
+  url: string,
+  body: URLSearchParams,
+  signal: AbortSignal
+): Promise<Response> {
   return net.fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
@@ -160,7 +169,8 @@ async function readPayload(response: Response): Promise<unknown> {
 async function resolveEndpoints(signal?: AbortSignal): Promise<PassportEndpoints> {
   const issuer = passportIssuer()
   const cached = endpoints
-  if (cached && cached.issuer === issuer && Date.now() - endpointsFetchedAt < DISCOVERY_TTL_MS) return cached
+  if (cached && cached.issuer === issuer && Date.now() - endpointsFetchedAt < DISCOVERY_TTL_MS)
+    return cached
   const timeoutSignal = requestSignal(signal)
   try {
     const response = await net.fetch(`${issuer}${PASSPORT_DISCOVERY_PATH}`, {
@@ -177,7 +187,10 @@ async function resolveEndpoints(signal?: AbortSignal): Promise<PassportEndpoints
       }
       logger.warn('account', 'Passport discovery 文档缺少设备流端点，已回退到 issuer 标准路径')
     } else {
-      logger.warn('account', `Passport discovery 请求返回 HTTP ${response.status}，已回退到 issuer 标准路径`)
+      logger.warn(
+        'account',
+        `Passport discovery 请求返回 HTTP ${response.status}，已回退到 issuer 标准路径`
+      )
     }
   } catch (error) {
     logger.warn('account', 'Passport discovery 请求失败，已回退到 issuer 标准路径', error)
@@ -215,10 +228,17 @@ function forgetTokens(): void {
 function readProfileCache(value: unknown): AccountProfile | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
   const record = value as Record<string, unknown>
-  if (typeof record.profile !== 'object' || record.profile === null || Array.isArray(record.profile)) return null
+  if (
+    typeof record.profile !== 'object' ||
+    record.profile === null ||
+    Array.isArray(record.profile)
+  )
+    return null
   const cached = record.profile as Record<string, unknown>
   if (typeof cached.sub !== 'string' || cached.sub === '') return null
-  const scopes = Array.isArray(cached.scopes) ? cached.scopes.filter((scope): scope is string => typeof scope === 'string') : []
+  const scopes = Array.isArray(cached.scopes)
+    ? cached.scopes.filter((scope): scope is string => typeof scope === 'string')
+    : []
   return {
     sub: cached.sub,
     username: typeof cached.username === 'string' ? cached.username : '',
@@ -230,8 +250,14 @@ function readProfileCache(value: unknown): AccountProfile | null {
 }
 
 function readPersistedAccount(value: unknown): PersistedAccount {
-  const record = typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
-  const signedIn = typeof record.signedInAt === 'number' && Number.isFinite(record.signedInAt) ? record.signedInAt : 0
+  const record =
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {}
+  const signedIn =
+    typeof record.signedInAt === 'number' && Number.isFinite(record.signedInAt)
+      ? record.signedInAt
+      : 0
   return {
     profile: readProfileCache(value),
     signedInAt: signedIn,
@@ -280,8 +306,14 @@ async function fetchUserInfo(token: string, signal?: AbortSignal): Promise<Accou
   })
   const payload = await readPayload(response)
   if (!response.ok) {
-    const failure = describeAuthorizationFailure(response.status, payload, retryAfterSeconds(response.headers.get('retry-after')))
-    throw Object.assign(new Error(failure.message), { invalidatesSession: failure.invalidatesSession || response.status === 401 })
+    const failure = describeAuthorizationFailure(
+      response.status,
+      payload,
+      retryAfterSeconds(response.headers.get('retry-after'))
+    )
+    throw Object.assign(new Error(failure.message), {
+      invalidatesSession: failure.invalidatesSession || response.status === 401
+    })
   }
   const info = parseUserInfo(payload)
   if (!info) throw new Error('鸽巢通行证返回的账户信息无效')
@@ -295,12 +327,19 @@ async function fetchUserInfo(token: string, signal?: AbortSignal): Promise<Accou
   }
 }
 
-async function requestToken(body: URLSearchParams, signal: AbortSignal): Promise<PassportTokenResponse> {
+async function requestToken(
+  body: URLSearchParams,
+  signal: AbortSignal
+): Promise<PassportTokenResponse> {
   const active = await resolveEndpoints(signal)
   const response = await postForm(active.tokenEndpoint, body, signal)
   const payload = await readPayload(response)
   if (!response.ok) {
-    const failure = describeAuthorizationFailure(response.status, payload, retryAfterSeconds(response.headers.get('retry-after')))
+    const failure = describeAuthorizationFailure(
+      response.status,
+      payload,
+      retryAfterSeconds(response.headers.get('retry-after'))
+    )
     throw Object.assign(new Error(failure.message), {
       terminal: failure.terminal,
       slowDown: failure.slowDown,
@@ -314,7 +353,12 @@ async function requestToken(body: URLSearchParams, signal: AbortSignal): Promise
   return tokens
 }
 
-async function exchangeDeviceCode(deviceCode: string, initialInterval: number, expiresAt: number, signal: AbortSignal): Promise<PassportTokenResponse> {
+async function exchangeDeviceCode(
+  deviceCode: string,
+  initialInterval: number,
+  expiresAt: number,
+  signal: AbortSignal
+): Promise<PassportTokenResponse> {
   let interval = clampInterval(initialInterval)
   for (;;) {
     await delay(interval * 1000, signal)
@@ -331,13 +375,21 @@ async function exchangeDeviceCode(deviceCode: string, initialInterval: number, e
       )
     } catch (error) {
       if (signal.aborted) throw new LoginCancelledError()
-      const failure = error as Error & { terminal?: boolean; slowDown?: boolean; retryable?: boolean; retryAfterSeconds?: number }
+      const failure = error as Error & {
+        terminal?: boolean
+        slowDown?: boolean
+        retryable?: boolean
+        retryAfterSeconds?: number
+      }
       if (failure.slowDown) {
         interval = clampInterval(interval + SLOW_DOWN_INCREMENT_SECONDS)
         continue
       }
       if (!failure.terminal && Date.now() < expiresAt) {
-        const wait = failure.retryAfterSeconds && failure.retryAfterSeconds > 0 ? failure.retryAfterSeconds : interval
+        const wait =
+          failure.retryAfterSeconds && failure.retryAfterSeconds > 0
+            ? failure.retryAfterSeconds
+            : interval
         interval = clampInterval(Math.max(wait, interval))
         continue
       }
@@ -399,7 +451,11 @@ async function startLogin(): Promise<AccountState> {
     )
     const payload = await readPayload(response)
     if (!response.ok) {
-      const failure = describeAuthorizationFailure(response.status, payload, retryAfterSeconds(response.headers.get('retry-after')))
+      const failure = describeAuthorizationFailure(
+        response.status,
+        payload,
+        retryAfterSeconds(response.headers.get('retry-after'))
+      )
       throw new Error(failure.message)
     }
     const accountOrigin = passportAccountOrigin()
@@ -418,7 +474,12 @@ async function startLogin(): Promise<AccountState> {
     verificationUriComplete = authorization.verificationUriComplete
     setPhase('awaiting-approval')
     void shell.openExternal(authorization.verificationUriComplete).catch(() => undefined)
-    const tokens = await exchangeDeviceCode(authorization.deviceCode, authorization.interval, expiresAt, controller.signal)
+    const tokens = await exchangeDeviceCode(
+      authorization.deviceCode,
+      authorization.interval,
+      expiresAt,
+      controller.signal
+    )
     if (controller.signal.aborted) throw new LoginCancelledError()
     setPhase('finalizing')
     await adoptTokens(tokens)
@@ -554,7 +615,10 @@ async function signOut(): Promise<AccountState> {
   pendingRemoteRevocation = refreshToken !== '' && !revokedRemotely
   await persistAccount()
   if (pendingRemoteRevocation) {
-    setPhase('signed-out', '本机已退出登录，但鸽巢通行证端的设备授权未能撤销，请到账号页的设备列表手动撤销此设备')
+    setPhase(
+      'signed-out',
+      '本机已退出登录，但鸽巢通行证端的设备授权未能撤销，请到账号页的设备列表手动撤销此设备'
+    )
   } else {
     setPhase('signed-out')
   }
@@ -618,7 +682,8 @@ async function openAccountDevices(): Promise<void> {
 
 async function openVerificationPage(): Promise<void> {
   const url = verificationUriComplete
-  if (!url || !isTrustedVerificationUriComplete(url, passportAccountOrigin())) throw new Error('当前没有可打开的登录确认页')
+  if (!url || !isTrustedVerificationUriComplete(url, passportAccountOrigin()))
+    throw new Error('当前没有可打开的登录确认页')
   await shell.openExternal(url)
 }
 
@@ -632,7 +697,9 @@ export function initAccount(): void {
     return snapshot()
   })
   ipcMain.handle('account:sign-out', (): Promise<AccountState> => signOut())
-  ipcMain.handle('account:dismiss-revocation-warning', (): Promise<AccountState> => dismissRevocationWarning())
+  ipcMain.handle('account:dismiss-revocation-warning', (): Promise<AccountState> =>
+    dismissRevocationWarning()
+  )
   ipcMain.handle('account:open-device-list', (): Promise<void> => openAccountDevices())
   ipcMain.handle('account:open-verification', (): Promise<void> => openVerificationPage())
 

@@ -20,14 +20,16 @@ const HAZEL_ALIAS_GROUPS: Record<string, readonly string[]> = {
 const HAZEL_ALIASES: Record<string, readonly string[]> = {}
 for (const [platform, aliases] of Object.entries(HAZEL_ALIAS_GROUPS)) {
   HAZEL_ALIASES[platform] = aliases
-  HAZEL_ALIASES[`${platform}_arm64`] = aliases.map((alias) => `${alias}_arm64`)
+  HAZEL_ALIASES[`${platform}_arm64`] = aliases.map(alias => `${alias}_arm64`)
 }
 
 export const DEB_INSTALL_EXECUTABLE = '/opt/GuEarth/guearth'
 export const DEB_INSTALL_RESOURCES = '/opt/GuEarth/resources'
 
 export function isDebInstallLocation(paths: readonly string[]): boolean {
-  return paths.some((candidate) => candidate === DEB_INSTALL_EXECUTABLE || candidate === DEB_INSTALL_RESOURCES)
+  return paths.some(
+    candidate => candidate === DEB_INSTALL_EXECUTABLE || candidate === DEB_INSTALL_RESOURCES
+  )
 }
 
 export type UpdateArch = 'x64' | 'arm64'
@@ -98,7 +100,11 @@ export function assetNameMatchesFeed(fileName: string, feedPlatform: string): bo
   return assetPlatform !== null && expected !== null && assetPlatform === expected
 }
 
-export function updateFeedPath(baseUrl: string, feedPlatform: string, currentVersion: string): string {
+export function updateFeedPath(
+  baseUrl: string,
+  feedPlatform: string,
+  currentVersion: string
+): string {
   return `${baseUrl.replace(/\/+$/, '')}/update/${feedPlatform}/${currentVersion}`
 }
 
@@ -118,7 +124,8 @@ function asArch(arch: string): UpdateArch | null {
 
 export function resolveLinuxPackageKind(runtime: UpdateRuntime): 'appimage' | 'deb' | null {
   const override = runtime.packageKindOverride?.trim()
-  if (runtime.allowPackageKindOverride && (override === 'appimage' || override === 'deb')) return override
+  if (runtime.allowPackageKindOverride && (override === 'appimage' || override === 'deb'))
+    return override
   if (runtime.appImagePath && runtime.appImagePath.trim()) return 'appimage'
   if (runtime.debInstalled) return 'deb'
   return null
@@ -147,15 +154,23 @@ export function isPathInsideDirectory(filePath: string, directory: string): bool
   return target.startsWith(prefix)
 }
 
-export function appImageInstallDestination(currentPath: string, assetFileName: string): string | null {
+export function appImageInstallDestination(
+  currentPath: string,
+  assetFileName: string
+): string | null {
   if (!isAbsolute(currentPath) || currentPath.includes('\0')) return null
   if (!SAFE_ASSET_NAME.test(assetFileName)) return null
   const existingBaseName = basename(currentPath)
-  if (existingBaseName === assetFileName || !VERSIONED_FILE_NAME.test(existingBaseName)) return currentPath
+  if (existingBaseName === assetFileName || !VERSIONED_FILE_NAME.test(existingBaseName))
+    return currentPath
   return join(dirname(currentPath), assetFileName)
 }
 
-export function installAppImageFile(installerPath: string, currentAppImage: string, assetFileName: string): string {
+export function installAppImageFile(
+  installerPath: string,
+  currentAppImage: string,
+  assetFileName: string
+): string {
   if (!ABSOLUTE_PATH.test(installerPath)) throw new Error('更新包路径无效')
   const destination = appImageInstallDestination(currentAppImage, assetFileName)
   if (!destination) throw new Error('AppImage 路径无效，无法安装更新')
@@ -186,7 +201,10 @@ function isTrustedDebTool(filePath: string | null, name: string): filePath is st
   return basename(filePath) === name && TRUSTED_EXECUTABLE_DIRS.includes(dirname(filePath))
 }
 
-export function findTrustedExecutable(name: string, directories: readonly string[] = TRUSTED_EXECUTABLE_DIRS): string | null {
+export function findTrustedExecutable(
+  name: string,
+  directories: readonly string[] = TRUSTED_EXECUTABLE_DIRS
+): string | null {
   if (!TRUSTED_DEB_TOOLS.has(name)) return null
   const seen = new Set<string>()
   for (const dir of directories) {
@@ -212,7 +230,12 @@ export function findTrustedExecutable(name: string, directories: readonly string
   return null
 }
 
-export function debInstallPlan(installerPath: string, uid: number, dpkgPath: string | null, pkexecPath: string | null): CommandPlan | null {
+export function debInstallPlan(
+  installerPath: string,
+  uid: number,
+  dpkgPath: string | null,
+  pkexecPath: string | null
+): CommandPlan | null {
   if (!ABSOLUTE_PATH.test(installerPath)) return null
   if (!isTrustedDebTool(dpkgPath, 'dpkg')) return null
   if (uid === 0) return { command: dpkgPath, args: ['-i', installerPath] }

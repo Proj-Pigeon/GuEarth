@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
 import { CloseOutlined, UndoOutlined } from '@ant-design/icons'
 import { Button, Slider } from 'antd'
+import { useMemo, useState } from 'react'
+
 import styles from './ObliquityPanel.module.css'
 
 export interface ObliquityPanelProps {
@@ -67,10 +68,34 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
     const tropic = obliquity
     return [
       { name: '北寒带', south: polar, north: 90, color: FRIGID_COLOR, labelable: 90 - polar >= 10 },
-      { name: '北温带', south: tropic, north: polar, color: TEMPERATE_COLOR, labelable: polar - tropic >= 10 },
-      { name: '热带', south: -tropic, north: tropic, color: TROPIC_COLOR, labelable: 2 * tropic >= 10 },
-      { name: '南温带', south: -polar, north: -tropic, color: TEMPERATE_COLOR, labelable: polar - tropic >= 10 },
-      { name: '南寒带', south: -90, north: -polar, color: FRIGID_COLOR, labelable: 90 - polar >= 10 }
+      {
+        name: '北温带',
+        south: tropic,
+        north: polar,
+        color: TEMPERATE_COLOR,
+        labelable: polar - tropic >= 10
+      },
+      {
+        name: '热带',
+        south: -tropic,
+        north: tropic,
+        color: TROPIC_COLOR,
+        labelable: 2 * tropic >= 10
+      },
+      {
+        name: '南温带',
+        south: -polar,
+        north: -tropic,
+        color: TEMPERATE_COLOR,
+        labelable: polar - tropic >= 10
+      },
+      {
+        name: '南寒带',
+        south: -90,
+        north: -polar,
+        color: FRIGID_COLOR,
+        labelable: 90 - polar >= 10
+      }
     ]
   }, [obliquity])
 
@@ -110,17 +135,23 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
   }, [obliquity])
 
   return (
-    <div className={styles.obliquityPanel} role="group" aria-label="黄赤交角可调探究">
+    <div className={styles.obliquityPanel} role='group' aria-label='黄赤交角可调探究'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>黄赤交角可调探究</span>
         <Button
-          type="text"
-          size="small"
-          aria-label="恢复真实黄赤交角 23.5 度"
+          type='text'
+          size='small'
+          aria-label='恢复真实黄赤交角 23.5 度'
           icon={<UndoOutlined />}
           onClick={() => setObliquity(REAL_OBLIQUITY)}
         />
-        <Button type="text" size="small" aria-label="关闭黄赤交角探究" icon={<CloseOutlined />} onClick={onClose} />
+        <Button
+          type='text'
+          size='small'
+          aria-label='关闭黄赤交角探究'
+          icon={<CloseOutlined />}
+          onClick={onClose}
+        />
       </div>
       <div className={styles.sliderRow}>
         <span className={styles.rowLabel}>黄赤交角</span>
@@ -131,8 +162,8 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
           step={0.5}
           marks={obliquityMarks}
           className={styles.obliquitySlider}
-          ariaLabelForHandle="黄赤交角"
-          onChange={(value) => setObliquity(value)}
+          ariaLabelForHandle='黄赤交角'
+          onChange={value => setObliquity(value)}
         />
         <span className={styles.rowValue}>{fmt(obliquity)}°</span>
       </div>
@@ -140,36 +171,70 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
       <svg
         viewBox={`0 ${-CURVE_TOP_PAD} ${CURVE_WIDTH} ${CURVE_HEIGHT + CURVE_TOP_PAD + 18}`}
         className={styles.declinationCurve}
-        role="img"
-        aria-label="太阳直射点纬度随日期变化的正弦曲线"
+        role='img'
+        aria-label='太阳直射点纬度随日期变化的正弦曲线'
       >
-        <line x1="0" y1={curveY(0)} x2={CURVE_WIDTH} y2={curveY(0)} stroke="rgba(0, 0, 0, 0.25)" strokeWidth="1" strokeDasharray="4 3" />
-        <line x1="0" y1={curveY(obliquity)} x2={CURVE_WIDTH} y2={curveY(obliquity)} stroke="rgba(250, 140, 22, 0.55)" strokeWidth="1" strokeDasharray="4 3" />
-        <line x1="0" y1={curveY(-obliquity)} x2={CURVE_WIDTH} y2={curveY(-obliquity)} stroke="rgba(250, 140, 22, 0.55)" strokeWidth="1" strokeDasharray="4 3" />
-        <path d={curvePoints} fill="none" stroke={TROPIC_COLOR} strokeWidth="2" />
-        <text x={CURVE_WIDTH - 4} y={curveY(obliquity) - 4} className={styles.axisLabel} textAnchor="end">
+        <line
+          x1='0'
+          y1={curveY(0)}
+          x2={CURVE_WIDTH}
+          y2={curveY(0)}
+          stroke='rgba(0, 0, 0, 0.25)'
+          strokeWidth='1'
+          strokeDasharray='4 3'
+        />
+        <line
+          x1='0'
+          y1={curveY(obliquity)}
+          x2={CURVE_WIDTH}
+          y2={curveY(obliquity)}
+          stroke='rgba(250, 140, 22, 0.55)'
+          strokeWidth='1'
+          strokeDasharray='4 3'
+        />
+        <line
+          x1='0'
+          y1={curveY(-obliquity)}
+          x2={CURVE_WIDTH}
+          y2={curveY(-obliquity)}
+          stroke='rgba(250, 140, 22, 0.55)'
+          strokeWidth='1'
+          strokeDasharray='4 3'
+        />
+        <path d={curvePoints} fill='none' stroke={TROPIC_COLOR} strokeWidth='2' />
+        <text
+          x={CURVE_WIDTH - 4}
+          y={curveY(obliquity) - 4}
+          className={styles.axisLabel}
+          textAnchor='end'
+        >
           北回归线 {fmt(obliquity)}°N
         </text>
-        <text x={CURVE_WIDTH - 4} y={curveY(-obliquity) + 12} className={styles.axisLabel} textAnchor="end">
+        <text
+          x={CURVE_WIDTH - 4}
+          y={curveY(-obliquity) + 12}
+          className={styles.axisLabel}
+          textAnchor='end'
+        >
           南回归线 {fmt(obliquity)}°S
         </text>
-        <text x={CURVE_WIDTH - 4} y={curveY(0) - 4} className={styles.axisLabel} textAnchor="end">
+        <text x={CURVE_WIDTH - 4} y={curveY(0) - 4} className={styles.axisLabel} textAnchor='end'>
           赤道 0°
         </text>
-        {SEASON_MARKS.map((mark) => (
+        {SEASON_MARKS.map(mark => (
           <g key={mark.label}>
             <line
               x1={(mark.day / 365) * CURVE_WIDTH}
               y1={CURVE_HEIGHT}
               x2={(mark.day / 365) * CURVE_WIDTH}
               y2={CURVE_HEIGHT + 4}
-              stroke="rgba(0, 0, 0, 0.45)"
+              stroke='rgba(0, 0, 0, 0.45)'
             />
             <text
               x={(mark.day / 365) * CURVE_WIDTH}
               y={CURVE_HEIGHT + 16}
               className={styles.axisLabel}
-              textAnchor="middle"
+              textAnchor='middle'
             >
               {mark.label}
             </text>
@@ -181,34 +246,45 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
         <svg
           viewBox={`-58 0 ${BAR_WIDTH + 58 + 86} ${BAR_HEIGHT}`}
           className={styles.zoneBar}
-          role="img"
-          aria-label="五带划分随黄赤交角变化的纬度条"
+          role='img'
+          aria-label='五带划分随黄赤交角变化的纬度条'
         >
-          {boundaryMarks.map((mark) => (
+          {boundaryMarks.map(mark => (
             <g key={`${mark.label}-${mark.latitude}`}>
-              <line x1="-6" y1={barY(mark.latitude)} x2="-2" y2={barY(mark.latitude)} stroke="rgba(0, 0, 0, 0.45)" />
-              <text x="-8" y={barY(mark.latitude) + 4} className={styles.axisLabel} textAnchor="end">
+              <line
+                x1='-6'
+                y1={barY(mark.latitude)}
+                x2='-2'
+                y2={barY(mark.latitude)}
+                stroke='rgba(0, 0, 0, 0.45)'
+              />
+              <text
+                x='-8'
+                y={barY(mark.latitude) + 4}
+                className={styles.axisLabel}
+                textAnchor='end'
+              >
                 {mark.label}
               </text>
             </g>
           ))}
-          {zoneSegments.map((segment) => (
+          {zoneSegments.map(segment => (
             <rect
               key={segment.name}
-              x="0"
+              x='0'
               y={barY(segment.north)}
               width={BAR_WIDTH}
               height={Math.max(0, barY(segment.south) - barY(segment.north))}
               fill={segment.color}
-              opacity="0.75"
+              opacity='0.75'
             />
           ))}
-          <text x="-58" y="10" className={styles.axisLabel}>
+          <text x='-58' y='10' className={styles.axisLabel}>
             极昼极夜最低纬度 {fmt(90 - obliquity)}°
           </text>
           {zoneSegments
-            .filter((item) => item.labelable)
-            .map((segment) => (
+            .filter(item => item.labelable)
+            .map(segment => (
               <g key={`label-${segment.name}`}>
                 <text
                   x={BAR_WIDTH + 8}
@@ -222,7 +298,7 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
             ))}
         </svg>
         <div className={styles.zoneFacts}>
-          {zoneWidthText.map((fact) => (
+          {zoneWidthText.map(fact => (
             <div key={fact} className={styles.factItem}>
               {fact}
             </div>

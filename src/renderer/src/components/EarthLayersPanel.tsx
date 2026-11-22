@@ -1,7 +1,9 @@
-import { useState } from 'react'
 import { CloseOutlined } from '@ant-design/icons'
 import { Button } from 'antd'
+import { useState } from 'react'
+
 import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
+
 import styles from './EarthLayersPanel.module.css'
 
 export interface EarthLayersPanelProps {
@@ -71,7 +73,14 @@ const arcs: Array<{ id: LayerId; r: number }> = [
 
 const reversedArcs = [...arcs].reverse()
 
-const callouts: Array<{ id: LayerId; x: number; y: number; anchorX: number; anchorY: number; side: 'left' | 'right' }> = [
+const callouts: Array<{
+  id: LayerId
+  x: number
+  y: number
+  anchorX: number
+  anchorY: number
+  side: 'left' | 'right'
+}> = [
   { id: 'crust', x: 44, y: 40, anchorX: 100, anchorY: 40, side: 'left' },
   { id: 'mantle', x: 40, y: 96, anchorX: 82, anchorY: 118, side: 'left' },
   { id: 'outer-core', x: 306, y: 84, anchorX: 262, anchorY: 116, side: 'right' },
@@ -89,31 +98,42 @@ export function EarthLayersPanel({ onClose }: EarthLayersPanelProps) {
   const meta = layers[active]
 
   return (
-    <div className={styles.layersPanel} role="group" aria-label="地球圈层结构">
+    <div className={styles.layersPanel} role='group' aria-label='地球圈层结构'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>地球的圈层结构</span>
-        <Button type="text" size="small" aria-label="关闭地球圈层结构" icon={<CloseOutlined />} onClick={onClose} />
+        <Button
+          type='text'
+          size='small'
+          aria-label='关闭地球圈层结构'
+          icon={<CloseOutlined />}
+          onClick={onClose}
+        />
       </div>
-      <svg viewBox="0 0 340 210" className={styles.earthSvg} role="img" aria-label="地球内部圈层切球剖面示意">
+      <svg
+        viewBox='0 0 340 210'
+        className={styles.earthSvg}
+        role='img'
+        aria-label='地球内部圈层切球剖面示意'
+      >
         <defs>
-          <radialGradient id="el-crust" cx="50%" cy="100%" r="100%">
-            <stop offset="88%" stopColor={dc.crust} stopOpacity="0.55" />
-            <stop offset="100%" stopColor={dc.crust} stopOpacity="0.85" />
+          <radialGradient id='el-crust' cx='50%' cy='100%' r='100%'>
+            <stop offset='88%' stopColor={dc.crust} stopOpacity='0.55' />
+            <stop offset='100%' stopColor={dc.crust} stopOpacity='0.85' />
           </radialGradient>
-          <radialGradient id="el-mantle" cx="50%" cy="100%" r="100%">
-            <stop offset="60%" stopColor={dc.mantle} stopOpacity="0.55" />
-            <stop offset="100%" stopColor={dc.mantle} stopOpacity="0.9" />
+          <radialGradient id='el-mantle' cx='50%' cy='100%' r='100%'>
+            <stop offset='60%' stopColor={dc.mantle} stopOpacity='0.55' />
+            <stop offset='100%' stopColor={dc.mantle} stopOpacity='0.9' />
           </radialGradient>
-          <radialGradient id="el-outer-core" cx="50%" cy="100%" r="160%">
-            <stop offset="40%" stopColor={dc.outerCore} stopOpacity="0.65" />
-            <stop offset="100%" stopColor={dc.outerCore} stopOpacity="1" />
+          <radialGradient id='el-outer-core' cx='50%' cy='100%' r='160%'>
+            <stop offset='40%' stopColor={dc.outerCore} stopOpacity='0.65' />
+            <stop offset='100%' stopColor={dc.outerCore} stopOpacity='1' />
           </radialGradient>
-          <radialGradient id="el-inner-core" cx="50%" cy="100%" r="220%">
-            <stop offset="30%" stopColor="#ff7a45" />
-            <stop offset="100%" stopColor={dc.innerCore} />
+          <radialGradient id='el-inner-core' cx='50%' cy='100%' r='220%'>
+            <stop offset='30%' stopColor='#ff7a45' />
+            <stop offset='100%' stopColor={dc.innerCore} />
           </radialGradient>
         </defs>
-        {reversedArcs.map((arc) => (
+        {reversedArcs.map(arc => (
           <g key={arc.id}>
             <path
               d={`M ${170 - arc.r} 178 A ${arc.r} ${arc.r} 0 0 1 ${170 + arc.r} 178 Z`}
@@ -132,12 +152,17 @@ export function EarthLayersPanel({ onClose }: EarthLayersPanelProps) {
             />
           </g>
         ))}
-        <line x1="0" y1="178" x2="340" y2="178" stroke="rgba(0,0,0,0.32)" strokeWidth="1.5" />
-        <g fontFamily={diagramFont} fontSize="10">
-          {callouts.map((c) => (
+        <line x1='0' y1='178' x2='340' y2='178' stroke='rgba(0,0,0,0.32)' strokeWidth='1.5' />
+        <g fontFamily={diagramFont} fontSize='10'>
+          {callouts.map(c => (
             <g key={c.id} className={styles.callout} onClick={() => setActive(c.id)}>
-              <path d={`M ${c.x} ${c.y} L ${c.anchorX} ${c.anchorY}`} stroke={layers[c.id].color} strokeWidth="1" opacity="0.7" />
-              <circle cx={c.anchorX} cy={c.anchorY} r="2.2" fill={layers[c.id].color} />
+              <path
+                d={`M ${c.x} ${c.y} L ${c.anchorX} ${c.anchorY}`}
+                stroke={layers[c.id].color}
+                strokeWidth='1'
+                opacity='0.7'
+              />
+              <circle cx={c.anchorX} cy={c.anchorY} r='2.2' fill={layers[c.id].color} />
               <text
                 x={c.x}
                 y={c.y - 5}
@@ -149,14 +174,18 @@ export function EarthLayersPanel({ onClose }: EarthLayersPanelProps) {
               </text>
             </g>
           ))}
-          <text x="12" y="192" fill={dc.inkTertiary}>
+          <text x='12' y='192' fill={dc.inkTertiary}>
             莫霍面
           </text>
-          <text x="328" y="192" textAnchor="end" fill={dc.inkTertiary}>
+          <text x='328' y='192' textAnchor='end' fill={dc.inkTertiary}>
             古登堡面
           </text>
-          <path d="M 40 186 L 60 178 M 300 186 L 256 178" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" />
-          <text x="170" y="206" textAnchor="middle" fill={dc.inkTertiary}>
+          <path
+            d='M 40 186 L 60 178 M 300 186 L 256 178'
+            stroke='rgba(0,0,0,0.25)'
+            strokeWidth='0.8'
+          />
+          <text x='170' y='206' textAnchor='middle' fill={dc.inkTertiary}>
             剖面比例经夸张示意（真实地壳仅约地球半径 1/375）
           </text>
         </g>
@@ -165,8 +194,10 @@ export function EarthLayersPanel({ onClose }: EarthLayersPanelProps) {
         {layerEntries.map(([id, value]) => (
           <button
             key={id}
-            type="button"
-            className={active === id ? `${styles.layerTab} ${styles.layerTabActive}` : styles.layerTab}
+            type='button'
+            className={
+              active === id ? `${styles.layerTab} ${styles.layerTabActive}` : styles.layerTab
+            }
             style={{ borderColor: value.color }}
             onClick={() => setActive(id)}
           >
@@ -178,13 +209,13 @@ export function EarthLayersPanel({ onClose }: EarthLayersPanelProps) {
       <div className={styles.layerDepth}>
         {meta.name} · 深度范围：{meta.depth}
       </div>
-      {meta.facts.map((fact) => (
+      {meta.facts.map(fact => (
         <div key={fact} className={styles.fact}>
           · {fact}
         </div>
       ))}
       <div className={styles.sectionTitle}>两个不连续面与地震波</div>
-      {boundaryNotes.map((note) => (
+      {boundaryNotes.map(note => (
         <div key={note} className={styles.fact}>
           {note}
         </div>

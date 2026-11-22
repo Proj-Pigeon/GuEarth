@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import { useOnlineDataStore } from '@renderer/stores/onlineData'
 import {
   Alert,
   App as AntdApp,
@@ -16,14 +17,15 @@ import {
   Tooltip,
   Typography
 } from 'antd'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { useOnlineDataStore } from '@renderer/stores/onlineData'
+import { useCallback, useEffect, useRef, useState } from 'react'
+
 import {
   normalizeQWeatherHost,
   validateQWeatherApiKey,
   type LaboratoryProvider,
   type LaboratoryProviderInput
 } from '../../../../common/onlineData'
+
 import styles from './LaboratorySettings.module.css'
 
 export interface LaboratorySettingsProps {
@@ -50,7 +52,7 @@ const PROVIDER_OPTIONS = [{ value: 'qweather' as const, label: '和风天气' }]
 
 export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsProps) {
   const { message } = AntdApp.useApp()
-  const snapshot = useOnlineDataStore((state) => state.snapshot)
+  const snapshot = useOnlineDataStore(state => state.snapshot)
 
   const [providers, setProviders] = useState<LaboratoryProvider[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -65,8 +67,10 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
   const [keyError, setKeyError] = useState('')
 
   const busy = operation !== null
-  const provider = providers.find((item) => item.provider === 'qweather')
-  const providerIssue = !provider?.configured ? '配置异常，请重新填写' : snapshot?.typhoonError || ''
+  const provider = providers.find(item => item.provider === 'qweather')
+  const providerIssue = !provider?.configured
+    ? '配置异常，请重新填写'
+    : snapshot?.typhoonError || ''
   const keyRequired = !editing || !provider?.configured
   const actionsDisabled = busy || editorOpen || removeOpen
 
@@ -129,7 +133,7 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
     setEditing(edit)
     setDraft({
       ...INITIAL_DRAFT,
-      apiHost: edit ? provider?.apiHost ?? '' : ''
+      apiHost: edit ? (provider?.apiHost ?? '') : ''
     })
     setEditorOpen(true)
   }
@@ -158,7 +162,11 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
     setHostError(nextHostError)
     setKeyError(nextKeyError)
     if (nextHostError || nextKeyError) return
-    const input: LaboratoryProviderInput = { category: draft.category, provider: draft.provider, apiHost }
+    const input: LaboratoryProviderInput = {
+      category: draft.category,
+      provider: draft.provider,
+      apiHost
+    }
     if (apiKey) input.apiKey = apiKey
     setOperation('save')
     setOperationError('')
@@ -199,20 +207,20 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
   }
 
   return (
-    <section className={styles.settingsSection} data-settings-section="" aria-label="实验室设置">
+    <section className={styles.settingsSection} data-settings-section='' aria-label='实验室设置'>
       <h3 className={styles.sectionTitle}>实验室</h3>
 
-      <section className={styles.settingsBlock} aria-label="数据源">
+      <section className={styles.settingsBlock} aria-label='数据源'>
         <h4 className={styles.blockHeading}>数据源</h4>
         <Card
-          title="天气数据源"
-          size="small"
+          title='天气数据源'
+          size='small'
           extra={
-            <Tooltip title="添加数据源">
+            <Tooltip title='添加数据源'>
               <Button
-                type="text"
+                type='text'
                 disabled={actionsDisabled || !loaded || Boolean(loadError) || Boolean(provider)}
-                aria-label="添加数据源"
+                aria-label='添加数据源'
                 icon={<PlusOutlined />}
                 onClick={() => openEditor(false)}
               />
@@ -220,12 +228,12 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
           }
         >
           {operation === 'load' ? (
-            <Spin className={styles.loading} description="加载中…">
+            <Spin className={styles.loading} description='加载中…'>
               <div className={styles.loadingSpace} />
             </Spin>
           ) : loadError ? (
             <Alert
-              type="error"
+              type='error'
               showIcon
               title={loadError}
               action={
@@ -251,21 +259,21 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
                 <p className={styles.providerHost}>API Host：{provider.apiHost}</p>
               </div>
               <div className={styles.providerActions}>
-                <Tooltip title="编辑">
+                <Tooltip title='编辑'>
                   <Button
-                    type="text"
+                    type='text'
                     disabled={actionsDisabled}
-                    aria-label="编辑数据源"
+                    aria-label='编辑数据源'
                     icon={<EditOutlined />}
                     onClick={() => openEditor(true)}
                   />
                 </Tooltip>
-                <Tooltip title="删除">
+                <Tooltip title='删除'>
                   <Button
-                    type="text"
+                    type='text'
                     danger
                     disabled={actionsDisabled}
-                    aria-label="删除数据源"
+                    aria-label='删除数据源'
                     icon={<DeleteOutlined />}
                     onClick={confirmRemove}
                   />
@@ -273,7 +281,7 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
               </div>
             </div>
           ) : loaded ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂未添加数据源" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description='暂未添加数据源' />
           ) : null}
         </Card>
       </section>
@@ -283,7 +291,7 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
         title={editing ? '编辑数据源' : '添加数据源'}
         width={480}
         okText={operationError ? '重试' : '保存'}
-        cancelText="取消"
+        cancelText='取消'
         confirmLoading={operation === 'save'}
         okButtonProps={{ disabled: busy }}
         cancelButtonProps={{ disabled: busy }}
@@ -294,40 +302,40 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
         onOk={() => void saveProvider()}
         onCancel={closeDialogs}
       >
-        <Form layout="vertical" disabled={busy}>
-          <Form.Item label="类型" required>
+        <Form layout='vertical' disabled={busy}>
+          <Form.Item label='类型' required>
             <Select
               value={draft.category}
               options={CATEGORY_OPTIONS}
-              onChange={(value) => setDraft((prev) => ({ ...prev, category: value }))}
+              onChange={value => setDraft(prev => ({ ...prev, category: value }))}
             />
           </Form.Item>
-          <Form.Item label="平台" required>
+          <Form.Item label='平台' required>
             <Select
               value={draft.provider}
               options={PROVIDER_OPTIONS}
-              onChange={(value) => setDraft((prev) => ({ ...prev, provider: value }))}
+              onChange={value => setDraft(prev => ({ ...prev, provider: value }))}
             />
           </Form.Item>
           <Form.Item
-            label="API Host"
+            label='API Host'
             required
             validateStatus={hostError ? 'error' : undefined}
             help={hostError || undefined}
           >
             <Input
               value={draft.apiHost}
-              placeholder="如 xxx.qweatherapi.com"
-              autoComplete="off"
-              onChange={(event) => {
-                setDraft((prev) => ({ ...prev, apiHost: event.target.value }))
+              placeholder='如 xxx.qweatherapi.com'
+              autoComplete='off'
+              onChange={event => {
+                setDraft(prev => ({ ...prev, apiHost: event.target.value }))
                 setHostError('')
               }}
               onPressEnter={() => void saveProvider()}
             />
           </Form.Item>
           <Form.Item
-            label="API Key"
+            label='API Key'
             required={keyRequired}
             validateStatus={keyError ? 'error' : undefined}
             help={keyError || undefined}
@@ -335,24 +343,26 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
             <Input.Password
               value={draft.apiKey}
               placeholder={keyRequired ? '输入 API Key' : '留空则保持不变'}
-              autoComplete="new-password"
-              onChange={(event) => {
-                setDraft((prev) => ({ ...prev, apiKey: event.target.value }))
+              autoComplete='new-password'
+              onChange={event => {
+                setDraft(prev => ({ ...prev, apiKey: event.target.value }))
                 setKeyError('')
               }}
               onPressEnter={() => void saveProvider()}
             />
           </Form.Item>
         </Form>
-        {operationError && <Alert className={styles.formError} type="error" showIcon title={operationError} />}
+        {operationError && (
+          <Alert className={styles.formError} type='error' showIcon title={operationError} />
+        )}
       </Modal>
 
       <Modal
         open={removeOpen}
-        title="移除和风天气？"
+        title='移除和风天气？'
         width={480}
         okText={operationError ? '重试' : '移除'}
-        cancelText="取消"
+        cancelText='取消'
         confirmLoading={operation === 'remove'}
         okButtonProps={{ danger: true, disabled: busy }}
         cancelButtonProps={{ disabled: busy }}
@@ -363,7 +373,9 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
         onCancel={closeDialogs}
       >
         <p>移除后将不再使用该数据源获取实时天气数据。</p>
-        {operationError && <Alert className={styles.formError} type="error" showIcon title={operationError} />}
+        {operationError && (
+          <Alert className={styles.formError} type='error' showIcon title={operationError} />
+        )}
       </Modal>
     </section>
   )

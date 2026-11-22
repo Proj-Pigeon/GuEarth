@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { fanMigrationEndpoints, migrationFlows, smoothMigrationPath } from '../src/renderer/src/thematic/populationCensus.ts'
+
+import {
+  fanMigrationEndpoints,
+  migrationFlows,
+  smoothMigrationPath
+} from '../src/renderer/src/thematic/populationCensus.ts'
 
 test('smoothed path passes through every waypoint', () => {
   for (const flow of migrationFlows) {
@@ -37,7 +42,10 @@ test('fanned endpoints stay near the destination and inside China', () => {
   const endpoints = fanMigrationEndpoints(migrationFlows)
   for (const flow of migrationFlows) {
     const [lon, lat] = endpoints.get(flow)
-    assert.ok(Math.hypot(lon - flow.to[0], lat - flow.to[1]) < 3, `${flow.fromName}→${flow.toName} drifted too far`)
+    assert.ok(
+      Math.hypot(lon - flow.to[0], lat - flow.to[1]) < 3,
+      `${flow.fromName}→${flow.toName} drifted too far`
+    )
     assert.ok(lon > 73 && lon < 136 && lat > 17 && lat < 54)
   }
 })

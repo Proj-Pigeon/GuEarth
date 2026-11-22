@@ -1,5 +1,3 @@
-import { useMemo, useState, type MouseEvent } from 'react'
-import { Alert, Button, Collapse, Drawer, Modal, Radio, Select, Slider, Switch, Tooltip } from 'antd'
 import { CloseOutlined, MoreOutlined, ReloadOutlined } from '@ant-design/icons'
 import {
   basemapCategories,
@@ -8,6 +6,20 @@ import {
   type LayerMeta,
   type ProviderMeta
 } from '@renderer/stores/globe'
+import {
+  Alert,
+  Button,
+  Collapse,
+  Drawer,
+  Modal,
+  Radio,
+  Select,
+  Slider,
+  Switch,
+  Tooltip
+} from 'antd'
+import { useMemo, useState, type MouseEvent } from 'react'
+
 import styles from './LayerPanel.module.css'
 
 export interface LayerPanelProps {
@@ -39,7 +51,7 @@ interface BasemapOption {
   activeLayer?: LayerMeta
 }
 
-const terrainSelectOptions = terrainCatalog.map((option) => ({
+const terrainSelectOptions = terrainCatalog.map(option => ({
   value: option.id,
   label: option.name,
   title: option.description
@@ -69,11 +81,11 @@ export function LayerPanel({
 
   const basemapOptions = useMemo<BasemapOption[]>(
     () =>
-      basemapCategories.map((category) => {
+      basemapCategories.map(category => {
         const providers = category.providerIds
-          .map((id) => providerCatalog.find((provider) => provider.id === id))
+          .map(id => providerCatalog.find(provider => provider.id === id))
           .filter((provider): provider is ProviderMeta => Boolean(provider))
-        const activeProviderId = providers.some((provider) => provider.id === selectedLayerId)
+        const activeProviderId = providers.some(provider => provider.id === selectedLayerId)
           ? selectedLayerId
           : (providers[0]?.id ?? '')
         return {
@@ -82,17 +94,18 @@ export function LayerPanel({
           selected: category.providerIds.includes(selectedLayerId),
           providers,
           activeProviderId,
-          activeProviderName: providers.find((provider) => provider.id === activeProviderId)?.name ?? '',
-          activeLayer: layers.find((layer) => layer.id === activeProviderId)
+          activeProviderName:
+            providers.find(provider => provider.id === activeProviderId)?.name ?? '',
+          activeLayer: layers.find(layer => layer.id === activeProviderId)
         }
       }),
     [layers, selectedLayerId]
   )
 
   const activeTerrainName =
-    terrainCatalog.find((terrain) => terrain.id === activeTerrainId)?.name ?? ''
+    terrainCatalog.find(terrain => terrain.id === activeTerrainId)?.name ?? ''
   const terrainDegraded = Boolean(activeTerrainId) && activeTerrainId !== terrainProviderId
-  const settingsCategory = basemapOptions.find((option) => option.id === settingsCategoryId)
+  const settingsCategory = basemapOptions.find(option => option.id === settingsCategoryId)
   const settingsOpacity = Math.round((settingsCategory?.activeLayer?.opacity ?? 1) * 100)
 
   function openSettings(id: string, event: MouseEvent): void {
@@ -112,7 +125,7 @@ export function LayerPanel({
   return (
     <Drawer
       open={open}
-      placement="right"
+      placement='right'
       size={360}
       mask={false}
       closable={false}
@@ -120,19 +133,24 @@ export function LayerPanel({
       title={
         <div className={styles.panelTitle}>
           <h2 className={styles.panelHeading}>图层管理</h2>
-          <Button type="text" aria-label="关闭图层管理" icon={<CloseOutlined />} onClick={onClose} />
+          <Button
+            type='text'
+            aria-label='关闭图层管理'
+            icon={<CloseOutlined />}
+            onClick={onClose}
+          />
         </div>
       }
       onClose={onClose}
     >
       {error && (
         <Alert
-          type="error"
+          type='error'
           showIcon
           title={error}
           className={styles.panelAlert}
           action={
-            <Button type="text" size="small" icon={<ReloadOutlined />} onClick={onRetry}>
+            <Button type='text' size='small' icon={<ReloadOutlined />} onClick={onRetry}>
               重试
             </Button>
           }
@@ -141,7 +159,7 @@ export function LayerPanel({
       <div className={styles.layerSpin}>
         <section className={styles.panelSection}>
           <div>
-            {basemapOptions.map((option) => (
+            {basemapOptions.map(option => (
               <div
                 key={option.id}
                 className={
@@ -154,7 +172,7 @@ export function LayerPanel({
                 <Radio
                   checked={option.selected}
                   aria-label={`选择${option.name}底图`}
-                  onClick={(event) => event.stopPropagation()}
+                  onClick={event => event.stopPropagation()}
                   onChange={() => onSelect(option.activeProviderId)}
                 />
                 <div className={styles.basemapCopy}>
@@ -163,12 +181,12 @@ export function LayerPanel({
                 </div>
                 <Tooltip title={`${option.name}设置`}>
                   <Button
-                    type="text"
-                    size="small"
+                    type='text'
+                    size='small'
                     className={styles.moreButton}
                     aria-label={`${option.name}设置`}
                     icon={<MoreOutlined />}
-                    onClick={(event) => openSettings(option.id, event)}
+                    onClick={event => openSettings(option.id, event)}
                   />
                 </Tooltip>
               </div>
@@ -199,19 +217,19 @@ export function LayerPanel({
             max={5}
             step={0.5}
             marks={exaggerationMarks}
-            ariaLabelForHandle="地形垂直夸张倍数"
+            ariaLabelForHandle='地形垂直夸张倍数'
             onChange={(value: number) => onTerrainExaggeration(value)}
           />
           <div className={styles.terrainLightingRow}>
             <span>太阳光照</span>
             <Switch
-              size="small"
+              size='small'
               checked={terrainLighting}
               onChange={(value: boolean) => onTerrainLighting(value)}
             />
           </div>
           {terrainError && (
-            <Alert type="warning" title={terrainError} showIcon className={styles.terrainAlert} />
+            <Alert type='warning' title={terrainError} showIcon className={styles.terrainAlert} />
           )}
         </section>
       </div>
@@ -252,13 +270,19 @@ export function LayerPanel({
                       <Radio.Group
                         value={settingsCategory.activeProviderId}
                         className={styles.providerGroup}
-                        onChange={(event) => onSelect(String(event.target.value))}
+                        onChange={event => onSelect(String(event.target.value))}
                       >
-                        {settingsCategory.providers.map((provider) => (
-                          <Radio key={provider.id} value={provider.id} className={styles.providerRadio}>
+                        {settingsCategory.providers.map(provider => (
+                          <Radio
+                            key={provider.id}
+                            value={provider.id}
+                            className={styles.providerRadio}
+                          >
                             <div className={styles.providerCopy}>
                               <div className={styles.providerName}>{provider.name}</div>
-                              <div className={styles.providerDescription}>{provider.description}</div>
+                              <div className={styles.providerDescription}>
+                                {provider.description}
+                              </div>
                             </div>
                           </Radio>
                         ))}

@@ -29,7 +29,10 @@ export function aggregatePois(target: PoiAggregation, pois: readonly PoiSample[]
 }
 
 export function poiPageCount(reportedTotal: number, maxSamples: number): number {
-  return Math.min(POI_STATS_MAX_PAGES, Math.ceil(Math.min(reportedTotal, maxSamples) / POI_STATS_PAGE_SIZE))
+  return Math.min(
+    POI_STATS_MAX_PAGES,
+    Math.ceil(Math.min(reportedTotal, maxSamples) / POI_STATS_PAGE_SIZE)
+  )
 }
 
 export function poiTruncated(reportedTotal: number, pagesFetched: number): boolean {

@@ -1,6 +1,6 @@
+import { HSR_END_YEAR, HSR_START_YEAR } from '@renderer/thematic/hsrLines'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { HSR_END_YEAR, HSR_START_YEAR } from '@renderer/thematic/hsrLines'
 
 const YEARS_PER_SECOND = 2.2
 
@@ -41,7 +41,7 @@ export const useTransportStore = create<TransportStore>()(
       set({ panel: value })
     },
     togglePlaying(): void {
-      set((state) => ({ isPlaying: !state.isPlaying }))
+      set(state => ({ isPlaying: !state.isPlaying }))
     },
     advance(dtSeconds: number): void {
       const state = get()
