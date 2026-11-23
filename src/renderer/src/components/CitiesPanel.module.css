@@ -1,0 +1,118 @@
+.citiesPanel {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 400px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 8px;
+  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  z-index: 10;
+}
+
+.citiesPanel > * {
+  flex: none;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panelTitle {
+  margin-right: auto;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.chartTitle {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.fact {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.panelNote {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.panelAction {
+  margin-top: 2px;
+}
+
+.tierTable {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tierRow {
+  display: grid;
+  grid-template-columns: 1.4fr 0.5fr 0.7fr 0.8fr;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.04);
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.tierHead {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 11px;
+}
+
+.tierName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.tierDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.tierNum {
+  font-variant-numeric: tabular-nums;
+}
+
+.casePickers {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.caseSelect {
+  flex: 1;
+  min-width: 0;
+}
+
+.vs {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  flex: none;
+}

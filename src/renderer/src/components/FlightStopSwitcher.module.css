@@ -1,0 +1,165 @@
+.flightSwitcher {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100vw - 32px);
+  padding: 4px 8px;
+  background: #ffffff;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 8px;
+  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  z-index: 12;
+}
+
+.switcherBtn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.65);
+  border-radius: 4px;
+  font-size: 14px;
+  transition:
+    color 0.1s ease-out,
+    background-color 0.1s ease-out;
+}
+
+.switcherBtn:not(:disabled):hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.switcherBtn:disabled {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.switcherTrigger {
+  height: 32px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  border-radius: 4px;
+  transition:
+    color 0.1s ease-out,
+    background-color 0.1s ease-out;
+}
+
+.switcherTrigger:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.switcherBtn:focus-visible,
+.switcherTrigger:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 1px;
+}
+
+.switcherCounter {
+  flex-shrink: 0;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.switcherName {
+  min-width: 0;
+  max-width: min(200px, 36vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 22px;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.switcherArrow {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  transition: transform 0.2s ease-in-out;
+}
+
+.switcherArrowOpen {
+  transform: rotate(180deg);
+}
+
+.switcherDivider {
+  margin: 0 2px;
+  height: 16px;
+  border-inline-start-color: rgba(5, 5, 5, 0.06);
+}
+
+.flightSwitcherMenu {
+  min-width: 220px;
+  max-width: 320px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.flightSwitcherMenuRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.flightSwitcherMenuIndex {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.65);
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+:global(.ant-dropdown-menu-item-selected) .flightSwitcherMenuIndex {
+  background: #1677ff;
+  color: #ffffff;
+}
+
+.flightSwitcherMenuContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.flightSwitcherMenuName {
+  font-size: 14px;
+  line-height: 20px;
+  color: rgba(0, 0, 0, 0.88);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flightSwitcherMenuNote {
+  font-size: 12px;
+  line-height: 18px;
+  color: rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switcherBtn,
+  .switcherTrigger,
+  .switcherArrow {
+    transition-duration: 0.01ms;
+  }
+}

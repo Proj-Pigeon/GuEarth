@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { useEffect, useRef } from 'react'
 import { useVisibleAnimation } from './useVisibleAnimation'
 import * as Cesium from 'cesium'
 import type { EarthquakeEvent, EarthquakeFeed, ProvinceGeoDocument } from '../../../preload'
@@ -25,7 +25,7 @@ import { cityTierOf, DEFAULT_FUNCTIONAL_ZONE_CITY_ID, FUNCTIONAL_ZONES, function
 import { agriCategoryOf, agriculturalRegions, agriFacts, agriRegionSummary } from '@renderer/thematic/agriculturalRegions'
 import { industrialBases, industrialTransferFacts, industrialTransferFlows } from '@renderer/thematic/industrialBases'
 import { HSR_COLOR, hsrFacts, hsrLines } from '@renderer/thematic/hsrLines'
-import { cacheKeyOf, coastalZones, gridPointsOf, heightCache, isLandCell, isInundated, scenarioSummary, SEA_COLOR } from '@renderer/thematic/seaLevelRise'
+import { cacheKeyOf, coastalZones, gridPointsOf, heightCache, isLandCell, isInundated, scenarioSummary, SEA_COLOR, useSeaLevelStore } from '@renderer/thematic/seaLevelRise'
 import { ensureSeaLevelSamples } from '@renderer/composables/seaLevelSampling'
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useTransportStore } from '@renderer/stores/transport'
@@ -311,22 +311,14 @@ export interface ThematicLayerOptions {
   autoFocus?: boolean
 }
 
-export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, options?: ThematicLayerOptions): void {
-  const store = useClimateStore()
-  const solarStore = useSolarStore()
-  const transportStore = useTransportStore()
-  const failureStore = useFailureStore()
-  const globeStore = useGlobeStore()
-  const onlineData = useOnlineDataStore()
-  void onlineData.load()
-  const autoFocus = options?.autoFocus !== false
+function attachThematicLayers(
+  current: Cesium.Viewer,
+  coriolisProgressRef: { current: number },
+  autoFocusRef: { current: boolean }
+): () => void {
+  let disposed = false
+  let seaLevelSamplingCount = 0
   const sources = new Map<ThematicLayerId, Cesium.CustomDataSource>()
-  const coriolisProgress = ref(0)
-  useVisibleAnimation(() => store.overlays['coriolis-demo'] && Boolean(viewer.value), (dt) => {
-    if (dt > 0) coriolisProgress.value = (coriolisProgress.value + dt / 10) % 1
-    const current = viewer.value
-    if (current && !current.isDestroyed()) current.scene.requestRender()
-  })
 
   let rainBeltEntity: Cesium.Entity | undefined
   let subsolarEntity: Cesium.Entity | undefined
@@ -346,13 +338,14 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
 
   function refreshSubsolarPoint(): void {
     if (!subsolarEntity?.label) return
-    const point = subsolarPointDeg(solarStore.utcMs)
+    const point = subsolarPointDeg(useSolarStore.getState().utcMs)
     subsolarEntity.position = new Cesium.ConstantPositionProperty(Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude))
     subsolarEntity.label.text = new Cesium.ConstantProperty(`直射点 ${Math.abs(point.latitude).toFixed(1)}°${point.latitude >= 0 ? 'N' : 'S'}`)
   }
 
   function refreshSeasonalCurrents(): void {
-    for (const { entity, season } of seasonalCurrents) entity.show = (season === 'summer' ? store.summerStrength : store.winterStrength) > 0.5
+    const { summerStrength, winterStrength } = useClimateStore.getState()
+    for (const { entity, season } of seasonalCurrents) entity.show = (season === 'summer' ? summerStrength : winterStrength) > 0.5
   }
 
   function buildRainBelt(dataSource: Cesium.CustomDataSource): void {
@@ -373,7 +366,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       }
     })
-    refreshRainBelt(store.month)
+    refreshRainBelt(useClimateStore.getState().month)
   }
 
   function buildMonsoonArrows(dataSource: Cesium.CustomDataSource, season: 'summer' | 'winter'): void {
@@ -520,7 +513,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
         const isDeflected = track === demo.deflected
         dataSource.entities.add({
           position: new Cesium.CallbackPositionProperty(() => {
-            const [lon, lat] = sampleTrack(track, coriolisProgress.value)
+            const [lon, lat] = sampleTrack(track, coriolisProgressRef.current)
             return Cesium.Cartesian3.fromDegrees(lon, lat)
           }, false, Cesium.ReferenceFrame.FIXED),
           point: {
@@ -657,7 +650,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
         })
       })
     }
-    refreshPressureBeltGeometry(Math.round(store.month * 4) / 4)
+    refreshPressureBeltGeometry(Math.round(useClimateStore.getState().month * 4) / 4)
   }
 
   function buildKoppenZones(dataSource: Cesium.CustomDataSource): void {
@@ -759,7 +752,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
         })
       }
     })
-    viewer.value?.scene.requestRender()
+    if (!current.isDestroyed()) current.scene.requestRender()
   }
 
   async function loadEarthquakeEntities(dataSource: Cesium.CustomDataSource, refresh = false): Promise<void> {
@@ -767,16 +760,16 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
     try {
       feed = await window.guEarth.datasets.getEarthquakes(refresh)
     } catch {
-      if (sources.get('plate-tectonics') === dataSource) {
-        failureStore.reportFailure({ scope: 'dataset', message: '近期地震数据加载失败，暂仅显示板块边界与火山', detail: '请检查网络后点击重试', retryable: true })
+      if (!disposed && sources.get('plate-tectonics') === dataSource) {
+        useFailureStore.getState().reportFailure({ scope: 'dataset', message: '近期地震数据加载失败，暂仅显示板块边界与火山', detail: '请检查网络后点击重试', retryable: true })
       }
       return
     }
-    if (sources.get('plate-tectonics') !== dataSource) return
+    if (disposed || current.isDestroyed() || sources.get('plate-tectonics') !== dataSource) return
     if (feed.stale) {
-      failureStore.reportFailure({ scope: 'dataset', message: '地震数据更新失败，暂显示缓存数据', detail: '请检查网络后点击重试', retryable: true })
+      useFailureStore.getState().reportFailure({ scope: 'dataset', message: '地震数据更新失败，暂显示缓存数据', detail: '请检查网络后点击重试', retryable: true })
     } else {
-      failureStore.clearFailure('dataset')
+      useFailureStore.getState().clearFailure('dataset')
     }
     renderEarthquakeFeed(dataSource, feed)
   }
@@ -949,9 +942,9 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   }
 
   function buildTyphoon(dataSource: Cesium.CustomDataSource): void {
-    const snapshot = onlineData.snapshot
-    if (snapshot?.typhoonConfigured !== false && onlineData.typhoonMode === 'live') {
-      if (snapshot?.typhoonStatus === 'pending') void onlineData.ensureTyphoons()
+    const { snapshot, typhoonMode, ensureTyphoons } = useOnlineDataStore.getState()
+    if (snapshot?.typhoonConfigured !== false && typhoonMode === 'live') {
+      if (snapshot?.typhoonStatus === 'pending') void ensureTyphoons()
       if (snapshot?.typhoons) buildLiveTyphoons(dataSource, snapshot.typhoons, Boolean(snapshot.typhoonError))
       return
     }
@@ -1031,7 +1024,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   }
 
   function buildEnso(dataSource: Cesium.CustomDataSource): void {
-    const phase = ensoPhaseMeta[store.ensoPhase]
+    const phase = ensoPhaseMeta[useClimateStore.getState().ensoPhase]
     for (const item of phase.bands) {
       dataSource.entities.add({
         properties: new Cesium.PropertyBag({
@@ -1220,7 +1213,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   }
 
   function buildFunctionalZones(dataSource: Cesium.CustomDataSource): void {
-    const city = functionalZoneCityById(store.functionalZoneCityId) ?? functionalZoneCityById(DEFAULT_FUNCTIONAL_ZONE_CITY_ID) ?? functionalZoneCities[0]
+    const city = functionalZoneCityById(useClimateStore.getState().functionalZoneCityId) ?? functionalZoneCityById(DEFAULT_FUNCTIONAL_ZONE_CITY_ID) ?? functionalZoneCities[0]
     for (const district of city.districts) {
       const spec = FUNCTIONAL_ZONES.find((item) => item.kind === district.kind) ?? FUNCTIONAL_ZONES[0]
       const color = Cesium.Color.fromCssColorString(spec.color)
@@ -1372,7 +1365,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
         layerId: 'hsr-network',
         summary: `${line.note}。全长约 ${line.lengthKm} 公里，设计时速 ${line.designSpeed} 公里。${overview}`
       })
-      const opened = new Cesium.CallbackProperty(() => line.openedYear <= Math.floor(transportStore.year), false)
+      const opened = new Cesium.CallbackProperty(() => line.openedYear <= Math.floor(useTransportStore.getState().year), false)
       dataSource.entities.add({
         properties,
         polyline: {
@@ -1408,102 +1401,120 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
   }
 
   async function addInundationCells(dataSource: Cesium.CustomDataSource): Promise<void> {
-    const current = viewer.value
-    if (!current || current.isDestroyed()) return
-    const outcome = await ensureSeaLevelSamples(current)
-    if (sources.get('sea-level-rise') !== dataSource) return
+    if (disposed || current.isDestroyed()) return
+    seaLevelSamplingCount += 1
+    let outcome: Awaited<ReturnType<typeof ensureSeaLevelSamples>>
+    try {
+      outcome = await ensureSeaLevelSamples(current)
+    } finally {
+      seaLevelSamplingCount -= 1
+    }
+    if (disposed || current.isDestroyed() || sources.get('sea-level-rise') !== dataSource) return
     if (outcome === 'terrain-required') {
-      failureStore.reportFailure({ scope: 'sea-level-terrain', message: '请先在「图层管理 → 3D 地形」中开启「全球 3D 地形」', detail: '需要 3D 地形数据才能模拟淹没范围', retryable: true })
+      useFailureStore.getState().reportFailure({ scope: 'sea-level-terrain', message: '请先在「图层管理 → 3D 地形」中开启「全球 3D 地形」', detail: '需要 3D 地形数据才能模拟淹没范围', retryable: true })
       return
     }
     if (outcome === 'failed') {
-      failureStore.reportFailure({ scope: 'sea-level-terrain', message: '地形数据加载失败，淹没模拟暂不可用', detail: '请检查网络后重试', retryable: true })
+      useFailureStore.getState().reportFailure({ scope: 'sea-level-terrain', message: '地形数据加载失败，淹没模拟暂不可用', detail: '请检查网络后重试', retryable: true })
       return
     }
-    failureStore.clearFailure('sea-level-terrain')
-    const rise = store.seaLevelRise
+    useFailureStore.getState().clearFailure('sea-level-terrain')
+    const rise = useClimateStore.getState().seaLevelRise
     const color = Cesium.Color.fromCssColorString(SEA_COLOR)
     const properties = new Cesium.PropertyBag({
       name: `海平面上升 +${rise} 米情景`,
       layerId: 'sea-level-rise',
       summary: scenarioSummary(rise)
     })
-    for (const zone of coastalZones) {
-      for (const [lon, lat] of gridPointsOf(zone)) {
-        const height = heightCache.get(cacheKeyOf(lon, lat))
-        if (height === undefined || !isLandCell(lon, lat, height) || !isInundated(height, rise)) continue
-        const half = zone.step / 2
+    buildEntities(dataSource, () => {
+      for (const zone of coastalZones) {
+        for (const [lon, lat] of gridPointsOf(zone)) {
+          const height = heightCache.get(cacheKeyOf(lon, lat))
+          if (height === undefined || !isLandCell(lon, lat, height) || !isInundated(height, rise)) continue
+          const half = zone.step / 2
+          dataSource.entities.add({
+            properties,
+            polygon: {
+              hierarchy: new Cesium.PolygonHierarchy(
+                Cesium.Cartesian3.fromDegreesArray([lon - half, lat - half, lon + half, lat - half, lon + half, lat + half, lon - half, lat + half])
+              ),
+              height: rise,
+              material: color.withAlpha(0.5)
+            }
+          })
+        }
+      }
+      for (const zone of coastalZones) {
         dataSource.entities.add({
-          properties,
-          polygon: {
-            hierarchy: new Cesium.PolygonHierarchy(
-              Cesium.Cartesian3.fromDegreesArray([lon - half, lat - half, lon + half, lat - half, lon + half, lat + half, lon - half, lat + half])
-            ),
-            height: rise,
-            material: color.withAlpha(0.5)
+          properties: new Cesium.PropertyBag({
+            name: zone.name,
+            layerId: 'sea-level-rise',
+            summary: `${zone.note}。${scenarioSummary(rise)}`
+          }),
+          position: Cesium.Cartesian3.fromDegrees(zone.center[0], zone.center[1]),
+          label: {
+            text: zone.name,
+            font: labelFont(12, 600),
+            fillColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.65)'),
+            showBackground: true,
+            backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
+            backgroundPadding: new Cesium.Cartesian2(6, 3),
+            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 9000000)
           }
         })
       }
-    }
-    for (const zone of coastalZones) {
-      dataSource.entities.add({
-        properties: new Cesium.PropertyBag({
-          name: zone.name,
-          layerId: 'sea-level-rise',
-          summary: `${zone.note}。${scenarioSummary(store.seaLevelRise)}`
-        }),
-        position: Cesium.Cartesian3.fromDegrees(zone.center[0], zone.center[1]),
-        label: {
-          text: zone.name,
-          font: labelFont(12, 600),
-          fillColor: Cesium.Color.fromCssColorString('rgba(0, 0, 0, 0.65)'),
-          showBackground: true,
-          backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
-          backgroundPadding: new Cesium.Cartesian2(6, 3),
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 9000000)
-        }
-      })
-    }
+    })
+    if (!current.isDestroyed()) current.scene.requestRender()
   }
 
   function rebuildSeaLevelRise(): void {
-    const current = viewer.value
-    if (!current || current.isDestroyed()) return
+    if (disposed || current.isDestroyed()) return
     const existing = sources.get('sea-level-rise')
     if (!existing) return
     current.dataSources.remove(existing, true)
     sources.delete('sea-level-rise')
     const dataSource = new Cesium.CustomDataSource('sea-level-rise')
+    sources.set('sea-level-rise', dataSource)
     try {
       buildSeaLevelRise(dataSource)
     } catch (error) {
       console.error('[thematic] failed to rebuild sea-level layer', error)
     }
-    void current.dataSources.add(dataSource)
-    sources.set('sea-level-rise', dataSource)
+    void current.dataSources.add(dataSource).then(() => {
+      if (disposed || sources.get('sea-level-rise') !== dataSource) {
+        if (!current.isDestroyed()) current.dataSources.remove(dataSource, true)
+        return
+      }
+      current.scene.requestRender()
+    })
   }
 
   function rebuildFunctionalZones(): void {
-    const current = viewer.value
-    if (!current || current.isDestroyed()) return
+    if (disposed || current.isDestroyed()) return
     const existing = sources.get('functional-zones')
     if (!existing) return
     current.dataSources.remove(existing, true)
     sources.delete('functional-zones')
     const dataSource = new Cesium.CustomDataSource('functional-zones')
+    sources.set('functional-zones', dataSource)
     try {
-      buildFunctionalZones(dataSource)
+      buildEntities(dataSource, () => buildFunctionalZones(dataSource))
     } catch (error) {
       console.error('[thematic] failed to rebuild functional-zones layer', error)
     }
-    void current.dataSources.add(dataSource)
-    sources.set('functional-zones', dataSource)
+    void current.dataSources.add(dataSource).then(() => {
+      if (disposed || sources.get('functional-zones') !== dataSource) {
+        if (!current.isDestroyed()) current.dataSources.remove(dataSource, true)
+        return
+      }
+      current.scene.requestRender()
+    })
   }
 
   function functionalZoneView(): LayerView {
-    const city = functionalZoneCityById(store.functionalZoneCityId) ?? functionalZoneCityById(DEFAULT_FUNCTIONAL_ZONE_CITY_ID) ?? functionalZoneCities[0]
+    const city = functionalZoneCityById(useClimateStore.getState().functionalZoneCityId) ?? functionalZoneCityById(DEFAULT_FUNCTIONAL_ZONE_CITY_ID) ?? functionalZoneCities[0]
     return { longitude: city.longitude, latitude: city.latitude, height: city.viewHeight }
   }
 
@@ -1521,13 +1532,13 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
     try {
       document = await window.guEarth.datasets.getProvinces()
     } catch {
-      if (sources.get('province-population') === dataSource) {
-        failureStore.reportFailure({ scope: 'province-dataset', message: '省级行政区划数据加载失败，人口密度图层不完整', detail: '重启应用可重新加载内置数据', retryable: false })
+      if (!disposed && sources.get('province-population') === dataSource) {
+        useFailureStore.getState().reportFailure({ scope: 'province-dataset', message: '省级行政区划数据加载失败，人口密度图层不完整', detail: '重启应用可重新加载内置数据', retryable: false })
       }
       return
     }
-    if (sources.get('province-population') !== dataSource) return
-    failureStore.clearFailure('province-dataset')
+    if (disposed || current.isDestroyed() || sources.get('province-population') !== dataSource) return
+    useFailureStore.getState().clearFailure('province-dataset')
     buildEntities(dataSource, () => {
       for (const feature of document.features) {
         const population = provincePopulation.find((item) => item.name === feature.name)
@@ -1552,7 +1563,7 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
         }
       }
     })
-    viewer.value?.scene.requestRender()
+    if (!current.isDestroyed()) current.scene.requestRender()
   }
 
   function buildProvincePopulation(dataSource: Cesium.CustomDataSource): void {
@@ -1627,19 +1638,23 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
     if (id === 'ocean-currents') seasonalCurrents.length = 0
   }
 
-  function clearSources(current?: Cesium.Viewer): void {
+  function clearSources(): void {
     for (const [id, source] of sources) {
-      if (current && !current.isDestroyed()) current.dataSources.remove(source, true)
+      if (!current.isDestroyed()) current.dataSources.remove(source, true)
       releaseLayer(id)
     }
     sources.clear()
   }
 
+  function requestRender(): void {
+    if (!disposed && !current.isDestroyed()) current.scene.requestRender()
+  }
+
   function syncOverlays(): void {
-    const current = viewer.value
-    if (!current || current.isDestroyed()) return
+    if (disposed || current.isDestroyed()) return
+    const { overlays } = useClimateStore.getState()
     for (const layer of thematicLayerCatalog) {
-      const enabled = store.overlays[layer.id]
+      const enabled = overlays[layer.id]
       const existing = sources.get(layer.id)
       if (enabled && !existing) {
         const dataSource = new Cesium.CustomDataSource(layer.id)
@@ -1653,13 +1668,13 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
           continue
         }
         void current.dataSources.add(dataSource).then(() => {
-          if (viewer.value !== current || sources.get(layer.id) !== dataSource) {
+          if (disposed || sources.get(layer.id) !== dataSource) {
             if (!current.isDestroyed()) current.dataSources.remove(dataSource, true)
             return
           }
           current.scene.requestRender()
         })
-        const view = autoFocus ? (layer.id === 'functional-zones' ? functionalZoneView() : enableViews[layer.id]) : undefined
+        const view = autoFocusRef.current ? (layer.id === 'functional-zones' ? functionalZoneView() : enableViews[layer.id]) : undefined
         if (view) current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height), duration: 1.2 })
       } else if (!enabled && existing) {
         sources.delete(layer.id)
@@ -1670,66 +1685,125 @@ export function useThematicLayers(viewer: Ref<Cesium.Viewer | undefined>, option
     }
   }
 
-  watch(() => store.overlays, syncOverlays, { deep: true })
-  watch([() => onlineData.snapshot, () => onlineData.typhoonMode], () => {
-    const current = viewer.value
+  function refreshTyphoon(): void {
     const source = sources.get('typhoon')
-    if (!current || current.isDestroyed() || !source) return
+    if (disposed || current.isDestroyed() || !source) return
     buildEntities(source, () => {
       source.entities.removeAll()
       buildTyphoon(source)
     })
     current.scene.requestRender()
-  })
-  watch(() => store.ensoPhase, () => {
-    const current = viewer.value
-    const source = sources.get('enso')
-    if (!current || current.isDestroyed() || !source) return
-    buildEntities(source, () => {
-      source.entities.removeAll()
-      buildEnso(source)
-    })
-    current.scene.requestRender()
-  })
-  failureStore.registerRetry('sea-level-terrain', async () => {
-    if (!sources.get('sea-level-rise')) {
-      failureStore.clearFailure('sea-level-terrain')
+  }
+
+  function onSeasonalStrengthChange(): void {
+    refreshSeasonalCurrents()
+    requestRender()
+  }
+
+  useFailureStore.getState().registerRetry('sea-level-terrain', async () => {
+    if (disposed || current.isDestroyed() || !sources.get('sea-level-rise')) {
+      useFailureStore.getState().clearFailure('sea-level-terrain')
       return
     }
     rebuildSeaLevelRise()
   })
-  failureStore.registerRetry('dataset', async () => {
+  useFailureStore.getState().registerRetry('dataset', async () => {
     const source = sources.get('plate-tectonics')
-    if (!source) {
-      failureStore.clearFailure('dataset')
+    if (disposed || current.isDestroyed() || !source) {
+      useFailureStore.getState().clearFailure('dataset')
       return
     }
     await loadEarthquakeEntities(source, true)
   })
-  watch(() => Math.round(store.month * 4) / 4, refreshPressureBeltGeometry)
-  function requestRender(): void {
-    const current = viewer.value
-    if (current && !current.isDestroyed()) current.scene.requestRender()
-  }
-  watch(() => Math.round(store.month * 20) / 20, (month) => { refreshRainBelt(month); requestRender() })
-  watch([() => store.summerStrength > 0.5, () => store.winterStrength > 0.5], () => { refreshSeasonalCurrents(); requestRender() })
-  watch(() => solarStore.utcMs, () => { refreshSubsolarPoint(); requestRender() })
-  watch(() => store.seaLevelRise, rebuildSeaLevelRise)
-  watch(() => store.functionalZoneCityId, () => {
-    rebuildFunctionalZones()
-    const current = viewer.value
-    if (!autoFocus || !current || current.isDestroyed() || !sources.get('functional-zones')) return
-    const view = functionalZoneView()
-    current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height), duration: 1.2 })
-  })
-  watch(() => transportStore.year, requestRender)
-  watch(() => globeStore.activeTerrainId, () => {
-    if (sources.get('sea-level-rise')) rebuildSeaLevelRise()
-  })
-  watch(viewer, (_current, previous) => {
-    clearSources(previous)
-    syncOverlays()
-  }, { immediate: true })
 
-  onBeforeUnmount(() => clearSources(viewer.value))
+  const unsubscribes: Array<() => void> = [
+    useClimateStore.subscribe((state) => state.overlays, syncOverlays),
+    useOnlineDataStore.subscribe((state) => state.snapshot, refreshTyphoon),
+    useOnlineDataStore.subscribe((state) => state.typhoonMode, refreshTyphoon),
+    useClimateStore.subscribe(
+      (state) => state.ensoPhase,
+      () => {
+        const source = sources.get('enso')
+        if (disposed || current.isDestroyed() || !source) return
+        buildEntities(source, () => {
+          source.entities.removeAll()
+          buildEnso(source)
+        })
+        current.scene.requestRender()
+      }
+    ),
+    useClimateStore.subscribe((state) => Math.round(state.month * 4) / 4, refreshPressureBeltGeometry),
+    useClimateStore.subscribe(
+      (state) => Math.round(state.month * 20) / 20,
+      (month) => {
+        refreshRainBelt(month)
+        requestRender()
+      }
+    ),
+    useClimateStore.subscribe((state) => state.summerStrength > 0.5, onSeasonalStrengthChange),
+    useClimateStore.subscribe((state) => state.winterStrength > 0.5, onSeasonalStrengthChange),
+    useSolarStore.subscribe(
+      (state) => state.utcMs,
+      () => {
+        refreshSubsolarPoint()
+        requestRender()
+      }
+    ),
+    useClimateStore.subscribe((state) => state.seaLevelRise, rebuildSeaLevelRise),
+    useSeaLevelStore.subscribe(
+      (state) => state.version,
+      () => {
+        if (seaLevelSamplingCount === 0 && sources.get('sea-level-rise')) rebuildSeaLevelRise()
+      }
+    ),
+    useClimateStore.subscribe(
+      (state) => state.functionalZoneCityId,
+      () => {
+        rebuildFunctionalZones()
+        if (!autoFocusRef.current || disposed || current.isDestroyed() || !sources.get('functional-zones')) return
+        const view = functionalZoneView()
+        current.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(view.longitude, view.latitude, view.height), duration: 1.2 })
+      }
+    ),
+    useTransportStore.subscribe((state) => state.year, requestRender),
+    useGlobeStore.subscribe(
+      (state) => state.activeTerrainId,
+      () => {
+        if (sources.get('sea-level-rise')) rebuildSeaLevelRise()
+      }
+    )
+  ]
+
+  syncOverlays()
+
+  return () => {
+    disposed = true
+    for (const unsubscribe of unsubscribes) unsubscribe()
+    clearSources()
+  }
+}
+
+export function useThematicLayers(viewer: Cesium.Viewer | undefined, options?: ThematicLayerOptions): void {
+  const coriolisEnabled = useClimateStore((state) => state.overlays['coriolis-demo'])
+  const coriolisProgressRef = useRef(0)
+  const viewerRef = useRef<Cesium.Viewer | undefined>(viewer)
+  const autoFocusRef = useRef(options?.autoFocus !== false)
+
+  viewerRef.current = viewer
+  autoFocusRef.current = options?.autoFocus !== false
+
+  useVisibleAnimation(coriolisEnabled && Boolean(viewer), (dt) => {
+    if (dt > 0) coriolisProgressRef.current = (coriolisProgressRef.current + dt / 10) % 1
+    const current = viewerRef.current
+    if (current && !current.isDestroyed()) current.scene.requestRender()
+  })
+
+  useEffect(() => {
+    void useOnlineDataStore.getState().load()
+  }, [])
+
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return
+    return attachThematicLayers(viewer, coriolisProgressRef, autoFocusRef)
+  }, [viewer])
 }

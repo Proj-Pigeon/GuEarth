@@ -9,7 +9,7 @@ const arcgisTerrainUrl = 'https://elevation3d.arcgis.com/arcgis/rest/services/Wo
 
 function activeTerrainMirrorEndpoint(): MirrorEndpointId | null {
   try {
-    const store = useGlobeStore()
+    const store = useGlobeStore.getState()
     return store.tileMirrorMode === 'on' ? store.activeMirrorEndpoint : null
   } catch {
     return null

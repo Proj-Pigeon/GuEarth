@@ -1,0 +1,36 @@
+.failureBanner {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  z-index: 1002;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(560px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.failureAlert {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  pointer-events: auto;
+}
+
+.failureText {
+  display: block;
+  overflow: hidden;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 13px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.failureActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

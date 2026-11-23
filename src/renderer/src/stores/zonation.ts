@@ -1,5 +1,5 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 
 export type ZonationPanel = 'zonation-profile'
 
@@ -12,17 +12,37 @@ export interface ZonationFlightHud {
   altitudeM?: number
 }
 
-export const useZonationStore = defineStore('zonation', () => {
-  const panel = ref<ZonationPanel | null>(null)
-  const flightHud = ref<ZonationFlightHud | null>(null)
+export interface ZonationState {
+  panel: ZonationPanel | null
+  flightHud: ZonationFlightHud | null
+}
 
-  function setPanel(value: ZonationPanel | null): void {
-    panel.value = value
+export interface ZonationActions {
+  setPanel: (value: ZonationPanel | null) => void
+  setFlightHud: (value: ZonationFlightHud | null) => void
+}
+
+export type ZonationStore = ZonationState & ZonationActions
+
+export function createInitialZonationState(): ZonationState {
+  return {
+    panel: null,
+    flightHud: null
   }
+}
 
-  function setFlightHud(value: ZonationFlightHud | null): void {
-    flightHud.value = value
-  }
+export const useZonationStore = create<ZonationStore>()(
+  subscribeWithSelector((set) => ({
+    ...createInitialZonationState(),
+    setPanel(value: ZonationPanel | null): void {
+      set({ panel: value })
+    },
+    setFlightHud(value: ZonationFlightHud | null): void {
+      set({ flightHud: value })
+    }
+  }))
+)
 
-  return { panel, flightHud, setPanel, setFlightHud }
-})
+export function resetZonationStore(): void {
+  useZonationStore.setState(createInitialZonationState())
+}

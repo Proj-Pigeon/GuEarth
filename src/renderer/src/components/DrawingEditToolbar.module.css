@@ -1,0 +1,72 @@
+.drawingEditToolbar {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  z-index: 13;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 24px);
+  min-height: 52px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  background: #ffffff;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 8px;
+  transform: translateX(-50%);
+}
+
+.drawingEditToolbarStacked {
+  bottom: 136px;
+}
+
+.styleControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.colorInput {
+  width: 34px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid rgba(5, 5, 5, 0.15);
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.annotationInput {
+  width: 160px;
+  flex: 0 0 160px;
+}
+
+.fontControl :global(.ant-select) {
+  width: 190px;
+}
+
+.frameControl {
+  padding-right: 4px;
+}
+
+@media (max-width: 720px) {
+  .drawingEditToolbar {
+    right: 8px;
+    left: 8px;
+    justify-content: flex-start;
+    transform: none;
+  }
+
+  .annotationInput {
+    width: 120px;
+    flex-basis: 120px;
+  }
+
+  .fontControl :global(.ant-select) {
+    width: 140px;
+  }
+}

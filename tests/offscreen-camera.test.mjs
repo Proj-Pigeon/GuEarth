@@ -2,14 +2,14 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 
-const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
+const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
 const layersSource = await readFile(new URL('../src/renderer/src/composables/useThematicLayers.ts', import.meta.url), 'utf8')
-const appSource = await readFile(new URL('../src/renderer/src/App.vue', import.meta.url), 'utf8')
+const appSource = await readFile(new URL('../src/renderer/src/App.tsx', import.meta.url), 'utf8')
 
 test('the offscreen recorder suppresses thematic layer auto focus', () => {
-  assert.match(offscreenSource, /useThematicLayers\(offscreenViewer, \{ autoFocus: false \}\)/)
-  assert.match(layersSource, /const autoFocus = options\?\.autoFocus !== false/)
-  assert.match(layersSource, /const view = autoFocus \? \(layer\.id === 'functional-zones' \? functionalZoneView\(\) : enableViews\[layer\.id\]\) : undefined/)
+  assert.match(offscreenSource, /useThematicLayers\(cesiumViewer, \{ autoFocus: false \}\)/)
+  assert.match(layersSource, /const autoFocusRef = useRef\(options\?\.autoFocus !== false\)/)
+  assert.match(layersSource, /const view = autoFocusRef\.current \? \(layer\.id === 'functional-zones' \? functionalZoneView\(\) : enableViews\[layer\.id\]\) : undefined/)
   assert.match(appSource, /useThematicLayers\(viewer\)/)
 })
 

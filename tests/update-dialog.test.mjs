@@ -4,132 +4,111 @@ import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
 import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
-import { compileScript, parse } from '@vue/compiler-sfc'
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
-import { createRenderer, defineComponent, h, nextTick, reactive } from 'vue'
+import { JSDOM } from 'jsdom'
+import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { act, createElement } from 'react'
+import { createRoot } from 'react-dom/client'
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true
+
+const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost/' })
+globalThis.window = dom.window
+globalThis.document = dom.window.document
+globalThis.HTMLElement = dom.window.HTMLElement
+globalThis.Node = dom.window.Node
 
 let forceMarkdownMode = 'normal'
-const updaterState = reactive({
-  promptVisible: true,
-  currentVersion: '0.1.17',
-  version: '0.1.18',
-  notes: '',
-  startDownload() {},
-  remindLater() {}
-})
-
 const realMarkdownUrl = pathToFileURL(resolve('src/renderer/src/utils/markdown.ts')).href
+
+const reactUrl = import.meta.resolve('react')
+const antdStubUrl = `data:text/javascript,${encodeURIComponent(`
+  import { createElement } from ${JSON.stringify(reactUrl)}
+  export function Modal({ open, children }) {
+    return open ? createElement('div', { className: 'mock-modal' }, children) : null
+  }
+  export const message = {
+    success() {},
+    error() {},
+    warning() {},
+    info() {}
+  }
+`)}`
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier === '@renderer/stores/updater') {
-      return { url: 'virtual:updater-store', shortCircuit: true }
+    if (specifier === 'antd') {
+      return { url: antdStubUrl, shortCircuit: true }
     }
-    if (specifier === '@renderer/utils/markdown' && context.parentURL.endsWith('/UpdateDialog.vue')) {
+    if (specifier === '@renderer/utils/markdown' && context.parentURL.endsWith('/UpdateDialog.tsx')) {
       return { url: 'virtual:update-dialog-markdown', shortCircuit: true }
     }
     if (specifier.startsWith('@renderer/')) {
-      return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)
+      const target = resolve('src/renderer/src', specifier.slice(10))
+      if (/\.[a-z]+$/i.test(target)) return nextResolve(pathToFileURL(target).href, context)
+      try {
+        return nextResolve(pathToFileURL(`${target}.ts`).href, context)
+      } catch {
+        return nextResolve(pathToFileURL(`${target}.tsx`).href, context)
+      }
     }
     try {
       return nextResolve(specifier, context)
     } catch (error) {
       if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {
-        return nextResolve(`${specifier}.ts`, context)
+        try {
+          return nextResolve(`${specifier}.ts`, context)
+        } catch {
+          return nextResolve(`${specifier}.tsx`, context)
+        }
       }
       throw error
     }
   },
   load(url, context, nextLoad) {
-    if (url === 'virtual:updater-store') {
-      return {
-        format: 'module',
-        source: 'export const useUpdaterStore = () => globalThis.__testUpdaterStore',
-        shortCircuit: true
-      }
-    }
     if (url === 'virtual:update-dialog-markdown') {
       return {
         format: 'module',
         source: [
+          `import { createElement } from ${JSON.stringify(reactUrl)}`,
           `import { tryRenderMarkdown as realTryRenderMarkdown } from ${JSON.stringify(realMarkdownUrl)}`,
-          'export function tryRenderMarkdown(text) { return globalThis.__testTryRenderMarkdown(text, realTryRenderMarkdown) }'
+          'export function tryRenderMarkdown(text) { return globalThis.__testTryRenderMarkdown(text, realTryRenderMarkdown, createElement) }'
         ].join('\n'),
         shortCircuit: true
       }
     }
-    if (!url.endsWith('/UpdateDialog.vue')) return nextLoad(url, context)
-    const { descriptor } = parse(readFileSync(new URL(url), 'utf8'))
-    const compiled = compileScript(descriptor, { id: 'update-dialog-test', inlineTemplate: true })
-    const source = transpileModule(compiled.content, {
-      compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 }
+    if (url.endsWith('.module.css')) {
+      return {
+        format: 'module',
+        source: 'export default new Proxy({}, { get: (_target, prop) => String(prop) })',
+        shortCircuit: true
+      }
+    }
+    if (!url.endsWith('/UpdateDialog.tsx')) return nextLoad(url, context)
+    const source = transpileModule(readFileSync(new URL(url), 'utf8'), {
+      compilerOptions: {
+        jsx: JsxEmit.ReactJSX,
+        module: ModuleKind.ESNext,
+        target: ScriptTarget.ES2022
+      }
     }).outputText
     return { format: 'module', source, shortCircuit: true }
   }
 })
 
-globalThis.__testUpdaterStore = updaterState
-globalThis.__testTryRenderMarkdown = (text, realTryRenderMarkdown) => {
+globalThis.__testTryRenderMarkdown = (text, realTryRenderMarkdown, h) => {
   if (forceMarkdownMode === 'null') return null
   if (forceMarkdownMode === 'throw-in-vnode') {
-    const BadChild = defineComponent({
-      setup() {
-        throw new Error('render boom')
-      }
-    })
-    return [h(BadChild)]
+    function BadChild() {
+      throw new Error('render boom')
+    }
+    return [h(BadChild, { key: 'bad' })]
   }
   return realTryRenderMarkdown(text)
 }
 
 const { renderMarkdown, tryRenderMarkdown } = await import(realMarkdownUrl)
-const { default: UpdateDialog } = await import('../src/renderer/src/components/UpdateDialog.vue')
-
-const renderer = createRenderer({
-  createElement: (tag) => ({ tag, children: [], parent: null }),
-  createText: (text) => ({ text, parent: null }),
-  createComment: (text) => ({ text, parent: null }),
-  setText: (node, text) => { node.text = text },
-  setElementText: (node, text) => { node.text = text; node.children = [] },
-  patchProp: (node, key, _previous, value) => { node[key] = value },
-  insert: (node, parent) => { node.parent = parent; parent.children.push(node) },
-  remove: (node) => {
-    if (!node.parent) return
-    const index = node.parent.children.indexOf(node)
-    if (index >= 0) node.parent.children.splice(index, 1)
-    node.parent = null
-  },
-  parentNode: (node) => node.parent ?? null,
-  nextSibling: () => null
-})
-
-function findByClass(node, className) {
-  if (!node) return null
-  if (typeof node.class === 'string' && node.class.split(/\s+/).includes(className)) return node
-  if (Array.isArray(node.children)) {
-    for (const child of node.children) {
-      const hit = findByClass(child, className)
-      if (hit) return hit
-    }
-  }
-  return null
-}
-
-function collectTags(node, tags = []) {
-  if (!node) return tags
-  if (typeof node.tag === 'string') tags.push(node.tag)
-  if (Array.isArray(node.children)) {
-    for (const child of node.children) collectTags(child, tags)
-  }
-  return tags
-}
-
-function collectText(node) {
-  if (!node) return ''
-  if (typeof node.text === 'string') return node.text
-  if (Array.isArray(node.children)) return node.children.map(collectText).join('')
-  return ''
-}
+const { useUpdaterStore, resetUpdaterStore } = await import('../src/renderer/src/stores/updater.ts')
+const { default: UpdateDialog } = await import('../src/renderer/src/components/UpdateDialog.tsx')
 
 test('tryRenderMarkdown renders valid markdown and returns null on blank, empty output, or errors', () => {
   assert.equal(tryRenderMarkdown(''), null)
@@ -147,55 +126,60 @@ test('tryRenderMarkdown renders valid markdown and returns null on blank, empty 
 
 test('UpdateDialog renders markdown release notes, hides blank notes, and falls back to plain text on failure', async (t) => {
   forceMarkdownMode = 'normal'
-  updaterState.notes = '## 更新内容\n\n- 新增 **Markdown** 渲染\n- 支持 `code` 与 [链接](https://example.com)'
-  const root = { children: [] }
-  const app = renderer.createApp({
-    setup: () => () => h(UpdateDialog)
+  resetUpdaterStore()
+  useUpdaterStore.setState({
+    promptVisible: true,
+    currentVersion: '0.1.17',
+    version: '0.1.18',
+    notes: '## 更新内容\n\n- 新增 **Markdown** 渲染\n- 支持 `code` 与 [链接](https://example.com)'
   })
-  app.component('AModal', defineComponent({
-    props: { open: Boolean },
-    setup(props, { slots }) {
-      return () => (props.open ? h('div', { class: 'mock-modal' }, slots.default?.()) : null)
-    }
-  }))
+
+  const container = dom.window.document.createElement('div')
+  dom.window.document.body.appendChild(container)
+  const root = createRoot(container)
+  const originalConsoleError = console.error
+  console.error = () => {}
   t.after(() => {
-    app.unmount()
+    console.error = originalConsoleError
+    act(() => root.unmount())
+    container.remove()
     forceMarkdownMode = 'normal'
-    updaterState.notes = ''
+    resetUpdaterStore()
   })
-  app.mount(root)
 
-  const markdownBox = findByClass(root, 'update-notes-markdown')
+  act(() => {
+    root.render(createElement(UpdateDialog))
+  })
+
+  const markdownBox = container.querySelector('.updateNotesMarkdown')
   assert.ok(markdownBox)
-  assert.equal(findByClass(root, 'update-notes-plain'), null)
-  const tags = collectTags(markdownBox)
-  assert.ok(tags.includes('h2'))
-  assert.ok(tags.includes('ul'))
-  assert.ok(tags.includes('li'))
-  assert.ok(tags.includes('strong'))
-  assert.ok(tags.includes('code'))
-  assert.ok(tags.includes('a'))
+  assert.equal(container.querySelector('.updateNotesPlain'), null)
+  for (const tag of ['h2', 'ul', 'li', 'strong', 'code', 'a']) {
+    assert.ok(markdownBox.querySelector(tag), `expected <${tag}> inside markdown box`)
+  }
 
-  forceMarkdownMode = 'null'
-  updaterState.notes = '## 原始文本\n- item'
-  await nextTick()
-  assert.equal(findByClass(root, 'update-notes-markdown'), null)
-  const plainFallback = findByClass(root, 'update-notes-plain')
+  act(() => {
+    forceMarkdownMode = 'null'
+    useUpdaterStore.setState({ notes: '## 原始文本\n- item' })
+  })
+  assert.equal(container.querySelector('.updateNotesMarkdown'), null)
+  const plainFallback = container.querySelector('.updateNotesPlain')
   assert.ok(plainFallback)
-  assert.equal(collectText(plainFallback), '## 原始文本\n- item')
+  assert.equal(plainFallback.textContent, '## 原始文本\n- item')
 
-  forceMarkdownMode = 'throw-in-vnode'
-  updaterState.notes = '## 运行时渲染失败\n- fallback'
-  await nextTick()
-  await nextTick()
-  assert.equal(findByClass(root, 'update-notes-markdown'), null)
-  const errorFallback = findByClass(root, 'update-notes-plain')
+  act(() => {
+    forceMarkdownMode = 'throw-in-vnode'
+    useUpdaterStore.setState({ notes: '## 运行时渲染失败\n- fallback' })
+  })
+  assert.equal(container.querySelector('.updateNotesMarkdown'), null)
+  const errorFallback = container.querySelector('.updateNotesPlain')
   assert.ok(errorFallback)
-  assert.equal(collectText(errorFallback), '## 运行时渲染失败\n- fallback')
+  assert.equal(errorFallback.textContent, '## 运行时渲染失败\n- fallback')
 
-  forceMarkdownMode = 'normal'
-  updaterState.notes = '   \n  '
-  await nextTick()
-  assert.equal(findByClass(root, 'update-notes-markdown'), null)
-  assert.equal(findByClass(root, 'update-notes-plain'), null)
+  act(() => {
+    forceMarkdownMode = 'normal'
+    useUpdaterStore.setState({ notes: '   \n  ' })
+  })
+  assert.equal(container.querySelector('.updateNotesMarkdown'), null)
+  assert.equal(container.querySelector('.updateNotesPlain'), null)
 })

@@ -1,0 +1,61 @@
+.webSearch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 0 6px;
+}
+
+.webSearchQuery {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--ant-color-fill-tertiary, rgba(0, 0, 0, 0.04));
+  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
+  font-size: var(--ant-font-size-sm, 12px);
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.webSearchIcon {
+  flex-shrink: 0;
+  color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+  font-size: var(--ant-font-size-sm, 12px);
+}
+
+.webSearchError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ant-color-error, #ff4d4f);
+  font-size: var(--ant-font-size-sm, 12px);
+  line-height: 20px;
+}
+
+.webSearchErrorText {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.webSearchRetry {
+  flex-shrink: 0;
+  height: 24px;
+  padding-inline: 4px;
+  font-size: 12px;
+}
+
+.webSearchEmpty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+  font-size: var(--ant-font-size-sm, 12px);
+  line-height: 20px;
+}

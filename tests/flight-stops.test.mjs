@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { registerHooks } from 'node:module'
-import { createPinia, setActivePinia } from 'pinia'
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -23,7 +22,7 @@ const {
   parseFlyToArgs,
   resolveStopTarget
 } = await import('../src/common/flightStops.ts')
-const { useFlightStopsStore } = await import('../src/renderer/src/stores/flightStops.ts')
+const { useFlightStopsStore, resetFlightStopsStore } = await import('../src/renderer/src/stores/flightStops.ts')
 
 test('parseFlyToArgs validates single and batch locations with deduplication and cap', () => {
   const single = parseFlyToArgs({ name: '桂林喀斯特', longitude: 110.29, latitude: 25.27 })
@@ -59,60 +58,60 @@ test('parseFlyToArgs validates single and batch locations with deduplication and
 })
 
 test('useFlightStopsStore starts at first stop, queues same-turn additions, and switches only on request', async () => {
-  setActivePinia(createPinia())
-  const store = useFlightStopsStore()
+  resetFlightStopsStore()
+  const store = () => useFlightStopsStore.getState()
   const flights = []
   const flyFn = async (longitude, latitude, height) => {
     flights.push({ longitude, latitude, height })
     return height
   }
 
-  const singleFirst = store.beginTurnStops('turn-1', [
+  const singleFirst = store().beginTurnStops('turn-1', [
     { id: '0', name: '故宫', longitude: 116.397, latitude: 39.918, height: 8000 }
   ])
   assert.equal(singleFirst?.name, '故宫')
-  assert.equal(store.visible, false)
+  assert.equal(store().visible, false)
 
-  const batchFirst = store.beginTurnStops('turn-2', [
+  const batchFirst = store().beginTurnStops('turn-2', [
     { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12000 },
     { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15000 }
   ])
   assert.equal(batchFirst?.name, '路南石林')
-  assert.equal(store.activeIndex, 0)
-  assert.equal(store.visible, true)
+  assert.equal(store().activeIndex, 0)
+  assert.equal(store().visible, true)
 
-  const queued = store.appendTurnStops('turn-2', [
+  const queued = store().appendTurnStops('turn-2', [
     { id: '2', name: '兴文石海', longitude: 105.08, latitude: 28.18, height: 14000 }
   ])
   assert.equal(queued.total, 3)
-  assert.equal(store.activeIndex, 0)
-  assert.equal(store.canPrev, false)
-  assert.equal(store.canNext, true)
+  assert.equal(store().activeIndex, 0)
+  assert.equal(store().canPrev, false)
+  assert.equal(store().canNext, true)
   assert.equal(flights.length, 0)
-  assert.deepEqual(structuredClone({ queued, current: store.currentStop }), { queued, current: store.currentStop })
+  assert.deepEqual(structuredClone({ queued, current: store().currentStop }), { queued, current: store().currentStop })
 
-  const prevAtStart = await store.prev(flyFn)
+  const prevAtStart = await store().prev(flyFn)
   assert.match(prevAtStart.error ?? '', /第一个地点/)
 
-  const nextOutcome = await store.next(flyFn)
+  const nextOutcome = await store().next(flyFn)
   assert.equal(nextOutcome.stop?.name, '桂林峰林')
-  assert.equal(store.activeIndex, 1)
+  assert.equal(store().activeIndex, 1)
   assert.equal(flights.length, 1)
   assert.deepEqual(flights[0], { longitude: 110.29, latitude: 25.27, height: 15000 })
 
-  const byName = await store.switchByRequest({ action: 'goto', name: '兴文' }, flyFn)
+  const byName = await store().switchByRequest({ action: 'goto', name: '兴文' }, flyFn)
   assert.equal(byName.index, 2)
   assert.equal(byName.stop?.name, '兴文石海')
-  assert.equal(store.activeIndex, 2)
-  assert.equal(store.canNext, false)
+  assert.equal(store().activeIndex, 2)
+  assert.equal(store().canNext, false)
 
-  const byIndex = await store.switchByRequest({ action: 'goto', index: 1 }, flyFn)
+  const byIndex = await store().switchByRequest({ action: 'goto', index: 1 }, flyFn)
   assert.equal(byIndex.index, 0)
   assert.equal(byIndex.stop?.name, '路南石林')
 
-  store.clear()
-  assert.equal(store.total, 0)
-  assert.equal(store.visible, false)
+  store().clear()
+  assert.equal(store().total, 0)
+  assert.equal(store().visible, false)
 })
 
 test('resolveStopTarget handles invalid indexes and missing names cleanly', () => {
@@ -215,65 +214,70 @@ test('parseFlyToArgs rejects non-coordinate values instead of coercing them', ()
 })
 
 test('dismissing the switcher keeps the camera anchor and same-turn queue appends', () => {
-  setActivePinia(createPinia())
-  const store = useFlightStopsStore()
-  store.beginTurnStops('turn-d', [
+  resetFlightStopsStore()
+  const store = () => useFlightStopsStore.getState()
+  store().beginTurnStops('turn-d', [
     { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12000 },
     { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15000 }
   ])
-  store.activeIndex = 1
-  store.dismiss()
-  assert.equal(store.visible, false)
-  assert.equal(store.turnToken, 'turn-d')
-  assert.equal(store.activeIndex, 0)
-  assert.equal(store.currentStop?.name, '桂林峰林')
+  useFlightStopsStore.setState({
+    activeIndex: 1,
+    currentStop: { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15000 },
+    canPrev: true,
+    canNext: false
+  })
+  store().dismiss()
+  assert.equal(store().visible, false)
+  assert.equal(store().turnToken, 'turn-d')
+  assert.equal(store().activeIndex, 0)
+  assert.equal(store().currentStop?.name, '桂林峰林')
 
-  const queued = store.appendTurnStops('turn-d', [
+  const queued = store().appendTurnStops('turn-d', [
     { id: '2', name: '兴文石海', longitude: 105.08, latitude: 28.18, height: 14000 }
   ])
   assert.equal(queued.added.length, 1)
   assert.equal(queued.added[0].name, '兴文石海')
   assert.equal(queued.total, 2)
-  assert.equal(store.activeIndex, 0)
-  assert.equal(store.currentStop?.name, '桂林峰林')
-  assert.equal(store.visible, true)
+  assert.equal(store().activeIndex, 0)
+  assert.equal(store().currentStop?.name, '桂林峰林')
+  assert.equal(store().visible, true)
 
-  const duplicate = store.appendTurnStops('turn-d', [
+  const duplicate = store().appendTurnStops('turn-d', [
     { id: '3', name: '重复点', longitude: 110.29001, latitude: 25.27001, height: 15000 }
   ])
   assert.equal(duplicate.added.length, 0)
   assert.equal(duplicate.total, 2)
 
-  store.clear()
-  assert.equal(store.turnToken, '')
-  assert.equal(store.total, 0)
+  store().clear()
+  assert.equal(store().turnToken, '')
+  assert.equal(store().total, 0)
 })
 
 test('goTo restores the previous index on cancelled flights but not on superseded switches', async () => {
-  setActivePinia(createPinia())
-  const store = useFlightStopsStore()
-  store.beginTurnStops('turn-f', [
+  resetFlightStopsStore()
+  const store = () => useFlightStopsStore.getState()
+  store().beginTurnStops('turn-f', [
     { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12000 },
     { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15000 }
   ])
 
-  const cancelled = await store.next(async () => undefined)
+  const cancelled = await store().next(async () => undefined)
   assert.match(cancelled.error ?? '', /飞行已取消/)
-  assert.equal(store.activeIndex, 0)
-  assert.equal(store.isNavigating, false)
+  assert.equal(store().activeIndex, 0)
+  assert.equal(store().isNavigating, false)
 
-  const succeeded = await store.next(async (_longitude, _latitude, height) => height)
+  const succeeded = await store().next(async (_longitude, _latitude, height) => height)
   assert.equal(succeeded.stop?.name, '桂林峰林')
-  assert.equal(store.activeIndex, 1)
+  assert.equal(store().activeIndex, 1)
 
   let releaseFirst
   const firstPending = new Promise((resolve) => { releaseFirst = resolve })
-  const firstAttempt = store.goTo(0, () => firstPending)
-  const secondAttempt = await store.goTo(1, async (_longitude, _latitude, height) => height)
+  const firstAttempt = store().goTo(0, () => firstPending)
+  const secondAttempt = await store().goTo(1, async (_longitude, _latitude, height) => height)
   assert.equal(secondAttempt.stop?.name, '桂林峰林')
   releaseFirst(undefined)
   const firstResult = await firstAttempt
   assert.match(firstResult.error ?? '', /切换已取消/)
-  assert.equal(store.activeIndex, 1)
-  assert.equal(store.isNavigating, false)
+  assert.equal(store().activeIndex, 1)
+  assert.equal(store().isNavigating, false)
 })

@@ -1,0 +1,107 @@
+.placeSearch {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: min(400px, calc(100vw - 32px));
+  z-index: 10;
+}
+
+.placeAutocomplete {
+  width: 100%;
+}
+
+.placeSearch :global(.ant-input-affix-wrapper) {
+  border-radius: 6px;
+}
+
+.placeProviderSpace {
+  display: inline-block;
+  width: 72px;
+  height: 1px;
+}
+
+.placeProviderButton {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 72px;
+  height: 32px;
+  padding: 4px 8px;
+  color: rgba(0, 0, 0, 0.65);
+  border-left: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 0 6px 6px 0;
+  background: #ffffff;
+}
+
+.placeProviderButton:hover {
+  color: rgba(0, 0, 0, 0.88);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.placeProviderButton :global(.anticon) {
+  margin-inline-start: 0;
+  font-size: 12px;
+}
+
+.placeProviderButton:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: -2px;
+}
+
+.placeSearchIcon {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.placeOption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.placeOptionName {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.placeOptionMeta {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placeStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.placeStatusError {
+  color: #ff4d4f;
+}
+
+.placeRetry {
+  height: 20px;
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+.placeLoadingIcon {
+  margin-right: 6px;
+}
+
+.placeDropdown :global(.ant-select-item-option-content) {
+  white-space: normal;
+}

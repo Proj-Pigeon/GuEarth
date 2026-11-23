@@ -1,0 +1,191 @@
+.sceneOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1100;
+  pointer-events: none;
+}
+
+.prewarmMask {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  pointer-events: auto;
+}
+
+.prewarmText {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.prewarmProgress {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.prewarmQuality {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.prewarmQualityLabel {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.prewarmActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prewarmWarning {
+  max-width: min(360px, 78vw);
+  color: #d46b08;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+
+.stageHit {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.sceneTop {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  line-height: 20px;
+  pointer-events: none;
+}
+
+.sceneTitle {
+  font-weight: 600;
+}
+
+.sceneCounter {
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.sceneMode {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.recDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #ff4d4f;
+  animation: rec-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.sceneCaption {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(720px, 82vw);
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #ffffff;
+  pointer-events: none;
+  text-align: center;
+  animation: caption-fade-in 0.2s ease-in-out;
+}
+
+@keyframes caption-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.captionName {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.captionText {
+  font-size: 18px;
+  line-height: 28px;
+}
+
+.recordNotice {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  line-height: 20px;
+  pointer-events: none;
+}
+
+.sceneControls {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.sceneHint {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recDot,
+  .sceneCaption {
+    animation: none;
+  }
+}

@@ -5,7 +5,7 @@ import {
 } from '@renderer/thematic/populationCensus'
 
 export function registerPopulationTools(): void {
-  const aiStore = useAiStore()
+  const aiStore = useAiStore.getState()
   const provinceNames = provincePopulation.map((province) => province.name)
   const national = nationalPopulation[nationalPopulation.length - 1]
   const latestUrbanization = urbanizationSeries[urbanizationSeries.length - 1]

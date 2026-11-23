@@ -1,177 +1,234 @@
-import { computed, ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 import type { AccountPhase, AccountProfile, AccountState } from '../../../preload'
 import { accountPhaseLabel } from '../../../common/passport'
 import { ipcErrorMessage } from '../lib/ipcError'
 import { isTelemetryEnabled, onPrivacySettingsChange } from '../lib/privacyRuntime'
 import { identifyTelemetryUser, isTelemetryUserIdentified, resetTelemetryIdentity } from '../posthog'
 
-let bound = false
-let identifiedSub: string | null = null
+export interface AccountStoreState {
+  phase: AccountPhase
+  profile: AccountProfile | null
+  userCode: string
+  verificationUri: string
+  challengeExpiresAt: number
+  signedInAt: number
+  error: string
+  pendingRemoteRevocation: boolean
+  deviceListUrl: string
+  hydrated: boolean
+  busy: boolean
+  canceling: boolean
+  signedIn: boolean
+  loginInProgress: boolean
+  remainingSeconds: number
+  displayName: string
+  phaseLabel: string
+}
 
-export const useAccountStore = defineStore('account', () => {
-  const phase = ref<AccountPhase>('signed-out')
-  const profile = ref<AccountProfile | null>(null)
-  const userCode = ref('')
-  const verificationUri = ref('')
-  const challengeExpiresAt = ref(0)
-  const signedInAt = ref(0)
-  const error = ref('')
-  const pendingRemoteRevocation = ref(false)
-  const deviceListUrl = ref('')
-  const hydrated = ref(false)
-  const busy = ref(false)
-  const canceling = ref(false)
+export interface AccountStoreActions {
+  hydrate: () => Promise<void>
+  login: () => Promise<void>
+  cancelLogin: () => Promise<void>
+  signOut: () => Promise<void>
+  dismissRevocationWarning: () => Promise<void>
+  openDeviceList: () => Promise<void>
+  openVerification: () => Promise<void>
+  clearError: () => void
+}
 
-  const signedIn = computed(() => phase.value === 'signed-in' && profile.value !== null)
-  const loginInProgress = computed(() => phase.value === 'creating' || phase.value === 'awaiting-approval' || phase.value === 'finalizing')
-  const remainingSeconds = computed(() => {
-    if (!challengeExpiresAt.value) return 0
-    return Math.max(0, Math.ceil((challengeExpiresAt.value - Date.now()) / 1000))
-  })
-  const displayName = computed(() => {
-    const current = profile.value
-    if (!current) return ''
-    return current.name || current.username || current.sub
-  })
-  const phaseLabel = computed(() => accountPhaseLabel(phase.value))
+export type AccountStore = AccountStoreState & AccountStoreActions
 
-  function syncIdentity(currentPhase: AccountPhase, currentProfile: AccountProfile | null): void {
-    const nextSub = currentPhase === 'signed-in' ? currentProfile?.sub.trim() ?? '' : ''
+export function selectAccountSignedIn(state: Pick<AccountStoreState, 'phase' | 'profile'>): boolean {
+  return state.phase === 'signed-in' && state.profile !== null
+}
 
-    if (!isTelemetryEnabled()) {
-      if (identifiedSub || isTelemetryUserIdentified()) resetTelemetryIdentity()
-      identifiedSub = null
-      return
-    }
+export function selectAccountLoginInProgress(state: Pick<AccountStoreState, 'phase'>): boolean {
+  return state.phase === 'creating' || state.phase === 'awaiting-approval' || state.phase === 'finalizing'
+}
 
-    if (nextSub) {
-      if (identifiedSub && nextSub !== identifiedSub) resetTelemetryIdentity()
-      if (nextSub !== identifiedSub || !isTelemetryUserIdentified()) {
-        const personProperties: Record<string, string> = {}
-        if (currentProfile?.email) personProperties.email = currentProfile.email
-        if (currentProfile?.name) personProperties.name = currentProfile.name
-        identifyTelemetryUser(nextSub, personProperties)
-        identifiedSub = nextSub
-      }
-      return
-    }
+export function selectAccountRemainingSeconds(state: Pick<AccountStoreState, 'challengeExpiresAt'>): number {
+  if (!state.challengeExpiresAt) return 0
+  return Math.max(0, Math.ceil((state.challengeExpiresAt - Date.now()) / 1000))
+}
 
-    if (identifiedSub || isTelemetryUserIdentified()) {
-      resetTelemetryIdentity()
-      identifiedSub = null
-    }
+export function selectAccountDisplayName(state: Pick<AccountStoreState, 'profile'>): string {
+  const current = state.profile
+  if (!current) return ''
+  return current.name || current.username || current.sub
+}
+
+export function selectAccountPhaseLabel(state: Pick<AccountStoreState, 'phase'>): string {
+  return accountPhaseLabel(state.phase)
+}
+
+function deriveAccountFields(
+  phase: AccountPhase,
+  profile: AccountProfile | null,
+  challengeExpiresAt: number
+): Pick<AccountStoreState, 'signedIn' | 'loginInProgress' | 'remainingSeconds' | 'displayName' | 'phaseLabel'> {
+  return {
+    signedIn: selectAccountSignedIn({ phase, profile }),
+    loginInProgress: selectAccountLoginInProgress({ phase }),
+    remainingSeconds: selectAccountRemainingSeconds({ challengeExpiresAt }),
+    displayName: selectAccountDisplayName({ profile }),
+    phaseLabel: selectAccountPhaseLabel({ phase })
   }
+}
 
-  function applyState(state: AccountState): void {
-    syncIdentity(state.phase, state.profile)
-
-    phase.value = state.phase
-    profile.value = state.profile
-    userCode.value = state.challenge?.userCode ?? ''
-    verificationUri.value = state.challenge?.verificationUri ?? ''
-    challengeExpiresAt.value = state.challenge?.expiresAt ?? 0
-    signedInAt.value = state.signedInAt
-    error.value = state.error
-    pendingRemoteRevocation.value = state.pendingRemoteRevocation
-    deviceListUrl.value = state.deviceListUrl
-    hydrated.value = true
-  }
-
-  async function hydrate(): Promise<void> {
-    if (bound) return
-    bound = true
-    onPrivacySettingsChange(() => syncIdentity(phase.value, profile.value))
-    window.guEarth.account.onState(applyState)
-    try {
-      applyState(await window.guEarth.account.getState())
-    } catch {
-      hydrated.value = true
-    }
-  }
-
-  async function run(task: () => Promise<AccountState>): Promise<void> {
-    if (busy.value) return
-    busy.value = true
-    try {
-      applyState(await task())
-    } catch (caught) {
-      error.value = ipcErrorMessage(caught)
-    } finally {
-      busy.value = false
-    }
-  }
-
-  async function login(): Promise<void> {
-    if (loginInProgress.value) return
-    await run(() => window.guEarth.account.login())
-  }
-
-  async function cancelLogin(): Promise<void> {
-    if (canceling.value) return
-    canceling.value = true
-    try {
-      applyState(await window.guEarth.account.cancelLogin())
-    } catch (caught) {
-      error.value = ipcErrorMessage(caught)
-    } finally {
-      canceling.value = false
-    }
-  }
-
-  async function signOut(): Promise<void> {
-    await run(() => window.guEarth.account.signOut())
-  }
-
-  async function dismissRevocationWarning(): Promise<void> {
-    await run(() => window.guEarth.account.dismissRevocationWarning())
-  }
-
-  async function openDeviceList(): Promise<void> {
-    try {
-      await window.guEarth.account.openDeviceList()
-    } catch {
-      error.value = '无法打开账号页设备列表'
-    }
-  }
-
-  async function openVerification(): Promise<void> {
-    try {
-      await window.guEarth.account.openVerification()
-    } catch {
-      error.value = '无法打开登录确认页，请重新发起登录'
-    }
-  }
-
-  function clearError(): void {
-    error.value = ''
-  }
-
+export function createInitialAccountState(): AccountStoreState {
+  const phase: AccountPhase = 'signed-out'
+  const profile: AccountProfile | null = null
+  const challengeExpiresAt = 0
   return {
     phase,
     profile,
-    userCode,
-    verificationUri,
+    userCode: '',
+    verificationUri: '',
     challengeExpiresAt,
-    signedInAt,
-    error,
-    pendingRemoteRevocation,
-    deviceListUrl,
-    hydrated,
-    busy,
-    canceling,
-    signedIn,
-    loginInProgress,
-    remainingSeconds,
-    displayName,
-    phaseLabel,
-    hydrate,
-    login,
-    cancelLogin,
-    signOut,
-    dismissRevocationWarning,
-    openDeviceList,
-    openVerification,
-    clearError
+    signedInAt: 0,
+    error: '',
+    pendingRemoteRevocation: false,
+    deviceListUrl: '',
+    hydrated: false,
+    busy: false,
+    canceling: false,
+    ...deriveAccountFields(phase, profile, challengeExpiresAt)
   }
-})
+}
+
+let bound = false
+let identifiedSub: string | null = null
+let unsubscribePrivacy: (() => void) | null = null
+let unsubscribeAccountState: (() => void) | null = null
+
+function syncIdentity(currentPhase: AccountPhase, currentProfile: AccountProfile | null): void {
+  const nextSub = currentPhase === 'signed-in' ? currentProfile?.sub.trim() ?? '' : ''
+
+  if (!isTelemetryEnabled()) {
+    if (identifiedSub || isTelemetryUserIdentified()) resetTelemetryIdentity()
+    identifiedSub = null
+    return
+  }
+
+  if (nextSub) {
+    if (identifiedSub && nextSub !== identifiedSub) resetTelemetryIdentity()
+    if (nextSub !== identifiedSub || !isTelemetryUserIdentified()) {
+      const personProperties: Record<string, string> = {}
+      if (currentProfile?.email) personProperties.email = currentProfile.email
+      if (currentProfile?.name) personProperties.name = currentProfile.name
+      identifyTelemetryUser(nextSub, personProperties)
+      identifiedSub = nextSub
+    }
+    return
+  }
+
+  if (identifiedSub || isTelemetryUserIdentified()) {
+    resetTelemetryIdentity()
+    identifiedSub = null
+  }
+}
+
+function applyAccountSnapshot(state: AccountState): void {
+  syncIdentity(state.phase, state.profile)
+  const challengeExpiresAt = state.challenge?.expiresAt ?? 0
+  useAccountStore.setState({
+    phase: state.phase,
+    profile: state.profile,
+    userCode: state.challenge?.userCode ?? '',
+    verificationUri: state.challenge?.verificationUri ?? '',
+    challengeExpiresAt,
+    signedInAt: state.signedInAt,
+    error: state.error,
+    pendingRemoteRevocation: state.pendingRemoteRevocation,
+    deviceListUrl: state.deviceListUrl,
+    hydrated: true,
+    ...deriveAccountFields(state.phase, state.profile, challengeExpiresAt)
+  })
+}
+
+export const useAccountStore = create<AccountStore>()(
+  subscribeWithSelector((set, get) => {
+    async function run(task: () => Promise<AccountState>): Promise<void> {
+      if (get().busy) return
+      set({ busy: true })
+      try {
+        applyAccountSnapshot(await task())
+      } catch (caught) {
+        set({ error: ipcErrorMessage(caught) })
+      } finally {
+        set({ busy: false })
+      }
+    }
+
+    return {
+      ...createInitialAccountState(),
+      async hydrate(): Promise<void> {
+        if (bound) return
+        bound = true
+        unsubscribePrivacy = onPrivacySettingsChange(() => {
+          const current = get()
+          syncIdentity(current.phase, current.profile)
+        })
+        unsubscribeAccountState = window.guEarth.account.onState(applyAccountSnapshot)
+        try {
+          applyAccountSnapshot(await window.guEarth.account.getState())
+        } catch {
+          set({ hydrated: true })
+        }
+      },
+      async login(): Promise<void> {
+        if (get().loginInProgress) return
+        await run(() => window.guEarth.account.login())
+      },
+      async cancelLogin(): Promise<void> {
+        if (get().canceling) return
+        set({ canceling: true })
+        try {
+          applyAccountSnapshot(await window.guEarth.account.cancelLogin())
+        } catch (caught) {
+          set({ error: ipcErrorMessage(caught) })
+        } finally {
+          set({ canceling: false })
+        }
+      },
+      async signOut(): Promise<void> {
+        await run(() => window.guEarth.account.signOut())
+      },
+      async dismissRevocationWarning(): Promise<void> {
+        await run(() => window.guEarth.account.dismissRevocationWarning())
+      },
+      async openDeviceList(): Promise<void> {
+        try {
+          await window.guEarth.account.openDeviceList()
+        } catch {
+          set({ error: '无法打开账号页设备列表' })
+        }
+      },
+      async openVerification(): Promise<void> {
+        try {
+          await window.guEarth.account.openVerification()
+        } catch {
+          set({ error: '无法打开登录确认页，请重新发起登录' })
+        }
+      },
+      clearError(): void {
+        set({ error: '' })
+      }
+    }
+  })
+)
+
+export function resetAccountStore(): void {
+  if (unsubscribePrivacy) {
+    unsubscribePrivacy()
+    unsubscribePrivacy = null
+  }
+  if (unsubscribeAccountState) {
+    unsubscribeAccountState()
+    unsubscribeAccountState = null
+  }
+  bound = false
+  identifiedSub = null
+  useAccountStore.setState(createInitialAccountState())
+}

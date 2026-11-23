@@ -2,7 +2,8 @@ import { cpSync, createReadStream, existsSync, statSync } from 'fs'
 import { extname, join, resolve, sep } from 'path'
 import { defineConfig } from 'electron-vite'
 import type { Connect, Plugin } from 'vite'
-import vue from '@vitejs/plugin-vue'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 const cesiumBuild = resolve('node_modules/cesium/Build/Cesium')
 const cesiumDirs = ['Workers', 'ThirdParty', 'Assets', 'Widgets']
@@ -65,10 +66,11 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src')
+        '@renderer': resolve('src/renderer/src'),
+        '@': resolve('src/renderer/src')
       }
     },
-    plugins: [vue(), cesiumStaticPlugin()],
+    plugins: [react(), tailwindcss(), cesiumStaticPlugin()],
     build: {
       rollupOptions: {
         input: {

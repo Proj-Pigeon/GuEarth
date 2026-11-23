@@ -1,24 +1,46 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 
 export type SettingsSection = 'account' | 'general' | 'map' | 'ai' | 'privacy' | 'laboratory' | 'about'
 
-export const useSettingsWindowStore = defineStore('settingsWindow', () => {
-  const isOpen = ref(false)
-  const activeSection = ref<SettingsSection>('general')
+export interface SettingsWindowState {
+  isOpen: boolean
+  activeSection: SettingsSection
+}
 
-  function open(section?: SettingsSection): void {
-    if (section) activeSection.value = section
-    isOpen.value = true
+export interface SettingsWindowActions {
+  open: (section?: SettingsSection) => void
+  close: () => void
+  setActiveSection: (section: SettingsSection) => void
+}
+
+export type SettingsWindowStore = SettingsWindowState & SettingsWindowActions
+
+export function createInitialSettingsWindowState(): SettingsWindowState {
+  return {
+    isOpen: false,
+    activeSection: 'general'
   }
+}
 
-  function close(): void {
-    isOpen.value = false
-  }
+export const useSettingsWindowStore = create<SettingsWindowStore>()(
+  subscribeWithSelector((set) => ({
+    ...createInitialSettingsWindowState(),
+    open(section?: SettingsSection): void {
+      set((state) => ({
+        isOpen: true,
+        activeSection: section ?? state.activeSection
+      }))
+    },
+    close(): void {
+      set({ isOpen: false })
+    },
+    setActiveSection(section: SettingsSection): void {
+      set({ activeSection: section })
+    }
+  }))
+)
 
-  function setActiveSection(section: SettingsSection): void {
-    activeSection.value = section
-  }
-
-  return { isOpen, activeSection, open, close, setActiveSection }
-})
+export function resetSettingsWindowStore(): void {
+  useSettingsWindowStore.setState(createInitialSettingsWindowState())
+}

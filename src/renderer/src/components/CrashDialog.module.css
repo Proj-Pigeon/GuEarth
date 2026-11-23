@@ -1,0 +1,29 @@
+.crashTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.crashIcon {
+  color: #ff4d4f;
+  font-size: 18px;
+}
+
+.crashMessage {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  line-height: 22px;
+  word-break: break-all;
+}
+
+.crashMeta {
+  margin: 8px 0 0;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}

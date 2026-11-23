@@ -1,5 +1,5 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 import type { AnnotationDocument, AnnotationEntry } from '../../../preload'
 import { referencedShapeIds } from '@renderer/lib/annotationReferences'
 import { logger } from '../../../common/logger'
@@ -29,6 +29,34 @@ export interface DrawnShape extends Omit<import('../../../preload').StoredShape,
   positions: GeoPosition[]
 }
 
+export interface DrawingState {
+  shapes: DrawnShape[]
+  entries: AnnotationEntry[]
+  activeTool: DrawTool | null
+  selectedShapeId: string | null
+  saveError: string
+}
+
+export interface DrawingActions {
+  load: () => Promise<void>
+  setActiveTool: (tool: DrawTool | null) => void
+  setSelectedShapeId: (id: string | null) => void
+  addShape: (shape: DrawnShape) => void
+  addTransientShape: (shape: DrawnShape) => void
+  updateShape: (
+    id: string,
+    changes: Partial<Pick<DrawnShape, 'annotation' | 'color' | 'textColor' | 'fontFamily' | 'fontSize' | 'textFrame' | 'lineWidth'>>
+  ) => void
+  removeShape: (id: string) => void
+  clearAll: () => void
+  addFolder: (name: string, parentId: string | null) => string | null
+  renameFolder: (id: string, name: string) => boolean
+  removeFolder: (id: string) => void
+  moveEntry: (id: string, targetId: string | null, placement: 'inside' | 'before' | 'after') => boolean
+}
+
+export type DrawingStore = DrawingState & DrawingActions
+
 function apiAvailable(): boolean {
   return typeof window !== 'undefined' && Boolean(window.guEarth?.annotations)
 }
@@ -38,17 +66,6 @@ function findEntry(entries: AnnotationEntry[], id: string): AnnotationEntry | un
     if (entry.id === id) return entry
     if (entry.type === 'folder') {
       const found = findEntry(entry.children, id)
-      if (found) return found
-    }
-  }
-  return undefined
-}
-
-function findParent(entries: AnnotationEntry[], id: string): AnnotationEntry[] | undefined {
-  if (entries.some((entry) => entry.id === id)) return entries
-  for (const entry of entries) {
-    if (entry.type === 'folder') {
-      const found = findParent(entry.children, id)
       if (found) return found
     }
   }
@@ -74,158 +91,232 @@ function containsEntry(entry: AnnotationEntry, id: string): boolean {
   return entry.id === id || (entry.type === 'folder' && entry.children.some((child) => containsEntry(child, id)))
 }
 
-export const useDrawingStore = defineStore('drawing', () => {
-  const failureStore = useFailureStore()
-  const shapes = ref<DrawnShape[]>([])
-  const entries = ref<AnnotationEntry[]>([])
-  const activeTool = ref<DrawTool | null>(null)
-  const selectedShapeId = ref<string | null>(null)
-  const saveError = ref('')
-  let pendingSave = Promise.resolve()
-  let saveTimer: ReturnType<typeof setTimeout> | undefined
-  const transientShapeIds = new Set<string>()
-
-  function persist(): void {
-    if (!apiAvailable()) return
-    if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => {
-      saveTimer = undefined
-      const persistedIds = referencedShapeIds(entries.value)
-      const persisted = shapes.value.filter((shape) => persistedIds.has(shape.id))
-      const dropped = shapes.value.filter((shape) => !persistedIds.has(shape.id) && !transientShapeIds.has(shape.id))
-      if (dropped.length) {
-        logger.warn('annotations', `${dropped.length} 个标注图形没有目录引用，本次保存已跳过`, dropped.map((shape) => shape.id))
-      }
-      const snapshot: AnnotationDocument = {
-        shapes: JSON.parse(JSON.stringify(persisted)) as DrawnShape[],
-        entries: JSON.parse(JSON.stringify(entries.value)) as AnnotationEntry[]
-      }
-      pendingSave = pendingSave.catch(() => undefined).then(async () => {
-        await window.guEarth.annotations.save(snapshot)
-        saveError.value = ''
-      }).catch(() => {
-        saveError.value = '标注保存失败，请重试'
-      })
-    }, 120)
-  }
-
-  async function load(): Promise<void> {
-    if (!apiAvailable()) return
-    try {
-      const document = await window.guEarth.annotations.load()
-      shapes.value = document.shapes
-      entries.value = document.entries
-      failureStore.clearFailure('annotations')
-    } catch {
-      failureStore.reportFailure({ scope: 'annotations', message: '标注读取失败，暂时无法显示已保存的标注', retryable: true })
+function removeEntryById(entries: AnnotationEntry[], id: string): AnnotationEntry[] {
+  return entries.flatMap<AnnotationEntry>((entry) => {
+    if (entry.id === id) return []
+    if (entry.type === 'folder') {
+      return [{ ...entry, children: removeEntryById(entry.children, id) }]
     }
+    return [entry]
+  })
+}
+
+function appendToFolder(entries: AnnotationEntry[], parentId: string | null, item: AnnotationEntry): AnnotationEntry[] {
+  if (!parentId) return [...entries, item]
+  return entries.map((entry) => {
+    if (entry.type !== 'folder') return entry
+    if (entry.id === parentId) return { ...entry, children: [...entry.children, item] }
+    return { ...entry, children: appendToFolder(entry.children, parentId, item) }
+  })
+}
+
+function renameFolderEntry(entries: AnnotationEntry[], id: string, name: string): AnnotationEntry[] {
+  return entries.map((entry) => {
+    if (entry.type !== 'folder') return entry
+    if (entry.id === id) return { ...entry, name }
+    return { ...entry, children: renameFolderEntry(entry.children, id, name) }
+  })
+}
+
+function unwrapFolderEntry(entries: AnnotationEntry[], id: string): AnnotationEntry[] {
+  return entries.flatMap<AnnotationEntry>((entry) => {
+    if (entry.id === id && entry.type === 'folder') return entry.children
+    if (entry.type === 'folder') return [{ ...entry, children: unwrapFolderEntry(entry.children, id) }]
+    return [entry]
+  })
+}
+
+function insertRelativeToEntry(
+  entries: AnnotationEntry[],
+  targetId: string,
+  placement: 'before' | 'after',
+  item: AnnotationEntry
+): AnnotationEntry[] {
+  return entries.flatMap<AnnotationEntry>((entry) => {
+    if (entry.id === targetId) {
+      return placement === 'before' ? [item, entry] : [entry, item]
+    }
+    if (entry.type === 'folder') {
+      return [{ ...entry, children: insertRelativeToEntry(entry.children, targetId, placement, item) }]
+    }
+    return [entry]
+  })
+}
+
+export function createInitialDrawingState(): DrawingState {
+  return {
+    shapes: [],
+    entries: [],
+    activeTool: null,
+    selectedShapeId: null,
+    saveError: ''
   }
+}
 
-  function setActiveTool(tool: DrawTool | null): void {
-    activeTool.value = tool
+let pendingSave = Promise.resolve()
+let saveTimer: ReturnType<typeof setTimeout> | undefined
+const transientShapeIds = new Set<string>()
+
+export const useDrawingStore = create<DrawingStore>()(
+  subscribeWithSelector((set, get) => {
+    function persist(): void {
+      if (!apiAvailable()) return
+      if (saveTimer) clearTimeout(saveTimer)
+      saveTimer = setTimeout(() => {
+        saveTimer = undefined
+        const state = get()
+        const persistedIds = referencedShapeIds(state.entries)
+        const persisted = state.shapes.filter((shape) => persistedIds.has(shape.id))
+        const dropped = state.shapes.filter((shape) => !persistedIds.has(shape.id) && !transientShapeIds.has(shape.id))
+        if (dropped.length) {
+          logger.warn('annotations', `${dropped.length} 个标注图形没有目录引用，本次保存已跳过`, dropped.map((shape) => shape.id))
+        }
+        const snapshot: AnnotationDocument = {
+          shapes: JSON.parse(JSON.stringify(persisted)) as DrawnShape[],
+          entries: JSON.parse(JSON.stringify(state.entries)) as AnnotationEntry[]
+        }
+        pendingSave = pendingSave.catch(() => undefined).then(async () => {
+          await window.guEarth.annotations.save(snapshot)
+          set({ saveError: '' })
+        }).catch(() => {
+          set({ saveError: '标注保存失败，请重试' })
+        })
+      }, 120)
+    }
+
+    return {
+      ...createInitialDrawingState(),
+      async load(): Promise<void> {
+        if (!apiAvailable()) return
+        try {
+          const document = await window.guEarth.annotations.load()
+          set({
+            shapes: [...document.shapes],
+            entries: [...document.entries]
+          })
+          useFailureStore.getState().clearFailure('annotations')
+        } catch {
+          useFailureStore.getState().reportFailure({ scope: 'annotations', message: '标注读取失败，暂时无法显示已保存的标注', retryable: true })
+        }
+      },
+      setActiveTool(tool: DrawTool | null): void {
+        set({ activeTool: tool })
+      },
+      setSelectedShapeId(id: string | null): void {
+        set({ selectedShapeId: id })
+      },
+      addShape(shape: DrawnShape): void {
+        set((state) => ({
+          shapes: [...state.shapes, shape],
+          entries: [...state.entries, { type: 'shape', id: shape.id }]
+        }))
+        persist()
+      },
+      addTransientShape(shape: DrawnShape): void {
+        transientShapeIds.add(shape.id)
+        set((state) => ({
+          shapes: [...state.shapes, shape]
+        }))
+      },
+      updateShape(
+        id: string,
+        changes: Partial<Pick<DrawnShape, 'annotation' | 'color' | 'textColor' | 'fontFamily' | 'fontSize' | 'textFrame' | 'lineWidth'>>
+      ): void {
+        if (!get().shapes.some((item) => item.id === id)) return
+        set((state) => ({
+          shapes: state.shapes.map((item) => (item.id === id ? { ...item, ...changes } : item))
+        }))
+        persist()
+      },
+      removeShape(id: string): void {
+        if (!get().shapes.some((item) => item.id === id)) return
+        const transient = transientShapeIds.delete(id)
+        set((state) => ({
+          shapes: state.shapes.filter((item) => item.id !== id),
+          entries: removeEntryById(state.entries, id),
+          selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId
+        }))
+        if (transient) return
+        persist()
+      },
+      clearAll(): void {
+        transientShapeIds.clear()
+        set({
+          shapes: [],
+          entries: [],
+          selectedShapeId: null
+        })
+        persist()
+      },
+      addFolder(name: string, parentId: string | null): string | null {
+        const trimmed = name.trim().slice(0, 80)
+        if (!trimmed) return null
+        const currentEntries = get().entries
+        const parent = parentId ? findEntry(currentEntries, parentId) : undefined
+        if (parentId && (!parent || parent.type !== 'folder' || folderDepth(currentEntries, parentId) >= 5)) return null
+        const id = crypto.randomUUID()
+        const folder: AnnotationEntry = { type: 'folder', id, name: trimmed, children: [] }
+        set((state) => ({
+          entries: appendToFolder(state.entries, parentId, folder)
+        }))
+        persist()
+        return id
+      },
+      renameFolder(id: string, name: string): boolean {
+        const entry = findEntry(get().entries, id)
+        const trimmed = name.trim().slice(0, 80)
+        if (!entry || entry.type !== 'folder' || !trimmed) return false
+        set((state) => ({
+          entries: renameFolderEntry(state.entries, id, trimmed)
+        }))
+        persist()
+        return true
+      },
+      removeFolder(id: string): void {
+        const folder = findEntry(get().entries, id)
+        if (!folder || folder.type !== 'folder') return
+        set((state) => ({
+          entries: unwrapFolderEntry(state.entries, id)
+        }))
+        persist()
+      },
+      moveEntry(id: string, targetId: string | null, placement: 'inside' | 'before' | 'after'): boolean {
+        const currentEntries = get().entries
+        const source = findEntry(currentEntries, id)
+        if (!source || (targetId && containsEntry(source, targetId))) return false
+        const target = targetId ? findEntry(currentEntries, targetId) : undefined
+        if (targetId && !target) return false
+        if (placement === 'inside' && targetId && target?.type !== 'folder') return false
+        const destinationDepth = !targetId
+          ? 0
+          : placement === 'inside'
+            ? folderDepth(currentEntries, targetId)
+            : folderDepth(currentEntries, targetId) - 1
+        if (destinationDepth + subtreeDepth(source) > 5) return false
+        const withoutSource = removeEntryById(currentEntries, id)
+        const nextEntries = !targetId
+          ? [...withoutSource, source]
+          : placement === 'inside'
+            ? appendToFolder(withoutSource, targetId, source)
+            : insertRelativeToEntry(withoutSource, targetId, placement, source)
+        set({ entries: nextEntries })
+        persist()
+        return true
+      }
+    }
+  })
+)
+
+if (typeof useFailureStore.getState === 'function') {
+  useFailureStore.getState().registerRetry('annotations', () => useDrawingStore.getState().load())
+}
+
+export function resetDrawingStore(): void {
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = undefined
   }
-
-  function setSelectedShapeId(id: string | null): void {
-    selectedShapeId.value = id
-  }
-
-  function addShape(shape: DrawnShape): void {
-    shapes.value = [...shapes.value, shape]
-    entries.value = [...entries.value, { type: 'shape', id: shape.id }]
-    persist()
-  }
-
-  function addTransientShape(shape: DrawnShape): void {
-    transientShapeIds.add(shape.id)
-    shapes.value = [...shapes.value, shape]
-  }
-
-  function updateShape(id: string, changes: Partial<Pick<DrawnShape, 'annotation' | 'color' | 'textColor' | 'fontFamily' | 'fontSize' | 'textFrame' | 'lineWidth'>>): void {
-    const shape = shapes.value.find((item) => item.id === id)
-    if (!shape) return
-    Object.assign(shape, changes)
-    persist()
-  }
-
-  function removeShape(id: string): void {
-    if (!shapes.value.some((item) => item.id === id)) return
-    const transient = transientShapeIds.delete(id)
-    shapes.value = shapes.value.filter((item) => item.id !== id)
-    const siblings = findParent(entries.value, id)
-    const entryIndex = siblings ? siblings.findIndex((item) => item.id === id) : -1
-    if (siblings && entryIndex >= 0) siblings.splice(entryIndex, 1)
-    entries.value = [...entries.value]
-    if (selectedShapeId.value === id) selectedShapeId.value = null
-    if (transient) return
-    persist()
-  }
-
-  function clearAll(): void {
-    shapes.value = []
-    transientShapeIds.clear()
-    entries.value = []
-    selectedShapeId.value = null
-    persist()
-  }
-
-  function addFolder(name: string, parentId: string | null): string | null {
-    const trimmed = name.trim().slice(0, 80)
-    if (!trimmed) return null
-    const parent = parentId ? findEntry(entries.value, parentId) : undefined
-    if (parentId && (!parent || parent.type !== 'folder' || folderDepth(entries.value, parentId) >= 5)) return null
-    const id = crypto.randomUUID()
-    const children = parent?.type === 'folder' ? parent.children : entries.value
-    children.push({ type: 'folder', id, name: trimmed, children: [] })
-    entries.value = [...entries.value]
-    persist()
-    return id
-  }
-
-  function renameFolder(id: string, name: string): boolean {
-    const entry = findEntry(entries.value, id)
-    const trimmed = name.trim().slice(0, 80)
-    if (!entry || entry.type !== 'folder' || !trimmed) return false
-    entry.name = trimmed
-    entries.value = [...entries.value]
-    persist()
-    return true
-  }
-
-  function removeFolder(id: string): void {
-    const siblings = findParent(entries.value, id)
-    if (!siblings) return
-    const index = siblings.findIndex((entry) => entry.id === id)
-    const folder = siblings[index]
-    if (folder.type !== 'folder') return
-    siblings.splice(index, 1, ...folder.children)
-    entries.value = [...entries.value]
-    persist()
-  }
-
-  function moveEntry(id: string, targetId: string | null, placement: 'inside' | 'before' | 'after'): boolean {
-    const source = findEntry(entries.value, id)
-    if (!source || (targetId && containsEntry(source, targetId))) return false
-    const target = targetId ? findEntry(entries.value, targetId) : undefined
-    if (targetId && !target) return false
-    if (placement === 'inside' && targetId && target?.type !== 'folder') return false
-    const destinationDepth = !targetId ? 0 : placement === 'inside'
-      ? folderDepth(entries.value, targetId)
-      : folderDepth(entries.value, targetId) - 1
-    if (destinationDepth + subtreeDepth(source) > 5) return false
-    const from = findParent(entries.value, id)
-    if (!from) return false
-    from.splice(from.findIndex((entry) => entry.id === id), 1)
-    const to = !targetId ? entries.value : placement === 'inside' && target?.type === 'folder'
-      ? target.children : findParent(entries.value, targetId)
-    if (!to) return false
-    const targetIndex = targetId && placement !== 'inside' ? to.findIndex((entry) => entry.id === targetId) : to.length
-    to.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, source)
-    entries.value = [...entries.value]
-    persist()
-    return true
-  }
-
-  failureStore.registerRetry('annotations', load)
-
-  return { shapes, entries, activeTool, selectedShapeId, saveError, load, setActiveTool, setSelectedShapeId, addShape, addTransientShape, updateShape, removeShape, clearAll, addFolder, renameFolder, removeFolder, moveEntry }
-})
+  pendingSave = Promise.resolve()
+  transientShapeIds.clear()
+  useDrawingStore.setState(createInitialDrawingState())
+}

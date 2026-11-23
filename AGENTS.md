@@ -13,8 +13,8 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 | Layer | Choice | Notes |
 | --- | --- | --- |
 | Shell | Electron + electron-vite | contextIsolation on, nodeIntegration off, typed preload IPC (`window.guEarth`) |
-| Renderer | Vue 3 + Pinia + **Ant Design Vue** | UI framework is Ant Design Vue — see [DESIGN.md](./DESIGN.md) |
-| Charts | ECharts via `vue-echarts` | modular imports (`echarts/core` + SVGRenderer) wrapped in `src/renderer/src/components/charts/LineChart.vue` |
+| Renderer | React 19 + Zustand 5 + **Ant Design v6** | UI framework is Ant Design v6 (`antd@6` + `@ant-design/icons@6`) with CSS Modules; EOQ assistant uses `@assistant-ui/react` + Tailwind CSS v4 scoped to `.eoq-drawer` — see [DESIGN.md](./DESIGN.md) |
+| Charts | ECharts (`echarts/core` + `SVGRenderer`) | modular imports wrapped in `src/renderer/src/components/charts/EChartBase.tsx` (`LineChart.tsx` / `BarChart.tsx`) |
 | 3D / Map | CesiumJS | Static assets (Workers/ThirdParty/Assets/Widgets) served from `cesium/` by the inline plugin in `electron.vite.config.ts`; `CESIUM_BASE_URL=./cesium/`. The renderer CSP must keep `'unsafe-eval'` — Cesium's bundled Knockout calls `eval` at module load, so without it the whole entry module aborts and the window is blank |
 | AI | OpenAI-compatible streaming client in the main process | Provider-agnostic (DeepSeek/Qwen/OpenAI…); API keys live **only** in the main process via `safeStorage`, never in the renderer |
 | Storage | JSON files in `userData` (`settings.json`, `annotations.json`, `ai-settings.json`) | credentials via `safeStorage` KeyVault; no SQLite yet |
@@ -23,10 +23,8 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 **Pinned versions — do not bump casually:**
 
 - `vite@^7` — electron-vite@5 peer range tops out at vite 7.
-- `typescript@5.9.x` — TypeScript 7 (native) is incompatible with vue-tsc.
-- `ant-design-vue@4.x` is the latest Vue port (4.2.6); the React antd line is at v6. The Vue port
-  implements the same Ant Design token system — follow [DESIGN.md](./DESIGN.md) tokens, not the
-  React v6 API.
+- `typescript@5.9.x` — pinned TypeScript version (`tsconfig.node.json` + `tsconfig.web.json`).
+- `antd@6.6.5` — Ant Design v6 (React 19 native, CSS Variables + `@ant-design/cssinjs` `StyleProvider layer` to isolate Tailwind v4 `@layer`). Follow [DESIGN.md](./DESIGN.md) tokens and Ant Design v6 API (`Alert` `title`, `Modal`/`Drawer` `styles`, `App.useApp()`).
 - Electron binaries must be installed manually with the npmmirror mirror:
   `ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" node node_modules/electron/install.js`
   (otherwise `npm run dev` fails with "Electron uninstall").
@@ -48,7 +46,7 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 ```
 src/main/       Main process: window, KeyVault, AI proxy (streaming), tile cache, auto-updater
 src/preload/    contextBridge API + type declarations
-src/renderer/   Vue app: globe view, layer registry, drawing tools, EOQ assistant UI
+src/renderer/   React app: globe view, layer registry, drawing tools, EOQ assistant UI
 ```
 
 - The renderer never touches Node APIs or secrets. All privileged work goes through IPC.
@@ -81,11 +79,11 @@ Teaching modules (人教版高中地理 mapping; thematic layers live in `src/re
 | M2 | Atmosphere: pressure/wind belt layer (Jan/Jul shift), global Köppen zones, thematic-entity picking + AI explain, frontal-cyclone anchored overlay, `set_layer` tool, thermal-circulation animated panel (sea-land/valley/urban breezes), atmospheric heating process panel (weakening + greenhouse insulation, day/night & cloud states), vertical atmospheric layers panel (height-temperature profile), typhoon layer (structure anchored overlay + historical real tracks) | Done |
 | M3 | Landforms: plate boundaries + USGS earthquakes/volcanoes (dataset fetch + cache in main process), `explain_landform` tool, teaching tools unified into bottom-toolbar Lab card, fold-fault cross-section panel with real-site flyovers, river-landform panel (upper/middle/lower reaches + real terrain elevation profiles via `sampleTerrainMostDetailed`), landform guide panel (karst/yardang/glacial/coastal/loess site flyovers), exogenic-process chain panel, earth-interior layers cross-section panel | Done |
 | M4 | Ocean: ENSO phase layer (El Niño / La Niña SST anomaly + Walker circulation overlay + Niño3.4 box + phase panel), water-cycle animated panel with camera linkage, ocean temperature/salinity latitude profiles, tide & wave panel, river recharge & discharge panel, ocean-current + wind-belt linkage entry | Done |
-| M5 | Integrality/zonation (Sel. Compulsory 1): `mountainZonation.ts` (five teaching mountains with south/north slope belts, snowlines, transects) + `notablePeaks.ts` (77-peak catalogue with `findPeaksNear`/`nearestPeaks`), ZonationPanel (belt-spectrum SVG with per-aspect snowlines, real sampled terrain profile along the transect, belt legends, zonation principles), guided transect flights (`lib/transect.ts` great-circle/bearing/flight-planning math + `useTransectFlight` terrain-safe flight with smooth per-sample altitude profile, invisible two-pass concurrent tile preload, enlarged tile cache during flight and auto-cleared overlay polyline, global flight-progress HUD via the zonation store `flightHud` + `ZonationFlightHud.vue`, renderer AI tools `find_peaks` + `fly_transect`), zonation store + TeachingLab chapter 第五章·自然环境的整体性与差异性 + `open_panel` id, agent guidance line, two tool knowledge entries, `tests/mountain-zonation.test.mjs` + `tests/notable-peaks.test.mjs` | Done |
+| M5 | Integrality/zonation (Sel. Compulsory 1): `mountainZonation.ts` (five teaching mountains with south/north slope belts, snowlines, transects) + `notablePeaks.ts` (77-peak catalogue with `findPeaksNear`/`nearestPeaks`), ZonationPanel (belt-spectrum SVG with per-aspect snowlines, real sampled terrain profile along the transect, belt legends, zonation principles), guided transect flights (`lib/transect.ts` great-circle/bearing/flight-planning math + `useTransectFlight` terrain-safe flight with smooth per-sample altitude profile, invisible two-pass concurrent tile preload, enlarged tile cache during flight and auto-cleared overlay polyline, global flight-progress HUD via the zonation store `flightHud` + `ZonationFlightHud.tsx`, renderer AI tools `find_peaks` + `fly_transect`), zonation store + TeachingLab chapter 第五章·自然环境的整体性与差异性 + `open_panel` id, agent guidance line, two tool knowledge entries, `tests/mountain-zonation.test.mjs` + `tests/notable-peaks.test.mjs` | Done |
 | M6 | Population (choropleth foundation, issue #39 Phase A): province GeoJSON served from `resources/geo/china-provinces.geojson` (vendored DataV GeoAtlas, GCJ-02, read via `datasets:provinces` IPC), province-level choropleth layer with census-binned coloring + click info cards, Hu line layer with east/west anchored overlay cards, migration-flow arrow layer, PopulationPanel (pyramid / urbanization / Hu-line tabs) + `BarChart` wrapper, `query_population` AI tool, `entries-human.json` knowledge file | Done |
 | M7 | Cities & towns (issue #39 Phase B): amap `place/around` POI statistics with 20-category aggregation (`poiStatistics` in `src/main/ai/amap.ts`, main-process `poi_statistics` AI tool + `places:poi-statistics` IPC), city-tiers layer (five-tier cities with service-radius rings, clickable), functional-zones layer switchable across seven real cities (`functionalZoneCities`: Wuhan, Shanghai, Beijing, Guangzhou, Shenzhen, Chengdu, Shenyang — CBD/commercial cores, outer-ring residential districts, edge/transport-aligned industrial zones incl. Shougang relocation and Tiexi redevelopment cases; city switcher embedded in the legend, `set_layer` accepts a `city` parameter), CitiesPanel (tier table + central-place POI verification via high/low center comparison), `urbanCities.ts` data file, four new knowledge entries, optional VIIRS night-lights basemap (`viirs-night` provider via NASA GIBS Black Marble through the `guearth-tile` proxy, layer-manager "夜光" category) | Done |
 | M8 | Industry & agriculture location (issue #39 Phase C): `agri-regions` layer (nine commodity-grain bases + cotton/sugarcane/beet belts as hand-traced polygons, `agriculturalRegions.ts`), `industrial-bases` layer (four bases with pillar factors, `industrialBases.ts`), `industrial-transfers` flow-arc layer reusing the migration-arc primitives, main-process `analyze_location` AI tool (`locationAnalysis.ts`: POI composition + knowledge retrieval, elevation via `query_terrain` renderer round-trip in the agent), three knowledge entries, `tests/agri-regions.test.mjs` | Done |
-| M9 | Transportation (issue #39 Phase C): `hsr-network` layer (fifteen trunk lines with `openedYear`, per-year visibility via CallbackProperty, `hsrLines.ts`), `YearTimeline.vue` (slider + rAF playback 2008-2025) + `TransportPanel` (mileage growth chart, opened-line counter, terrain-safe case flyovers), `transport` Pinia store wired into TeachingLab/open_panel, two knowledge entries, `tests/hsr-lines.test.mjs` | Done |
+| M9 | Transportation (issue #39 Phase C): `hsr-network` layer (fifteen trunk lines with `openedYear`, per-year visibility via CallbackProperty, `hsrLines.ts`), `YearTimeline.tsx` (slider + rAF playback 2008-2025) + `TransportPanel` (mileage growth chart, opened-line counter, terrain-safe case flyovers), `transport` Zustand store wired into TeachingLab/open_panel, two knowledge entries, `tests/hsr-lines.test.mjs` | Done |
 | M10 | Environment & development (issue #39 Phase C): `sea-level-rise` inundation simulation (coastal lowland grids for Bohai rim / Yellow River delta / Subei / Yangtze delta / PRD sampled via `sampleTerrainMostDetailed` with `globe.getHeight` fallback, results cached in `seaLevelRise.ts`, +0.5/1/2/5 m scenarios via destroy-rebuild watcher, retryable `sea-level-terrain` failure scope), EnvironmentPanel (scenario picker, per-zone area chart, zone flyovers), two knowledge entries, `tests/sea-level.test.mjs` | Done |
 | Phase C tooling | Decision & evaluation tooling (issue #39 Phase C): LocationDecisionPanel location-decision sandbox (four real-site cases with factor toggles + gaokao-structured AI critique prompt, `decisionSandbox.ts`), Socratic agent mode (`socraticEnabled` across preload/shared/settingsStore/agent system prompt + AI-settings "教学" tab), decision knowledge entry, `tests/decision-sandbox.test.mjs` | Done |
 | Far-term (Sel. Compulsory 2–3) | Food security, regional development, industrial-transfer deep-dive (issue #39 Beyond) | Planned |
@@ -97,7 +95,7 @@ npm run dev        # electron-vite dev server + app
 npm run build      # production build
 npm run fetch:ffmpeg   # pinned LGPL FFmpeg for Windows or Linux into resources/bin
 npm run build:linux    # AppImage + deb for Linux x64 and arm64
-npm run typecheck  # tsc (node) + vue-tsc (web)
+npm run typecheck  # tsc (node) + tsc (web)
 npm test           # node:test unit tests (tests/*.test.mjs), run by CI
 ```
 
@@ -107,10 +105,11 @@ npm test           # node:test unit tests (tests/*.test.mjs), run by CI
 
 ## Conventions
 
-- **UI**: Use Ant Design Vue components and the tokens in [DESIGN.md](./DESIGN.md). All visual
+- **UI**: Use Ant Design v6 (`antd@6`) components with CSS Modules and the tokens in [DESIGN.md](./DESIGN.md) (and `@assistant-ui/react` + Tailwind CSS v4 scoped to `.eoq-drawer` for the EOQ assistant). All visual
   decisions — colors, typography, spacing, radii, elevation, motion, component states — are
   governed by DESIGN.md; do not invent local design rules. Custom components only where Ant
-  Design has no equivalent (e.g. globe-anchored overlays), built from DESIGN.md tokens.
+  Design has no equivalent (e.g. globe-anchored overlays), built from DESIGN.md tokens. Every
+  `<Button loading={...}>` must pass its icon via the `icon` prop rather than as JSX children.
 - **No code comments** in any file type. Encode reasoning in names, structure, and tests.
 - **Commit messages and PR titles/descriptions in English.** Conversation with the user in
   Chinese.

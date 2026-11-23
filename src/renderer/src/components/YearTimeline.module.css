@@ -1,0 +1,33 @@
+.yearTimeline {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 4px 2px 6px;
+}
+
+.yearReadout {
+  display: flex;
+  flex-direction: column;
+  min-width: 96px;
+}
+
+.yearValue {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mileageText {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.yearSlider {
+  flex: 1;
+  margin: 0 10px 12px 10px;
+}

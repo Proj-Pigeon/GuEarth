@@ -1,0 +1,72 @@
+.transportPanel {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 400px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 8px;
+  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  z-index: 10;
+}
+
+.transportPanel > * {
+  flex: none;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panelTitle {
+  margin-right: auto;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.chartTitle {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.fact {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.panelNote {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.panelAction {
+  margin-top: 2px;
+}
+
+.caseGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.caseButton {
+  width: 100%;
+  font-size: 12px;
+  padding-inline-start: 4px;
+  padding-inline-end: 4px;
+}

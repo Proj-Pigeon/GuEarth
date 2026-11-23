@@ -6,7 +6,7 @@ const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.ur
 const macSource = await readFile(new URL('../src/main/offscreenMac.ts', import.meta.url), 'utf8')
 const preloadSource = await readFile(new URL('../src/preload/index.ts', import.meta.url), 'utf8')
 const encoderSource = await readFile(new URL('../src/renderer/src/offscreenEncoder.ts', import.meta.url), 'utf8')
-const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
+const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
 const agentSource = await readFile(new URL('../src/main/ai/agent.ts', import.meta.url), 'utf8')
 
 test('darwin encodes through the WebCodecs path while Windows keeps the ffmpeg path', () => {

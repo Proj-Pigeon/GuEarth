@@ -6,18 +6,18 @@ const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.ur
 const preloadSource = await readFile(new URL('../src/preload/index.ts', import.meta.url), 'utf8')
 const viteSource = await readFile(new URL('../electron.vite.config.ts', import.meta.url), 'utf8')
 const offscreenHtml = await readFile(new URL('../src/renderer/offscreen.html', import.meta.url), 'utf8')
-const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
+const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
 const scenePlayerSource = await readFile(new URL('../src/renderer/src/composables/useScenePlayer.ts', import.meta.url), 'utf8')
 const ffmpegSource = await readFile(new URL('../src/main/ffmpeg.ts', import.meta.url), 'utf8')
 
 test('offscreen recording has an isolated Cesium entry', () => {
   assert.match(viteSource, /offscreen: resolve\('src\/renderer\/offscreen\.html'\)/)
-  assert.match(offscreenHtml, /src="\/src\/offscreen\.ts"/)
+  assert.match(offscreenHtml, /src="\/src\/offscreen\.tsx"/)
   assert.match(offscreenSource, /requestRenderMode: false/)
   assert.match(offscreenSource, /async function play\(script: OffscreenRecordingScript\)/)
   assert.match(offscreenSource, /viewer\.camera\.flyTo/)
   assert.match(offscreenSource, /guEarthOffscreenRecorder: \{ play, prepare, next, skipPrewarm: requestSkipPrewarm, setPrewarmQuality \}/)
-  assert.match(offscreenSource, /\.mount\(overlayLayer\)/)
+  assert.match(offscreenSource, /createRoot\(overlayLayer\)/)
 })
 
 test('the recording window survives background throttling and keeps explicit frame and scene timers', () => {
@@ -43,7 +43,7 @@ test('the visible window mirrors the recorded lesson without breaking annotation
 })
 
 test('the visible window keeps the ordinary render policy during recording', () => {
-  assert.match(scenePlayerSource, /playerState\.recording = true\r?\n\s+scenesStore\.setPresenting\(true\)\r?\n\s+scenesStore\.setRecording\(\{ state: 'preparing'/)
+  assert.match(scenePlayerSource, /recording: true\s*\}\)\r?\n\s+scenesStore\.setPresenting\(true\)\r?\n\s+scenesStore\.setRecording\(\{ state: 'preparing'/)
   const recordVideoBody = scenePlayerSource.slice(scenePlayerSource.indexOf('async function recordVideo'), scenePlayerSource.indexOf('async function previewScene'))
   assert.doesNotMatch(recordVideoBody, /enableRecordingRender\(\)/)
   assert.doesNotMatch(recordVideoBody, /disableRecordingRender\(\)/)

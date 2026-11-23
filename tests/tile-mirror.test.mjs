@@ -4,7 +4,6 @@ import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
 import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
-import { createPinia, setActivePinia } from 'pinia'
 import { attachOriginTerrainFallback } from '../src/common/terrainAvailability.ts'
 import {
   MIRROR_POLICY_FALLBACK_TITLES,
@@ -65,8 +64,8 @@ registerHooks({
   }
 })
 
-const { useGlobeStore } = await import('../src/renderer/src/stores/globe.ts')
-const { useFailureStore } = await import('../src/renderer/src/stores/failure.ts')
+const { useGlobeStore, resetGlobeStore } = await import('../src/renderer/src/stores/globe.ts')
+const { useFailureStore, resetFailureStore } = await import('../src/renderer/src/stores/failure.ts')
 
 test('mirror eligible providers cover the four overseas basemaps, satellite kind only for esri imagery', () => {
   assert.deepEqual(Object.keys(mirrorEligibleProviders).sort(), ['esri-imagery', 'opentopomap', 'osm', 'viirs-night'])
@@ -167,7 +166,7 @@ test('mirror policy markdown files parse dynamically without hardcoded policy te
     body: '## 仅有二级标题\n\n内容'
   })
 
-  const modalSource = readFileSync(new URL('../src/renderer/src/components/MirrorPolicyModal.vue', import.meta.url), 'utf8')
+  const modalSource = readFileSync(new URL('../src/renderer/src/components/MirrorPolicyModal.tsx', import.meta.url), 'utf8')
   assert.match(modalSource, /docs\/policies\/MIRROR-SERVICE-AGREEMENT\.md\?raw/)
   assert.match(modalSource, /docs\/policies\/ACCEPTABLE-USE-POLICY\.md\?raw/)
   assert.match(modalSource, /renderMarkdown/)
@@ -392,37 +391,37 @@ test('globeStore mirror consent workflow gates enabling on consent and persists 
   t.after(() => {
     globalThis.window = originalWindow
   })
-  setActivePinia(createPinia())
-  const store = useGlobeStore()
-  assert.equal(store.settingsHydrated, false)
-  await store.hydrateSettings()
-  assert.equal(store.settingsHydrated, true)
-  assert.equal(store.mirrorConsentPrompted, false)
-  assert.equal(store.tileMirrorMode, 'off')
+  resetGlobeStore()
+  const store = () => useGlobeStore.getState()
+  assert.equal(store().settingsHydrated, false)
+  await store().hydrateSettings()
+  assert.equal(store().settingsHydrated, true)
+  assert.equal(store().mirrorConsentPrompted, false)
+  assert.equal(store().tileMirrorMode, 'off')
 
-  store.openMirrorConsent('china')
-  assert.equal(store.mirrorConsentOpen, true)
-  assert.equal(store.mirrorConsentReason, 'china')
+  store().openMirrorConsent('china')
+  assert.equal(store().mirrorConsentOpen, true)
+  assert.equal(store().mirrorConsentReason, 'china')
 
-  store.openMirrorPolicy('acceptable-use')
-  assert.equal(store.mirrorPolicyOpen, true)
-  assert.equal(store.mirrorPolicyActiveId, 'acceptable-use')
-  store.closeMirrorPolicy()
-  assert.equal(store.mirrorPolicyOpen, false)
+  store().openMirrorPolicy('acceptable-use')
+  assert.equal(store().mirrorPolicyOpen, true)
+  assert.equal(store().mirrorPolicyActiveId, 'acceptable-use')
+  store().closeMirrorPolicy()
+  assert.equal(store().mirrorPolicyOpen, false)
 
-  store.declineMirrorConsent()
-  assert.equal(store.mirrorConsentOpen, false)
-  assert.equal(store.mirrorConsentPrompted, true)
-  assert.equal(store.tileMirrorMode, 'off')
+  store().declineMirrorConsent()
+  assert.equal(store().mirrorConsentOpen, false)
+  assert.equal(store().mirrorConsentPrompted, true)
+  assert.equal(store().tileMirrorMode, 'off')
   assert.equal(updates.at(-1).mirrorConsentPrompted, true)
   assert.equal(updates.at(-1).tileMirrorMode, 'off')
 
-  store.openMirrorConsent('settings')
-  assert.equal(store.mirrorConsentOpen, true)
-  assert.equal(store.mirrorConsentReason, 'settings')
-  store.acceptMirrorConsent()
-  assert.equal(store.mirrorConsentOpen, false)
-  assert.equal(store.tileMirrorMode, 'on')
+  store().openMirrorConsent('settings')
+  assert.equal(store().mirrorConsentOpen, true)
+  assert.equal(store().mirrorConsentReason, 'settings')
+  store().acceptMirrorConsent()
+  assert.equal(store().mirrorConsentOpen, false)
+  assert.equal(store().tileMirrorMode, 'on')
   assert.equal(updates.at(-1).tileMirrorMode, 'on')
 })
 
@@ -445,16 +444,16 @@ test('globeStore does not persist mirrorConsentPrompted after settings.get failu
   t.after(() => {
     globalThis.window = originalWindow
   })
-  setActivePinia(createPinia())
-  const store = useGlobeStore()
-  await store.hydrateSettings()
-  assert.equal(store.settingsHydrated, true)
+  resetGlobeStore()
+  const store = () => useGlobeStore.getState()
+  await store().hydrateSettings()
+  assert.equal(store().settingsHydrated, true)
 
-  store.setTileCacheEnabled(false)
+  store().setTileCacheEnabled(false)
   assert.equal(updates.length, 1)
   assert.equal(Object.prototype.hasOwnProperty.call(updates[0], 'mirrorConsentPrompted'), false)
 
-  store.acceptMirrorConsent()
+  store().acceptMirrorConsent()
   assert.equal(updates.length, 2)
   assert.equal(updates[1].mirrorConsentPrompted, true)
   assert.equal(updates[1].tileMirrorMode, 'on')
@@ -568,19 +567,20 @@ test('globeStore syncs mirror mode back to actual status when consent persistenc
   t.after(() => {
     globalThis.window = originalWindow
   })
-  setActivePinia(createPinia())
-  const store = useGlobeStore()
-  const failureStore = useFailureStore()
-  await store.hydrateSettings()
-  store.openMirrorConsent('china')
-  store.acceptMirrorConsent()
-  assert.equal(store.mirrorConsentOpen, false)
-  assert.equal(store.mirrorConsentPrompted, true)
+  resetGlobeStore()
+  resetFailureStore()
+  const store = () => useGlobeStore.getState()
+  const failureStore = () => useFailureStore.getState()
+  await store().hydrateSettings()
+  store().openMirrorConsent('china')
+  store().acceptMirrorConsent()
+  assert.equal(store().mirrorConsentOpen, false)
+  assert.equal(store().mirrorConsentPrompted, true)
 
   await new Promise((resolve) => setTimeout(resolve, 0))
-  assert.equal(store.tileMirrorMode, 'off')
-  assert.deepEqual(store.mirroredProviders, [])
-  assert.equal(failureStore.degradations.length, 1)
+  assert.equal(store().tileMirrorMode, 'off')
+  assert.deepEqual(store().mirroredProviders, [])
+  assert.equal(failureStore().degradations.length, 1)
 })
 
 test('fetchTilePayloadWithRetry retries 5xx, 429, network errors, and mid-body stream failures with backoff', async () => {
@@ -781,17 +781,17 @@ test('globeStore hydrates, persists, and rolls back tileMirrorSource and applies
   t.after(() => {
     globalThis.window = originalWindow
   })
-  setActivePinia(createPinia())
-  const store = useGlobeStore()
-  await store.hydrateSettings()
-  assert.equal(store.tileMirrorSource, 'cloudflare')
-  assert.equal(store.activeMirrorEndpoint, 'cloudflare')
+  resetGlobeStore()
+  const store = () => useGlobeStore.getState()
+  await store().hydrateSettings()
+  assert.equal(store().tileMirrorSource, 'cloudflare')
+  assert.equal(store().activeMirrorEndpoint, 'cloudflare')
 
-  store.setTileMirrorSource('auto')
-  assert.equal(store.tileMirrorSource, 'auto')
+  store().setTileMirrorSource('auto')
+  assert.equal(store().tileMirrorSource, 'auto')
   assert.equal(updates.at(-1)?.tileMirrorSource, 'auto')
 
-  store.applyTileMirrorStatus({
+  store().applyTileMirrorStatus({
     mode: 'on',
     sourcePreference: 'auto',
     activeEndpoint: 'edgeone',
@@ -804,16 +804,16 @@ test('globeStore hydrates, persists, and rolls back tileMirrorSource and applies
     fallenBackProviders: [],
     notice: ''
   })
-  assert.equal(store.activeMirrorEndpoint, 'edgeone')
-  assert.equal(store.mirrorProbingEndpoints, true)
-  assert.equal(store.mirrorEndpointProbes.length, 2)
+  assert.equal(store().activeMirrorEndpoint, 'edgeone')
+  assert.equal(store().mirrorProbingEndpoints, true)
+  assert.equal(store().mirrorEndpointProbes.length, 2)
 
   failUpdates = true
-  store.setTileMirrorSource('cloudflare')
-  assert.equal(store.tileMirrorSource, 'cloudflare')
+  store().setTileMirrorSource('cloudflare')
+  assert.equal(store().tileMirrorSource, 'cloudflare')
   await new Promise((resolve) => setTimeout(resolve, 0))
-  assert.equal(store.tileMirrorSource, 'auto')
-  assert.equal(store.activeMirrorEndpoint, 'edgeone')
+  assert.equal(store().tileMirrorSource, 'auto')
+  assert.equal(store().activeMirrorEndpoint, 'edgeone')
 })
 
 test('fetchTilePayloadWithRetry recovers after a rejected fetcher call with a single backoff', async () => {
@@ -976,16 +976,16 @@ test('globeStore preserves pending tileMirrorSource across stale broadcasts and 
   t.after(() => {
     globalThis.window = originalWindow
   })
-  setActivePinia(createPinia())
-  const store = useGlobeStore()
-  await store.hydrateSettings()
+  resetGlobeStore()
+  const store = () => useGlobeStore.getState()
+  await store().hydrateSettings()
 
-  store.setTileMirrorSource('cloudflare')
-  assert.equal(store.tileMirrorSource, 'cloudflare')
-  assert.equal(store.activeMirrorEndpoint, 'cloudflare')
+  store().setTileMirrorSource('cloudflare')
+  assert.equal(store().tileMirrorSource, 'cloudflare')
+  assert.equal(store().activeMirrorEndpoint, 'cloudflare')
   assert.deepEqual(updates[0], { tileMirrorSource: 'cloudflare' })
 
-  store.applyTileMirrorStatus({
+  store().applyTileMirrorStatus({
     mode: 'on',
     sourcePreference: 'auto',
     activeEndpoint: 'edgeone',
@@ -995,20 +995,20 @@ test('globeStore preserves pending tileMirrorSource across stale broadcasts and 
     fallenBackProviders: ['esri-imagery'],
     notice: ''
   })
-  assert.equal(store.tileMirrorSource, 'cloudflare')
-  assert.equal(store.activeMirrorEndpoint, 'cloudflare')
-  assert.equal(store.mirrorProbingEndpoints, true)
-  assert.deepEqual(store.mirrorFallenBackProviders, ['esri-imagery'])
+  assert.equal(store().tileMirrorSource, 'cloudflare')
+  assert.equal(store().activeMirrorEndpoint, 'cloudflare')
+  assert.equal(store().mirrorProbingEndpoints, true)
+  assert.deepEqual(store().mirrorFallenBackProviders, ['esri-imagery'])
 
-  store.setTerrainProvider('cesium-world-terrain')
+  store().setTerrainProvider('cesium-world-terrain')
   assert.equal(Object.prototype.hasOwnProperty.call(updates[1], 'tileMirrorSource'), false)
   assert.equal(updates[1].selectedTerrainProviderId, 'cesium-world-terrain')
 
   resolveSourceSave()
   await new Promise((resolve) => setTimeout(resolve, 0))
-  assert.equal(store.tileMirrorSource, 'cloudflare')
+  assert.equal(store().tileMirrorSource, 'cloudflare')
 
-  store.applyTileMirrorStatus({
+  store().applyTileMirrorStatus({
     mode: 'on',
     sourcePreference: 'cloudflare',
     activeEndpoint: 'cloudflare',
@@ -1018,8 +1018,8 @@ test('globeStore preserves pending tileMirrorSource across stale broadcasts and 
     fallenBackProviders: [],
     notice: ''
   })
-  assert.equal(store.tileMirrorSource, 'cloudflare')
-  assert.equal(store.mirrorProbingEndpoints, false)
-  assert.deepEqual(store.mirrorFallenBackProviders, [])
+  assert.equal(store().tileMirrorSource, 'cloudflare')
+  assert.equal(store().mirrorProbingEndpoints, false)
+  assert.deepEqual(store().mirrorFallenBackProviders, [])
 })
 

@@ -1,0 +1,364 @@
+.settingsSection {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unsavedTag {
+  margin-inline-end: 0;
+}
+
+.sectionDesc {
+  margin: 4px 0 0;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.settingsBlock {
+  padding: 16px 0;
+  margin-top: 16px;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.settingsBlock:last-of-type {
+  border-bottom: none;
+}
+
+.blockHeading {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+  margin-bottom: 8px;
+}
+
+.fullSelect {
+  width: 100%;
+}
+
+.readFailureAlert {
+  margin-top: 12px;
+}
+
+.defaultHint {
+  margin-top: 4px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.providerColumns {
+  display: flex;
+  gap: 16px;
+  min-height: 320px;
+}
+
+.providerRail {
+  width: 168px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.providerItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+}
+
+.providerItemSelected {
+  background: rgba(22, 119, 255, 0.06);
+}
+
+.providerItemName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.providerItemTag {
+  margin-inline-end: 0;
+  transform: scale(0.83);
+}
+
+.providerEditor {
+  flex: 1;
+  min-width: 0;
+}
+
+.providerEditorEmpty {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.fieldLabel {
+  width: 64px;
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 13px;
+}
+
+.keyRow {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+}
+
+.modelsHeading {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  margin: 4px 0 8px;
+}
+
+.modelsToolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.modelSearch {
+  flex: 1;
+  min-width: 0;
+}
+
+.modelsActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.modelsEmpty {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.modelList {
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.modelListRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 4px;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+  cursor: pointer;
+  transition: background-color 0.1s ease-out;
+}
+
+.modelListRow:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.modelListRow:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: -2px;
+}
+
+.modelText {
+  flex: 1;
+  min-width: 0;
+}
+
+.modelName {
+  overflow: hidden;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelCode {
+  margin-top: 2px;
+  overflow: hidden;
+  color: rgba(0, 0, 0, 0.45);
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelListRowDisabled .modelName {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.modelActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.modelActions :global(.ant-btn) {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.modelPagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.modelField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modelField > label {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.visionLabel {
+  cursor: help;
+  text-decoration: underline dotted rgba(0, 0, 0, 0.35);
+  text-underline-offset: 3px;
+}
+
+.modelSwitches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  padding-top: 4px;
+}
+
+.modelContextInput {
+  width: 100%;
+}
+
+.modelEditor .fieldRow {
+  margin-bottom: 16px;
+}
+
+.modelEditor .fieldLabel {
+  width: 80px;
+}
+
+.levelSelect {
+  width: 76px;
+}
+
+.providerDanger {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.importSummary {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.importSummary :global(.ant-alert) {
+  flex: 1;
+  min-width: 0;
+}
+
+.importOption {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+}
+
+.importTable {
+  margin-top: 16px;
+}
+
+.importRowFailed > td {
+  background: rgba(255, 77, 79, 0.06) !important;
+}
+
+.importFailure {
+  margin-left: 8px;
+  color: #cf1322;
+}
+
+.importNote {
+  margin-left: 8px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.importCapabilities {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.teachingToggle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.teachingToggleText {
+  flex: 1;
+}
+
+.teachingToggleTitle {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.teachingToggleDesc {
+  margin-top: 4px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.aiFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+}

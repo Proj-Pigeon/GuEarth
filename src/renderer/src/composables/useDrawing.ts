@@ -1,14 +1,18 @@
-import { onBeforeUnmount, onMounted, watch, type Ref } from 'vue'
+import { useEffect, useMemo, useState } from 'react'
 import * as Cesium from 'cesium'
 import { DEFAULT_DRAW_STYLE, useDrawingStore, type DrawTool, type DrawnShape, type GeoPosition } from '@renderer/stores/drawing'
 import { thematicLayerCatalog } from '@renderer/stores/climate'
 import { useFeatureFocusStore, type FocusedFeature } from '@renderer/stores/featureFocus'
 import { useGlobeStore } from '@renderer/stores/globe'
 import { captureTelemetryEvent } from '@renderer/posthog'
-import { formatArea, formatDistance, isUsablePosition, pathDistance, polygonArea, textOutlineColor, terrainPath, dedupe, LABEL_STYLE, SHAPE_COLOR, centroidOf, isGroundPolylineSupported, measurementFor, pointGraphics, polygonGraphics, polylineOptions, ringOf, sanitizePositions, shapeColorOf, shapeLabelOptions, surfacePosition, terrainSurfacePositions, toCartesian } from '@renderer/lib/shapeGraphics'
+import { formatArea, formatDistance, isUsablePosition, pathDistance, polygonArea, terrainPath, dedupe, LABEL_STYLE, SHAPE_COLOR, centroidOf, isGroundPolylineSupported, measurementFor, pointGraphics, polygonGraphics, polylineOptions, ringOf, sanitizePositions, shapeColorOf, shapeLabelOptions, surfacePosition, terrainSurfacePositions, toCartesian } from '@renderer/lib/shapeGraphics'
 
 type EllipsoidalOccluderLike = { cameraPosition: Cesium.Cartesian3; isPointVisible: (point: Cesium.Cartesian3) => boolean }
 const createEllipsoidalOccluder = Cesium as unknown as { EllipsoidalOccluder: new (ellipsoid: Cesium.Ellipsoid, position: Cesium.Cartesian3) => EllipsoidalOccluderLike }
+
+export interface UseDrawingResult {
+  flyToShape: (shape: DrawnShape) => void
+}
 
 function toGeo(cartesian: Cesium.Cartesian3): GeoPosition {
   const cartographic = Cesium.Cartographic.fromCartesian(cartesian)
@@ -45,26 +49,23 @@ function previewPolylinePositions(viewer: Cesium.Viewer, positions: Cesium.Carte
   return isGroundPolylineSupported(viewer) ? sanitized : terrainSurfacePositions(viewer, terrainPath(sanitized, 128))
 }
 
-export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
-  const store = useDrawingStore()
-  const focusStore = useFeatureFocusStore()
-  const globeStore = useGlobeStore()
+function createDrawingController() {
   const entities = new Map<string, Cesium.Entity>()
   const renderSignatures = new Map<string, string>()
   const drapedPolylines = new Map<string, { entity: Cesium.Entity; path: Cesium.Cartographic[] }>()
   const horizonVisibility = new Map<string, boolean>()
   const horizonOccluder = new createEllipsoidalOccluder.EllipsoidalOccluder(Cesium.Ellipsoid.WGS84, Cesium.Cartesian3.ZERO)
   const DRAPE_REFRESH_DELAY_MS = 500
+  let activeViewer: Cesium.Viewer | undefined
   let drapeRefreshTimer: number | undefined
   let handler: Cesium.ScreenSpaceEventHandler | undefined
   let draft: Cesium.Cartesian3[] = []
   let cursor: Cesium.Cartesian3 | undefined
   let previewEntity: Cesium.Entity | undefined
-  let tool: DrawTool | null = null
+  let tool: DrawTool | null = useDrawingStore.getState().activeTool
 
   function currentViewer(): Cesium.Viewer | undefined {
-    const current = viewer.value
-    return current && !current.isDestroyed() ? current : undefined
+    return activeViewer && !activeViewer.isDestroyed() ? activeViewer : undefined
   }
 
   function isPolygonTool(next: DrawTool | null = tool): boolean {
@@ -130,6 +131,7 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
   function renderShape(shape: DrawnShape): void {
     const current = currentViewer()
     if (!current) return
+    const store = useDrawingStore.getState()
     const groundSupported = isGroundPolylineSupported(current)
     const textSelected = shape.kind === 'text' && store.selectedShapeId === shape.id
     const signature = JSON.stringify([shape.kind, shape.color, shape.textColor, shape.fontFamily, shape.fontSize, shape.textFrame, shape.lineWidth, shape.annotation, textSelected, groundSupported, shape.positions])
@@ -191,10 +193,11 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
 
   function syncEntities(): void {
     if (!currentViewer()) return
+    const shapes = useDrawingStore.getState().shapes
     for (const id of [...entities.keys()]) {
-      if (!store.shapes.some((shape) => shape.id === id)) removeEntity(id)
+      if (!shapes.some((shape) => shape.id === id)) removeEntity(id)
     }
-    for (const shape of store.shapes) renderShape(shape)
+    for (const shape of shapes) renderShape(shape)
   }
 
   function clearPreview(): void {
@@ -252,7 +255,7 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
       }
       options.polygon = {
         hierarchy: new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(sanitizePositions(arrowGeometry(previewPositions()).head)), false),
-        material: SHAPE_COLOR.withAlpha(0.7),
+        material: SHAPE_COLOR.withAlpha(0.7)
       }
     } else if (isPolygonTool()) {
       options.polygon = { hierarchy: new Cesium.CallbackProperty(() => new Cesium.PolygonHierarchy(sanitizePositions(previewPositions())), false), material: SHAPE_COLOR.withAlpha(0.15) }
@@ -275,6 +278,7 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
   }
 
   function commit(cartesians: Cesium.Cartesian3[]): void {
+    const store = useDrawingStore.getState()
     const kind: DrawnShape['kind'] = tool === 'point' ? 'point' : tool === 'text' ? 'text' : tool === 'arrow' ? 'arrow' : isPolygonTool() ? 'polygon' : 'polyline'
     const positions = sanitizePositions(cartesians)
     const minimum = kind === 'polygon' ? 3 : kind === 'point' || kind === 'text' ? 1 : 2
@@ -300,6 +304,8 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
   }
 
   function handleClick(movement: { position: Cesium.Cartesian2 }): void {
+    const store = useDrawingStore.getState()
+    const focusStore = useFeatureFocusStore.getState()
     if (!tool) {
       const current = currentViewer()
       if (!current) return
@@ -361,6 +367,7 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return
+    const store = useDrawingStore.getState()
     cancelDraft()
     if (tool) {
       tool = null
@@ -383,46 +390,89 @@ export function useDrawing(viewer: Ref<Cesium.Viewer | undefined>) {
     current.camera.flyToBoundingSphere(sphere, { offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), Math.max(sphere.radius * 3, 1000)), duration: 1.2 })
   }
 
-  watch(
-    viewer,
-    (current) => {
-      if (!current || current.isDestroyed()) return
-      current.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
-      handler = new Cesium.ScreenSpaceEventHandler(current.scene.canvas)
-      handler.setInputAction(handleClick, Cesium.ScreenSpaceEventType.LEFT_CLICK)
-      handler.setInputAction(handleMove, Cesium.ScreenSpaceEventType.MOUSE_MOVE)
-      handler.setInputAction(handleDoubleClick, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
-      handler.setInputAction(handleRightClick, Cesium.ScreenSpaceEventType.RIGHT_CLICK)
+  function attachViewer(nextViewer: Cesium.Viewer | undefined): () => void {
+    activeViewer = nextViewer
+    if (!nextViewer || nextViewer.isDestroyed()) {
+      return () => {
+        if (activeViewer === nextViewer) activeViewer = undefined
+      }
+    }
+    nextViewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
+    const nextHandler = new Cesium.ScreenSpaceEventHandler(nextViewer.scene.canvas)
+    nextHandler.setInputAction(handleClick, Cesium.ScreenSpaceEventType.LEFT_CLICK)
+    nextHandler.setInputAction(handleMove, Cesium.ScreenSpaceEventType.MOUSE_MOVE)
+    nextHandler.setInputAction(handleDoubleClick, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
+    nextHandler.setInputAction(handleRightClick, Cesium.ScreenSpaceEventType.RIGHT_CLICK)
+    handler = nextHandler
+    entities.clear()
+    renderSignatures.clear()
+    drapedPolylines.clear()
+    horizonVisibility.clear()
+    nextViewer.scene.globe.tileLoadProgressEvent.addEventListener(scheduleDrapeRefresh)
+    nextViewer.scene.preUpdate.addEventListener(updateHorizonVisibility)
+    void useDrawingStore.getState().load()
+    syncEntities()
+
+    return () => {
+      cancelDraft()
+      if (drapeRefreshTimer !== undefined) {
+        window.clearTimeout(drapeRefreshTimer)
+        drapeRefreshTimer = undefined
+      }
+      nextHandler.destroy()
+      if (handler === nextHandler) handler = undefined
+      if (!nextViewer.isDestroyed()) {
+        nextViewer.scene.globe.tileLoadProgressEvent.removeEventListener(scheduleDrapeRefresh)
+        nextViewer.scene.preUpdate.removeEventListener(updateHorizonVisibility)
+        for (const entity of entities.values()) nextViewer.entities.remove(entity)
+      }
       entities.clear()
       renderSignatures.clear()
       drapedPolylines.clear()
       horizonVisibility.clear()
-      current.scene.globe.tileLoadProgressEvent.addEventListener(scheduleDrapeRefresh)
-      current.scene.preUpdate.addEventListener(updateHorizonVisibility)
-      void store.load()
-      syncEntities()
-    },
-    { flush: 'post' }
-  )
+      if (activeViewer === nextViewer) activeViewer = undefined
+    }
+  }
 
-  watch(() => store.activeTool, (next) => {
-    cancelDraft()
-    tool = next
-  })
+  function mountSubscriptions(): () => void {
+    tool = useDrawingStore.getState().activeTool
+    const unsubscribeTool = useDrawingStore.subscribe(
+      (state) => state.activeTool,
+      (next) => {
+        cancelDraft()
+        tool = next
+      }
+    )
+    const unsubscribeShapes = useDrawingStore.subscribe(
+      (state) => state.shapes,
+      () => syncEntities()
+    )
+    const unsubscribeSelected = useDrawingStore.subscribe(
+      (state) => state.selectedShapeId,
+      () => syncEntities()
+    )
+    const unsubscribeExaggeration = useGlobeStore.subscribe(
+      (state) => state.terrainExaggeration,
+      () => syncEntities()
+    )
+    window.addEventListener('keydown', handleKeydown)
+    return () => {
+      unsubscribeTool()
+      unsubscribeShapes()
+      unsubscribeSelected()
+      unsubscribeExaggeration()
+      window.removeEventListener('keydown', handleKeydown)
+    }
+  }
 
-  watch(() => store.shapes, syncEntities, { deep: true })
-  watch(() => store.selectedShapeId, syncEntities)
-  watch(() => globeStore.terrainExaggeration, syncEntities)
+  return { attachViewer, mountSubscriptions, flyToShape }
+}
 
-  onMounted(() => window.addEventListener('keydown', handleKeydown))
+export function useDrawing(viewer: Cesium.Viewer | undefined): UseDrawingResult {
+  const [controller] = useState(() => createDrawingController())
 
-  onBeforeUnmount(() => {
-    window.removeEventListener('keydown', handleKeydown)
-    if (drapeRefreshTimer !== undefined) window.clearTimeout(drapeRefreshTimer)
-    drapeRefreshTimer = undefined
-    handler?.destroy()
-    handler = undefined
-  })
+  useEffect(() => controller.attachViewer(viewer), [controller, viewer])
+  useEffect(() => controller.mountSubscriptions(), [controller])
 
-  return { flyToShape }
+  return useMemo(() => ({ flyToShape: controller.flyToShape }), [controller])
 }

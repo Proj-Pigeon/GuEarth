@@ -1,5 +1,5 @@
-import { computed, ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 import { summerFactor, winterFactor } from '@renderer/thematic/windField'
 import type { EnsoPhase } from '@renderer/thematic/ensoPhases'
 import type { ThematicLayerId } from '../../../common/thematicLayers'
@@ -43,10 +43,8 @@ export const thematicLayerCatalog: ThematicLayerMeta[] = [
 const MONTHS_PER_SECOND = 0.5
 const MONTH_MAX = 13
 
-export const useClimateStore = defineStore('climate', () => {
-  const month = ref(7)
-  const isPlaying = ref(false)
-  const overlays = ref<Record<ThematicLayerId, boolean>>({
+function createDefaultOverlays(): Record<ThematicLayerId, boolean> {
+  return {
     'wind-particles': false,
     'pressure-belts': false,
     'koppen-zones': false,
@@ -71,45 +69,114 @@ export const useClimateStore = defineStore('climate', () => {
     'industrial-transfers': false,
     'hsr-network': false,
     'sea-level-rise': false
-  })
-  const ensoPhase = ref<EnsoPhase>('normal')
-  const seaLevelRise = ref<number>(1)
-  const functionalZoneCityId = ref<string>('wuhan')
-
-  const summerStrength = computed(() => summerFactor(month.value))
-  const winterStrength = computed(() => winterFactor(month.value))
-  const hasActiveOverlay = computed(() => Object.values(overlays.value).some(Boolean))
-  const hasSeasonalOverlay = computed(() => thematicLayerCatalog.some((layer) => layer.seasonal === true && overlays.value[layer.id]))
-
-  function setOverlay(id: ThematicLayerId, enabled: boolean): void {
-    overlays.value[id] = enabled
   }
+}
 
-  function setEnsoPhase(value: EnsoPhase): void {
-    ensoPhase.value = value
+export interface ClimateState {
+  month: number
+  isPlaying: boolean
+  overlays: Record<ThematicLayerId, boolean>
+  ensoPhase: EnsoPhase
+  seaLevelRise: number
+  functionalZoneCityId: string
+  summerStrength: number
+  winterStrength: number
+  hasActiveOverlay: boolean
+  hasSeasonalOverlay: boolean
+}
+
+export interface ClimateActions {
+  setOverlay: (id: ThematicLayerId, enabled: boolean) => void
+  setEnsoPhase: (value: EnsoPhase) => void
+  setSeaLevelRise: (value: number) => void
+  setFunctionalZoneCity: (value: string) => void
+  setMonth: (value: number) => void
+  togglePlaying: () => void
+  advance: (dtSeconds: number) => void
+}
+
+export type ClimateStore = ClimateState & ClimateActions
+
+export function selectSummerStrength(state: Pick<ClimateState, 'month'>): number {
+  return summerFactor(state.month)
+}
+
+export function selectWinterStrength(state: Pick<ClimateState, 'month'>): number {
+  return winterFactor(state.month)
+}
+
+export function selectHasActiveOverlay(state: Pick<ClimateState, 'overlays'>): boolean {
+  return Object.values(state.overlays).some(Boolean)
+}
+
+export function selectHasSeasonalOverlay(state: Pick<ClimateState, 'overlays'>): boolean {
+  return thematicLayerCatalog.some((layer) => layer.seasonal === true && state.overlays[layer.id])
+}
+
+export function createInitialClimateState(): ClimateState {
+  const month = 7
+  const overlays = createDefaultOverlays()
+  return {
+    month,
+    isPlaying: false,
+    overlays,
+    ensoPhase: 'normal',
+    seaLevelRise: 1,
+    functionalZoneCityId: 'wuhan',
+    summerStrength: summerFactor(month),
+    winterStrength: winterFactor(month),
+    hasActiveOverlay: false,
+    hasSeasonalOverlay: false
   }
+}
 
-  function setSeaLevelRise(value: number): void {
-    seaLevelRise.value = value
-  }
+export const useClimateStore = create<ClimateStore>()(
+  subscribeWithSelector((set, get) => ({
+    ...createInitialClimateState(),
+    setOverlay(id: ThematicLayerId, enabled: boolean): void {
+      set((state) => {
+        const overlays = { ...state.overlays, [id]: enabled }
+        return {
+          overlays,
+          hasActiveOverlay: selectHasActiveOverlay({ overlays }),
+          hasSeasonalOverlay: selectHasSeasonalOverlay({ overlays })
+        }
+      })
+    },
+    setEnsoPhase(value: EnsoPhase): void {
+      set({ ensoPhase: value })
+    },
+    setSeaLevelRise(value: number): void {
+      set({ seaLevelRise: value })
+    },
+    setFunctionalZoneCity(value: string): void {
+      set({ functionalZoneCityId: value })
+    },
+    setMonth(value: number): void {
+      const month = Math.min(12, Math.max(1, Math.round(value)))
+      set({
+        month,
+        summerStrength: summerFactor(month),
+        winterStrength: winterFactor(month)
+      })
+    },
+    togglePlaying(): void {
+      set((state) => ({ isPlaying: !state.isPlaying }))
+    },
+    advance(dtSeconds: number): void {
+      const state = get()
+      if (!state.isPlaying) return
+      const next = state.month + dtSeconds * MONTHS_PER_SECOND
+      const month = next >= MONTH_MAX ? next - 12 : next
+      set({
+        month,
+        summerStrength: summerFactor(month),
+        winterStrength: winterFactor(month)
+      })
+    }
+  }))
+)
 
-  function setFunctionalZoneCity(value: string): void {
-    functionalZoneCityId.value = value
-  }
-
-  function setMonth(value: number): void {
-    month.value = Math.min(12, Math.max(1, Math.round(value)))
-  }
-
-  function togglePlaying(): void {
-    isPlaying.value = !isPlaying.value
-  }
-
-  function advance(dtSeconds: number): void {
-    if (!isPlaying.value) return
-    const next = month.value + dtSeconds * MONTHS_PER_SECOND
-    month.value = next >= MONTH_MAX ? next - 12 : next
-  }
-
-  return { month, isPlaying, overlays, ensoPhase, seaLevelRise, functionalZoneCityId, summerStrength, winterStrength, hasActiveOverlay, hasSeasonalOverlay, setOverlay, setEnsoPhase, setSeaLevelRise, setFunctionalZoneCity, setMonth, togglePlaying, advance }
-})
+export function resetClimateStore(): void {
+  useClimateStore.setState(createInitialClimateState())
+}

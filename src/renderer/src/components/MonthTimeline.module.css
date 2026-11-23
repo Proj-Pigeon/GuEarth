@@ -1,0 +1,51 @@
+.monthTimeline {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: min(560px, calc(100vw - 700px));
+  min-width: 340px;
+  padding: 12px 16px 20px;
+  background: #ffffff;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 8px;
+  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+}
+
+.monthTimelineStacked {
+  bottom: 132px;
+}
+
+@media (max-width: 1320px) {
+  .monthTimeline {
+    width: min(560px, calc(100vw - 720px));
+  }
+}
+
+.monthReadout {
+  display: flex;
+  flex-direction: column;
+  min-width: 76px;
+}
+
+.monthValue {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.seasonText {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.monthSlider {
+  flex: 1;
+  margin: 0 10px 12px 10px;
+}

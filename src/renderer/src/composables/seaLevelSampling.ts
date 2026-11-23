@@ -26,7 +26,7 @@ export function ensureLandMask(): Promise<boolean> {
       maskPromise = undefined
       if (!maskDegradeReported) {
         maskDegradeReported = true
-        useFailureStore().reportDegrade('海陆边界加载失败，淹没面积估算仅供参考')
+        useFailureStore.getState().reportDegrade('海陆边界加载失败，淹没面积估算仅供参考')
       }
       return false
     })

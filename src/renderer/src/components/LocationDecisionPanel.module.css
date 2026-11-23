@@ -1,0 +1,138 @@
+.decisionPanel {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 400px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 8px;
+  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  z-index: 10;
+}
+
+.decisionPanel > * {
+  flex: none;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panelTitle {
+  margin-right: auto;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.casePicker {
+  max-width: 100%;
+}
+
+.casePicker :global(.ant-segmented-group) {
+  flex-wrap: wrap;
+}
+
+.casePicker :global(.ant-segmented-item) {
+  flex: none;
+}
+
+.intro {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.caseQuestion {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 21px;
+}
+
+.caseContext {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.factorList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.factorRow {
+  padding: 6px 8px;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 6px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.factorRow:hover {
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+.factorRowSelected {
+  border-color: rgba(22, 119, 255, 0.35);
+  background: rgba(22, 119, 255, 0.04);
+}
+
+.factorMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.factorName {
+  flex: 1;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.factorEssential {
+  margin-left: 4px;
+  color: #fa8c16;
+  font-size: 11px;
+  cursor: help;
+}
+
+.factorHint {
+  margin: 4px 0 2px 34px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.caseFly {
+  flex: none;
+  color: rgba(0, 0, 0, 0.45);
+  transition: color 0.1s ease-out;
+}
+
+.caseFly:hover {
+  color: #1677ff;
+}
+
+.critiqueButton {
+  flex: 1;
+}
