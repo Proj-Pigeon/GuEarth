@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useRef, type ReactNode } from 'react'
 import {
   AssistantRuntimeProvider,
   useExternalStoreRuntime,
@@ -12,6 +12,7 @@ import { useAiStore, type ChatMessage } from '@renderer/stores/ai'
 
 export interface EoqRuntimeProviderProps {
   children: ReactNode
+  onInterceptSend?: (text: string) => boolean
 }
 
 type ToolCallArgs = ToolCallMessagePart['args']
@@ -79,11 +80,20 @@ export function convertChatMessage(message: ChatMessage): ThreadMessageLike {
   const content = message.parts.map((part, index) => {
     const isLive = message.status === 'streaming' && index === lastIndex
     if (part.kind === 'reasoning') {
+      const completedAt = isLive ? undefined : part.startedAt + part.ms
       return {
         type: 'reasoning' as const,
         id: part.id,
         text: part.text,
-        status: isLive ? ({ type: 'running' } as const) : ({ type: 'complete' } as const)
+        status: isLive ? ({ type: 'running' } as const) : ({ type: 'complete' } as const),
+        ...(part.startedAt > 0
+          ? {
+              timing: {
+                startedAt: part.startedAt,
+                ...(completedAt !== undefined ? { completedAt } : {})
+              }
+            }
+          : {})
       }
     }
     if (part.kind === 'text') {
@@ -100,7 +110,15 @@ export function convertChatMessage(message: ChatMessage): ThreadMessageLike {
       args: toToolArgs(part.step.args),
       argsText: serializeArgs(part.step.args),
       result: part.step.status === 'running' ? undefined : parseToolResult(part.step.result),
-      isError: part.step.status === 'error'
+      isError: part.step.status === 'error',
+      ...(part.step.startedAt !== undefined
+        ? {
+            timing: {
+              startedAt: part.step.startedAt,
+              ...(part.step.completedAt !== undefined ? { completedAt: part.step.completedAt } : {})
+            }
+          }
+        : {})
     }
   })
 
@@ -117,9 +135,11 @@ export function convertChatMessage(message: ChatMessage): ThreadMessageLike {
   }
 }
 
-export function EoqRuntimeProvider({ children }: EoqRuntimeProviderProps) {
+export function EoqRuntimeProvider({ children, onInterceptSend }: EoqRuntimeProviderProps) {
   const messages = useAiStore((state) => state.messages)
   const isStreaming = useAiStore((state) => state.isStreaming)
+  const onInterceptSendRef = useRef(onInterceptSend)
+  onInterceptSendRef.current = onInterceptSend
 
   const adapter = useMemo<ExternalStoreAdapter<ChatMessage>>(
     () => ({
@@ -129,6 +149,7 @@ export function EoqRuntimeProvider({ children }: EoqRuntimeProviderProps) {
       async onNew(message: AppendMessage): Promise<void> {
         const text = extractAppendText(message)
         if (!text) return
+        if (onInterceptSendRef.current?.(text)) return
         await useAiStore.getState().send(text)
       },
       async onEdit(message: AppendMessage): Promise<void> {

@@ -151,7 +151,7 @@ export function ContextMeter({
           <Progress
             type="circle"
             percent={percent}
-            size={24}
+            size={18}
             strokeWidth={14}
             strokeColor={strokeColor}
             showInfo={false}

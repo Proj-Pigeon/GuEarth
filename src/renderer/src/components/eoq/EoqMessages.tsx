@@ -1,32 +1,51 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { ActionBarPrimitive, MessagePrimitive, ThreadPrimitive, useAuiState } from '@assistant-ui/react'
 import {
-  CheckOutlined,
-  CloseCircleOutlined,
-  CopyOutlined,
-  EditOutlined,
-  ReloadOutlined
-} from '@ant-design/icons'
-import { Alert, App as AntdApp, Button, Collapse, Input, Tooltip } from 'antd'
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent
+} from 'react'
 import {
-  toolLabel,
-  useAiStore,
-  type AssistantPart,
-  type ChatMessage,
-  type ReasoningPart,
-  type ToolStep
-} from '@renderer/stores/ai'
-import StreamingMarkdown from '../StreamingMarkdown'
-import WebSearchStep from '../WebSearchStep'
-import styles from '../EoqAssistant.module.css'
+  ActionBarPrimitive,
+  MessagePrimitive,
+  ThreadPrimitive,
+  useAuiState,
+  type PartState
+} from '@assistant-ui/react'
+import { App as AntdApp } from 'antd'
+import {
+  AlertCircleIcon,
+  AlertTriangleIcon,
+  ArrowDownIcon,
+  CheckIcon,
+  CopyIcon,
+  PencilIcon,
+  RefreshCwIcon
+} from 'lucide-react'
+import { useAiStore, type ChatMessage, type ToolStep } from '@renderer/stores/ai'
+import { cn } from '@renderer/lib/utils'
+import EoqIconButton from './EoqIconButton'
+import EoqMarkdownText from './EoqMarkdownText'
+import EoqReasoning from './EoqReasoning'
+import EoqToolCall from './EoqToolCall'
+import EoqToolGroup from './EoqToolGroup'
+import EoqWebSearch from './EoqWebSearch'
+
+type EoqGroupKey = 'group-reasoning' | 'group-tool'
+
+const eoqGroupBy = (part: PartState): readonly EoqGroupKey[] => {
+  if (part.type === 'reasoning') return ['group-reasoning']
+  if (part.type === 'tool-call' && part.toolName !== 'web_search') return ['group-tool']
+  return []
+}
 
 interface EoqThreadActionsContextValue {
   editingId: string
   editingDraft: string
   copiedMessageId: string
-  reasonTouched: ReadonlySet<string>
-  reasonOpen: ReadonlySet<string>
-  openTools: ReadonlySet<string>
   setEditingDraft: (value: string) => void
   startEdit: (message: ChatMessage) => void
   cancelEdit: () => void
@@ -34,10 +53,7 @@ interface EoqThreadActionsContextValue {
   handleEditKeydown: (event: KeyboardEvent<HTMLTextAreaElement>, message: ChatMessage) => void
   copyAnswer: (message: ChatMessage) => void
   handleRegenerate: (message: ChatMessage) => void
-  toggleReasoning: (part: ReasoningPart, keys: string | string[]) => void
-  toggleTool: (step: ToolStep, keys: string | string[]) => void
   onSubmitPrompt: (prompt: string) => void
-  onScrollToBottom: () => void
 }
 
 const EoqThreadActionsContext = createContext<EoqThreadActionsContextValue | null>(null)
@@ -46,30 +62,6 @@ function useEoqThreadActions(): EoqThreadActionsContextValue {
   const value = useContext(EoqThreadActionsContext)
   if (!value) throw new Error('EoqThreadActionsContext is missing')
   return value
-}
-
-function reasoningDurationText(part: ReasoningPart): string {
-  const seconds = part.ms / 1000
-  return seconds < 1 ? '已思考 <1s' : `已思考 ${Math.round(seconds)}s`
-}
-
-function isPartLive(message: ChatMessage, part: AssistantPart): boolean {
-  return message.status === 'streaming' && message.parts[message.parts.length - 1] === part
-}
-
-function prettyInput(step: ToolStep): string {
-  const entries = Object.entries(step.args).filter(([, value]) => value !== undefined && value !== '')
-  if (!entries.length) return '（无输入）'
-  return JSON.stringify(Object.fromEntries(entries), null, 2)
-}
-
-function prettyOutput(step: ToolStep): string {
-  if (!step.result) return step.status === 'running' ? '执行中…' : '（无输出）'
-  try {
-    return JSON.stringify(JSON.parse(step.result), null, 2)
-  } catch {
-    return step.result
-  }
 }
 
 function EoqUserMessage() {
@@ -91,46 +83,53 @@ function EoqUserMessage() {
   const isEditing = editingId === chatMessage.id
 
   return (
-    <MessagePrimitive.Root className={styles.userRow}>
+    <MessagePrimitive.Root className="group/user flex min-w-0 animate-eoq-fade-up flex-col items-end gap-1 motion-reduce:animate-none">
       {isEditing ? (
-        <div className={`edit-box ${styles.editBox}`}>
-          <Input.TextArea
+        <div className="edit-box flex w-full flex-col gap-2 rounded-2xl border border-primary bg-background px-3 pt-2.5 pb-2 ring-2 ring-primary/12">
+          <textarea
             value={editingDraft}
+            rows={3}
             autoFocus
-            autoSize={{ minRows: 2, maxRows: 8 }}
             aria-label="编辑提问"
             onChange={(event) => setEditingDraft(event.target.value)}
             onKeyDown={(event) => handleEditKeydown(event, chatMessage)}
+            className="max-h-48 w-full resize-none border-0 bg-transparent p-0 text-[14px] leading-[22px] text-foreground shadow-none outline-none ring-0 focus:outline-none"
           />
-          <div className={styles.editActions}>
-            <Button size="small" onClick={cancelEdit}>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="h-7 cursor-pointer rounded-md border border-border bg-background px-2.5 text-[12px] leading-5 text-foreground/65 transition-colors duration-100 hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
               取消
-            </Button>
-            <Button
-              type="primary"
-              size="small"
+            </button>
+            <button
+              type="button"
               disabled={!editingDraft.trim()}
               onClick={() => confirmEdit(chatMessage)}
+              className="h-7 cursor-pointer rounded-md border-0 bg-primary px-3 text-[12px] leading-5 text-primary-foreground transition-colors duration-100 hover:bg-[#4096ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:bg-foreground/[0.06] disabled:text-foreground/25"
             >
               发送
-            </Button>
+            </button>
           </div>
         </div>
       ) : (
         <>
-          <div className={styles.userBubble}>{chatMessage.content}</div>
+          <div className="max-w-[88%] rounded-2xl bg-muted px-3.5 py-2 text-[14px] leading-[22px] whitespace-pre-wrap break-words text-foreground">
+            {chatMessage.content}
+          </div>
           {!isStreaming && (
-            <ActionBarPrimitive.Root className={styles.messageActions}>
-              <Button
-                type="text"
-                size="small"
-                className={styles.actionBtn}
-                icon={<EditOutlined />}
-                aria-label="编辑提问"
+            <ActionBarPrimitive.Root
+              hideWhenRunning
+              className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-focus-within/user:opacity-100 group-hover/user:opacity-100 motion-reduce:transition-none"
+            >
+              <EoqIconButton
+                tooltip="编辑提问"
+                size="sm"
                 onClick={() => startEdit(chatMessage)}
               >
-                编辑
-              </Button>
+                <PencilIcon className="size-3.5" />
+              </EoqIconButton>
             </ActionBarPrimitive.Root>
           )}
         </>
@@ -146,181 +145,146 @@ function EoqAssistantMessage() {
   const isStreaming = useAiStore((state) => state.isStreaming)
   const modelRetryNotice = useAiStore((state) => state.modelRetryNotice)
   const retryLast = useAiStore((state) => state.retryLast)
-  const {
-    copiedMessageId,
-    reasonTouched,
-    reasonOpen,
-    openTools,
-    copyAnswer,
-    handleRegenerate,
-    toggleReasoning,
-    toggleTool,
-    onSubmitPrompt,
-    onScrollToBottom
-  } = useEoqThreadActions()
+  const { copiedMessageId, copyAnswer, handleRegenerate, onSubmitPrompt } = useEoqThreadActions()
+
+  const toolStepsById = useMemo(() => {
+    const map = new Map<string, ToolStep>()
+    if (!chatMessage) return map
+    for (const part of chatMessage.parts) {
+      if (part.kind === 'tool') map.set(part.step.callId, part.step)
+    }
+    return map
+  }, [chatMessage])
 
   if (!chatMessage) return null
 
   return (
-    <MessagePrimitive.Root className={`assistant-block ${styles.assistantBlock}`}>
-      {chatMessage.parts.map((part, index) => {
-        const key = `${chatMessage.id}-${index}`
-        if (part.kind === 'reasoning') {
-          const live = isPartLive(chatMessage, part)
-          const activeKey = reasonTouched.has(part.id)
-            ? reasonOpen.has(part.id)
-              ? ['reasoning']
-              : []
-            : live
-              ? ['reasoning']
-              : []
-          return (
-            <Collapse
-              key={key}
-              ghost
-              className={styles.reasoningCollapse}
-              activeKey={activeKey}
-              onChange={(keys) => toggleReasoning(part, keys)}
-              items={[
-                {
-                  key: 'reasoning',
-                  label: live ? (
-                    <span className={`${styles.shimmerLabel} eoq-thinking-shimmer`}>正在深度思考</span>
-                  ) : (
-                    <span className={styles.collapsedTitle}>{reasoningDurationText(part)}</span>
-                  ),
-                  children: <div className={`reasoning-text ${styles.reasoningText}`}>{part.text}</div>
+    <MessagePrimitive.Root className="assistant-block group/assistant flex min-w-0 animate-eoq-fade-up flex-col gap-2 px-0.5 motion-reduce:animate-none">
+      <div className="flex min-w-0 flex-col gap-2">
+        <MessagePrimitive.GroupedParts groupBy={eoqGroupBy} indicator="empty">
+          {({ part, children }) => {
+            switch (part.type) {
+              case 'group-reasoning': {
+                const running = part.status.type === 'running'
+                let durationMs = 0
+                for (const index of part.indices) {
+                  const raw = chatMessage.parts[index]
+                  if (raw?.kind === 'reasoning') durationMs += raw.ms
                 }
-              ]}
-            />
-          )
-        }
-        if (part.kind === 'text') {
-          return (
-            <StreamingMarkdown
-              key={key}
-              text={part.text}
-              streaming={isPartLive(chatMessage, part)}
-              onRendered={onScrollToBottom}
-            />
-          )
-        }
-        if (part.step.name === 'web_search') {
-          return (
-            <WebSearchStep
-              key={key}
-              step={part.step}
-              busy={isStreaming}
-              onRetry={(query) => onSubmitPrompt(`请重新联网搜索：${query}`)}
-            />
-          )
-        }
-        const step = part.step
-        const label =
-          step.status === 'running' ? (
-            <span className={`${styles.shimmerLabel} eoq-thinking-shimmer`}>
-              {toolLabel(step.name, true)}
-            </span>
-          ) : step.status === 'ok' ? (
-            <span className={styles.toolHeader}>
-              <span className={styles.toolName}>{toolLabel(step.name)}</span>
-              {step.summary && (
-                <span className={styles.toolSummary} title={step.summary}>
-                  {step.summary}
-                </span>
-              )}
-            </span>
-          ) : (
-            <span className={styles.toolHeader}>
-              <CloseCircleOutlined className={styles.toolIconError} />
-              <span className={styles.toolName}>{toolLabel(step.name)}</span>
-              {step.summary && (
-                <span
-                  className={`${styles.toolSummary} ${styles.toolSummaryError}`}
-                  title={step.summary}
-                >
-                  {step.summary}
-                </span>
-              )}
-            </span>
-          )
-        return (
-          <Collapse
-            key={key}
-            ghost
-            className={styles.toolCollapse}
-            activeKey={openTools.has(step.callId) ? [step.callId] : []}
-            onChange={(keys) => toggleTool(step, keys)}
-            items={[
-              {
-                key: step.callId,
-                label,
-                children: (
-                  <div className={styles.toolIo}>
-                    <div className={styles.toolIoLabel}>输入</div>
-                    <pre className={styles.toolIoBody}>{prettyInput(step)}</pre>
-                    <div className={styles.toolIoLabel}>输出</div>
-                    <pre className={styles.toolIoBody}>{prettyOutput(step)}</pre>
-                  </div>
+                return (
+                  <EoqReasoning streaming={running} durationMs={durationMs || undefined}>
+                    {children}
+                  </EoqReasoning>
                 )
               }
-            ]}
-          />
-        )
-      })}
-      {chatMessage.status === 'streaming' && chatMessage.parts.length === 0 && (
-        <span className={`${styles.shimmerLabel} ${styles.pendingLine} eoq-thinking-shimmer`}>
-          思考中…
-        </span>
-      )}
-      {chatMessage.status === 'streaming' && modelRetryNotice && (
-        <Alert type="warning" showIcon title={modelRetryNotice} className={styles.retryNotice} />
-      )}
-      {chatMessage.status === 'error' && (
-        <Alert
-          type="error"
-          showIcon
-          title={chatMessage.error}
-          className={styles.answerError}
-          action={
-            <Button
-              type="text"
-              size="small"
-              icon={<ReloadOutlined />}
-              disabled={isStreaming}
-              onClick={() => void retryLast()}
-            >
-              重试
-            </Button>
-          }
-        />
-      )}
-      {!isStreaming && chatMessage.status === 'done' && (
-        <ActionBarPrimitive.Root className={styles.messageActions}>
-          <Tooltip title={copiedMessageId === chatMessage.id ? '已复制' : '复制回复'}>
-            <button
-              type="button"
-              className={
-                copiedMessageId === chatMessage.id
-                  ? `${styles.actionIconBtn} ${styles.actionIconBtnCopied}`
-                  : styles.actionIconBtn
+              case 'group-tool': {
+                let failedCount = 0
+                for (const index of part.indices) {
+                  const raw = chatMessage.parts[index]
+                  if (raw?.kind === 'tool' && raw.step.status === 'error') failedCount += 1
+                }
+                return (
+                  <EoqToolGroup group={part} failedCount={failedCount}>
+                    {children}
+                  </EoqToolGroup>
+                )
               }
-              aria-label={copiedMessageId === chatMessage.id ? '已复制回复' : '复制回复'}
-              onClick={() => copyAnswer(chatMessage)}
-            >
-              {copiedMessageId === chatMessage.id ? <CheckOutlined /> : <CopyOutlined />}
-            </button>
-          </Tooltip>
-          <Tooltip title="重新生成">
-            <button
-              type="button"
-              className={styles.actionIconBtn}
-              aria-label="重新生成"
-              onClick={() => handleRegenerate(chatMessage)}
-            >
-              <ReloadOutlined />
-            </button>
-          </Tooltip>
+              case 'reasoning':
+                return <div className="whitespace-pre-wrap break-words">{part.text}</div>
+              case 'text':
+                return <EoqMarkdownText />
+              case 'tool-call': {
+                const step = toolStepsById.get(part.toolCallId)
+                if (part.toolName === 'web_search' && step) {
+                  return (
+                    <EoqWebSearch
+                      step={step}
+                      busy={isStreaming}
+                      onRetry={(query) => onSubmitPrompt(`请重新联网搜索：${query}`)}
+                    />
+                  )
+                }
+                return (
+                  <EoqToolCall
+                    toolName={part.toolName}
+                    args={(part.args ?? {}) as Record<string, unknown>}
+                    argsText={part.argsText}
+                    result={part.result}
+                    isError={part.isError}
+                    status={part.status}
+                    step={step}
+                  />
+                )
+              }
+              case 'indicator':
+                return (
+                  <span className="inline-block py-1 text-[12px] leading-5 text-muted-foreground shimmer motion-reduce:animate-none">
+                    思考中…
+                  </span>
+                )
+              default:
+                return null
+            }
+          }}
+        </MessagePrimitive.GroupedParts>
+      </div>
+
+      {chatMessage.status === 'streaming' && modelRetryNotice && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-[#faad14]/35 bg-[#faad14]/[0.06] px-3 py-2 text-[12px] leading-5 text-foreground/80"
+        >
+          <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-[#faad14]" />
+          <span className="min-w-0 flex-1 break-words">{modelRetryNotice}</span>
+        </div>
+      )}
+
+      {chatMessage.status === 'error' && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/[0.04] px-3 py-2 text-[12px] leading-5 text-destructive"
+        >
+          <AlertCircleIcon className="size-3.5 shrink-0" />
+          <span className="min-w-0 flex-1 break-words">{chatMessage.error}</span>
+          <button
+            type="button"
+            disabled={isStreaming}
+            onClick={() => void retryLast()}
+            className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border border-destructive/30 bg-background px-2 py-0.5 text-[12px] leading-5 text-destructive transition-colors duration-100 hover:bg-destructive/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <RefreshCwIcon className="size-3" />
+            重试
+          </button>
+        </div>
+      )}
+
+      {chatMessage.status === 'done' && (
+        <ActionBarPrimitive.Root
+          hideWhenRunning
+          autohide="not-last"
+          className="flex items-center gap-0.5 pt-0.5 text-muted-foreground"
+        >
+          <EoqIconButton
+            tooltip={copiedMessageId === chatMessage.id ? '已复制' : '复制回复'}
+            size="sm"
+            className={cn(
+              copiedMessageId === chatMessage.id && 'text-[#52c41a] hover:text-[#52c41a]'
+            )}
+            onClick={() => copyAnswer(chatMessage)}
+          >
+            {copiedMessageId === chatMessage.id ? (
+              <CheckIcon className="size-3.5 animate-eoq-pop" />
+            ) : (
+              <CopyIcon className="size-3.5" />
+            )}
+          </EoqIconButton>
+          <EoqIconButton
+            tooltip="重新生成"
+            size="sm"
+            onClick={() => handleRegenerate(chatMessage)}
+          >
+            <RefreshCwIcon className="size-3.5" />
+          </EoqIconButton>
         </ActionBarPrimitive.Root>
       )}
     </MessagePrimitive.Root>
@@ -338,63 +302,20 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
   const resendFrom = useAiStore((state) => state.resendFrom)
   const regenerate = useAiStore((state) => state.regenerate)
 
-  const listRef = useRef<HTMLDivElement>(null)
-  const scrollFrameRef = useRef<number | undefined>(undefined)
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const [editingId, setEditingId] = useState('')
   const [editingDraft, setEditingDraft] = useState('')
   const [copiedMessageId, setCopiedMessageId] = useState('')
-  const [reasonTouched, setReasonTouched] = useState<Set<string>>(() => new Set())
-  const [reasonOpen, setReasonOpen] = useState<Set<string>>(() => new Set())
-  const [openTools, setOpenTools] = useState<Set<string>>(() => new Set())
-
-  const scheduleAssistantScroll = useCallback(() => {
-    if (scrollFrameRef.current !== undefined) cancelAnimationFrame(scrollFrameRef.current)
-    scrollFrameRef.current = requestAnimationFrame(() => {
-      scrollFrameRef.current = undefined
-      const container = listRef.current
-      if (!container) return
-      container.scrollTo({ top: container.scrollHeight })
-      const reasoning = container.querySelector<HTMLElement>(
-        '.assistant-block:last-child .reasoning-text'
-      )
-      if (reasoning) reasoning.scrollTop = reasoning.scrollHeight
-    })
-  }, [])
-
-  const lastMessage = messages[messages.length - 1]
-  const lastPart = lastMessage?.parts[lastMessage.parts.length - 1]
-  const scrollSignature = !lastMessage
-    ? ''
-    : `${lastMessage.id}:${lastMessage.status}:${lastMessage.content.length}:${
-        !lastPart
-          ? ''
-          : lastPart.kind === 'reasoning'
-            ? `r${lastPart.text.length}`
-            : lastPart.kind === 'text'
-              ? `t${lastPart.text.length}`
-              : `o${lastPart.step.status}:${lastPart.step.result.length}`
-      }`
-
-  useEffect(() => {
-    if (scrollSignature) scheduleAssistantScroll()
-  }, [scrollSignature, scheduleAssistantScroll])
 
   useEffect(() => {
     if (messages.length === 0) {
-      setReasonTouched(new Set())
-      setReasonOpen(new Set())
-      setOpenTools(new Set())
       setEditingId('')
       setEditingDraft('')
     }
   }, [messages.length])
 
   useEffect(() => {
-    setReasonTouched(new Set())
-    setReasonOpen(new Set())
-    setOpenTools(new Set())
     setEditingId('')
     setEditingDraft('')
   }, [currentConversationId])
@@ -402,7 +323,6 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
   useEffect(() => {
     return () => {
       if (copiedTimerRef.current !== undefined) clearTimeout(copiedTimerRef.current)
-      if (scrollFrameRef.current !== undefined) cancelAnimationFrame(scrollFrameRef.current)
     }
   }, [])
 
@@ -497,40 +417,12 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
     [discardsFollowing, modal, regenerate]
   )
 
-  const toggleReasoning = useCallback((part: ReasoningPart, keys: string | string[]) => {
-    const list = Array.isArray(keys) ? keys : keys ? [keys] : []
-    setReasonTouched((prev) => {
-      const next = new Set(prev)
-      next.add(part.id)
-      return next
-    })
-    setReasonOpen((prev) => {
-      const next = new Set(prev)
-      if (list.includes('reasoning')) next.add(part.id)
-      else next.delete(part.id)
-      return next
-    })
-  }, [])
-
-  const toggleTool = useCallback((step: ToolStep, keys: string | string[]) => {
-    const list = Array.isArray(keys) ? keys : keys ? [keys] : []
-    setOpenTools((prev) => {
-      const next = new Set(prev)
-      if (list.includes(step.callId)) next.add(step.callId)
-      else next.delete(step.callId)
-      return next
-    })
-  }, [])
-
   return (
     <EoqThreadActionsContext.Provider
       value={{
         editingId,
         editingDraft,
         copiedMessageId,
-        reasonTouched,
-        reasonOpen,
-        openTools,
         setEditingDraft,
         startEdit,
         cancelEdit,
@@ -538,20 +430,34 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
         handleEditKeydown,
         copyAnswer,
         handleRegenerate,
-        toggleReasoning,
-        toggleTool,
-        onSubmitPrompt,
-        onScrollToBottom: scheduleAssistantScroll
+        onSubmitPrompt
       }}
     >
-      <ThreadPrimitive.Viewport ref={listRef} className={styles.chatList} autoScroll={false}>
-        <ThreadPrimitive.Messages
-          components={{
-            UserMessage: EoqUserMessage,
-            AssistantMessage: EoqAssistantMessage
-          }}
-        />
-      </ThreadPrimitive.Viewport>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <ThreadPrimitive.Viewport
+          autoScroll
+          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 pb-4"
+        >
+          <ThreadPrimitive.Messages
+            components={{
+              UserMessage: EoqUserMessage,
+              AssistantMessage: EoqAssistantMessage
+            }}
+          />
+        </ThreadPrimitive.Viewport>
+
+        <ThreadPrimitive.ScrollToBottom asChild>
+          <EoqIconButton
+            variant="outline"
+            size="md"
+            tooltip="回到底部"
+            aria-label="回到底部"
+            className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 disabled:pointer-events-none disabled:invisible"
+          >
+            <ArrowDownIcon className="size-4" />
+          </EoqIconButton>
+        </ThreadPrimitive.ScrollToBottom>
+      </div>
     </EoqThreadActionsContext.Provider>
   )
 }

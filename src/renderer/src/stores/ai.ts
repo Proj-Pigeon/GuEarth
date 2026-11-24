@@ -15,6 +15,8 @@ export interface ToolStep {
   summary: string
   result: string
   references?: AiSearchReference[]
+  startedAt?: number
+  completedAt?: number
 }
 
 export interface ReasoningPart {
@@ -337,7 +339,18 @@ export const useAiStore = create<AiStore>()(
           ...clone,
           status,
           parts: clone.parts.map((part): StoredAiPart => part.kind === 'tool'
-            ? { kind: 'tool', step: { ...part.step, status: part.step.status === 'running' ? 'ok' : part.step.status, references: part.step.references ?? [] } }
+            ? {
+                kind: 'tool',
+                step: {
+                  callId: part.step.callId,
+                  name: part.step.name,
+                  args: part.step.args,
+                  status: part.step.status === 'running' ? 'ok' : part.step.status,
+                  summary: part.step.summary,
+                  result: part.step.result,
+                  references: part.step.references ?? []
+                }
+              }
             : part)
         }]
       })
@@ -552,7 +565,8 @@ export const useAiStore = create<AiStore>()(
                 args: { ...((event.args ?? {}) as Record<string, unknown>) },
                 status: 'running',
                 summary: '',
-                result: ''
+                result: '',
+                startedAt: Date.now()
               }
             }
             return {
@@ -579,7 +593,8 @@ export const useAiStore = create<AiStore>()(
                 status: event.ok ? 'ok' : 'error',
                 summary: event.summary,
                 result: event.result,
-                references: event.references ? event.references.map((item) => ({ ...item })) : undefined
+                references: event.references ? event.references.map((item) => ({ ...item })) : undefined,
+                completedAt: Date.now()
               }
             }
             const parts = assistant.parts.slice()
