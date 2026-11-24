@@ -11,6 +11,12 @@ import {
   type MirrorEndpointProbeResult,
   type TileMirrorMode
 } from '../../../common/tileMirror'
+import {
+  normalizeTouchInteractionMode,
+  resolveTouchInteractionActive,
+  type TouchEnvironment,
+  type TouchInteractionMode
+} from '../../../common/touchInteraction'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
 import type { GuEarthSettingsPatch, TileMirrorStatus } from '../../../preload'
 import { useFailureStore } from './failure'
@@ -142,6 +148,8 @@ export interface GlobeState {
   mirroredProviders: string[]
   mirrorFallenBackProviders: string[]
   networkProxy: string
+  touchInteractionMode: TouchInteractionMode
+  touchInteractionActive: boolean
   providerCredentials: Record<string, { configured: boolean; updatedAt: number | null }>
   isLayerPanelOpen: boolean
   isGlobeReady: boolean
@@ -188,11 +196,29 @@ export interface GlobeActions {
   setCredentialStatus: (id: string, status: { configured: boolean; updatedAt: number | null }) => void
   setSceneMode: (mode: SceneMode) => void
   setLevelViewActive: (value: boolean) => void
+  setTouchInteractionMode: (value: unknown) => Promise<void>
 }
 
 export type GlobeStore = GlobeState & GlobeActions
 
+const coarsePointerQuery =
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(pointer: coarse)')
+    : undefined
+
+function detectTouchEnvironment(): TouchEnvironment {
+  if (typeof window === 'undefined') return { coarsePointer: false, maxTouchPoints: 0 }
+  const coarsePointer = Boolean(coarsePointerQuery?.matches)
+  return {
+    coarsePointer,
+    maxTouchPoints: typeof navigator !== 'undefined' ? (navigator.maxTouchPoints ?? 0) : 0
+  }
+}
+
+let touchEnvironment: TouchEnvironment = detectTouchEnvironment()
+
 export function createInitialGlobeState(): GlobeState {
+  touchEnvironment = detectTouchEnvironment()
   return {
     layers: defaultLayers.map((layer) => ({ ...layer })),
     selectedLayerId: 'osm',
@@ -215,6 +241,8 @@ export function createInitialGlobeState(): GlobeState {
     mirroredProviders: [],
     mirrorFallenBackProviders: [],
     networkProxy: '',
+    touchInteractionMode: 'auto',
+    touchInteractionActive: resolveTouchInteractionActive('auto', touchEnvironment),
     providerCredentials: {},
     isLayerPanelOpen: false,
     isGlobeReady: false,
@@ -241,6 +269,7 @@ let mirrorConsentKnown = false
 let mirrorPersistSeq = 0
 let mirrorSourcePersistSeq = 0
 let mirrorSourceSettledSeq = 0
+let touchModePersistSeq = 0
 
 async function persistSettingsPatch(patch: GuEarthSettingsPatch): Promise<boolean> {
   if (!apiAvailable()) return true
@@ -368,6 +397,7 @@ export const useGlobeStore = create<GlobeStore>()(
         try {
           const settings = await window.guEarth.settings.get()
           const nextTileMirrorSource = normalizeMirrorEndpointPreference(settings.tileMirrorSource)
+          const nextTouchInteractionMode = normalizeTouchInteractionMode(settings.touchInteractionMode)
           mirrorConsentKnown = true
           set((state) => ({
             selectedLayerId: providerFor(settings.selectedImageryProviderId) ? settings.selectedImageryProviderId : 'osm',
@@ -379,6 +409,8 @@ export const useGlobeStore = create<GlobeStore>()(
             tileMirrorMode: settings.mirrorConsentPrompted === true && normalizeTileMirrorMode(settings.tileMirrorMode) === 'on' ? 'on' : 'off',
             tileMirrorSource: nextTileMirrorSource,
             activeMirrorEndpoint: nextTileMirrorSource !== 'auto' ? nextTileMirrorSource : state.activeMirrorEndpoint,
+            touchInteractionMode: nextTouchInteractionMode,
+            touchInteractionActive: resolveTouchInteractionActive(nextTouchInteractionMode, touchEnvironment),
             networkProxy: settings.networkProxy ?? '',
             providerStyles: Object.fromEntries(providerCatalog.map((provider) => [provider.id, styleFor(provider.id, settings.providerStyles?.[provider.id] ?? provider.defaultStyleId)])),
             providerCredentials: settings.providerCredentials,
@@ -569,10 +601,65 @@ export const useGlobeStore = create<GlobeStore>()(
       },
       setLevelViewActive(value: boolean): void {
         set({ levelViewActive: value })
+      },
+      async setTouchInteractionMode(value: unknown): Promise<void> {
+        const mode = normalizeTouchInteractionMode(value)
+        const previousMode = get().touchInteractionMode
+        if (mode === previousMode) return
+        set({
+          touchInteractionMode: mode,
+          touchInteractionActive: resolveTouchInteractionActive(mode, touchEnvironment)
+        })
+        const seq = ++touchModePersistSeq
+        const saved = await persistSettingsPatch({ touchInteractionMode: mode })
+        if (saved || seq !== touchModePersistSeq) return
+        let restored = previousMode
+        try {
+          const settings = await window.guEarth.settings.get()
+          restored = normalizeTouchInteractionMode(settings.touchInteractionMode)
+        } catch {
+          restored = previousMode
+        }
+        if (seq !== touchModePersistSeq) return
+        if (get().touchInteractionMode === mode) {
+          set({
+            touchInteractionMode: restored,
+            touchInteractionActive: resolveTouchInteractionActive(restored, touchEnvironment)
+          })
+        }
+        useFailureStore.getState().reportDegrade('触摸操作设置保存失败，已恢复原设置')
       }
     }
   })
 )
+
+function syncTouchInteractionActive(): void {
+  const state = useGlobeStore.getState()
+  const active = resolveTouchInteractionActive(state.touchInteractionMode, touchEnvironment)
+  if (active !== state.touchInteractionActive) {
+    useGlobeStore.setState({ touchInteractionActive: active })
+  }
+}
+
+function handleEnvironmentPointer(event: PointerEvent): void {
+  if (event.pointerType !== 'touch') return
+  if (touchEnvironment.maxTouchPoints === 0) {
+    touchEnvironment = { ...touchEnvironment, maxTouchPoints: Math.max(navigator.maxTouchPoints, 1) }
+    syncTouchInteractionActive()
+  }
+}
+
+function refreshTouchEnvironment(): void {
+  const next = detectTouchEnvironment()
+  if (next.coarsePointer === touchEnvironment.coarsePointer && next.maxTouchPoints === touchEnvironment.maxTouchPoints) return
+  touchEnvironment = next
+  syncTouchInteractionActive()
+}
+
+coarsePointerQuery?.addEventListener?.('change', refreshTouchEnvironment)
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('pointerdown', handleEnvironmentPointer)
+}
 
 if (typeof useFailureStore.subscribe === 'function') {
   useFailureStore.subscribe((state) => {
@@ -590,5 +677,6 @@ export function resetGlobeStore(): void {
   mirrorPersistSeq = 0
   mirrorSourcePersistSeq = 0
   mirrorSourceSettledSeq = 0
+  touchModePersistSeq = 0
   useGlobeStore.setState(createInitialGlobeState())
 }

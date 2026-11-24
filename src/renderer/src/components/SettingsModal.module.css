@@ -15,6 +15,12 @@
   border-right: 1px solid rgba(5, 5, 5, 0.06);
 }
 
+:global(.touch-ui) .settingsNav {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .navGroup + .navGroup {
   margin-top: 8px;
 }

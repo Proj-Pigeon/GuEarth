@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/electron/renderer'
+import { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
@@ -7,12 +8,14 @@ import { App as AntdApp, ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import App from './App'
 import './assets/main.css'
+import './assets/touch.css'
 import { attachConsoleLogTee, logger } from '../../common/logger'
 import { surfaceFailureAlreadyShown } from '../../common/globeSurface'
 import { requestErrorRejectionLabel } from '../../common/resourceFailure'
 import { describeError, installGlobalErrorListeners, notifyCrashMessage } from './lib/crashReporter'
 import { isErrorReportingEnabled, onPrivacySettingsChange } from './lib/privacyRuntime'
 import { capturePosthogException, syncPosthogPrivacy } from './posthog'
+import { useGlobeStore } from './stores/globe'
 
 attachConsoleLogTee('renderer')
 
@@ -63,18 +66,35 @@ function handleRenderError(error: unknown, info?: { componentStack?: string }): 
   console.error(error)
 }
 
-const container = document.getElementById('app')
-if (container) {
-  createRoot(container, {
-    onUncaughtError: (error, info) => handleRenderError(error, info),
-    onCaughtError: (error, info) => handleRenderError(error, info)
-  }).render(
+function Root() {
+  const touchInteractionActive = useGlobeStore((state) => state.touchInteractionActive)
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('touch-ui', touchInteractionActive)
+    return () => {
+      document.documentElement.classList.remove('touch-ui')
+    }
+  }, [touchInteractionActive])
+
+  return (
     <StyleProvider layer>
-      <ConfigProvider locale={zhCN} theme={antdTheme}>
+      <ConfigProvider
+        locale={zhCN}
+        theme={antdTheme}
+        componentSize={touchInteractionActive ? 'large' : 'middle'}
+      >
         <AntdApp>
           <App />
         </AntdApp>
       </ConfigProvider>
     </StyleProvider>
   )
+}
+
+const container = document.getElementById('app')
+if (container) {
+  createRoot(container, {
+    onUncaughtError: (error, info) => handleRenderError(error, info),
+    onCaughtError: (error, info) => handleRenderError(error, info)
+  }).render(<Root />)
 }

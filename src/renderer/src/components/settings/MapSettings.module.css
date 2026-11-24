@@ -179,3 +179,8 @@
 .mirrorProbeFail {
   color: var(--ant-color-error, #ff4d4f);
 }
+
+.touchModeSelect {
+  min-width: 112px;
+  flex-shrink: 0;
+}

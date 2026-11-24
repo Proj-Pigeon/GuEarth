@@ -1,6 +1,9 @@
 import * as Cesium from 'cesium'
 import type { GeoPosition } from '../../../preload'
+import { polygonArea } from './polygonArea'
 import { DEFAULT_DRAW_STYLE } from '../stores/drawing'
+
+export { polygonArea }
 
 export interface ShapeVisual {
   kind: 'point' | 'polyline' | 'polygon' | 'arrow' | 'text'
@@ -58,21 +61,6 @@ export function geodesicDistance(from: Cesium.Cartesian3, to: Cesium.Cartesian3)
 export function pathDistance(cartesians: Cesium.Cartesian3[]): number {
   let total = 0
   for (let index = 1; index < cartesians.length; index += 1) total += geodesicDistance(cartesians[index - 1], cartesians[index])
-  return total
-}
-
-export function triangleArea(first: Cesium.Cartesian3, second: Cesium.Cartesian3, third: Cesium.Cartesian3): number {
-  const ab = geodesicDistance(first, second)
-  const bc = geodesicDistance(second, third)
-  const ca = geodesicDistance(third, first)
-  const semi = (ab + bc + ca) / 2
-  const product = semi * (semi - ab) * (semi - bc) * (semi - ca)
-  return product > 0 ? Math.sqrt(product) : 0
-}
-
-export function polygonArea(cartesians: Cesium.Cartesian3[]): number {
-  let total = 0
-  for (let index = 1; index < cartesians.length - 1; index += 1) total += triangleArea(cartesians[0], cartesians[index], cartesians[index + 1])
   return total
 }
 

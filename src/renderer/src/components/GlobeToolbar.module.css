@@ -64,3 +64,33 @@
   background: #1677ff;
   color: #ffffff;
 }
+
+:global(.touch-ui) .toolbar,
+:global(.touch-ui) .toolbarGroup,
+:global(.touch-ui) .toolbarFloating {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:global(.touch-ui) .toolbarGroup {
+  gap: 12px;
+  padding: 10px;
+}
+
+:global(.touch-ui) .toolbarTools {
+  gap: 12px;
+}
+
+:global(.touch-ui) .toolbarBtn {
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+}
+
+:global(.touch-ui) .toolbarCircle {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  font-size: 20px;
+}

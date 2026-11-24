@@ -1,0 +1,15 @@
+.touch-ui button,
+.touch-ui .ant-select,
+.touch-ui .ant-select-selector,
+.touch-ui .ant-radio-button-wrapper,
+.touch-ui .ant-switch,
+.touch-ui .ant-tag {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-ui button,
+.touch-ui a {
+  touch-action: manipulation;
+}

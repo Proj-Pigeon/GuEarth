@@ -12,6 +12,10 @@ const createEllipsoidalOccluder = Cesium as unknown as { EllipsoidalOccluder: ne
 
 export interface UseDrawingResult {
   flyToShape: (shape: DrawnShape) => void
+  draftCount: number
+  finishDraft: () => void
+  undoDraftPoint: () => void
+  cancelActiveTool: () => void
 }
 
 function toGeo(cartesian: Cesium.Cartesian3): GeoPosition {
@@ -49,7 +53,7 @@ function previewPolylinePositions(viewer: Cesium.Viewer, positions: Cesium.Carte
   return isGroundPolylineSupported(viewer) ? sanitized : terrainSurfacePositions(viewer, terrainPath(sanitized, 128))
 }
 
-function createDrawingController() {
+function createDrawingController(onDraftCountChange: (count: number) => void) {
   const entities = new Map<string, Cesium.Entity>()
   const renderSignatures = new Map<string, string>()
   const drapedPolylines = new Map<string, { entity: Cesium.Entity; path: Cesium.Cartographic[] }>()
@@ -210,6 +214,31 @@ function createDrawingController() {
   function cancelDraft(): void {
     clearPreview()
     draft = []
+    onDraftCountChange(0)
+  }
+
+  function finishDraft(): void {
+    if (!tool || tool === 'point' || tool === 'text' || tool === 'arrow') return
+    handleDoubleClick()
+  }
+
+  function undoDraftPoint(): void {
+    if (!draft.length) return
+    draft = dedupe(draft)
+    draft.pop()
+    onDraftCountChange(dedupe(draft).length)
+    if (draft.length) createPreview()
+    else clearPreview()
+  }
+
+  function cancelActiveTool(): void {
+    const store = useDrawingStore.getState()
+    cancelDraft()
+    if (tool) {
+      tool = null
+      store.setActiveTool(null)
+    }
+    store.setSelectedShapeId(null)
   }
 
   function pickAt(screenPosition: Cesium.Cartesian2): Cesium.Cartesian3 | undefined {
@@ -341,6 +370,7 @@ function createDrawingController() {
       return
     }
     draft.push(position)
+    onDraftCountChange(dedupe(draft).length)
     if (draft.length === 1) createPreview()
   }
 
@@ -367,13 +397,7 @@ function createDrawingController() {
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return
-    const store = useDrawingStore.getState()
-    cancelDraft()
-    if (tool) {
-      tool = null
-      store.setActiveTool(null)
-    }
-    store.setSelectedShapeId(null)
+    cancelActiveTool()
   }
 
   function flyToShape(shape: DrawnShape): void {
@@ -465,14 +489,24 @@ function createDrawingController() {
     }
   }
 
-  return { attachViewer, mountSubscriptions, flyToShape }
+  return { attachViewer, mountSubscriptions, flyToShape, finishDraft, undoDraftPoint, cancelActiveTool }
 }
 
 export function useDrawing(viewer: Cesium.Viewer | undefined): UseDrawingResult {
-  const [controller] = useState(() => createDrawingController())
+  const [draftCount, setDraftCount] = useState(0)
+  const [controller] = useState(() => createDrawingController(setDraftCount))
 
   useEffect(() => controller.attachViewer(viewer), [controller, viewer])
   useEffect(() => controller.mountSubscriptions(), [controller])
 
-  return useMemo(() => ({ flyToShape: controller.flyToShape }), [controller])
+  return useMemo(
+    () => ({
+      flyToShape: controller.flyToShape,
+      draftCount,
+      finishDraft: controller.finishDraft,
+      undoDraftPoint: controller.undoDraftPoint,
+      cancelActiveTool: controller.cancelActiveTool
+    }),
+    [controller, draftCount]
+  )
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { Alert, App as AntdApp, Button, Modal, Spin } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
@@ -40,6 +40,7 @@ import CameraStatus from '@renderer/components/CameraStatus'
 import CitiesPanel from '@renderer/components/CitiesPanel'
 import CrashDialog from '@renderer/components/CrashDialog'
 import DrawingEditToolbar, { type DrawnShapeStylePatch } from '@renderer/components/DrawingEditToolbar'
+import DrawingTouchBar from '@renderer/components/DrawingTouchBar'
 import EarthLayersPanel from '@renderer/components/EarthLayersPanel'
 import EnsoPanel from '@renderer/components/EnsoPanel'
 import EnvironmentPanel from '@renderer/components/EnvironmentPanel'
@@ -109,6 +110,7 @@ export function App() {
   const settingsHydrated = useGlobeStore((state) => state.settingsHydrated)
   const mirrorConsentPrompted = useGlobeStore((state) => state.mirrorConsentPrompted)
   const mirrorConsentOpen = useGlobeStore((state) => state.mirrorConsentOpen)
+  const touchInteractionActive = useGlobeStore((state) => state.touchInteractionActive)
 
   const thematicOverlays = useClimateStore((state) => state.overlays)
   const ensoPhase = useClimateStore((state) => state.ensoPhase)
@@ -160,7 +162,7 @@ export function App() {
     setTerrainExaggeration,
     setTerrainLighting
   } = useCesiumViewer(globeContainerRef)
-  const { flyToShape } = useDrawing(viewer)
+  const { flyToShape, draftCount, finishDraft, undoDraftPoint, cancelActiveTool } = useDrawing(viewer)
   const { comparison: timezoneComparison, closeTimezoneCompare } = useTimezoneCompare(viewer)
   useThematicLayers(viewer)
   const scenePlayer = useScenePlayer(viewer, switchBasemap)
@@ -208,14 +210,32 @@ export function App() {
   const drawHint = !activeTool
     ? ''
     : activeTool === 'timezone'
-      ? '单击选取两个地点对比地方时 · Esc 退出'
+      ? touchInteractionActive
+        ? '点按选取两个地点对比地方时 · 用下方按钮退出'
+        : '单击选取两个地点对比地方时 · Esc 退出'
       : activeTool === 'text'
-        ? '在地球上单击放置文本框 · Esc 退出'
+        ? touchInteractionActive
+          ? '在地球上点按放置文本框 · 用下方按钮取消'
+          : '在地球上单击放置文本框 · Esc 退出'
         : activeTool === 'arrow'
-          ? '依次单击箭头起点和终点 · Esc 取消'
+          ? touchInteractionActive
+            ? '点按箭头起点和终点'
+            : '依次单击箭头起点和终点 · Esc 取消'
           : activeTool === 'point'
-            ? '在地球上单击以放置点'
-            : '单击加点 · 双击或右键完成 · Esc 取消'
+            ? touchInteractionActive
+              ? '在地球上点按以放置点'
+              : '在地球上单击以放置点'
+            : touchInteractionActive
+              ? '点按加点 · 用下方按钮撤销或完成'
+              : '单击加点 · 双击或右键完成 · Esc 取消'
+
+  const handleGlobeContextMenu = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (!touchInteractionActive) return
+      event.preventDefault()
+    },
+    [touchInteractionActive]
+  )
 
   const closeAllTeachingPanels = useCallback(() => {
     useSolarStore.getState().setMotionPanel(null)
@@ -539,10 +559,11 @@ export function App() {
   }, [])
 
   return (
-    <div className={styles.app}>
+    <div className={touchInteractionActive ? `${styles.app} touch-ui` : styles.app}>
       <div
         ref={globeContainerRef}
         className={activeTool ? `${styles.globe} ${styles.globeDrawing}` : styles.globe}
+        onContextMenu={handleGlobeContextMenu}
       />
       <InlineTextEditor
         viewer={viewer}
@@ -614,6 +635,15 @@ export function App() {
               fonts={systemFonts}
               onChange={updateSelectedShape}
               onRemove={deleteSelectedShape}
+            />
+          )}
+          {touchInteractionActive && (
+            <DrawingTouchBar
+              activeTool={activeTool}
+              draftCount={draftCount}
+              onCancel={cancelActiveTool}
+              onUndo={undoDraftPoint}
+              onFinish={finishDraft}
             />
           )}
           <TeachingLab open={isLabOpen} onClose={() => setIsLabOpen(false)} />

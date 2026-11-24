@@ -8,11 +8,33 @@ import {
   mirrorEndpointShortLabel,
   type MirrorEndpointPreference
 } from '../../../../common/tileMirror'
+import {
+  normalizeTouchInteractionMode,
+  touchInteractionModes,
+  type TouchInteractionMode
+} from '../../../../common/touchInteraction'
 import styles from './MapSettings.module.css'
 
 export interface MapSettingsProps {}
 
 const allProviders = [...providerCatalog, ...credentialOnlyProviders]
+
+const touchInteractionModeLabels: Record<TouchInteractionMode, string> = {
+  auto: '自动',
+  on: '始终开启',
+  off: '关闭'
+}
+
+const touchInteractionModeDescriptions: Record<TouchInteractionMode, string> = {
+  auto: '软件自动识别触控情况，在特定情况下启用触屏模式。',
+  on: '始终启用触摸交互界面。',
+  off: '始终使用桌面键鼠界面。'
+}
+
+const touchInteractionModeOptions = touchInteractionModes.map((mode) => ({
+  value: mode,
+  label: touchInteractionModeLabels[mode]
+}))
 
 export function MapSettings(_props: MapSettingsProps) {
   const { message } = AntdApp.useApp()
@@ -27,6 +49,8 @@ export function MapSettings(_props: MapSettingsProps) {
   const mirroredProviders = useGlobeStore((state) => state.mirroredProviders)
   const mirrorFallenBackProviders = useGlobeStore((state) => state.mirrorFallenBackProviders)
   const providerCredentials = useGlobeStore((state) => state.providerCredentials)
+  const touchInteractionMode = useGlobeStore((state) => state.touchInteractionMode)
+  const touchInteractionActive = useGlobeStore((state) => state.touchInteractionActive)
   const applyTileMirrorStatus = useGlobeStore((state) => state.applyTileMirrorStatus)
   const setTileMirrorSource = useGlobeStore((state) => state.setTileMirrorSource)
   const openMirrorConsent = useGlobeStore((state) => state.openMirrorConsent)
@@ -35,6 +59,7 @@ export function MapSettings(_props: MapSettingsProps) {
   const setNetworkProxy = useGlobeStore((state) => state.setNetworkProxy)
   const setTileCacheEnabled = useGlobeStore((state) => state.setTileCacheEnabled)
   const openMirrorPolicy = useGlobeStore((state) => state.openMirrorPolicy)
+  const setTouchInteractionMode = useGlobeStore((state) => state.setTouchInteractionMode)
 
   const keyProviders = useMemo(() => allProviders.filter((provider) => provider.requiresKey), [])
   const [credentialProviderId, setCredentialProviderId] = useState(() => keyProviders[0]?.id ?? '')
@@ -441,6 +466,29 @@ export function MapSettings(_props: MapSettingsProps) {
             )}
           </div>
         )}
+      </section>
+
+      <section className={styles.settingsBlock}>
+        <div className={styles.settingRow}>
+          <div className={styles.settingCopy}>
+            <div className={styles.settingTitleRow}>
+              <span className={styles.settingTitle}>触摸操作</span>
+              {touchInteractionMode !== 'off' && (
+                <Tag color={touchInteractionActive ? 'blue' : undefined}>
+                  {touchInteractionActive ? '触摸交互已启用' : '未检测到触摸设备'}
+                </Tag>
+              )}
+            </div>
+            <p className={styles.settingDesc}>{touchInteractionModeDescriptions[touchInteractionMode]}</p>
+          </div>
+          <Select
+            className={styles.touchModeSelect}
+            value={touchInteractionMode}
+            options={touchInteractionModeOptions}
+            aria-label="触摸操作"
+            onChange={(value) => void setTouchInteractionMode(normalizeTouchInteractionMode(value))}
+          />
+        </div>
       </section>
     </section>
   )
