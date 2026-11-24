@@ -245,8 +245,7 @@ instrument panels floating over a full-screen 3D globe (CesiumJS). The product s
 well-made field instrument: calm, precise, and deferential to the content — the terrain is the
 hero, chrome is the exception.
 
-The visual language is **Ant Design** (spec follows the current v6 docs; the Vue port
-`ant-design-vue@4.x` implements the same token system):
+The visual language is **Ant Design v6** (`antd@6` + CSS Modules, with `@ant-design/cssinjs` `StyleProvider layer` isolating Tailwind CSS v4 inside the `.eoq-drawer` EOQ assistant scope):
 
 - **Natural** — rely on platform and Ant conventions; no exotic controls without necessity.
 - **Certain** — every state is explicit (hover, active, disabled, loading, error); nothing is
@@ -254,8 +253,9 @@ The visual language is **Ant Design** (spec follows the current v6 docs; the Vue
 - **Meaningful** — color and emphasis signal actions and status, never decoration.
 - **Growing** — scales from a single globe window to dense teaching tools without redesign.
 
-Base rule: use **Ant Design Vue components as-is**. Introduce a custom component only when Ant
-Design has no equivalent (for example globe-anchored overlays), and build it from these tokens.
+Base rule: use **Ant Design v6 components as-is**. Introduce a custom component only when Ant
+Design has no equivalent (for example globe-anchored overlays) or within the scoped `.eoq-drawer`
+`@assistant-ui/react` surface, and build it from these tokens.
 
 ## Colors
 
@@ -389,8 +389,8 @@ Model every state as a related frontmatter token (`button-primary` → `button-p
   `{rounded.lg}`).
 - `toolbar-item` / `toolbar-item-hover` are 32px icon buttons for the globe toolbar; selected
   tool keeps `button-primary` colors.
-- The EOQ AI assistant is a docked `panel-floating`; streaming text uses `typography.body-md`,
-  tool-call chips use `tag-terrain`.
+- The EOQ AI assistant is a docked `panel-floating` (`.eoq-drawer` scoped tokens mapped to `colors.*`); streaming text uses `typography.body-md`,
+  tool-call chips use `tag-terrain`, and thinking indicators use dark-ink shimmer gradients over the light surface.
 
 ### Lists, tags & status
 
@@ -411,7 +411,7 @@ three states is incomplete.
 
 **Do**
 
-- Use Ant Design Vue components and these tokens before inventing anything.
+- Use Ant Design v6 components and these tokens before inventing anything.
 - Keep the globe full-bleed; float every piece of chrome.
 - Express state through color/border changes within the 0.1/0.2/0.3s motion tiers.
 - Use `typography.code-md` for all measurements and coordinates.

@@ -1,33 +1,57 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 import { HSR_END_YEAR, HSR_START_YEAR } from '@renderer/thematic/hsrLines'
 
 const YEARS_PER_SECOND = 2.2
 
 export type TransportPanel = 'transport' | null
 
-export const useTransportStore = defineStore('transport', () => {
-  const year = ref(HSR_END_YEAR)
-  const isPlaying = ref(false)
-  const panel = ref<TransportPanel>(null)
+export interface TransportState {
+  year: number
+  isPlaying: boolean
+  panel: TransportPanel
+}
 
-  function setYear(value: number): void {
-    if (Number.isFinite(value)) year.value = Math.round(Math.min(HSR_END_YEAR, Math.max(HSR_START_YEAR, value)))
+export interface TransportActions {
+  setYear: (value: number) => void
+  setPanel: (value: TransportPanel) => void
+  togglePlaying: () => void
+  advance: (dtSeconds: number) => void
+}
+
+export type TransportStore = TransportState & TransportActions
+
+export function createInitialTransportState(): TransportState {
+  return {
+    year: HSR_END_YEAR,
+    isPlaying: false,
+    panel: null
   }
+}
 
-  function setPanel(value: TransportPanel): void {
-    panel.value = value
-  }
+export const useTransportStore = create<TransportStore>()(
+  subscribeWithSelector((set, get) => ({
+    ...createInitialTransportState(),
+    setYear(value: number): void {
+      if (Number.isFinite(value)) {
+        set({ year: Math.round(Math.min(HSR_END_YEAR, Math.max(HSR_START_YEAR, value))) })
+      }
+    },
+    setPanel(value: TransportPanel): void {
+      set({ panel: value })
+    },
+    togglePlaying(): void {
+      set((state) => ({ isPlaying: !state.isPlaying }))
+    },
+    advance(dtSeconds: number): void {
+      const state = get()
+      if (!state.isPlaying) return
+      const next = state.year + dtSeconds * YEARS_PER_SECOND
+      set({ year: next > HSR_END_YEAR ? HSR_START_YEAR + (next - HSR_END_YEAR) : next })
+    }
+  }))
+)
 
-  function togglePlaying(): void {
-    isPlaying.value = !isPlaying.value
-  }
-
-  function advance(dtSeconds: number): void {
-    if (!isPlaying.value) return
-    const next = year.value + dtSeconds * YEARS_PER_SECOND
-    year.value = next > HSR_END_YEAR ? HSR_START_YEAR + (next - HSR_END_YEAR) : next
-  }
-
-  return { year, isPlaying, panel, setYear, setPanel, togglePlaying, advance }
-})
+export function resetTransportStore(): void {
+  useTransportStore.setState(createInitialTransportState())
+}

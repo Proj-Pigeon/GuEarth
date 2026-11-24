@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { cacheKeyOf, coastalZones, gridPointsOf, heightCache, seaLevelGridPoints, seedSampleHeights } from '../src/renderer/src/thematic/seaLevelRise.ts'
 
 const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
-const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
+const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
 const samplingSource = await readFile(new URL('../src/renderer/src/composables/seaLevelSampling.ts', import.meta.url), 'utf8')
 const scenePlayerSource = await readFile(new URL('../src/renderer/src/composables/useScenePlayer.ts', import.meta.url), 'utf8')
 

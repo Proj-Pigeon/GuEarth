@@ -7,8 +7,6 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { setImmediate as nextTurn } from 'node:timers/promises'
 import { transpileModule } from 'typescript'
-import { createPinia, setActivePinia } from 'pinia'
-import { ref, nextTick } from 'vue'
 
 const tileFsUrl = `data:text/javascript,${encodeURIComponent(`
   import { readdir, stat, unlink as remove } from 'node:fs/promises'
@@ -35,8 +33,12 @@ registerHooks({
 const { blocked } = await import(tileFsUrl)
 const { listTileFiles, pruneTileFiles } = await import('../src/main/tileCacheFiles.ts')
 const { writeAtomic, serialQueue, writeJson } = await import('../src/main/jsonStore.ts')
-const { interpolateCamera, useScenePlayer } = await import('../src/renderer/src/composables/useScenePlayer.ts')
-const { useScenesStore } = await import('../src/renderer/src/stores/scenes.ts')
+const { createScenePlayerController, interpolateCamera } = await import('../src/renderer/src/composables/useScenePlayer.ts')
+const { resetClimateStore } = await import('../src/renderer/src/stores/climate.ts')
+const { resetGlobeStore } = await import('../src/renderer/src/stores/globe.ts')
+const { resetScenesStore } = await import('../src/renderer/src/stores/scenes.ts')
+const { resetSolarStore } = await import('../src/renderer/src/stores/solar.ts')
+const { resetTransportStore } = await import('../src/renderer/src/stores/transport.ts')
 const { renderMarkdown, renderStreamingMarkdown, createStreamingDelayState, settleStreamingDelayState } = await import('../src/renderer/src/utils/markdown.ts')
 
 async function directory(t) {
@@ -129,39 +131,54 @@ test('prewarm cameras cross the antimeridian and heading zero by the shortest pa
 })
 
 function playerFixture(t) {
-  setActivePinia(createPinia())
+  resetScenesStore()
+  resetClimateStore()
+  resetSolarStore()
+  resetGlobeStore()
+  resetTransportStore()
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 })
   let requests = 0
-  const viewer = ref({
+  const viewer = {
     isDestroyed: () => false,
     scene: { mode: 3, globe: { tilesLoaded: true, maximumScreenSpaceError: 2, pick: () => undefined }, requestRender: () => { requests += 1 }, canvas: { clientWidth: 800, clientHeight: 600 } },
     camera: { setView() {}, flyTo(options) { options.complete() }, getPickRay: () => ({}) }
-  })
-  const player = useScenePlayer(viewer, () => {})
-  const scenes = useScenesStore()
+  }
+  const player = createScenePlayerController(viewer, () => {}, () => {})
+  const unmount = player.mount()
+  t.after(unmount)
   const scene = { name: 'Sky', narration: '', flyDurationMs: 100, dwellMs: 100, snapshot: { camera: { longitude: 179, latitude: 30, height: 10000, heading: 350, pitch: 10 }, basemapId: '', overlays: [], month: 6, simTime: null } }
-  const tick = async (ms) => { t.mock.timers.tick(ms); await nextTick(); await nextTurn() }
-  return { viewer, player, scenes, scene, tick, requests: () => requests }
+  const tick = async (ms) => { t.mock.timers.tick(ms); await nextTurn() }
+  return { viewer, player, scene, tick, requests: () => requests }
 }
 
 test('sky-facing scenes advance once tiles are ready instead of waiting ten seconds', async (t) => {
   const { player, scene, tick } = playerFixture(t)
   const playing = player.play({ scenes: [scene], mode: 'auto' })
   for (let index = 0; index < 35; index += 1) await tick(120)
-  assert.equal(player.playerState.active, false)
+  assert.equal(player.getPlayerState().active, false)
   await playing
 })
+
+function walkReactNodes(value, visit) {
+  if (Array.isArray(value)) {
+    for (const item of value) walkReactNodes(item, visit)
+  } else if (value && typeof value === 'object') {
+    visit(value)
+    if (value.props?.children !== undefined) walkReactNodes(value.props.children, visit)
+  }
+}
+
+function childTextList(children) {
+  if (children === undefined || children === null) return []
+  return Array.isArray(children) ? children : [children]
+}
 
 test('AI markdown treats HTML as text and omits executable link and image attributes', () => {
   const nodes = renderMarkdown('<script>alert(1)</script>\n\n[x](javascript:alert(1)) ![x](data:image/svg+xml,boom) [safe](https://example.com)')
   const seen = []
-  function walk(value) {
-    if (Array.isArray(value)) value.forEach(walk)
-    else if (value && typeof value === 'object') { seen.push(value); walk(value.children) }
-  }
-  walk(nodes)
+  walkReactNodes(nodes, (node) => seen.push(node))
   assert.equal(seen.some((node) => node.type === 'script'), false)
-  assert.equal(seen.some((node) => node.props?.innerHTML || node.props?.onerror), false)
+  assert.equal(seen.some((node) => node.props?.dangerouslySetInnerHTML || node.props?.innerHTML || node.props?.onerror), false)
   assert.equal(seen.filter((node) => node.type === 'img').length, 0)
   const link = seen.find((node) => node.type === 'a')
   assert.equal(link.props.href, 'https://example.com')
@@ -171,57 +188,51 @@ test('AI markdown treats HTML as text and omits executable link and image attrib
 test('streaming markdown tints the last two words, appends one caret and leaves code untouched', () => {
   const nodes = renderStreamingMarkdown('前言 **加粗** 结尾\n\n```js\nconst answer = 42\n```\n')
   const seen = []
-  function walk(value) {
-    if (Array.isArray(value)) value.forEach(walk)
-    else if (value && typeof value === 'object') { seen.push(value); walk(value.children) }
-  }
-  walk(nodes)
-  const tokens = seen.filter((node) => node.props?.class?.includes('stream-token'))
-  const fresh = seen.filter((node) => node.props?.class?.includes('stream-token-fresh'))
-  const carets = seen.filter((node) => node.props?.class === 'stream-caret')
+  walkReactNodes(nodes, (node) => seen.push(node))
+  const tokens = seen.filter((node) => node.props?.className?.includes('stream-token'))
+  const fresh = seen.filter((node) => node.props?.className?.includes('stream-token-fresh'))
+  const carets = seen.filter((node) => node.props?.className === 'stream-caret')
   assert.equal(tokens.length, 6)
   assert.equal(fresh.length, 2)
   assert.equal(carets.length, 1)
-  assert.deepEqual(tokens.map((node) => node.children[0]), ['前', '言', '加', '粗', '结', '尾'])
-  assert.deepEqual(fresh.map((node) => node.children[0]), ['结', '尾'])
-  assert.equal(seen.some((node) => node.type === 'pre' && node.children.some((child) => child?.props?.class?.includes('stream-token'))), false)
+  assert.deepEqual(tokens.map((node) => node.props.children), ['前', '言', '加', '粗', '结', '尾'])
+  assert.deepEqual(fresh.map((node) => node.props.children), ['结', '尾'])
+  assert.equal(
+    seen.some((node) => {
+      if (node.type !== 'pre') return false
+      let hasToken = false
+      walkReactNodes(node.props?.children, (child) => {
+        if (child.props?.className?.includes('stream-token')) hasToken = true
+      })
+      return hasToken
+    }),
+    false
+  )
 
   const delayState = createStreamingDelayState()
   const firstBatch = renderStreamingMarkdown('珠穆朗玛', delayState)
   const firstTokens = []
-  function collectFirst(value) {
-    if (Array.isArray(value)) value.forEach(collectFirst)
-    else if (value && typeof value === 'object') { firstTokens.push(value); collectFirst(value.children) }
-  }
-  collectFirst(firstBatch)
-  const firstSpans = firstTokens.filter((node) => node.props?.class?.includes('stream-token'))
+  walkReactNodes(firstBatch, (node) => firstTokens.push(node))
+  const firstSpans = firstTokens.filter((node) => node.props?.className?.includes('stream-token'))
   assert.deepEqual(firstSpans.map((node) => node.props?.style?.animationDelay ?? '0ms'), ['0ms', '9ms', '18ms', '27ms'])
 
   settleStreamingDelayState(delayState, '珠穆朗玛')
   const punctuated = renderStreamingMarkdown('珠穆朗玛峰（8848.86m）。', delayState)
   const punctuatedNodes = []
-  function collect(value) {
-    if (Array.isArray(value)) value.forEach(collect)
-    else if (value && typeof value === 'object') { punctuatedNodes.push(value); collect(value.children) }
-  }
-  collect(punctuated)
-  const resumedSpans = punctuatedNodes.filter((node) => node.props?.class?.includes('stream-token'))
-  const punctuatedFresh = punctuatedNodes.filter((node) => node.props?.class?.includes('stream-token-fresh'))
-  assert.deepEqual(resumedSpans.map((node) => node.children), ['峰', '（', '8848.86m', '）', '。'])
-  assert.deepEqual(punctuatedFresh.map((node) => node.children), ['峰', '8848.86m'])
-  const paragraph = punctuated[0]
-  assert.equal(paragraph.children[0], '珠穆朗玛')
-  assert.equal(paragraph.children[paragraph.children.length - 1]?.props?.class, 'stream-caret')
+  walkReactNodes(punctuated, (node) => punctuatedNodes.push(node))
+  const resumedSpans = punctuatedNodes.filter((node) => node.props?.className?.includes('stream-token'))
+  const punctuatedFresh = punctuatedNodes.filter((node) => node.props?.className?.includes('stream-token-fresh'))
+  assert.deepEqual(resumedSpans.map((node) => node.props.children), ['峰', '（', '8848.86m', '）', '。'])
+  assert.deepEqual(punctuatedFresh.map((node) => node.props.children), ['峰', '8848.86m'])
+  const paragraphChildren = childTextList(punctuated[0].props.children)
+  assert.equal(paragraphChildren[0], '珠穆朗玛')
+  assert.equal(paragraphChildren[paragraphChildren.length - 1]?.props?.className, 'stream-caret')
 
   const burstState = createStreamingDelayState()
   const burst = renderStreamingMarkdown('京师、齐河、长清、泰安。', burstState)
   const burstNodes = []
-  function collectBurst(value) {
-    if (Array.isArray(value)) value.forEach(collectBurst)
-    else if (value && typeof value === 'object') { burstNodes.push(value); collectBurst(value.children) }
-  }
-  collectBurst(burst)
-  const burstSpans = burstNodes.filter((node) => node.props?.class?.includes('stream-token'))
+  walkReactNodes(burst, (node) => burstNodes.push(node))
+  const burstSpans = burstNodes.filter((node) => node.props?.className?.includes('stream-token'))
   assert.equal(burstSpans.length, 6)
-  assert.equal(burst[0].children[0], '京师、齐河、')
+  assert.equal(childTextList(burst[0].props.children)[0], '京师、齐河、')
 })

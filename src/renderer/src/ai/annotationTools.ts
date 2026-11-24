@@ -56,50 +56,45 @@ function countShapes(entries: AnnotationEntry[]): number {
   return entries.reduce((total, entry) => total + (entry.type === 'shape' ? 1 : countShapes(entry.children)), 0)
 }
 
-function createAnnotationToolsContext() {
-  const drawingStore = useDrawingStore()
+function folderRefId(ref: string): string | null {
+  const trimmed = ref.trim()
+  if (!trimmed) return null
+  const { entries } = useDrawingStore.getState()
+  const byId = entryById(entries, trimmed)
+  if (byId) return byId.type === 'folder' ? byId.id : null
+  return folderByPath(entries, folderSegments(trimmed))?.id ?? null
+}
 
-  function folderRefId(ref: string): string | null {
-    const trimmed = ref.trim()
-    if (!trimmed) return null
-    const byId = entryById(drawingStore.entries, trimmed)
-    if (byId) return byId.type === 'folder' ? byId.id : null
-    return folderByPath(drawingStore.entries, folderSegments(trimmed))?.id ?? null
-  }
-
-  function folderPathOf(id: string): string {
-    const walk = (entries: AnnotationEntry[], prefix: string): string => {
-      for (const entry of entries) {
-        if (entry.type !== 'folder') continue
-        const path = prefix ? `${prefix}/${entry.name}` : entry.name
-        if (entry.id === id) return path
-        const found = walk(entry.children, path)
-        if (found) return found
-      }
-      return ''
+function folderPathOf(id: string): string {
+  const walk = (entries: AnnotationEntry[], prefix: string): string => {
+    for (const entry of entries) {
+      if (entry.type !== 'folder') continue
+      const path = prefix ? `${prefix}/${entry.name}` : entry.name
+      if (entry.id === id) return path
+      const found = walk(entry.children, path)
+      if (found) return found
     }
-    return walk(drawingStore.entries, '')
+    return ''
   }
+  return walk(useDrawingStore.getState().entries, '')
+}
 
-  function ensureFolderPath(segments: string[]): string | null {
-    if (!segments.length) return null
-    let parentId: string | null = null
-    for (const segment of segments) {
-      const parent: AnnotationEntry | undefined = parentId ? entryById(drawingStore.entries, parentId) : undefined
-      const siblings: AnnotationEntry[] = parent?.type === 'folder' ? parent.children : drawingStore.entries
-      const existing: AnnotationEntry | undefined = siblings.find((entry) => entry.type === 'folder' && entry.name === segment)
-      parentId = existing?.id ?? drawingStore.addFolder(segment, parentId)
-      if (!parentId) return null
-    }
-    return parentId
+function ensureFolderPath(segments: string[]): string | null {
+  if (!segments.length) return null
+  let parentId: string | null = null
+  for (const segment of segments) {
+    const drawingStore = useDrawingStore.getState()
+    const parent: AnnotationEntry | undefined = parentId ? entryById(drawingStore.entries, parentId) : undefined
+    const siblings: AnnotationEntry[] = parent?.type === 'folder' ? parent.children : drawingStore.entries
+    const existing: AnnotationEntry | undefined = siblings.find((entry) => entry.type === 'folder' && entry.name === segment)
+    parentId = existing?.id ?? drawingStore.addFolder(segment, parentId)
+    if (!parentId) return null
   }
-
-  return { drawingStore, folderRefId, folderPathOf, ensureFolderPath }
+  return parentId
 }
 
 export function registerAnnotationTools(): void {
-  const aiStore = useAiStore()
-  const { drawingStore, folderRefId, folderPathOf, ensureFolderPath } = createAnnotationToolsContext()
+  const aiStore = useAiStore.getState()
 
   aiStore.registerTool({
     label: '添加标记',
@@ -139,7 +134,7 @@ export function registerAnnotationTools(): void {
         const positions = parsePositions([record], 1)
         if (!name || !positions) { skipped += 1; continue }
         const id = crypto.randomUUID()
-        drawingStore.addShape({ ...DEFAULT_DRAW_STYLE, id, kind: 'point', positions, annotation: name, createdAt: Date.now() })
+        useDrawingStore.getState().addShape({ ...DEFAULT_DRAW_STYLE, id, kind: 'point', positions, annotation: name, createdAt: Date.now() })
         added.push({ id, name, longitude: positions[0].longitude, latitude: positions[0].latitude })
       }
       if (!added.length) return { error: '没有有效标记：需要名称与 WGS-84 经纬度坐标' }
@@ -182,7 +177,7 @@ export function registerAnnotationTools(): void {
         textColor = args.color
       }
       const id = crypto.randomUUID()
-      drawingStore.addShape({ ...DEFAULT_DRAW_STYLE, id, kind: 'text', positions, annotation: text, textColor, fontSize, textFrame: true, createdAt: Date.now() })
+      useDrawingStore.getState().addShape({ ...DEFAULT_DRAW_STYLE, id, kind: 'text', positions, annotation: text, textColor, fontSize, textFrame: true, createdAt: Date.now() })
       return { status: 'ok', id, kind: 'text', text, longitude: positions[0].longitude, latitude: positions[0].latitude, message: `已添加文本「${text.slice(0, 30)}」` }
     }
   })
@@ -225,7 +220,7 @@ export function registerAnnotationTools(): void {
         lineWidth = Math.round(value)
       }
       const id = crypto.randomUUID()
-      drawingStore.addShape({ ...DEFAULT_DRAW_STYLE, id, kind: 'arrow', positions, annotation: name, color, lineWidth, createdAt: Date.now() })
+      useDrawingStore.getState().addShape({ ...DEFAULT_DRAW_STYLE, id, kind: 'arrow', positions, annotation: name, color, lineWidth, createdAt: Date.now() })
       return { status: 'ok', id, kind: 'arrow', name: name || undefined, message: name ? `已添加箭头「${name}」` : '已添加箭头' }
     }
   })
@@ -265,7 +260,7 @@ export function registerAnnotationTools(): void {
       if (!positions) return { error: `坐标无效：${kind === 'polygon' ? '多边形需要至少 3 个' : '线需要至少 2 个'}有效且不重复的经纬度顶点` }
       const name = typeof args.name === 'string' ? args.name.trim().slice(0, 200) : ''
       const shape: DrawnShape = { ...DEFAULT_DRAW_STYLE, id: crypto.randomUUID(), kind, positions, annotation: name, createdAt: Date.now() }
-      drawingStore.addShape(shape)
+      useDrawingStore.getState().addShape(shape)
       const measurement = measureShape(shape)
       return { status: 'ok', id: shape.id, kind, name: name || undefined, vertices: positions.length, measurement: measurement || undefined }
     }
@@ -290,9 +285,10 @@ export function registerAnnotationTools(): void {
           } else shapeFolder.set(entry.id, prefix)
         }
       }
-      walk(drawingStore.entries, '')
+      const { entries, shapes } = useDrawingStore.getState()
+      walk(entries, '')
       return {
-        shapes: drawingStore.shapes.map((shape) => ({
+        shapes: shapes.map((shape) => ({
           id: shape.id,
           kind: shape.kind,
           name: shape.annotation || undefined,
@@ -332,14 +328,16 @@ export function registerAnnotationTools(): void {
       const missingNames: string[] = []
       let removed = 0
       for (const id of ids) {
+        const drawingStore = useDrawingStore.getState()
         if (!drawingStore.shapes.some((shape) => shape.id === id)) { missingIds.push(id); continue }
         drawingStore.removeShape(id)
         removed += 1
       }
       for (const name of names) {
+        const drawingStore = useDrawingStore.getState()
         const matched = drawingStore.shapes.filter((shape) => shape.annotation === name)
         if (!matched.length) { missingNames.push(name); continue }
-        for (const shape of matched) drawingStore.removeShape(shape.id)
+        for (const shape of matched) useDrawingStore.getState().removeShape(shape.id)
         removed += matched.length
       }
       if (!removed) {
@@ -400,7 +398,7 @@ export function registerAnnotationTools(): void {
           const parentRef = typeof record.parent === 'string' ? record.parent.trim() : ''
           const parentId = parentRef ? folderRefId(parentRef) : null
           if (parentRef && !parentId) { errors.push(`未找到父文件夹「${parentRef}」`); continue }
-          const id = drawingStore.addFolder(name, parentId)
+          const id = useDrawingStore.getState().addFolder(name, parentId)
           if (!id) { errors.push(`无法创建「${name}」：文件夹最多嵌套 5 层`); continue }
           created.push({ id, name, path: parentId ? `${folderPathOf(parentId)}/${name}` : name })
         } else if (record.action === 'rename') {
@@ -409,14 +407,14 @@ export function registerAnnotationTools(): void {
           if (!folderRef || !name) { errors.push('rename 操作需要 folder 与 name'); continue }
           const id = folderRefId(folderRef)
           if (!id) { errors.push(`未找到文件夹「${folderRef}」`); continue }
-          if (drawingStore.renameFolder(id, name)) renamed += 1
+          if (useDrawingStore.getState().renameFolder(id, name)) renamed += 1
           else errors.push(`无法重命名「${folderRef}」`)
         } else if (record.action === 'remove') {
           const folderRef = typeof record.folder === 'string' ? record.folder.trim() : ''
           if (!folderRef) { errors.push('remove 操作需要 folder'); continue }
           const id = folderRefId(folderRef)
           if (!id) { errors.push(`未找到文件夹「${folderRef}」`); continue }
-          drawingStore.removeFolder(id)
+          useDrawingStore.getState().removeFolder(id)
           removed += 1
         } else errors.push(`未知 action「${String(record.action)}」，需为 create、rename 或 remove`)
       }
@@ -459,13 +457,14 @@ export function registerAnnotationTools(): void {
       const missingNames: string[] = []
       const seen = new Set<string>()
       const targets: DrawnShape[] = []
+      const { shapes } = useDrawingStore.getState()
       for (const id of ids) {
-        const shape = drawingStore.shapes.find((item) => item.id === id)
+        const shape = shapes.find((item) => item.id === id)
         if (!shape) { missingIds.push(id); continue }
         if (!seen.has(shape.id)) { seen.add(shape.id); targets.push(shape) }
       }
       for (const name of names) {
-        const matched = drawingStore.shapes.filter((item) => item.annotation === name)
+        const matched = shapes.filter((item) => item.annotation === name)
         if (!matched.length) { missingNames.push(name); continue }
         for (const shape of matched) {
           if (!seen.has(shape.id)) { seen.add(shape.id); targets.push(shape) }
@@ -481,7 +480,7 @@ export function registerAnnotationTools(): void {
       }
       let moved = 0
       for (const shape of targets) {
-        if (drawingStore.moveEntry(shape.id, folderId, 'inside')) moved += 1
+        if (useDrawingStore.getState().moveEntry(shape.id, folderId, 'inside')) moved += 1
       }
       const targetLabel = folderId ? folderPathOf(folderId) : '根目录'
       return {

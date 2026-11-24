@@ -1,5 +1,5 @@
-import { computed, ref, toRaw } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 import {
   clampStopIndex,
   mergeFlightStops,
@@ -10,128 +10,198 @@ import {
 
 export type FlyToExecutor = (longitude: number, latitude: number, height: number) => Promise<number | undefined>
 
-function plainStop(stop: FlightStop): FlightStop {
-  const raw = toRaw(stop)
-  return raw.note ? { id: raw.id, name: raw.name, longitude: raw.longitude, latitude: raw.latitude, height: raw.height, note: raw.note } : { id: raw.id, name: raw.name, longitude: raw.longitude, latitude: raw.latitude, height: raw.height }
+export interface FlightStopsState {
+  stops: FlightStop[]
+  activeIndex: number
+  turnToken: string
+  isNavigating: boolean
+  total: number
+  currentStop: FlightStop | null
+  visible: boolean
+  canPrev: boolean
+  canNext: boolean
 }
 
-export const useFlightStopsStore = defineStore('flightStops', () => {
-  const stops = ref<FlightStop[]>([])
-  const activeIndex = ref(0)
-  const turnToken = ref('')
-  const isNavigating = ref(false)
-  let switchSeq = 0
+export interface FlightStopsActions {
+  beginTurnStops: (token: string, items: FlightStop[]) => FlightStop | undefined
+  appendTurnStops: (token: string, items: FlightStop[]) => { added: FlightStop[]; total: number }
+  goTo: (index: number, flyFn: FlyToExecutor) => Promise<{ stop?: FlightStop; actualHeight?: number; error?: string }>
+  switchByRequest: (
+    request: StopSwitchRequest,
+    flyFn: FlyToExecutor
+  ) => Promise<{ stop?: FlightStop; index?: number; total: number; actualHeight?: number; error?: string }>
+  prev: (flyFn: FlyToExecutor) => Promise<{ stop?: FlightStop; actualHeight?: number; error?: string }>
+  next: (flyFn: FlyToExecutor) => Promise<{ stop?: FlightStop; actualHeight?: number; error?: string }>
+  clear: () => void
+  dismiss: () => void
+}
 
-  const total = computed(() => stops.value.length)
-  const currentStop = computed(() => {
-    const stop = stops.value[activeIndex.value]
-    return stop ? plainStop(stop) : null
-  })
-  const visible = computed(() => stops.value.length >= 2)
-  const canPrev = computed(() => activeIndex.value > 0)
-  const canNext = computed(() => activeIndex.value < stops.value.length - 1)
+export type FlightStopsStore = FlightStopsState & FlightStopsActions
 
-  function beginTurnStops(token: string, items: FlightStop[]): FlightStop | undefined {
-    turnToken.value = token
-    stops.value = mergeFlightStops([], items)
-    activeIndex.value = 0
-    return stops.value[0] ? plainStop(stops.value[0]) : undefined
+function plainStop(stop: FlightStop): FlightStop {
+  return stop.note
+    ? { id: stop.id, name: stop.name, longitude: stop.longitude, latitude: stop.latitude, height: stop.height, note: stop.note }
+    : { id: stop.id, name: stop.name, longitude: stop.longitude, latitude: stop.latitude, height: stop.height }
+}
+
+export function selectFlightStopsTotal(state: Pick<FlightStopsState, 'stops'>): number {
+  return state.stops.length
+}
+
+export function selectCurrentFlightStop(state: Pick<FlightStopsState, 'stops' | 'activeIndex'>): FlightStop | null {
+  const stop = state.stops[state.activeIndex]
+  return stop ? plainStop(stop) : null
+}
+
+export function selectFlightStopsVisible(state: Pick<FlightStopsState, 'stops'>): boolean {
+  return state.stops.length >= 2
+}
+
+export function selectCanPrevFlightStop(state: Pick<FlightStopsState, 'activeIndex'>): boolean {
+  return state.activeIndex > 0
+}
+
+export function selectCanNextFlightStop(state: Pick<FlightStopsState, 'stops' | 'activeIndex'>): boolean {
+  return state.activeIndex < state.stops.length - 1
+}
+
+function deriveFlightStopsFields(
+  stops: FlightStop[],
+  activeIndex: number
+): Pick<FlightStopsState, 'total' | 'currentStop' | 'visible' | 'canPrev' | 'canNext'> {
+  return {
+    total: selectFlightStopsTotal({ stops }),
+    currentStop: selectCurrentFlightStop({ stops, activeIndex }),
+    visible: selectFlightStopsVisible({ stops }),
+    canPrev: selectCanPrevFlightStop({ activeIndex }),
+    canNext: selectCanNextFlightStop({ stops, activeIndex })
   }
+}
 
-  function appendTurnStops(token: string, items: FlightStop[]): { added: FlightStop[]; total: number } {
-    if (token && turnToken.value !== token) {
-      const first = beginTurnStops(token, items)
-      return { added: first ? stops.value.map(plainStop) : [], total: stops.value.length }
-    }
-    const previousLength = stops.value.length
-    stops.value = mergeFlightStops(stops.value, items)
-    return {
-      added: stops.value.slice(previousLength).map(plainStop),
-      total: stops.value.length
-    }
-  }
-
-  async function goTo(index: number, flyFn: FlyToExecutor): Promise<{ stop?: FlightStop; actualHeight?: number; error?: string }> {
-    if (!stops.value.length) return { error: '当前没有可切换的飞行地点列表' }
-    const targetIndex = clampStopIndex(index, stops.value.length)
-    const target = plainStop(stops.value[targetIndex])
-    const previousIndex = activeIndex.value
-    activeIndex.value = targetIndex
-    const seq = ++switchSeq
-    isNavigating.value = true
-    try {
-      const actualHeight = await flyFn(target.longitude, target.latitude, target.height)
-      if (seq !== switchSeq) return { error: '切换已取消' }
-      if (actualHeight === undefined) {
-        activeIndex.value = previousIndex
-        return { error: '飞行已取消' }
-      }
-      return { stop: target, actualHeight }
-    } finally {
-      if (seq === switchSeq) isNavigating.value = false
-    }
-  }
-
-  async function switchByRequest(request: StopSwitchRequest, flyFn: FlyToExecutor): Promise<{ stop?: FlightStop; index?: number; total: number; actualHeight?: number; error?: string }> {
-    const resolved = resolveStopTarget(stops.value, activeIndex.value, request)
-    if (resolved.error || resolved.index === undefined) {
-      return { error: resolved.error ?? '无法切换飞行地点', total: stops.value.length }
-    }
-    const result = await goTo(resolved.index, flyFn)
-    if (result.error || !result.stop) {
-      return { error: result.error ?? '飞行已取消', total: stops.value.length }
-    }
-    return {
-      stop: result.stop,
-      index: resolved.index,
-      total: stops.value.length,
-      actualHeight: result.actualHeight
-    }
-  }
-
-  async function prev(flyFn: FlyToExecutor): Promise<{ stop?: FlightStop; actualHeight?: number; error?: string }> {
-    if (!canPrev.value) return { error: '已经是第一个地点' }
-    return goTo(activeIndex.value - 1, flyFn)
-  }
-
-  async function next(flyFn: FlyToExecutor): Promise<{ stop?: FlightStop; actualHeight?: number; error?: string }> {
-    if (!canNext.value) return { error: '已经是最后一个地点' }
-    return goTo(activeIndex.value + 1, flyFn)
-  }
-
-  function clear(): void {
-    switchSeq += 1
-    stops.value = []
-    activeIndex.value = 0
-    turnToken.value = ''
-    isNavigating.value = false
-  }
-
-  function dismiss(): void {
-    switchSeq += 1
-    const anchor = currentStop.value
-    stops.value = anchor ? [anchor] : []
-    activeIndex.value = 0
-    isNavigating.value = false
-  }
-
+export function createInitialFlightStopsState(): FlightStopsState {
+  const stops: FlightStop[] = []
+  const activeIndex = 0
   return {
     stops,
     activeIndex,
-    turnToken,
-    isNavigating,
-    total,
-    currentStop,
-    visible,
-    canPrev,
-    canNext,
-    beginTurnStops,
-    appendTurnStops,
-    goTo,
-    switchByRequest,
-    prev,
-    next,
-    clear,
-    dismiss
+    turnToken: '',
+    isNavigating: false,
+    ...deriveFlightStopsFields(stops, activeIndex)
   }
-})
+}
+
+let switchSeq = 0
+
+export const useFlightStopsStore = create<FlightStopsStore>()(
+  subscribeWithSelector((set, get) => ({
+    ...createInitialFlightStopsState(),
+    beginTurnStops(token: string, items: FlightStop[]): FlightStop | undefined {
+      const stops = mergeFlightStops([], items)
+      const activeIndex = 0
+      set({
+        turnToken: token,
+        stops,
+        activeIndex,
+        ...deriveFlightStopsFields(stops, activeIndex)
+      })
+      return stops[0] ? plainStop(stops[0]) : undefined
+    },
+    appendTurnStops(token: string, items: FlightStop[]): { added: FlightStop[]; total: number } {
+      const state = get()
+      if (token && state.turnToken !== token) {
+        const first = get().beginTurnStops(token, items)
+        const nextStops = get().stops
+        return { added: first ? nextStops.map(plainStop) : [], total: nextStops.length }
+      }
+      const previousLength = state.stops.length
+      const stops = mergeFlightStops(state.stops, items)
+      set({
+        stops,
+        ...deriveFlightStopsFields(stops, state.activeIndex)
+      })
+      return {
+        added: stops.slice(previousLength).map(plainStop),
+        total: stops.length
+      }
+    },
+    async goTo(index: number, flyFn: FlyToExecutor): Promise<{ stop?: FlightStop; actualHeight?: number; error?: string }> {
+      const state = get()
+      if (!state.stops.length) return { error: '当前没有可切换的飞行地点列表' }
+      const targetIndex = clampStopIndex(index, state.stops.length)
+      const target = plainStop(state.stops[targetIndex])
+      const previousIndex = state.activeIndex
+      const seq = ++switchSeq
+      set((current) => ({
+        activeIndex: targetIndex,
+        isNavigating: true,
+        ...deriveFlightStopsFields(current.stops, targetIndex)
+      }))
+      try {
+        const actualHeight = await flyFn(target.longitude, target.latitude, target.height)
+        if (seq !== switchSeq) return { error: '切换已取消' }
+        if (actualHeight === undefined) {
+          set((current) => ({
+            activeIndex: previousIndex,
+            ...deriveFlightStopsFields(current.stops, previousIndex)
+          }))
+          return { error: '飞行已取消' }
+        }
+        return { stop: target, actualHeight }
+      } finally {
+        if (seq === switchSeq) set({ isNavigating: false })
+      }
+    },
+    async switchByRequest(
+      request: StopSwitchRequest,
+      flyFn: FlyToExecutor
+    ): Promise<{ stop?: FlightStop; index?: number; total: number; actualHeight?: number; error?: string }> {
+      const state = get()
+      const resolved = resolveStopTarget(state.stops, state.activeIndex, request)
+      if (resolved.error || resolved.index === undefined) {
+        return { error: resolved.error ?? '无法切换飞行地点', total: state.stops.length }
+      }
+      const result = await get().goTo(resolved.index, flyFn)
+      const total = get().stops.length
+      if (result.error || !result.stop) {
+        return { error: result.error ?? '飞行已取消', total }
+      }
+      return {
+        stop: result.stop,
+        index: resolved.index,
+        total,
+        actualHeight: result.actualHeight
+      }
+    },
+    async prev(flyFn: FlyToExecutor): Promise<{ stop?: FlightStop; actualHeight?: number; error?: string }> {
+      const state = get()
+      if (!selectCanPrevFlightStop(state)) return { error: '已经是第一个地点' }
+      return get().goTo(state.activeIndex - 1, flyFn)
+    },
+    async next(flyFn: FlyToExecutor): Promise<{ stop?: FlightStop; actualHeight?: number; error?: string }> {
+      const state = get()
+      if (!selectCanNextFlightStop(state)) return { error: '已经是最后一个地点' }
+      return get().goTo(state.activeIndex + 1, flyFn)
+    },
+    clear(): void {
+      switchSeq += 1
+      set(createInitialFlightStopsState())
+    },
+    dismiss(): void {
+      switchSeq += 1
+      const anchor = selectCurrentFlightStop(get())
+      const stops = anchor ? [anchor] : []
+      const activeIndex = 0
+      set({
+        stops,
+        activeIndex,
+        isNavigating: false,
+        ...deriveFlightStopsFields(stops, activeIndex)
+      })
+    }
+  }))
+)
+
+export function resetFlightStopsStore(): void {
+  switchSeq = 0
+  useFlightStopsStore.setState(createInitialFlightStopsState())
+}

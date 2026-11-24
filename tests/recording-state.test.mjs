@@ -8,9 +8,9 @@ import { SEA_LEVEL_SCENARIOS as rendererScenarios } from '../src/renderer/src/th
 
 const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
 const preloadSource = await readFile(new URL('../src/preload/index.ts', import.meta.url), 'utf8')
-const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
+const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
 const scenePlayerSource = await readFile(new URL('../src/renderer/src/composables/useScenePlayer.ts', import.meta.url), 'utf8')
-const appSource = await readFile(new URL('../src/renderer/src/App.vue', import.meta.url), 'utf8')
+const appSource = await readFile(new URL('../src/renderer/src/ai/registerGlobeTools.ts', import.meta.url), 'utf8')
 
 test('the shared thematic state bounds match the renderer copies', () => {
   assert.deepEqual([...SEA_LEVEL_SCENARIOS], [...rendererScenarios])

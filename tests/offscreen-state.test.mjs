@@ -4,7 +4,7 @@ import { test } from 'node:test'
 
 import { wrapText } from '../src/renderer/src/offscreenText.ts'
 
-const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
+const offscreenSource = await readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
 const viewerSource = await readFile(new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url), 'utf8')
 const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
 

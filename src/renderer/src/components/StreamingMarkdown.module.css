@@ -1,0 +1,187 @@
+.answerText {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  line-height: 22px;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.answerText :global(p) {
+  margin: 0 0 8px;
+}
+
+.answerText :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.answerText :global(h1),
+.answerText :global(h2),
+.answerText :global(h3),
+.answerText :global(h4),
+.answerText :global(h5),
+.answerText :global(h6) {
+  margin: 16px 0 8px;
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.answerText :global(h1) {
+  font-size: 16px;
+}
+
+.answerText :global(h2),
+.answerText :global(h3),
+.answerText :global(h4),
+.answerText :global(h5),
+.answerText :global(h6) {
+  font-size: 14px;
+}
+
+.answerText :global(ul),
+.answerText :global(ol) {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.answerText :global(li) {
+  margin: 2px 0;
+}
+
+.answerText :global(li > ul),
+.answerText :global(li > ol) {
+  margin-bottom: 0;
+}
+
+.answerText :global(blockquote) {
+  margin: 0 0 8px;
+  padding: 4px 12px;
+  border-left: 3px solid rgba(5, 5, 5, 0.06);
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.answerText :global(blockquote p:last-child) {
+  margin-bottom: 0;
+}
+
+.answerText :global(code) {
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.answerText :global(pre) {
+  margin: 0 0 8px;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.answerText :global(pre code) {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+}
+
+.answerText :global(table) {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 0 8px;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.answerText :global(th),
+.answerText :global(td) {
+  padding: 4px 8px;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.answerText :global(th) {
+  font-weight: 600;
+}
+
+.answerText :global(a) {
+  color: #1677ff;
+}
+
+.answerText :global(hr) {
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.answerText :global(img) {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.answerText :global(.stream-token) {
+  animation: stream-token-in 0.2s ease-out both;
+}
+
+.answerText :global(.stream-token-fresh) {
+  animation: stream-token-fresh-in 0.26s ease-out both;
+}
+
+.answerText :global(.stream-caret) {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  border-radius: 1px;
+  background: #1677ff;
+  vertical-align: -0.15em;
+  animation: stream-caret-pulse 1s ease-in-out infinite;
+}
+
+@keyframes stream-token-in {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes stream-token-fresh-in {
+  0% {
+    opacity: 0.4;
+    color: #1677ff;
+  }
+  40% {
+    opacity: 1;
+    color: #1677ff;
+  }
+  100% {
+    opacity: 1;
+    color: inherit;
+  }
+}
+
+@keyframes stream-caret-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .answerText :global(.stream-token),
+  .answerText :global(.stream-token-fresh) {
+    transition: none;
+    animation: none;
+  }
+
+  .answerText :global(.stream-caret) {
+    animation: none;
+  }
+}

@@ -1,0 +1,51 @@
+.unsavedBar {
+  position: absolute;
+  right: 0;
+  bottom: 16px;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0 auto;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.unsavedBarVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.unsavedBarIcon {
+  flex-shrink: 0;
+  color: #faad14;
+  font-size: 16px;
+}
+
+.unsavedBarText {
+  min-width: 0;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.unsavedBarActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unsavedBar {
+    transition-duration: 0.01s;
+  }
+}

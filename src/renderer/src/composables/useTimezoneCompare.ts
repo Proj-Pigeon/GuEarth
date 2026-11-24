@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
 import { useDrawingStore } from '@renderer/stores/drawing'
 import { useSolarStore } from '@renderer/stores/solar'
@@ -15,54 +15,63 @@ export interface TimezoneComparison {
   differenceHours: number
 }
 
+export interface UseTimezoneCompareResult {
+  comparison: TimezoneComparison | null
+  clearComparison: () => void
+  closeTimezoneCompare: () => void
+}
+
 const PICK_A_COLOR = '#1677ff'
 const PICK_B_COLOR = '#fa8c16'
 const LABEL_FONT = '13px SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace'
 
-export function useTimezoneCompare(viewer: Ref<Cesium.Viewer | undefined>) {
-  const drawingStore = useDrawingStore()
-  const solarStore = useSolarStore()
-  const comparison = ref<TimezoneComparison | null>(null)
-  let handler: Cesium.ScreenSpaceEventHandler | undefined
-  let dataSource: Cesium.CustomDataSource | undefined
-  let picks: TimezonePick[] = []
+function utcHoursNow(): number {
+  const solarStore = useSolarStore.getState()
+  if (solarStore.active) return solarStore.utcHour
+  const now = new Date()
+  return now.getUTCHours() + now.getUTCMinutes() / 60
+}
 
-  function currentViewer(): Cesium.Viewer | undefined {
-    const current = viewer.value
+function longitudeText(longitude: number): string {
+  return `${Math.abs(longitude).toFixed(1)}°${longitude >= 0 ? 'E' : 'W'}`
+}
+
+export function useTimezoneCompare(viewer: Cesium.Viewer | undefined): UseTimezoneCompareResult {
+  const activeTool = useDrawingStore((state) => state.activeTool)
+  const [comparison, setComparison] = useState<TimezoneComparison | null>(null)
+  const viewerRef = useRef<Cesium.Viewer | undefined>(viewer)
+  const dataSourceRef = useRef<Cesium.CustomDataSource | undefined>(undefined)
+  const picksRef = useRef<TimezonePick[]>([])
+
+  viewerRef.current = viewer
+
+  const currentViewer = useCallback((): Cesium.Viewer | undefined => {
+    const current = viewerRef.current
     return current && !current.isDestroyed() ? current : undefined
-  }
+  }, [])
 
-  function utcHoursNow(): number {
-    if (solarStore.active) return solarStore.utcHour
-    const now = new Date()
-    return now.getUTCHours() + now.getUTCMinutes() / 60
-  }
-
-  function longitudeText(longitude: number): string {
-    return `${Math.abs(longitude).toFixed(1)}°${longitude >= 0 ? 'E' : 'W'}`
-  }
-
-  function clearEntities(): void {
+  const clearEntities = useCallback((): void => {
     const current = currentViewer()
-    if (dataSource) {
-      if (current) current.dataSources.remove(dataSource, true)
-      dataSource = undefined
+    if (dataSourceRef.current) {
+      if (current) current.dataSources.remove(dataSourceRef.current, true)
+      dataSourceRef.current = undefined
     }
-  }
+  }, [currentViewer])
 
-  function clearComparison(): void {
-    picks = []
+  const clearComparison = useCallback((): void => {
+    picksRef.current = []
     clearEntities()
-    comparison.value = null
-  }
+    setComparison(null)
+  }, [clearEntities])
 
-  function closeTimezoneCompare(): void {
-    drawingStore.setActiveTool(null)
+  const closeTimezoneCompare = useCallback((): void => {
+    useDrawingStore.getState().setActiveTool(null)
     clearComparison()
-  }
+  }, [clearComparison])
 
-  function addPick(pick: TimezonePick, color: string): void {
+  const addPick = useCallback((pick: TimezonePick, color: string): void => {
     const current = currentViewer()
+    const dataSource = dataSourceRef.current
     if (!current || !dataSource) return
     const cesiumColor = Cesium.Color.fromCssColorString(color)
     dataSource.entities.add({
@@ -99,9 +108,9 @@ export function useTimezoneCompare(viewer: Ref<Cesium.Viewer | undefined>) {
         material: cesiumColor.withAlpha(0.55)
       }
     })
-  }
+  }, [currentViewer])
 
-  function handleClick(movement: { position: Cesium.Cartesian2 }): void {
+  const handleClick = useCallback((movement: { position: Cesium.Cartesian2 }): void => {
     const current = currentViewer()
     if (!current) return
     const picked = current.scene.pickPositionSupported ? current.scene.pickPosition(movement.position) : undefined
@@ -110,45 +119,42 @@ export function useTimezoneCompare(viewer: Ref<Cesium.Viewer | undefined>) {
     const cartographic = Cesium.Cartographic.fromCartesian(cartesian)
     const longitude = Cesium.Math.toDegrees(cartographic.longitude)
     const latitude = Cesium.Math.toDegrees(cartographic.latitude)
-    if (picks.length >= 2) clearComparison()
-    picks.push({ label: picks.length === 0 ? 'A' : 'B', longitude, latitude })
-    if (!dataSource) {
-      dataSource = new Cesium.CustomDataSource('timezone-compare')
-      current.dataSources.add(dataSource)
+    if (picksRef.current.length >= 2) clearComparison()
+    picksRef.current.push({ label: picksRef.current.length === 0 ? 'A' : 'B', longitude, latitude })
+    if (!dataSourceRef.current) {
+      dataSourceRef.current = new Cesium.CustomDataSource('timezone-compare')
+      current.dataSources.add(dataSourceRef.current)
     }
-    addPick(picks[picks.length - 1], picks.length === 1 ? PICK_A_COLOR : PICK_B_COLOR)
-    if (picks.length === 2) {
-      const rawDifference = (picks[1].longitude - picks[0].longitude) / 15
-      comparison.value = {
-        picks: [...picks],
+    addPick(picksRef.current[picksRef.current.length - 1], picksRef.current.length === 1 ? PICK_A_COLOR : PICK_B_COLOR)
+    if (picksRef.current.length === 2) {
+      const rawDifference = (picksRef.current[1].longitude - picksRef.current[0].longitude) / 15
+      setComparison({
+        picks: [...picksRef.current],
         differenceHours: ((((rawDifference + 12) % 24) + 24) % 24) - 12
-      }
+      })
     }
-  }
+  }, [addPick, clearComparison, currentViewer])
 
-  watch(
-    [() => drawingStore.activeTool, viewer],
-    ([tool]) => {
-      const current = currentViewer()
-      if (tool === 'timezone' && current && !handler) {
-        handler = new Cesium.ScreenSpaceEventHandler(current.scene.canvas)
-        handler.setInputAction(handleClick, Cesium.ScreenSpaceEventType.LEFT_CLICK)
-      } else if (tool !== 'timezone' && handler) {
-        handler.destroy()
-        handler = undefined
-        clearComparison()
-      }
-    },
-    { flush: 'post' }
-  )
-
-  onBeforeUnmount(() => {
-    if (handler) {
+  useEffect(() => {
+    const current = viewer && !viewer.isDestroyed() ? viewer : undefined
+    if (activeTool !== 'timezone' || !current) {
+      clearComparison()
+      return
+    }
+    const handler = new Cesium.ScreenSpaceEventHandler(current.scene.canvas)
+    handler.setInputAction(handleClick, Cesium.ScreenSpaceEventType.LEFT_CLICK)
+    return () => {
       handler.destroy()
-      handler = undefined
+      if (dataSourceRef.current) {
+        if (!current.isDestroyed()) current.dataSources.remove(dataSourceRef.current, true)
+        dataSourceRef.current = undefined
+      }
+      picksRef.current = []
     }
-    clearEntities()
-  })
+  }, [activeTool, viewer, clearComparison, handleClick])
 
-  return { comparison, clearComparison, closeTimezoneCompare }
+  return useMemo(
+    () => ({ comparison, clearComparison, closeTimezoneCompare }),
+    [comparison, clearComparison, closeTimezoneCompare]
+  )
 }

@@ -1,8 +1,11 @@
 import MarkdownIt from 'markdown-it'
-import { h, type VNode, type VNodeChild } from 'vue'
+import { cloneElement, createElement, isValidElement, type ReactNode } from 'react'
+
+const SAFE_LINK_PATTERN = /^(https?:\/\/|mailto:)/i
+const SAFE_IMAGE_PATTERN = /^https?:\/\//i
 
 const markdown = new MarkdownIt({ breaks: true, linkify: true, html: false })
-markdown.validateLink = (url) => /^https?:\/\//i.test(url)
+markdown.validateLink = (url) => SAFE_LINK_PATTERN.test(url)
 
 type MarkdownToken = ReturnType<typeof markdown.parse>[number]
 
@@ -20,7 +23,7 @@ function tokenAttributes(token: MarkdownToken): Record<string, unknown> {
   const attributes: Record<string, unknown> = {}
   if (token.tag === 'a') {
     const href = tokenAttribute(token, 'href')
-    if (href && markdown.validateLink(href)) attributes.href = href
+    if (href && SAFE_LINK_PATTERN.test(href)) attributes.href = href
     attributes.target = '_blank'
     attributes.rel = 'noopener noreferrer'
     const title = tokenAttribute(token, 'title')
@@ -37,50 +40,86 @@ function tokenAttributes(token: MarkdownToken): Record<string, unknown> {
   return attributes
 }
 
-function renderTokens(tokens: MarkdownToken[]): VNodeChild[] {
-  const result: VNodeChild[] = []
-  const stack = [result]
+interface ElementFrame {
+  tag: string | null
+  attrs: Record<string, unknown>
+  children: ReactNode[]
+}
+
+function renderTokens(tokens: MarkdownToken[], keyState: { seq: number } = { seq: 0 }): ReactNode[] {
+  const root: ElementFrame = { tag: null, attrs: {}, children: [] }
+  const stack: ElementFrame[] = [root]
   for (const token of tokens) {
-    const children = stack[stack.length - 1]
     if (token.nesting === -1) {
-      if (stack.length > 1) stack.pop()
+      if (stack.length > 1) {
+        const frame = stack.pop()!
+        const parent = stack[stack.length - 1]
+        if (frame.tag) {
+          parent.children.push(createElement(frame.tag, { key: `md-${keyState.seq++}`, ...frame.attrs }, ...frame.children))
+        } else {
+          parent.children.push(...frame.children)
+        }
+      }
       continue
     }
     if (token.nesting === 1) {
-      const nested: VNodeChild[] = []
-      if (!token.hidden && allowedTags.has(token.tag)) children.push(h(token.tag, tokenAttributes(token), nested))
-      else children.push(nested)
-      stack.push(nested)
+      stack.push({
+        tag: !token.hidden && allowedTags.has(token.tag) ? token.tag : null,
+        attrs: tokenAttributes(token),
+        children: []
+      })
       continue
     }
+    const children = stack[stack.length - 1].children
     if (token.type === 'inline') {
-      children.push(...renderTokens(token.children ?? []))
+      children.push(...renderTokens(token.children ?? [], keyState))
     } else if (token.type === 'code_inline') {
-      children.push(h('code', token.content))
+      children.push(createElement('code', { key: `md-${keyState.seq++}` }, token.content))
     } else if (token.type === 'fence' || token.type === 'code_block') {
       const language = token.info.trim().split(/\s+/)[0]
-      children.push(h('pre', [h('code', language ? { class: `language-${language}` } : {}, token.content)]))
+      children.push(
+        createElement(
+          'pre',
+          { key: `md-${keyState.seq++}` },
+          createElement('code', language ? { className: `language-${language}` } : null, token.content)
+        )
+      )
     } else if (token.type === 'softbreak' || token.type === 'hardbreak') {
-      children.push(h('br'))
+      children.push(createElement('br', { key: `md-${keyState.seq++}` }))
     } else if (token.type === 'hr') {
-      children.push(h('hr'))
+      children.push(createElement('hr', { key: `md-${keyState.seq++}` }))
     } else if (token.type === 'image') {
       const src = tokenAttribute(token, 'src')
       const alt = markdown.renderer.renderInlineAsText(token.children ?? [], markdown.options, {})
-      if (src && markdown.validateLink(src)) children.push(h('img', { src, alt, title: tokenAttribute(token, 'title') }))
-      else children.push(alt)
+      if (src && SAFE_IMAGE_PATTERN.test(src)) {
+        const title = tokenAttribute(token, 'title')
+        const props: Record<string, unknown> = { key: `md-${keyState.seq++}`, src, alt }
+        if (title) props.title = title
+        children.push(createElement('img', props))
+      } else {
+        children.push(alt)
+      }
     } else {
       children.push(token.content)
     }
   }
-  return result
+  while (stack.length > 1) {
+    const frame = stack.pop()!
+    const parent = stack[stack.length - 1]
+    if (frame.tag) {
+      parent.children.push(createElement(frame.tag, { key: `md-${keyState.seq++}`, ...frame.attrs }, ...frame.children))
+    } else {
+      parent.children.push(...frame.children)
+    }
+  }
+  return root.children
 }
 
-export function renderMarkdown(text: string): VNodeChild[] {
+export function renderMarkdown(text: string): ReactNode[] {
   return renderTokens(markdown.parse(text, {}))
 }
 
-function hasRenderableNodes(nodes: VNodeChild[]): boolean {
+function hasRenderableNodes(nodes: ReactNode[]): boolean {
   for (const child of nodes) {
     if (typeof child === 'string') {
       if (child.trim().length > 0) return true
@@ -95,8 +134,8 @@ function hasRenderableNodes(nodes: VNodeChild[]): boolean {
 
 export function tryRenderMarkdown(
   text: string,
-  render: (input: string) => VNodeChild[] = renderMarkdown
-): VNodeChild[] | null {
+  render: (input: string) => ReactNode[] = renderMarkdown
+): ReactNode[] | null {
   if (!text.trim()) return null
   try {
     const nodes = render(text)
@@ -150,11 +189,16 @@ interface StreamingState {
   position: number
   windowStart: number
   freshStart: number
+  lastTokenPosition: number
   delays: Map<number, number> | undefined
-  lastCaretParent: VNodeChild[] | undefined
 }
 
-function collectStreamingTokens(children: VNodeChild[], tokens: StreamingTokenMeta[], offset = { value: 0 }, insideCode = false): void {
+function normalizeChildren(children: ReactNode): ReactNode[] {
+  if (children === null || children === undefined || typeof children === 'boolean') return []
+  return Array.isArray(children) ? children : [children]
+}
+
+function collectStreamingTokens(children: ReactNode[], tokens: StreamingTokenMeta[], offset = { value: 0 }, insideCode = false): void {
   for (const child of children) {
     if (typeof child === 'string') {
       if (insideCode) continue
@@ -166,14 +210,14 @@ function collectStreamingTokens(children: VNodeChild[], tokens: StreamingTokenMe
       }
     } else if (Array.isArray(child)) {
       collectStreamingTokens(child, tokens, offset, insideCode)
-    } else if (child && typeof child === 'object' && 'type' in child) {
-      const vnode = child as VNode
-      if (Array.isArray(vnode.children)) {
+    } else if (isValidElement<{ children?: ReactNode }>(child)) {
+      const nested = normalizeChildren(child.props.children)
+      if (nested.length > 0) {
         collectStreamingTokens(
-          vnode.children as VNodeChild[],
+          nested,
           tokens,
           offset,
-          insideCode || (typeof vnode.type === 'string' && nonStreamingTags.has(vnode.type))
+          insideCode || (typeof child.type === 'string' && nonStreamingTags.has(child.type))
         )
       }
     }
@@ -202,8 +246,9 @@ function updateStreamingDelays(text: string, tokens: StreamingTokenMeta[], tailS
   return { windowStart, delays: delayState.delays }
 }
 
-function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insideCode = false): VNodeChild[] {
-  const result: VNodeChild[] = []
+function wrapStreamingTokens(children: ReactNode[], state: StreamingState, insideCode = false): ReactNode[] {
+  const result: ReactNode[] = []
+  let containsLastToken = false
   for (const child of children) {
     if (typeof child === 'string') {
       if (insideCode) {
@@ -215,7 +260,7 @@ function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insi
         const position = state.position
         state.position += 1
         const isSpace = /^\s+$/.test(piece)
-        if (!isSpace) state.lastCaretParent = result
+        if (!isSpace && position === state.lastTokenPosition) containsLastToken = true
         if (isSpace || position < state.windowStart) {
           plain += piece
           continue
@@ -227,29 +272,36 @@ function wrapStreamingTokens(children: VNodeChild[], state: StreamingState, insi
         const isFreshWord = wordPattern.test(piece) && position >= state.freshStart
         const tokenClass = isFreshWord ? 'stream-token stream-token-fresh' : 'stream-token'
         const delay = state.delays?.get(position)
-        const props: Record<string, unknown> = { key: `stream-token-${position}`, class: tokenClass }
+        const props: Record<string, unknown> = { key: `stream-token-${position}`, className: tokenClass }
         if (delay) props.style = { animationDelay: `${delay}ms` }
-        result.push(h('span', props, piece))
+        result.push(createElement('span', props, piece))
       }
       if (plain) result.push(plain)
     } else if (Array.isArray(child)) {
       result.push(...wrapStreamingTokens(child, state, insideCode))
-    } else if (child && typeof child === 'object' && 'type' in child) {
-      const vnode = child as VNode
-      if (Array.isArray(vnode.children)) {
-        vnode.children = wrapStreamingTokens(
-          vnode.children as VNodeChild[],
+    } else if (isValidElement<{ children?: ReactNode }>(child)) {
+      const nested = normalizeChildren(child.props.children)
+      if (nested.length > 0) {
+        const wrappedNested = wrapStreamingTokens(
+          nested,
           state,
-          insideCode || (typeof vnode.type === 'string' && nonStreamingTags.has(vnode.type))
+          insideCode || (typeof child.type === 'string' && nonStreamingTags.has(child.type))
         )
+        result.push(cloneElement(child, undefined, ...wrappedNested))
+      } else {
+        result.push(child)
       }
-      result.push(vnode)
-    } else result.push(child)
+    } else {
+      result.push(child)
+    }
+  }
+  if (containsLastToken) {
+    result.push(createElement('span', { key: 'stream-caret', className: 'stream-caret', 'aria-hidden': 'true' }))
   }
   return result
 }
 
-export function renderStreamingMarkdown(text: string, delayState?: StreamingDelayState): VNodeChild[] {
+export function renderStreamingMarkdown(text: string, delayState?: StreamingDelayState): ReactNode[] {
   const nodes = renderMarkdown(text)
   const tokens: StreamingTokenMeta[] = []
   collectStreamingTokens(nodes, tokens)
@@ -260,16 +312,13 @@ export function renderStreamingMarkdown(text: string, delayState?: StreamingDela
     ? updateStreamingDelays(text, tokens, tailStartIndex, delayState)
     : { windowStart: defaultWindowStart, delays: undefined }
   const freshStart = words.length > 0 ? Math.max(windowStart, words[Math.max(0, words.length - streamingFreshWords)].position) : Number.POSITIVE_INFINITY
+  const lastTokenPosition = tokens.length > 0 ? tokens[tokens.length - 1].position : -1
   const state: StreamingState = {
     position: 0,
     windowStart,
     freshStart,
-    delays,
-    lastCaretParent: undefined
+    lastTokenPosition,
+    delays
   }
-  const wrapped = wrapStreamingTokens(nodes, state)
-  if (state.lastCaretParent) {
-    state.lastCaretParent.push(h('span', { key: 'stream-caret', class: 'stream-caret', 'aria-hidden': 'true' }))
-  }
-  return wrapped
+  return wrapStreamingTokens(nodes, state)
 }

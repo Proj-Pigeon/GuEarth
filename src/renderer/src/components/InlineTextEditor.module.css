@@ -1,0 +1,34 @@
+.textEditorOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.textEditor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  width: 280px;
+  min-height: 32px;
+  max-height: 240px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  outline: none;
+  line-height: 1.4;
+  resize: none;
+  overflow: auto;
+  pointer-events: auto;
+  transform: translateY(-100%);
+}
+
+.textEditor:focus {
+  outline: 2px solid rgba(22, 119, 255, 0.35);
+}
+
+.textEditor::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}

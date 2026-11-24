@@ -133,8 +133,8 @@ test('canvas backing stores are nudged only when Cesium would assign the same si
 
 test('the globe viewer keeps rendering ownership and surfaces WebGL failure in Chinese', async () => {
   const viewerSource = await readFile(new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url), 'utf8')
-  const appSource = await readFile(new URL('../src/renderer/src/App.vue', import.meta.url), 'utf8')
-  const mainSource = await readFile(new URL('../src/renderer/src/main.ts', import.meta.url), 'utf8')
+  const appSource = await readFile(new URL('../src/renderer/src/App.tsx', import.meta.url), 'utf8')
+  const mainSource = await readFile(new URL('../src/renderer/src/main.tsx', import.meta.url), 'utf8')
   assert.match(viewerSource, /useDefaultRenderLoop: false/)
   assert.match(viewerSource, /showRenderLoopErrors: false/)
   assert.match(viewerSource, /webglcontextlost/)
@@ -152,8 +152,8 @@ test('the globe viewer keeps rendering ownership and surfaces WebGL failure in C
   assert.match(viewerSource, /decideRenderFrame\(/)
   assert.match(viewerSource, /createViewerWithRetries\(/)
   assert.match(viewerSource, /registerRetry\('webgl'/)
-  assert.match(appSource, /globe-loading-hint/)
-  assert.match(appSource, /failureStore\.notices\.webgl/)
+  assert.match(appSource, /globeLoadingHint/)
+  assert.match(appSource, /notices\.webgl/)
   assert.match(mainSource, /surfaceFailureAlreadyShown\(event\.extra\)/)
 })
 

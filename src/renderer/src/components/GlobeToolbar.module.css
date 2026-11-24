@@ -1,0 +1,96 @@
+.toolbar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 10;
+}
+
+.toolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.toolbarFloating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbarTools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbarBtn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.65);
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.toolbarCircle {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.toolbarBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.toolbarBtnActive,
+.toolbarBtnActive:hover {
+  background: #1677ff;
+  color: #ffffff;
+}
+
+:global(.touch-ui) .toolbar,
+:global(.touch-ui) .toolbarGroup,
+:global(.touch-ui) .toolbarFloating {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:global(.touch-ui) .toolbarGroup {
+  gap: 12px;
+  padding: 10px;
+}
+
+:global(.touch-ui) .toolbarTools {
+  gap: 12px;
+}
+
+:global(.touch-ui) .toolbarBtn {
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+}
+
+:global(.touch-ui) .toolbarCircle {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  font-size: 20px;
+}

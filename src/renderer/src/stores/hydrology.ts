@@ -1,14 +1,33 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 
 export type HydrologyPanel = 'water-cycle' | 'ocean-property' | 'tide' | 'water-bodies'
 
-export const useHydrologyStore = defineStore('hydrology', () => {
-  const panel = ref<HydrologyPanel | null>(null)
+export interface HydrologyState {
+  panel: HydrologyPanel | null
+}
 
-  function setPanel(value: HydrologyPanel | null): void {
-    panel.value = value
+export interface HydrologyActions {
+  setPanel: (value: HydrologyPanel | null) => void
+}
+
+export type HydrologyStore = HydrologyState & HydrologyActions
+
+export function createInitialHydrologyState(): HydrologyState {
+  return {
+    panel: null
   }
+}
 
-  return { panel, setPanel }
-})
+export const useHydrologyStore = create<HydrologyStore>()(
+  subscribeWithSelector((set) => ({
+    ...createInitialHydrologyState(),
+    setPanel(value: HydrologyPanel | null): void {
+      set({ panel: value })
+    }
+  }))
+)
+
+export function resetHydrologyStore(): void {
+  useHydrologyStore.setState(createInitialHydrologyState())
+}

@@ -1,5 +1,5 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 
 export interface FocusedFeature {
   name: string
@@ -7,16 +7,35 @@ export interface FocusedFeature {
   summary: string
 }
 
-export const useFeatureFocusStore = defineStore('featureFocus', () => {
-  const focused = ref<FocusedFeature | null>(null)
+export interface FeatureFocusState {
+  focused: FocusedFeature | null
+}
 
-  function setFocus(feature: FocusedFeature): void {
-    focused.value = feature
+export interface FeatureFocusActions {
+  setFocus: (feature: FocusedFeature) => void
+  clearFocus: () => void
+}
+
+export type FeatureFocusStore = FeatureFocusState & FeatureFocusActions
+
+export function createInitialFeatureFocusState(): FeatureFocusState {
+  return {
+    focused: null
   }
+}
 
-  function clearFocus(): void {
-    focused.value = null
-  }
+export const useFeatureFocusStore = create<FeatureFocusStore>()(
+  subscribeWithSelector((set) => ({
+    ...createInitialFeatureFocusState(),
+    setFocus(feature: FocusedFeature): void {
+      set({ focused: feature })
+    },
+    clearFocus(): void {
+      set({ focused: null })
+    }
+  }))
+)
 
-  return { focused, setFocus, clearFocus }
-})
+export function resetFeatureFocusStore(): void {
+  useFeatureFocusStore.setState(createInitialFeatureFocusState())
+}

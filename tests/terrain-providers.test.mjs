@@ -20,7 +20,7 @@ test('every shared terrain provider id has a registry factory and a catalog entr
 
 test('registry lookups fall back through the shared factory instead of ad hoc indexing', () => {
   const viewerSource = readFile(new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url), 'utf8')
-  const offscreenSource = readFile(new URL('../src/renderer/src/offscreen.ts', import.meta.url), 'utf8')
+  const offscreenSource = readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
   return Promise.all([viewerSource, offscreenSource]).then(([viewer, offscreen]) => {
     assert.doesNotMatch(viewer, /terrainRegistry\[id\] \?\? terrainRegistry\.ellipsoid/)
     assert.doesNotMatch(offscreen, /terrainRegistry\[terrain\.providerId\] \?\?/)

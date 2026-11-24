@@ -10,16 +10,16 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@renderer/*": ["src/renderer/src/*"]
+      "@renderer/*": ["src/renderer/src/*"],
+      "@/*": ["src/renderer/src/*"]
     }
   },
   "include": [
     "src/common/**/*",
     "src/renderer/src/**/*",
-    "src/renderer/src/**/*.vue",
     "src/preload/index.d.ts"
   ]
 }

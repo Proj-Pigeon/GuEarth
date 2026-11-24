@@ -1,0 +1,23 @@
+.walkerOverlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.walkerFlow {
+  animation: walker-dash 1.4s linear infinite;
+}
+
+@keyframes walker-dash {
+  to {
+    stroke-dashoffset: -11;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .walkerFlow {
+    animation: none;
+  }
+}

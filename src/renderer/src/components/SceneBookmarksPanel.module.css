@@ -1,0 +1,178 @@
+.panelTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panelTitle h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.panelToolbar {
+  flex-shrink: 0;
+}
+
+.panelAlert {
+  margin-top: 8px;
+}
+
+.sceneList {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sceneEmpty {
+  padding: 24px 0;
+}
+
+.sceneEmptyHint {
+  display: block;
+  margin-top: 4px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.sceneItem {
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px;
+  background: #ffffff;
+}
+
+.sceneItemMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.sceneItemTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sceneOrder {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.sceneName {
+  font-size: 14px;
+  line-height: 22px;
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sceneTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.sceneTag {
+  padding: 0 7px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.sceneTagTime {
+  padding: 0 7px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  color: #1677ff;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.sceneNarration {
+  margin-top: 4px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.sceneMeta {
+  margin-top: 4px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sceneItemActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.sceneAction {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.sceneAction:hover {
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.panelFooter {
+  flex-shrink: 0;
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.footerButton {
+  flex: 1;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  line-height: 20px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.dwellInput {
+  width: 100%;
+}

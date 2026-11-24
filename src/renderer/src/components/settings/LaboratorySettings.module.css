@@ -1,0 +1,79 @@
+.settingsSection {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.sectionDesc {
+  margin: 4px 0 0;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.notice,
+.settingsBlock {
+  margin-top: 24px;
+}
+
+.blockHeading {
+  margin: 0 0 8px;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.dataDescription {
+  margin: 0 0 16px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.providerRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.providerInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.providerHost {
+  margin: 4px 0 0;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 13px;
+  line-height: 20px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+
+.providerActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.loading {
+  width: 100%;
+}
+
+.loadingSpace {
+  min-height: 96px;
+}
+
+.formError {
+  margin-bottom: 16px;
+}

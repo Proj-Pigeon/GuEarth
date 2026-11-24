@@ -1,0 +1,158 @@
+.panelTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.panelHeading {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.titleActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.drawerResizeHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  width: 10px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.drawerResizeHandle::after {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 2px;
+  height: 48px;
+  border-radius: 2px;
+  background: rgba(5, 5, 5, 0.12);
+  content: '';
+  transform: translateY(-50%);
+  transition: background 0.2s ease, height 0.2s ease;
+}
+
+.drawerResizeHandle:hover::after,
+.drawerResizeHandle:focus-visible::after {
+  height: 64px;
+  background: #1677ff;
+}
+
+.drawerResizeHandle:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: -2px;
+}
+
+.historyMenu {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.historyItem :global(.ant-dropdown-menu-title-content) {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.historyItemActive {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.historyItemBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.historyItemTitle {
+  flex: 1;
+  min-width: 0;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  line-height: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.historyItemTime {
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.historyDelete {
+  flex-shrink: 0;
+  height: 24px;
+}
+
+.historyEmpty {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.deleteConfirmText {
+  margin: 0 0 12px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.modelMenu {
+  min-width: 248px;
+  max-width: min(360px, calc(100vw - 48px));
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.modelMenuItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.modelMenuName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelMenuId {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aiDisclaimer {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawerResizeHandle::after {
+    transition: none;
+  }
+}

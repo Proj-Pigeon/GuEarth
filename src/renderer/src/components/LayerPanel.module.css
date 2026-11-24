@@ -1,0 +1,166 @@
+.panelTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.panelHeading {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.panelAlert {
+  margin-bottom: 16px;
+}
+
+.layerSpin {
+  display: block;
+  min-height: 168px;
+}
+
+.panelSection {
+  padding: 0 0 16px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.panelSection:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 8px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.fullSelect {
+  width: 100%;
+}
+
+.terrainActiveHint {
+  margin-top: 6px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.terrainSliderHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.terrainLightingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.terrainAlert {
+  margin-top: 8px;
+}
+
+.basemapItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.basemapItemSelected {
+  background: rgba(22, 119, 255, 0.06);
+}
+
+.basemapCopy {
+  flex: 1;
+  min-width: 0;
+  margin-left: 4px;
+}
+
+.basemapName {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.basemapDescription {
+  overflow: hidden;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moreButton {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.modalBlock {
+  margin-bottom: 12px;
+}
+
+.settingHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.providerGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.providerRadio {
+  display: flex;
+  align-items: flex-start;
+  margin: 0;
+}
+
+.providerRadio :global(.ant-radio) {
+  margin-top: 1px;
+}
+
+.providerCopy {
+  min-width: 0;
+}
+
+.providerName {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.providerDescription {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}

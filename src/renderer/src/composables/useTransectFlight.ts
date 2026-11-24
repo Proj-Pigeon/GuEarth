@@ -115,7 +115,7 @@ const detailedTerrainProviders = new Map<string, Promise<Cesium.TerrainProvider>
 function resolveSamplingTerrainProvider(viewer: Cesium.Viewer): Promise<Cesium.TerrainProvider> {
   const active = viewer.terrainProvider
   if (!isAvailabilityStripped(active)) return Promise.resolve(active)
-  const id = useGlobeStore().terrainProviderId
+  const id = useGlobeStore.getState().terrainProviderId
   const create = detailedSamplingTerrain(id)
   if (!create) return Promise.resolve(active)
   let provider = detailedTerrainProviders.get(id)
@@ -130,7 +130,7 @@ function resolveSamplingTerrainProvider(viewer: Cesium.Viewer): Promise<Cesium.T
 export async function sampleTransectGround(viewer: Cesium.Viewer, waypoints: TransectWaypoint[], onProgress?: (progress: TransectFlightProgress) => void, expectedMaxGroundM?: number): Promise<TransectGroundSample> {
   const path = interpolateWaypoints(waypoints, samplesPerLeg(waypoints.length))
   const terrainProvider = viewer.terrainProvider
-  const samplingProviderId = useGlobeStore().terrainProviderId
+  const samplingProviderId = useGlobeStore.getState().terrainProviderId
   const key = JSON.stringify({ waypoints, expectedMaxGroundM })
   const cached = groundSampleCache.get(viewer)
   if (cached && cached.key === key && cached.terrainProvider === terrainProvider && cached.samplingProviderId === samplingProviderId && Date.now() - cached.at < SAMPLE_CACHE_TTL_MS) return cached.sample
@@ -283,7 +283,7 @@ async function animateAlongTransect(viewer: Cesium.Viewer, path: TransectWaypoin
   const scene = viewer.scene
   animationInputLocks += 1
   if (animationInputLocks === 1) scene.screenSpaceCameraController.enableInputs = false
-  const globeStore = useGlobeStore()
+  const globeStore = useGlobeStore.getState()
   const refreshCameraReadout = (): void => {
     const cartographic = scene.camera.positionCartographic
     const headingDegrees = Cesium.Math.toDegrees(scene.camera.heading) % 360
@@ -359,7 +359,7 @@ export async function flyTransect(viewer: Cesium.Viewer, waypoints: TransectWayp
   const run: ActiveRun = { token: Symbol('transect-run'), cancelled: false, lastPathIndex: 0 }
   activeRun = run
   const onProgress = options.onProgress
-  const zonationStore = useZonationStore()
+  const zonationStore = useZonationStore.getState()
   const report = (progress: TransectFlightProgress): void => {
     onProgress?.(progress)
     zonationStore.setFlightHud({ stage: progress.stage, completed: progress.completed, total: progress.total, altitudeM: progress.altitudeM })

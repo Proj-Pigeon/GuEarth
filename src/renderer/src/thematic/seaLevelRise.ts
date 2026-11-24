@@ -1,4 +1,5 @@
-import { computed, ref } from 'vue'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 
 export interface CoastalZone {
   id: string
@@ -150,22 +151,28 @@ export function buildLandMask(provinces: LandMaskSource[]): (lon: number, lat: n
 }
 
 export const heightCache = new Map<string, number>()
-export const sampleVersion = ref(0)
 
 export const cacheKeyOf = (lon: number, lat: number): string => `${lon.toFixed(4)},${lat.toFixed(4)}`
 
 export type LandMaskPredicate = (lon: number, lat: number) => boolean
-export const landMask = ref<LandMaskPredicate | null>(null)
+export type SeaSamplingStatus = 'idle' | 'sampling' | 'ready' | 'terrain-required'
 
-export function setLandMask(mask: LandMaskPredicate | null): void {
-  landMask.value = mask
+export interface SeaLevelState {
+  version: number
+  landMask: LandMaskPredicate | null
+  samplingStatus: SeaSamplingStatus
+  sampledCoverage: number
 }
 
-export type SeaSamplingStatus = 'idle' | 'sampling' | 'ready' | 'terrain-required'
-export const seaSamplingStatus = ref<SeaSamplingStatus>('idle')
+export interface SeaLevelActions {
+  setLandMask: (mask: LandMaskPredicate | null) => void
+  setSamplingStatus: (status: SeaSamplingStatus) => void
+  bumpVersion: () => void
+}
 
-export const sampledCoverage = computed(() => {
-  void sampleVersion.value
+export type SeaLevelStore = SeaLevelState & SeaLevelActions
+
+export function computeSampledCoverage(): number {
   let sampled = 0
   for (const zone of coastalZones) {
     for (const [lon, lat] of gridPointsOf(zone)) {
@@ -173,12 +180,85 @@ export const sampledCoverage = computed(() => {
     }
   }
   return sampled / totalGridCellCount
-})
+}
+
+export function createInitialSeaLevelState(): SeaLevelState {
+  return {
+    version: 0,
+    landMask: null,
+    samplingStatus: 'idle',
+    sampledCoverage: 0
+  }
+}
+
+export const useSeaLevelStore = create<SeaLevelStore>()(
+  subscribeWithSelector((set) => ({
+    ...createInitialSeaLevelState(),
+    setLandMask(mask: LandMaskPredicate | null): void {
+      set({ landMask: mask })
+    },
+    setSamplingStatus(status: SeaSamplingStatus): void {
+      set({ samplingStatus: status })
+    },
+    bumpVersion(): void {
+      set((state) => ({
+        version: state.version + 1,
+        sampledCoverage: computeSampledCoverage()
+      }))
+    }
+  }))
+)
+
+export function resetSeaLevelStore(): void {
+  heightCache.clear()
+  useSeaLevelStore.setState(createInitialSeaLevelState())
+}
+
+export const sampleVersion = {
+  get value(): number {
+    return useSeaLevelStore.getState().version
+  },
+  set value(next: number) {
+    useSeaLevelStore.setState({ version: next, sampledCoverage: computeSampledCoverage() })
+  }
+}
+
+export const landMask = {
+  get value(): LandMaskPredicate | null {
+    return useSeaLevelStore.getState().landMask
+  },
+  set value(next: LandMaskPredicate | null) {
+    useSeaLevelStore.getState().setLandMask(next)
+  }
+}
+
+export function setLandMask(mask: LandMaskPredicate | null): void {
+  useSeaLevelStore.getState().setLandMask(mask)
+}
+
+export const seaSamplingStatus = {
+  get value(): SeaSamplingStatus {
+    return useSeaLevelStore.getState().samplingStatus
+  },
+  set value(next: SeaSamplingStatus) {
+    useSeaLevelStore.getState().setSamplingStatus(next)
+  }
+}
+
+export function setSeaSamplingStatus(status: SeaSamplingStatus): void {
+  useSeaLevelStore.getState().setSamplingStatus(status)
+}
+
+export const sampledCoverage = {
+  get value(): number {
+    return computeSampledCoverage()
+  }
+}
 
 export const FALLBACK_LAND_HEIGHT = 0.05
 
 export function isLandCell(lon: number, lat: number, height: number): boolean {
-  const mask = landMask.value
+  const mask = useSeaLevelStore.getState().landMask
   if (mask && mask(lon, lat)) return true
   return height > FALLBACK_LAND_HEIGHT
 }
@@ -188,7 +268,7 @@ export function recordSamples(points: Array<[number, number]>, heights: Array<nu
     const height = heights[index]
     if (Number.isFinite(height)) heightCache.set(cacheKeyOf(lon, lat), height)
   })
-  sampleVersion.value += 1
+  useSeaLevelStore.getState().bumpVersion()
 }
 
 export function seaLevelGridPoints(): Array<[number, number]> {
@@ -236,7 +316,6 @@ export interface ZoneInundation {
 }
 
 export function inundationByZone(rise: number): ZoneInundation[] {
-  void sampleVersion.value
   const results: ZoneInundation[] = []
   for (const zone of coastalZones) {
     let sampled = 0

@@ -1,10 +1,33 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 
-export const usePopulationStore = defineStore('population', () => {
-  const panel = ref<'population' | 'cities' | null>(null)
-  function setPanel(value: 'population' | 'cities' | null): void {
-    panel.value = value
+export type PopulationPanel = 'population' | 'cities' | null
+
+export interface PopulationState {
+  panel: PopulationPanel
+}
+
+export interface PopulationActions {
+  setPanel: (value: PopulationPanel) => void
+}
+
+export type PopulationStore = PopulationState & PopulationActions
+
+export function createInitialPopulationState(): PopulationState {
+  return {
+    panel: null
   }
-  return { panel, setPanel }
-})
+}
+
+export const usePopulationStore = create<PopulationStore>()(
+  subscribeWithSelector((set) => ({
+    ...createInitialPopulationState(),
+    setPanel(value: PopulationPanel): void {
+      set({ panel: value })
+    }
+  }))
+)
+
+export function resetPopulationStore(): void {
+  usePopulationStore.setState(createInitialPopulationState())
+}

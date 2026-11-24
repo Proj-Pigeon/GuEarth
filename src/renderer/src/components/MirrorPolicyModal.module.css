@@ -1,0 +1,125 @@
+.policyBody {
+  max-height: min(460px, calc(100vh - 260px));
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.policyMarkdown {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 14px;
+  line-height: 22px;
+  word-break: break-word;
+}
+
+.policyMarkdown :global(p) {
+  margin: 0 0 8px;
+}
+
+.policyMarkdown :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.policyMarkdown :global(strong) {
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 600;
+}
+
+.policyMarkdown :global(h1),
+.policyMarkdown :global(h2) {
+  margin: 16px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.policyMarkdown :global(h3),
+.policyMarkdown :global(h4),
+.policyMarkdown :global(h5),
+.policyMarkdown :global(h6) {
+  margin: 12px 0 6px;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.policyMarkdown :global(ul),
+.policyMarkdown :global(ol) {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.policyMarkdown :global(li + li) {
+  margin-top: 4px;
+}
+
+.policyMarkdown :global(blockquote) {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid rgba(5, 5, 5, 0.12);
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.policyMarkdown :global(blockquote p:last-child) {
+  margin-bottom: 0;
+}
+
+.policyMarkdown :global(code) {
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.policyMarkdown :global(pre) {
+  margin: 0 0 8px;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.policyMarkdown :global(pre code) {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+}
+
+.policyMarkdown :global(table) {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 0 8px;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.policyMarkdown :global(th),
+.policyMarkdown :global(td) {
+  padding: 4px 8px;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.policyMarkdown :global(th) {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.policyMarkdown :global(a) {
+  color: #1677ff;
+}
+
+.policyMarkdown :global(hr) {
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+}

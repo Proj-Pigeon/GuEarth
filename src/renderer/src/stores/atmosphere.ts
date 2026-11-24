@@ -1,14 +1,33 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 
 export type AtmospherePanel = 'circulation' | 'heating' | 'layers'
 
-export const useAtmosphereStore = defineStore('atmosphere', () => {
-  const panel = ref<AtmospherePanel | null>(null)
+export interface AtmosphereState {
+  panel: AtmospherePanel | null
+}
 
-  function setPanel(value: AtmospherePanel | null): void {
-    panel.value = value
+export interface AtmosphereActions {
+  setPanel: (value: AtmospherePanel | null) => void
+}
+
+export type AtmosphereStore = AtmosphereState & AtmosphereActions
+
+export function createInitialAtmosphereState(): AtmosphereState {
+  return {
+    panel: null
   }
+}
 
-  return { panel, setPanel }
-})
+export const useAtmosphereStore = create<AtmosphereStore>()(
+  subscribeWithSelector((set) => ({
+    ...createInitialAtmosphereState(),
+    setPanel(value: AtmospherePanel | null): void {
+      set({ panel: value })
+    }
+  }))
+)
+
+export function resetAtmosphereStore(): void {
+  useAtmosphereStore.setState(createInitialAtmosphereState())
+}

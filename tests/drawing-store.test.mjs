@@ -4,7 +4,6 @@ import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { setTimeout as sleep } from 'node:timers/promises'
-import { createPinia, setActivePinia } from 'pinia'
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -18,7 +17,7 @@ registerHooks({
   }
 })
 
-const { useDrawingStore, DEFAULT_DRAW_STYLE } = await import('../src/renderer/src/stores/drawing.ts')
+const { useDrawingStore, resetDrawingStore, DEFAULT_DRAW_STYLE } = await import('../src/renderer/src/stores/drawing.ts')
 const { transientMirrorShape } = await import('../src/renderer/src/lib/shapeGraphics.ts')
 
 function shapeFixture(id, changes = {}) {
@@ -26,50 +25,50 @@ function shapeFixture(id, changes = {}) {
 }
 
 function storeFixture(t) {
-  setActivePinia(createPinia())
+  resetDrawingStore()
   const saved = []
   globalThis.window = { guEarth: { annotations: { save: async (document) => { saved.push(document) } } } }
   t.after(() => { delete globalThis.window })
-  return { store: useDrawingStore(), saved }
+  return { store: () => useDrawingStore.getState(), saved }
 }
 
 const flushSave = () => sleep(220)
 
 test('persistence stores drawn shapes but never transient mirror shapes', async (t) => {
   const { store, saved } = storeFixture(t)
-  store.addShape(shapeFixture('drawn'))
+  store().addShape(shapeFixture('drawn'))
   await flushSave()
   assert.equal(saved.length, 1)
   assert.deepEqual(saved[0].shapes.map((shape) => shape.id), ['drawn'])
   assert.deepEqual(saved[0].entries, [{ type: 'shape', id: 'drawn' }])
 
-  store.addTransientShape(shapeFixture('mirror'))
+  store().addTransientShape(shapeFixture('mirror'))
   await flushSave()
   assert.equal(saved.length, 1, '临时镜像图形不应触发新的保存')
 
-  store.removeShape('mirror')
+  store().removeShape('mirror')
   await flushSave()
   assert.equal(saved.length, 1, '移除临时图形不应触发新的保存')
-  assert.deepEqual(store.shapes.map((shape) => shape.id), ['drawn'])
-  assert.deepEqual(store.entries.map((entry) => entry.id), ['drawn'])
+  assert.deepEqual(store().shapes.map((shape) => shape.id), ['drawn'])
+  assert.deepEqual(store().entries.map((entry) => entry.id), ['drawn'])
 })
 
 test('removing shapes touches exactly the matching annotation entry', async (t) => {
   const { store, saved } = storeFixture(t)
-  store.addShape(shapeFixture('first'))
-  store.addShape(shapeFixture('second'))
+  store().addShape(shapeFixture('first'))
+  store().addShape(shapeFixture('second'))
   await flushSave()
-  store.removeShape('first')
+  store().removeShape('first')
   await flushSave()
-  assert.deepEqual(store.entries.map((entry) => entry.id), ['second'])
+  assert.deepEqual(store().entries.map((entry) => entry.id), ['second'])
   assert.deepEqual(saved[saved.length - 1].shapes.map((shape) => shape.id), ['second'])
   assert.deepEqual(saved[saved.length - 1].entries.map((entry) => entry.id), ['second'])
 
-  store.addTransientShape(shapeFixture('mirror'))
-  const entriesBefore = store.entries.map((entry) => entry.id)
-  store.removeShape('mirror')
+  store().addTransientShape(shapeFixture('mirror'))
+  const entriesBefore = store().entries.map((entry) => entry.id)
+  store().removeShape('mirror')
   await flushSave()
-  assert.deepEqual(store.entries.map((entry) => entry.id), entriesBefore)
+  assert.deepEqual(store().entries.map((entry) => entry.id), entriesBefore)
 })
 
 test('transient mirror shapes keep the recording annotation style over the defaults', () => {

@@ -1,14 +1,33 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 
 export type DecisionPanel = 'location' | null
 
-export const useDecisionStore = defineStore('decision', () => {
-  const panel = ref<DecisionPanel>(null)
+export interface DecisionState {
+  panel: DecisionPanel
+}
 
-  function setPanel(value: DecisionPanel): void {
-    panel.value = value
+export interface DecisionActions {
+  setPanel: (value: DecisionPanel) => void
+}
+
+export type DecisionStore = DecisionState & DecisionActions
+
+export function createInitialDecisionState(): DecisionState {
+  return {
+    panel: null
   }
+}
 
-  return { panel, setPanel }
-})
+export const useDecisionStore = create<DecisionStore>()(
+  subscribeWithSelector((set) => ({
+    ...createInitialDecisionState(),
+    setPanel(value: DecisionPanel): void {
+      set({ panel: value })
+    }
+  }))
+)
+
+export function resetDecisionStore(): void {
+  useDecisionStore.setState(createInitialDecisionState())
+}

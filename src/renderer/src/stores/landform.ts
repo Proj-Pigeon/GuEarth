@@ -1,14 +1,33 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 
 export type LandformPanel = 'fold-fault' | 'river' | 'landform-guide' | 'exogenic' | 'earth-layers'
 
-export const useLandformStore = defineStore('landform', () => {
-  const panel = ref<LandformPanel | null>(null)
+export interface LandformState {
+  panel: LandformPanel | null
+}
 
-  function setPanel(value: LandformPanel | null): void {
-    panel.value = value
+export interface LandformActions {
+  setPanel: (value: LandformPanel | null) => void
+}
+
+export type LandformStore = LandformState & LandformActions
+
+export function createInitialLandformState(): LandformState {
+  return {
+    panel: null
   }
+}
 
-  return { panel, setPanel }
-})
+export const useLandformStore = create<LandformStore>()(
+  subscribeWithSelector((set) => ({
+    ...createInitialLandformState(),
+    setPanel(value: LandformPanel | null): void {
+      set({ panel: value })
+    }
+  }))
+)
+
+export function resetLandformStore(): void {
+  useLandformStore.setState(createInitialLandformState())
+}

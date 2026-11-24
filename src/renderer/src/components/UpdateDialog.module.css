@@ -1,0 +1,190 @@
+.updateLine {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.updateLabel {
+  width: 60px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.updateVersion {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 20px;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.updateVersionNew {
+  color: #1677ff;
+  font-weight: 600;
+}
+
+.updateNotes {
+  margin: 12px 0 0;
+  max-height: 180px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  word-break: break-word;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.updateNotesMarkdown {
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 6px;
+}
+
+.updateNotesMarkdown > :first-child {
+  margin-top: 0;
+}
+
+.updateNotesMarkdown > :last-child {
+  margin-bottom: 0;
+}
+
+.updateNotesMarkdown :global(p) {
+  margin: 0 0 6px;
+}
+
+.updateNotesMarkdown :global(h1),
+.updateNotesMarkdown :global(h2),
+.updateNotesMarkdown :global(h3),
+.updateNotesMarkdown :global(h4),
+.updateNotesMarkdown :global(h5),
+.updateNotesMarkdown :global(h6) {
+  margin: 10px 0 4px;
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.updateNotesMarkdown :global(h1) {
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.updateNotesMarkdown :global(h2) {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.updateNotesMarkdown :global(h3),
+.updateNotesMarkdown :global(h4),
+.updateNotesMarkdown :global(h5),
+.updateNotesMarkdown :global(h6) {
+  font-size: 12px;
+}
+
+.updateNotesMarkdown :global(strong) {
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 600;
+}
+
+.updateNotesMarkdown :global(ul),
+.updateNotesMarkdown :global(ol) {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+.updateNotesMarkdown :global(li) {
+  margin: 2px 0;
+}
+
+.updateNotesMarkdown :global(li > ul),
+.updateNotesMarkdown :global(li > ol) {
+  margin-bottom: 0;
+}
+
+.updateNotesMarkdown :global(li > p) {
+  margin-bottom: 2px;
+}
+
+.updateNotesMarkdown :global(li > p:last-child) {
+  margin-bottom: 0;
+}
+
+.updateNotesMarkdown :global(blockquote) {
+  margin: 0 0 6px;
+  padding: 2px 10px;
+  border-left: 3px solid rgba(5, 5, 5, 0.12);
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.updateNotesMarkdown :global(blockquote p:last-child) {
+  margin-bottom: 0;
+}
+
+.updateNotesMarkdown :global(code) {
+  padding: 1px 4px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  color: rgba(0, 0, 0, 0.88);
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.updateNotesMarkdown :global(pre) {
+  margin: 0 0 6px;
+  padding: 8px 10px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.updateNotesMarkdown :global(pre code) {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+}
+
+.updateNotesMarkdown :global(table) {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 0 6px;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.updateNotesMarkdown :global(th),
+.updateNotesMarkdown :global(td) {
+  padding: 3px 8px;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.updateNotesMarkdown :global(th) {
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.updateNotesMarkdown :global(a) {
+  color: #1677ff;
+}
+
+.updateNotesMarkdown :global(hr) {
+  margin: 8px 0;
+  border: 0;
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.updateNotesMarkdown :global(img) {
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+.updateNotesPlain {
+  padding: 8px 12px;
+  white-space: pre-wrap;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+}

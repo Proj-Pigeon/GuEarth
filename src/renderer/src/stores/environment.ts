@@ -1,14 +1,33 @@
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
 
 export type EnvironmentPanel = 'environment' | null
 
-export const useEnvironmentStore = defineStore('environment', () => {
-  const panel = ref<EnvironmentPanel>(null)
+export interface EnvironmentState {
+  panel: EnvironmentPanel
+}
 
-  function setPanel(value: EnvironmentPanel): void {
-    panel.value = value
+export interface EnvironmentActions {
+  setPanel: (value: EnvironmentPanel) => void
+}
+
+export type EnvironmentStore = EnvironmentState & EnvironmentActions
+
+export function createInitialEnvironmentState(): EnvironmentState {
+  return {
+    panel: null
   }
+}
 
-  return { panel, setPanel }
-})
+export const useEnvironmentStore = create<EnvironmentStore>()(
+  subscribeWithSelector((set) => ({
+    ...createInitialEnvironmentState(),
+    setPanel(value: EnvironmentPanel): void {
+      set({ panel: value })
+    }
+  }))
+)
+
+export function resetEnvironmentStore(): void {
+  useEnvironmentStore.setState(createInitialEnvironmentState())
+}

@@ -3,7 +3,6 @@ import { test } from 'node:test'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { createPinia, setActivePinia } from 'pinia'
 import {
   DEFAULT_PRIVACY_SETTINGS,
   PRIVACY_DISCLOSURES,
@@ -180,39 +179,39 @@ test('privacy store persists changes and fails closed on IPC update errors', asy
     }
   }
 
-  const { usePrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
+  const { usePrivacyStore, resetPrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
   const { getPrivacySettings } = await import('../src/renderer/src/lib/privacyRuntime.ts')
 
-  setActivePinia(createPinia())
-  const store = usePrivacyStore()
-  await store.hydrate()
-  assert.equal(store.errorReportingEnabled, true)
-  assert.equal(store.telemetryEnabled, false)
-  assert.equal(store.aiTelemetryEnabled, false)
+  resetPrivacyStore()
+  const store = () => usePrivacyStore.getState()
+  await store().hydrate()
+  assert.equal(store().errorReportingEnabled, true)
+  assert.equal(store().telemetryEnabled, false)
+  assert.equal(store().aiTelemetryEnabled, false)
   assert.deepEqual(getPrivacySettings(), DEFAULT_PRIVACY_SETTINGS)
 
   failUpdate = true
-  const failedEnable = await store.setPrivacySetting('telemetryEnabled', true)
+  const failedEnable = await store().setPrivacySetting('telemetryEnabled', true)
   assert.equal(failedEnable, false)
-  assert.equal(store.telemetryEnabled, false)
+  assert.equal(store().telemetryEnabled, false)
   assert.equal(getPrivacySettings().telemetryEnabled, false)
 
   failUpdate = false
-  const enabledOk = await store.setPrivacySetting('telemetryEnabled', true)
+  const enabledOk = await store().setPrivacySetting('telemetryEnabled', true)
   assert.equal(enabledOk, true)
-  assert.equal(store.telemetryEnabled, true)
+  assert.equal(store().telemetryEnabled, true)
   assert.equal(getPrivacySettings().telemetryEnabled, true)
 
   failUpdate = true
-  const failedDisable = await store.setPrivacySetting('telemetryEnabled', false)
+  const failedDisable = await store().setPrivacySetting('telemetryEnabled', false)
   assert.equal(failedDisable, false)
-  assert.equal(store.telemetryEnabled, true)
+  assert.equal(store().telemetryEnabled, true)
   assert.equal(getPrivacySettings().telemetryEnabled, true)
 
   failUpdate = false
-  const disabledOk = await store.setPrivacySetting('telemetryEnabled', false)
+  const disabledOk = await store().setPrivacySetting('telemetryEnabled', false)
   assert.equal(disabledOk, true)
-  assert.equal(store.telemetryEnabled, false)
+  assert.equal(store().telemetryEnabled, false)
   assert.equal(getPrivacySettings().telemetryEnabled, false)
 })
 
@@ -235,24 +234,24 @@ test('privacy store keeps error reporting disabled on hydrate failure and allows
     }
   }
 
-  const { usePrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
+  const { usePrivacyStore, resetPrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
   const { applyRendererPrivacySettings, getPrivacySettings } = await import('../src/renderer/src/lib/privacyRuntime.ts')
   applyRendererPrivacySettings({ errorReportingEnabled: false, telemetryEnabled: false, aiTelemetryEnabled: false })
 
-  setActivePinia(createPinia())
-  const store = usePrivacyStore()
-  assert.equal(store.hydrated, false)
-  assert.equal(store.errorReportingEnabled, false)
+  resetPrivacyStore()
+  const store = () => usePrivacyStore.getState()
+  assert.equal(store().hydrated, false)
+  assert.equal(store().errorReportingEnabled, false)
 
-  await store.hydrate()
-  assert.equal(store.hydrated, false)
-  assert.equal(store.errorReportingEnabled, false)
+  await store().hydrate()
+  assert.equal(store().hydrated, false)
+  assert.equal(store().errorReportingEnabled, false)
   assert.equal(getPrivacySettings().errorReportingEnabled, false)
 
   failGet = false
-  await store.hydrate()
-  assert.equal(store.hydrated, true)
-  assert.equal(store.errorReportingEnabled, true)
+  await store().hydrate()
+  assert.equal(store().hydrated, true)
+  assert.equal(store().errorReportingEnabled, true)
   assert.equal(getPrivacySettings().errorReportingEnabled, true)
 })
 
@@ -271,39 +270,39 @@ test('privacy store preserves pending disable when an earlier overlapping update
     }
   }
 
-  const { usePrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
+  const { usePrivacyStore, resetPrivacyStore } = await import('../src/renderer/src/stores/privacy.ts')
   const { getPrivacySettings } = await import('../src/renderer/src/lib/privacyRuntime.ts')
 
-  setActivePinia(createPinia())
-  const store = usePrivacyStore()
-  await store.hydrate()
-  assert.equal(store.errorReportingEnabled, true)
-  assert.equal(store.telemetryEnabled, false)
+  resetPrivacyStore()
+  const store = () => usePrivacyStore.getState()
+  await store().hydrate()
+  assert.equal(store().errorReportingEnabled, true)
+  assert.equal(store().telemetryEnabled, false)
 
-  const enableTelemetry = store.setPrivacySetting('telemetryEnabled', true)
-  const disableErrorReporting = store.setPrivacySetting('errorReportingEnabled', false)
+  const enableTelemetry = store().setPrivacySetting('telemetryEnabled', true)
+  const disableErrorReporting = store().setPrivacySetting('errorReportingEnabled', false)
 
-  assert.equal(store.errorReportingEnabled, false)
+  assert.equal(store().errorReportingEnabled, false)
   assert.equal(getPrivacySettings().errorReportingEnabled, false)
   assert.equal(resolvers.length, 2)
 
   resolvers[0].resolve({ errorReportingEnabled: true, telemetryEnabled: true, aiTelemetryEnabled: false })
   assert.equal(await enableTelemetry, true)
-  assert.equal(store.telemetryEnabled, true)
-  assert.equal(store.errorReportingEnabled, false)
+  assert.equal(store().telemetryEnabled, true)
+  assert.equal(store().errorReportingEnabled, false)
   assert.equal(getPrivacySettings().errorReportingEnabled, false)
 
   resolvers[1].resolve({ errorReportingEnabled: false, telemetryEnabled: true, aiTelemetryEnabled: false })
   assert.equal(await disableErrorReporting, true)
-  assert.equal(store.telemetryEnabled, true)
-  assert.equal(store.errorReportingEnabled, false)
+  assert.equal(store().telemetryEnabled, true)
+  assert.equal(store().errorReportingEnabled, false)
   assert.equal(getPrivacySettings().errorReportingEnabled, false)
 
-  const enableAi = store.setPrivacySetting('aiTelemetryEnabled', true)
+  const enableAi = store().setPrivacySetting('aiTelemetryEnabled', true)
   resolvers[2].resolve({ errorReportingEnabled: false, telemetryEnabled: true, aiTelemetryEnabled: true })
   assert.equal(await enableAi, true)
-  assert.equal(store.aiTelemetryEnabled, true)
-  assert.equal(store.errorReportingEnabled, false)
+  assert.equal(store().aiTelemetryEnabled, true)
+  assert.equal(store().errorReportingEnabled, false)
 })
 
 test('gated log record exporter suppresses queued BatchLogRecordProcessor logs after disable', async () => {

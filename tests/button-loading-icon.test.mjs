@@ -2,97 +2,137 @@ import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { test } from 'node:test'
-import { parse } from '@vue/compiler-sfc'
+import ts from 'typescript'
 
 const RENDERER_ROOT = resolve('src/renderer/src')
-const BUTTON_TAGS = new Set(['a-button', 'AButton', 'Button'])
+const BUTTON_TAGS = new Set(['Button', 'AButton'])
 const ICON_TAG_RE = /(?:Outlined|Filled|TwoTone)$/
 
-function collectVueFiles(dir) {
+function collectTsxFiles(dir) {
   const results = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name)
-    if (entry.isDirectory()) results.push(...collectVueFiles(full))
-    else if (entry.isFile() && entry.name.endsWith('.vue')) results.push(full)
+    if (entry.isDirectory()) results.push(...collectTsxFiles(full))
+    else if (entry.isFile() && entry.name.endsWith('.tsx')) results.push(full)
   }
   return results
 }
 
-function extractAntIconNames(scriptContent) {
+function extractImportedIcons(sourceFile) {
   const names = new Set()
-  const importRe = /import\s*\{([^}]+)\}\s*from\s*['"]@ant-design\/icons-vue['"]/g
-  let match
-  while ((match = importRe.exec(scriptContent)) !== null) {
-    for (const part of match[1].split(',')) {
-      const cleaned = part.trim()
-      if (!cleaned) continue
-      const alias = cleaned.split(/\s+as\s+/)
-      names.add((alias[1] ?? alias[0]).trim())
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)) continue
+    if (!ts.isStringLiteral(statement.moduleSpecifier)) continue
+    const moduleName = statement.moduleSpecifier.text
+    if (moduleName !== '@ant-design/icons' && moduleName !== 'lucide-react') continue
+    const namedBindings = statement.importClause?.namedBindings
+    if (!namedBindings || !ts.isNamedImports(namedBindings)) continue
+    for (const element of namedBindings.elements) {
+      names.add(element.name.text)
     }
   }
   return names
 }
 
-function hasLoadingProp(element) {
-  return (element.props ?? []).some((prop) => {
-    if (prop.type === 6 && prop.name === 'loading') return true
-    if (prop.type === 7 && prop.name === 'bind' && prop.arg?.content === 'loading') return true
-    return false
-  })
+function jsxTagName(tagNameNode) {
+  if (ts.isIdentifier(tagNameNode)) return tagNameNode.text
+  if (ts.isPropertyAccessExpression(tagNameNode)) return tagNameNode.getText()
+  return ''
 }
 
-function isIconSlotTemplate(node) {
-  if (node.type !== 1 || node.tag !== 'template') return false
-  return (node.props ?? []).some(
-    (prop) => prop.type === 7 && prop.name === 'slot' && prop.arg?.content === 'icon'
-  )
-}
-
-function isIconElement(node, importedIcons) {
-  if (node.type !== 1) return false
-  return importedIcons.has(node.tag) || ICON_TAG_RE.test(node.tag) || node.tag === 'svg'
-}
-
-function findIconsOutsideIconSlot(children, importedIcons) {
-  const found = []
-  for (const child of children ?? []) {
-    if (isIconSlotTemplate(child)) continue
-    if (isIconElement(child, importedIcons)) {
-      found.push({ tag: child.tag, line: child.loc?.start?.line ?? 0 })
-      continue
+function hasLoadingAttr(attributes) {
+  for (const property of attributes.properties) {
+    if (ts.isJsxAttribute(property) && property.name.getText() === 'loading') {
+      return true
     }
-    if (child.children) found.push(...findIconsOutsideIconSlot(child.children, importedIcons))
   }
+  return false
+}
+
+function isIconTag(tag, importedIcons) {
+  return importedIcons.has(tag) || ICON_TAG_RE.test(tag) || tag === 'svg'
+}
+
+function findIconsInJsxChildren(children, importedIcons, sourceFile) {
+  const found = []
+  const visit = (node) => {
+    if (ts.isJsxSelfClosingElement(node)) {
+      const tag = jsxTagName(node.tagName)
+      if (isIconTag(tag, importedIcons)) {
+        const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
+        found.push({ tag, line: line + 1 })
+        return
+      }
+      return
+    }
+    if (ts.isJsxElement(node)) {
+      const tag = jsxTagName(node.openingElement.tagName)
+      if (isIconTag(tag, importedIcons)) {
+        const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
+        found.push({ tag, line: line + 1 })
+        return
+      }
+      for (const child of node.children) visit(child)
+      return
+    }
+    if (ts.isJsxFragment(node)) {
+      for (const child of node.children) visit(child)
+      return
+    }
+    if (ts.isJsxExpression(node) && node.expression) {
+      visitExpression(node.expression)
+    }
+  }
+  const visitExpression = (expr) => {
+    if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
+      visit(expr)
+      return
+    }
+    if (ts.isParenthesizedExpression(expr)) {
+      visitExpression(expr.expression)
+      return
+    }
+    if (ts.isConditionalExpression(expr)) {
+      visitExpression(expr.whenTrue)
+      visitExpression(expr.whenFalse)
+      return
+    }
+    if (ts.isBinaryExpression(expr)) {
+      visitExpression(expr.left)
+      visitExpression(expr.right)
+    }
+  }
+  for (const child of children) visit(child)
   return found
 }
 
-function walkElements(nodes, visitor) {
-  for (const node of nodes ?? []) {
-    if (node.type === 1) visitor(node)
-    if (node.children) walkElements(node.children, visitor)
-    if (node.branches) {
-      for (const branch of node.branches) walkElements(branch.children, visitor)
-    }
-  }
+function walkTsx(node, visitor) {
+  visitor(node)
+  ts.forEachChild(node, (child) => walkTsx(child, visitor))
 }
 
-test('all loading buttons place icons in the #icon slot so loading replaces the original icon', () => {
+test('all loading buttons place icons in the icon prop so loading replaces the original icon', () => {
   const violations = []
   let checkedButtons = 0
 
-  for (const file of collectVueFiles(RENDERER_ROOT)) {
+  for (const file of collectTsxFiles(RENDERER_ROOT)) {
     const source = readFileSync(file, 'utf8')
-    const { descriptor } = parse(source, { filename: file })
-    if (!descriptor.template?.ast) continue
-    const scriptText = `${descriptor.script?.content ?? ''}\n${descriptor.scriptSetup?.content ?? ''}`
-    const importedIcons = extractAntIconNames(scriptText)
+    const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const importedIcons = extractImportedIcons(sourceFile)
 
-    walkElements(descriptor.template.ast.children, (node) => {
-      if (!BUTTON_TAGS.has(node.tag) || !hasLoadingProp(node)) return
+    walkTsx(sourceFile, (node) => {
+      if (ts.isJsxSelfClosingElement(node)) {
+        const tag = jsxTagName(node.tagName)
+        if (BUTTON_TAGS.has(tag) && hasLoadingAttr(node.attributes)) checkedButtons++
+        return
+      }
+      if (!ts.isJsxElement(node)) return
+      const tag = jsxTagName(node.openingElement.tagName)
+      if (!BUTTON_TAGS.has(tag) || !hasLoadingAttr(node.openingElement.attributes)) return
       checkedButtons++
-      const misplaced = findIconsOutsideIconSlot(node.children, importedIcons)
+      const misplaced = findIconsInJsxChildren(node.children, importedIcons, sourceFile)
       for (const icon of misplaced) {
-        violations.push(`${relative(RENDERER_ROOT, file)}:${icon.line} <${icon.tag}> inside loading <${node.tag}>`)
+        violations.push(`${relative(RENDERER_ROOT, file)}:${icon.line} <${icon.tag}> inside loading <${tag}>`)
       }
     })
   }

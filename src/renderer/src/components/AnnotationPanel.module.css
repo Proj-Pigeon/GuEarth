@@ -1,0 +1,150 @@
+.panelTitle,
+.panelActions,
+.treeRow {
+  display: flex;
+  align-items: center;
+}
+
+.panelTitle {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.panelKicker {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+  letter-spacing: 0;
+}
+
+.panelHeading {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.panelActions {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.shapeCount {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+}
+
+.saveError {
+  margin-bottom: 12px;
+}
+
+.treeWrap {
+  margin-left: -8px;
+  margin-right: -8px;
+}
+
+.treeWrap :global(.ant-tree-treenode) {
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.treeWrap :global(.ant-tree-switcher) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  line-height: 32px;
+}
+
+.treeWrap :global(.ant-tree-node-content-wrapper) {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.treeWrap :global(.ant-tree-title) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.topLevelDrop {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1;
+  padding: 8px 12px;
+  border: 1px dashed #1677ff;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1677ff;
+  text-align: center;
+  font-size: 12px;
+}
+
+.treeRow {
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+}
+
+.rowIcon {
+  flex: none;
+  color: rgba(0, 0, 0, 0.45);
+  margin-right: 4px;
+}
+
+.rowName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+}
+
+.rowActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.treeRow:hover .rowActions,
+.treeRow:focus-within .rowActions,
+.rowActionsVisible {
+  visibility: visible;
+  opacity: 1;
+}
+
+.rowAction {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+.shapeTag {
+  flex: none;
+  margin-right: 0;
+  color: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.04);
+  border: none;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowActions {
+    transition-duration: 0.01ms;
+  }
+}

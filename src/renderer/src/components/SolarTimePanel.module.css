@@ -1,0 +1,84 @@
+.solarPanel {
+  position: absolute;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: min(680px, calc(100vw - 600px));
+  min-width: 480px;
+  padding: 12px 20px 8px;
+  background: #ffffff;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 8px;
+  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  z-index: 10;
+}
+
+.solarPanelStacked {
+  bottom: 160px;
+}
+
+.solarPanelFlightStacked {
+  bottom: 140px;
+}
+
+.solarPanelStacked.solarPanelFlightStacked {
+  bottom: 212px;
+}
+
+@media (max-width: 1320px) {
+  .solarPanel {
+    bottom: 160px;
+  }
+
+  .solarPanelStacked {
+    bottom: 240px;
+  }
+
+  .solarPanelFlightStacked {
+    bottom: 212px;
+  }
+
+  .solarPanelStacked.solarPanelFlightStacked {
+    bottom: 292px;
+  }
+}
+
+.clockReadout {
+  display: flex;
+  flex-direction: column;
+  margin-left: auto;
+  line-height: 20px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.clockPrimary {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.clockSecondary {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+}
+
+.chartToggleActive {
+  color: #1677ff;
+}
+
+.hourSlider {
+  flex-basis: 100%;
+  margin: 2px 12px 20px 12px;
+}
+
+.chartAnchor {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 100%);
+}
