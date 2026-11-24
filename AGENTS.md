@@ -22,7 +22,7 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 
 **Pinned versions — do not bump casually:**
 
-- `vite@^8` — the project uses Vite 8 with electron-vite@6.
+- Vite+ provides Vite 8 through the npm alias for `vite`. Keep the alias and npm override aligned when upgrading Vite+.
 - `typescript@5.9.x` — pinned TypeScript version (`tsconfig.node.json` + `tsconfig.web.json`).
 - `antd@6.6.5` — Ant Design v6 (React 19 native, CSS Variables + `@ant-design/cssinjs` `StyleProvider layer` to isolate Tailwind v4 `@layer`). Follow [DESIGN.md](./DESIGN.md) tokens and Ant Design v6 API (`Alert` `title`, `Modal`/`Drawer` `styles`, `App.useApp()`).
 - Electron binaries must be installed manually with the npmmirror mirror:
@@ -95,6 +95,8 @@ npm run dev        # electron-vite dev server + app
 npm run build      # production build
 npm run fetch:ffmpeg   # pinned LGPL FFmpeg for Windows or Linux into resources/bin
 npm run build:linux    # AppImage + deb for Linux x64 and arm64
+npm run lint       # Vite+ lint checks
+npm run fmt:check  # check formatting with the @liangmi/vp-config formatter preset
 npm run typecheck  # tsc (node) + tsc (web)
 npm test           # node:test unit tests (tests/*.test.mjs), run by CI
 ```
