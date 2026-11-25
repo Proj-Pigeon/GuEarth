@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/electron/main'
-import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, screen, session } from 'electron'
+import { app, shell, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, net, protocol, screen, session } from 'electron'
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
 import {
@@ -27,6 +27,7 @@ import { describeTileFetchError, fetchTilePayloadWithRetry, isRetryableTileStatu
 import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
 import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
 import { isTouchInteractionMode, normalizeTouchInteractionMode, type TouchInteractionMode } from '../common/touchInteraction'
+import { isThemeMode, normalizeThemeMode, type ThemeMode } from '../common/themeMode'
 import { ENSO_PHASE_SET, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS, type EnsoPhase } from '../common/thematicState'
 import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../common/privacy'
 
@@ -69,7 +70,7 @@ import { storageChildPath } from './storagePath'
 import { access, constants, mkdtemp, mkdir, readFile, readdir, rename as renameFile, stat, rm, writeFile } from 'fs/promises'
 import { createHash, randomUUID } from 'crypto'
 import icon from '../../resources/icon.png?asset'
-import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, OffscreenRecordingProbeResult, OffscreenRecordingScript, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey, TileMirrorStatus } from '../preload'
+import type { AnnotationDocument, AnnotationEntry, GeoPosition, GuEarthSettings, GuEarthSettingsPatch, NetworkProxyTestResult, OffscreenRecordingProbeResult, OffscreenRecordingScript, PlaceSearchProvider, ProviderCredentialStatus, RecordingSaveResult, SceneCamera, SceneDocument, SceneSnapshot, SceneSimTime, StoredShape, TeachingScene, TileCacheEntry, TileCacheStats, TileKey, TileMirrorStatus, WindowControlsState } from '../preload'
 import { assertOffscreenRecordingSupported, offscreenVideoEncoderArgs, resolveFfmpegBinary } from './ffmpeg'
 import { resolveOffscreenEntry } from './offscreenPaths'
 import { offscreenCaptureSize, offscreenConcatPlaylist, offscreenFrameDurations, offscreenFrameRate, offscreenScriptDurationMs } from './offscreenTiming'
@@ -105,6 +106,7 @@ interface PersistedSettings {
   tileMirrorSource: MirrorEndpointPreference
   mirrorConsentPrompted: boolean
   touchInteractionMode: TouchInteractionMode
+  themeMode: ThemeMode
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -126,6 +128,7 @@ const defaultSettings: PersistedSettings = {
   tileMirrorSource: 'auto',
   mirrorConsentPrompted: false,
   touchInteractionMode: 'auto',
+  themeMode: 'light',
   networkProxy: '',
   providerStyles: {
     osm: 'standard',
@@ -218,6 +221,7 @@ async function readSettings(): Promise<PersistedSettings> {
       tileMirrorSource: normalizeMirrorEndpointPreference(parsed.tileMirrorSource),
       mirrorConsentPrompted: resolvedMirror.mirrorConsentPrompted,
       touchInteractionMode: normalizeTouchInteractionMode(parsed.touchInteractionMode),
+      themeMode: normalizeThemeMode(parsed.themeMode),
       networkProxy: normalizeNetworkProxy(parsed.networkProxy),
       providerStyles: normalizedStyles,
       providerCredentials,
@@ -1063,7 +1067,38 @@ const macRecordingHost: OffscreenMacSessionHost = {
   sweepStaleDirectories: removeStaleOffscreenDirectories
 }
 
+function readWindowControlsState(win: BrowserWindow | null): WindowControlsState {
+  return {
+    maximized: win ? win.isMaximized() : false,
+    fullScreen: win ? win.isFullScreen() : false,
+    platform: process.platform
+  }
+}
+
 function registerIpcHandlers(): void {
+  ipcMain.handle('window:get-state', (event): WindowControlsState => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? mainWindow
+    return readWindowControlsState(win)
+  })
+  ipcMain.handle('window:minimize', (event): void => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? mainWindow
+    if (win && !win.isDestroyed()) win.minimize()
+  })
+  ipcMain.handle('window:toggle-maximize', (event): void => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? mainWindow
+    if (!win || win.isDestroyed()) return
+    if (win.isFullScreen()) {
+      win.setFullScreen(false)
+    } else if (win.isMaximized()) {
+      win.unmaximize()
+    } else {
+      win.maximize()
+    }
+  })
+  ipcMain.handle('window:close', (event): void => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? mainWindow
+    if (win && !win.isDestroyed()) win.close()
+  })
   ipcMain.handle('system:fonts', (): string[] => {
     const families = new Set(process.platform === 'linux'
       ? ['Arial', 'Noto Sans', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', 'DejaVu Sans']
@@ -1150,6 +1185,10 @@ function registerIpcHandlers(): void {
         if (!isTouchInteractionMode(patch.touchInteractionMode)) throw new Error('无效的触摸操作设置')
         nextSettings.touchInteractionMode = patch.touchInteractionMode
       }
+      if (patch.themeMode !== undefined) {
+        if (!isThemeMode(patch.themeMode)) throw new Error('无效的外观主题设置')
+        nextSettings.themeMode = patch.themeMode
+      }
       if (patch.networkProxy !== undefined) {
         if (typeof patch.networkProxy !== 'string') throw new Error('无效的代理设置')
         const normalized = normalizeNetworkProxy(patch.networkProxy)
@@ -1185,6 +1224,12 @@ function registerIpcHandlers(): void {
     })
     if (patch.errorReportingEnabled !== undefined || patch.telemetryEnabled !== undefined || patch.aiTelemetryEnabled !== undefined) {
       applyPrivacySettings(settings)
+    }
+    if (patch.themeMode !== undefined) {
+      nativeTheme.themeSource = settings.themeMode
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#171717' : '#ffffff')
+      }
     }
     if (networkProxyChanged) {
       void applyNetworkProxy().then(() => {
@@ -1885,6 +1930,10 @@ function createWindow(): void {
     width: 1440,
     height: 900,
     minWidth: 992,
+    minHeight: 600,
+    frame: false,
+    hasShadow: true,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#171717' : '#ffffff',
     show: false,
     autoHideMenuBar: true,
     title: displayAppName(),
@@ -1899,6 +1948,15 @@ function createWindow(): void {
   })
 
   mainWindow = win
+  const emitWindowState = (): void => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('window:state-changed', readWindowControlsState(win))
+    }
+  }
+  win.on('maximize', emitWindowState)
+  win.on('unmaximize', emitWindowState)
+  win.on('enter-full-screen', emitWindowState)
+  win.on('leave-full-screen', emitWindowState)
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
   })
@@ -1961,6 +2019,7 @@ app.whenReady().then(async () => {
   initDatasets(userDataPath)
   await mkdir(tileCachePath, { recursive: true })
   settings = await readSettings()
+  nativeTheme.themeSource = settings.themeMode
   applyPrivacySettings(settings)
   tileMirrorRouter.setMode(settings.tileMirrorMode)
   mirrorEndpointManager.setPreference(settings.tileMirrorSource)

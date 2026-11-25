@@ -4,6 +4,7 @@ import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiSta
 import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
 import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, TileMirrorMode } from '../common/tileMirror'
 import type { TouchInteractionMode } from '../common/touchInteraction'
+import type { ThemeMode } from '../common/themeMode'
 import type { EnsoPhase } from '../common/thematicState'
 import type { LaboratoryProvider, LaboratoryProviderInput, OnlineDataSnapshot } from '../common/onlineData'
 
@@ -22,6 +23,7 @@ export interface GuEarthSettings {
   tileMirrorSource: MirrorEndpointPreference
   mirrorConsentPrompted: boolean
   touchInteractionMode: TouchInteractionMode
+  themeMode: ThemeMode
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -42,6 +44,7 @@ export interface GuEarthSettingsPatch {
   tileMirrorSource?: MirrorEndpointPreference
   mirrorConsentPrompted?: boolean
   touchInteractionMode?: TouchInteractionMode
+  themeMode?: ThemeMode
   networkProxy?: string
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'
@@ -466,6 +469,12 @@ export interface UpdateState {
 
 export type UpdateCheckOutcome = 'available' | 'latest' | 'failed' | 'disabled'
 
+export interface WindowControlsState {
+  maximized: boolean
+  fullScreen: boolean
+  platform: string
+}
+
 export type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState }
 
 export type UpdaterEvent =
@@ -543,6 +552,17 @@ const api = {
   },
   system: {
     fonts: (): Promise<string[]> => ipcRenderer.invoke('system:fonts')
+  },
+  windowControls: {
+    getState: (): Promise<WindowControlsState> => ipcRenderer.invoke('window:get-state'),
+    minimize: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
+    toggleMaximize: (): Promise<void> => ipcRenderer.invoke('window:toggle-maximize'),
+    close: (): Promise<void> => ipcRenderer.invoke('window:close'),
+    onStateChange: (listener: (state: WindowControlsState) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: WindowControlsState): void => listener(payload)
+      ipcRenderer.on('window:state-changed', wrapped)
+      return () => ipcRenderer.removeListener('window:state-changed', wrapped)
+    }
   },
   account: {
     getState: (): Promise<AccountState> => ipcRenderer.invoke('account:get-state'),
