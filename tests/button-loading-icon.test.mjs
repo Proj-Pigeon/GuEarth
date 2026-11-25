@@ -5,8 +5,8 @@ import { test } from 'node:test'
 import ts from 'typescript'
 
 const RENDERER_ROOT = resolve('src/renderer/src')
-const BUTTON_TAGS = new Set(['Button', 'AButton'])
-const ICON_TAG_RE = /(?:Outlined|Filled|TwoTone)$/
+const BUTTON_TAGS = new Set(['Button'])
+const ICON_TAG_RE = /Icon$/
 
 function collectTsxFiles(dir) {
   const results = []
@@ -24,7 +24,7 @@ function extractImportedIcons(sourceFile) {
     if (!ts.isImportDeclaration(statement)) continue
     if (!ts.isStringLiteral(statement.moduleSpecifier)) continue
     const moduleName = statement.moduleSpecifier.text
-    if (moduleName !== '@ant-design/icons' && moduleName !== 'lucide-react') continue
+    if (moduleName !== 'lucide-react') continue
     const namedBindings = statement.importClause?.namedBindings
     if (!namedBindings || !ts.isNamedImports(namedBindings)) continue
     for (const element of namedBindings.elements) {

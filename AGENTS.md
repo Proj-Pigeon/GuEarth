@@ -13,7 +13,7 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 | Layer | Choice | Notes |
 | --- | --- | --- |
 | Shell | Electron + electron-vite | contextIsolation on, nodeIntegration off, typed preload IPC (`window.guEarth`) |
-| Renderer | React 19 + Zustand 5 + **Ant Design v6** | UI framework is Ant Design v6 (`antd@6` + `@ant-design/icons@6`) with CSS Modules; EOQ assistant uses `@assistant-ui/react` + Tailwind CSS v4 scoped to `.eoq-drawer` — see [DESIGN.md](./DESIGN.md) |
+| Renderer | React 19 + Zustand 5 + **Base UI** (`@base-ui/react`) + Tailwind CSS v4 | Monochrome Light/Dark UI primitives live in `src/renderer/src/components/ui/` (`@base-ui/react` + Tailwind CSS v4 + `class-variance-authority` + `lucide-react`) alongside CSS Modules; EOQ assistant uses `@assistant-ui/react` — see [DESIGN.md](./DESIGN.md) |
 | Charts | ECharts (`echarts/core` + `SVGRenderer`) | modular imports wrapped in `src/renderer/src/components/charts/EChartBase.tsx` (`LineChart.tsx` / `BarChart.tsx`) |
 | 3D / Map | CesiumJS | Static assets (Workers/ThirdParty/Assets/Widgets) served from `cesium/` by the inline plugin in `electron.vite.config.ts`; `CESIUM_BASE_URL=./cesium/`. The renderer CSP must keep `'unsafe-eval'` — Cesium's bundled Knockout calls `eval` at module load, so without it the whole entry module aborts and the window is blank |
 | AI | OpenAI-compatible streaming client in the main process | Provider-agnostic (DeepSeek/Qwen/OpenAI…); API keys live **only** in the main process via `safeStorage`, never in the renderer |
@@ -24,7 +24,7 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 
 - `vite@^7` — electron-vite@5 peer range tops out at vite 7.
 - `typescript@5.9.x` — pinned TypeScript version (`tsconfig.node.json` + `tsconfig.web.json`).
-- `antd@6.6.5` — Ant Design v6 (React 19 native, CSS Variables + `@ant-design/cssinjs` `StyleProvider layer` to isolate Tailwind v4 `@layer`). Follow [DESIGN.md](./DESIGN.md) tokens and Ant Design v6 API (`Alert` `title`, `Modal`/`Drawer` `styles`, `App.useApp()`).
+- `@base-ui/react@^1.9` + `tailwindcss@^4.3` + `lucide-react` — headless Base UI primitives wrapped in `src/renderer/src/components/ui/` following [DESIGN.md](./DESIGN.md) monochrome Light/Dark tokens. Do not reintroduce `antd` or `@ant-design/*`.
 - Electron binaries must be installed manually with the npmmirror mirror:
   `ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" node node_modules/electron/install.js`
   (otherwise `npm run dev` fails with "Electron uninstall").
@@ -105,11 +105,7 @@ npm test           # node:test unit tests (tests/*.test.mjs), run by CI
 
 ## Conventions
 
-- **UI**: Use Ant Design v6 (`antd@6`) components with CSS Modules and the tokens in [DESIGN.md](./DESIGN.md) (and `@assistant-ui/react` + Tailwind CSS v4 scoped to `.eoq-drawer` for the EOQ assistant). All visual
-  decisions — colors, typography, spacing, radii, elevation, motion, component states — are
-  governed by DESIGN.md; do not invent local design rules. Custom components only where Ant
-  Design has no equivalent (e.g. globe-anchored overlays), built from DESIGN.md tokens. Every
-  `<Button loading={...}>` must pass its icon via the `icon` prop rather than as JSX children.
+- **UI**: Use the Base UI primitives in `src/renderer/src/components/ui/` (`@base-ui/react` + Tailwind CSS v4 + `lucide-react`) with CSS Modules and the monochrome Light/Dark tokens in [DESIGN.md](./DESIGN.md) (and `@assistant-ui/react` for the EOQ assistant). All visual decisions — colors, typography, spacing, radii, elevation, motion, component states — are governed by DESIGN.md; keep UI chrome strictly monochrome and reserve color for semantic status feedback and scientific geography data. Custom components only where the primitive kit has no equivalent (e.g. globe-anchored overlays), built from DESIGN.md CSS variables. Every `<Button loading={...}>` must pass its icon via the `icon` prop rather than as JSX children.
 - **No code comments** in any file type. Encode reasoning in names, structure, and tests.
 - **Commit messages and PR titles/descriptions in English.** Conversation with the user in
   Chinese.
