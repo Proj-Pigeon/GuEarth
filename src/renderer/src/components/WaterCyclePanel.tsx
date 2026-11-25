@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 import styles from './WaterCyclePanel.module.css'
 
@@ -52,10 +52,10 @@ export function WaterCyclePanel({ viewer, onClose }: WaterCyclePanelProps) {
     <div className={styles.waterCyclePanel} role="group" aria-label="水循环演示">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>水循环（海陆间循环）</span>
-        <Button size="small" onClick={() => setPlaying((prev) => !prev)}>
+        <Button size="sm" onClick={() => setPlaying((prev) => !prev)}>
           {playing ? '暂停' : '播放'}
         </Button>
-        <Button type="text" size="small" aria-label="关闭水循环演示" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭水循环演示" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <svg viewBox="0 0 340 200" className={styles.cycleSvg} role="img" aria-label="海陆间水循环环节示意图">
         <defs>

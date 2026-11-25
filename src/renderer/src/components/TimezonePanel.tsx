@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import type { TimezoneComparison } from '@renderer/composables/useTimezoneCompare'
 import { useSolarStore } from '@renderer/stores/solar'
 import { formatClock, localSolarTime } from '@renderer/thematic/solarMath'
@@ -46,7 +46,7 @@ export function TimezonePanel({ comparison, onClear }: TimezonePanelProps) {
     <div className={styles.timezonePanel} aria-label="时区对比">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>地方时对比</span>
-        <Button type="text" size="small" aria-label="关闭时区对比" icon={<CloseOutlined />} onClick={onClear} />
+        <Button variant="ghost" size="sm" aria-label="关闭时区对比" icon={<XIcon className="size-3.5" />} onClick={onClear} />
       </div>
       <div className={styles.pickRow}>
         <span className={`${styles.pickDot} ${styles.pickA}`} />

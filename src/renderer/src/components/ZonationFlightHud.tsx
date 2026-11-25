@@ -1,4 +1,4 @@
-import { Button, Progress } from 'antd'
+import { Button, Progress } from '@renderer/components/ui'
 import { useZonationStore, type ZonationFlightStage } from '@renderer/stores/zonation'
 import { cancelTransectFlight } from '@renderer/composables/useTransectFlight'
 import styles from './ZonationFlightHud.module.css'
@@ -31,11 +31,11 @@ export function ZonationFlightHud(_props: ZonationFlightHudProps) {
       <div className={styles.hudTitle}>剖面飞行</div>
       <div className={styles.hudStage}>{stageText[flightHud.stage]}</div>
       {flightHud.stage !== 'sampling' && (
-        <Progress percent={percent} showInfo={false} size="small" status="active" />
+        <Progress percent={percent} showInfo={false} />
       )}
       <div className={styles.hudMeta}>
         <span className={styles.hudCount}>{metaText}</span>
-        <Button size="small" onClick={cancelTransectFlight}>
+        <Button size="sm" onClick={cancelTransectFlight}>
           停止
         </Button>
       </div>

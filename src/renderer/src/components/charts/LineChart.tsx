@@ -3,6 +3,7 @@ import { use, type EChartsCoreOption } from 'echarts/core'
 import { LineChart as EChartsLineChart } from 'echarts/charts'
 import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
+import { useGlobeStore } from '@renderer/stores/globe'
 import EChartBase from './EChartBase'
 import styles from './LineChart.module.css'
 
@@ -45,14 +46,25 @@ export function LineChart({
   yMax,
   height = 180
 }: LineChartProps) {
-  const option = useMemo<EChartsCoreOption>(
-    () => ({
+  const resolvedTheme = useGlobeStore((state) => state.resolvedTheme)
+
+  const option = useMemo<EChartsCoreOption>(() => {
+    const isDark = resolvedTheme === 'dark'
+    const axisInk = isDark ? 'rgba(236, 236, 236, 0.55)' : 'rgba(13, 13, 13, 0.48)'
+    const axisLine = isDark ? 'rgba(255, 255, 255, 0.24)' : 'rgba(13, 13, 13, 0.32)'
+    const splitLine = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'
+    const markLineColor = isDark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(0, 0, 0, 0.25)'
+    const tooltipBg = isDark ? '#262626' : '#0d0d0d'
+    const tooltipBorder = isDark ? 'rgba(255, 255, 255, 0.12)' : 'transparent'
+
+    return {
       animation: false,
       grid: { left: 48, right: 20, top: 30, bottom: 30 },
       tooltip: {
         trigger: 'axis',
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        borderWidth: 0,
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
+        borderWidth: isDark ? 1 : 0,
         padding: [4, 8],
         textStyle: { color: '#ffffff', fontSize: 12, lineHeight: 20 },
         formatter: (params: unknown) => {
@@ -70,16 +82,16 @@ export function LineChart({
         min: xMin,
         max: xMax,
         name: xName,
-        nameTextStyle: { color: 'rgba(0, 0, 0, 0.45)', fontSize: 11 },
+        nameTextStyle: { color: axisInk, fontSize: 11 },
         nameGap: 18,
         axisLabel: {
-          color: 'rgba(0, 0, 0, 0.45)',
+          color: axisInk,
           fontFamily: 'SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace',
           fontSize: 11,
           hideOverlap: true,
           formatter: (value: number) => (xFormatter ? xFormatter(value) : String(value))
         },
-        axisLine: { show: true, lineStyle: { color: 'rgba(0, 0, 0, 0.45)' } },
+        axisLine: { show: true, lineStyle: { color: axisLine } },
         axisTick: { show: false },
         splitLine: { show: false }
       },
@@ -88,15 +100,15 @@ export function LineChart({
         min: yMin,
         max: yMax,
         name: yName,
-        nameTextStyle: { color: 'rgba(0, 0, 0, 0.45)', fontSize: 11, align: 'left' },
+        nameTextStyle: { color: axisInk, fontSize: 11, align: 'left' },
         axisLabel: {
-          color: 'rgba(0, 0, 0, 0.45)',
+          color: axisInk,
           fontFamily: 'SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace',
           fontSize: 11
         },
         axisLine: { show: false },
         axisTick: { show: false },
-        splitLine: { lineStyle: { color: 'rgba(5, 5, 5, 0.06)' } }
+        splitLine: { lineStyle: { color: splitLine } }
       },
       series: series.map((item) => ({
         type: 'line',
@@ -112,14 +124,13 @@ export function LineChart({
               silent: true,
               symbol: ['none', 'none'],
               label: { show: false },
-              lineStyle: { color: 'rgba(0, 0, 0, 0.25)', type: 'dashed', width: 1 },
+              lineStyle: { color: markLineColor, type: 'dashed', width: 1 },
               data: item.markY.map((y) => ({ yAxis: y }))
             }
           : undefined
       }))
-    }),
-    [series, xName, xMin, xMax, xFormatter, yName, yMin, yMax]
-  )
+    }
+  }, [series, xName, xMin, xMax, xFormatter, yName, yMin, yMax, resolvedTheme])
 
   return <EChartBase className={styles.lineChart} option={option} style={{ height: `${height}px` }} />
 }

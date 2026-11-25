@@ -1,4 +1,4 @@
-import { Alert, Button, Segmented, Select, Spin } from 'antd'
+import { Alert, Button, Segmented, Select, Spinner } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
 import { climateZones } from '@renderer/thematic/climateZones'
 import { koppenZones } from '@renderer/thematic/koppenZones'
@@ -212,7 +212,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
             <>
               {(loading || typhoonLoading) && (
                 <div className={styles.legendItem} role="status">
-                  <Spin size="small" />
+                  <Spinner size="sm" />
                   <span>正在加载台风数据…</span>
                 </div>
               )}
@@ -446,12 +446,14 @@ export function ThematicLegend(_props: ThematicLegendProps) {
         <div className={styles.legendGroup}>
           <div className={styles.legendHeading}>城市功能分区</div>
           <Select
-            size="small"
+            size="sm"
             value={functionalZoneCityId}
             options={functionalZoneCityOptions}
             className={styles.citySelect}
             aria-label="选择功能分区城市"
-            onChange={(value: string) => setFunctionalZoneCity(value)}
+            onChange={(value) => {
+              if (value) setFunctionalZoneCity(value)
+            }}
           />
           {functionalZoneEntries.map((zone) => (
             <div key={zone.name} className={styles.legendItem}>

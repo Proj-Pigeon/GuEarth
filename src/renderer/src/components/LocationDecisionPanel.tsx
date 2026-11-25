@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
-import { CloseOutlined, EnvironmentOutlined, MessageOutlined, UndoOutlined } from '@ant-design/icons'
-import { Button, Segmented, Switch } from 'antd'
+import { MapPinIcon, MessageSquareIcon, RotateCcwIcon, XIcon } from 'lucide-react'
+import { Button, Segmented, Switch } from '@renderer/components/ui'
 import { useAiStore } from '@renderer/stores/ai'
 import { buildDecisionPrompt, decisionCases, decisionSandboxIntro } from '@renderer/thematic/decisionSandbox'
 import styles from './LocationDecisionPanel.module.css'
@@ -70,7 +70,7 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
     <div className={styles.decisionPanel} role="group" aria-label="区位决策沙盘">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>区位决策沙盘</span>
-        <Button type="text" size="small" aria-label="关闭区位决策沙盘" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭区位决策沙盘" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
 
       <Segmented
@@ -95,7 +95,7 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
             >
               <div className={styles.factorMain}>
                 <Switch
-                  size="small"
+                  size="sm"
                   checked={selected}
                   aria-label={`因素开关：${factor.name}`}
                   onChange={() => toggleFactor(factor.id)}
@@ -117,23 +117,23 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
 
       <div className={styles.actionRow}>
         <Button
-          type="text"
-          size="small"
+          variant="ghost"
+          size="sm"
           className={styles.caseFly}
           aria-label="飞往该地"
-          icon={<EnvironmentOutlined />}
+          icon={<MapPinIcon className="size-3.5" />}
           onClick={flyToPlace}
         >
           飞往该地
         </Button>
-        <Button size="small" disabled={selectedFactorIds.length === 0} icon={<UndoOutlined />} onClick={resetSelection}>
+        <Button size="sm" disabled={selectedFactorIds.length === 0} icon={<RotateCcwIcon className="size-3.5" />} onClick={resetSelection}>
           重置
         </Button>
         <Button
-          type="primary"
-          size="small"
+          variant="primary"
+          size="sm"
           className={styles.critiqueButton}
-          icon={<MessageOutlined />}
+          icon={<MessageSquareIcon className="size-3.5" />}
           onClick={requestCritique}
         >
           按高考答题结构请 AI 点评

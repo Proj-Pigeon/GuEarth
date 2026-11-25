@@ -10,13 +10,14 @@
   max-height: 340px;
   overflow-y: auto;
   padding: 8px 12px;
-  background: #ffffff;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
 }
 
 .legendTitle {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
   margin-bottom: 2px;
@@ -29,7 +30,7 @@
 }
 
 .legendHeading {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
   font-weight: 600;
@@ -39,14 +40,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
 }
 
 .legendCopy {
   margin: 0;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
   overflow-wrap: anywhere;
@@ -65,13 +66,13 @@
 }
 
 .swatchObserved {
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--ink-secondary);
 }
 
 .swatchDashed {
   height: 0;
   border-radius: 0;
-  border-top: 2px dashed rgba(0, 0, 0, 0.45);
+  border-top: 2px dashed var(--ink-tertiary);
 }
 
 .swatchDot {
@@ -89,7 +90,7 @@
 .legendRow {
   display: flex;
   justify-content: space-between;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
 }

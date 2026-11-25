@@ -1,5 +1,5 @@
-import { CloseOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import { thematicLayerCatalog, useClimateStore, type ThematicLayerId } from '@renderer/stores/climate'
 import { useSolarStore, type MotionPanel as SolarMotionPanel } from '@renderer/stores/solar'
 import { useAtmosphereStore, type AtmospherePanel } from '@renderer/stores/atmosphere'
@@ -402,7 +402,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
     <div className={styles.teachingLab} role="dialog" aria-label="地理实验室">
       <div className={styles.labHeader}>
         <span className={styles.labTitle}>地理实验室</span>
-        <Button type="text" size="small" aria-label="关闭地理实验室" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭地理实验室" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <div className={styles.labGrid}>
         {chapters.map((chapter) => (

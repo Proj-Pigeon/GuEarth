@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button, Segmented, Slider } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button, Segmented, Slider } from '@renderer/components/ui'
 import { useSolarStore } from '@renderer/stores/solar'
 import { dayLength, declinationForDate, monthStartDayOfYear, noonAltitudeDeg, solarDeclinationDeg } from '@renderer/thematic/solarMath'
 import LineChart, { type ChartSeries } from './charts/LineChart'
@@ -74,13 +74,13 @@ export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {
       <div className={styles.chartHeader}>
         <Segmented
           value={mode}
-          size="small"
+          size="sm"
           options={modeOptions}
           aria-label="曲线模式"
           onChange={(value) => setMode(value as 'latitude' | 'date')}
         />
         <span className={styles.declination}>太阳直射点 {declinationText}</span>
-        <Button type="text" size="small" aria-label="关闭曲线面板" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭曲线面板" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       {mode === 'date' && (
         <div className={styles.latitudeRow}>
@@ -92,7 +92,7 @@ export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {
             step={5}
             marks={latitudeMarks}
             className={styles.latitudeSlider}
-            ariaLabelForHandle="纬度选择"
+            aria-label="纬度选择"
             onChange={(value) => setLatitude(value)}
           />
           <span className={styles.latitudeValue}>{latLabel(latitude)}</span>

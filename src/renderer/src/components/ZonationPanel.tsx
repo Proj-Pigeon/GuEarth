@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
-import { CloseOutlined, LoadingOutlined } from '@ant-design/icons'
-import { Alert, Button, Select } from 'antd'
+import { Loader2Icon, XIcon } from 'lucide-react'
+import { Alert, Button, Select } from '@renderer/components/ui'
 import {
   mountainById,
   snowlineM,
@@ -236,16 +236,17 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
     <div className={styles.zonationPanel} role="group" aria-label="山地垂直带谱剖面">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>山地垂直带谱剖面</span>
-        <Button type="text" size="small" aria-label="关闭山地垂直带谱剖面" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭山地垂直带谱剖面" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
 
       <Select
-        size="small"
+        size="sm"
         value={activeId}
         options={mountainOptions}
-        style={{ width: '100%' }}
         aria-label="选择山脉"
-        onChange={(value) => selectMountain(String(value))}
+        onChange={(value) => {
+          if (value) selectMountain(String(value))
+        }}
       />
 
       <svg viewBox={`0 0 ${SPECTRUM_W} ${SPECTRUM_H}`} className={styles.spectrum} role="img" aria-label="垂直带谱示意">
@@ -276,7 +277,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
                 />
               ))}
             </g>
-            <path d={layout.triangle} fill="none" stroke="rgba(0, 0, 0, 0.45)" strokeWidth="1" />
+            <path d={layout.triangle} fill="none" stroke="var(--ink-tertiary)" strokeWidth="1" />
             {layout.snowY !== undefined && (
               <>
                 <line
@@ -324,11 +325,11 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
       </div>
 
       <div className={styles.flightRow}>
-        <Button type="primary" size="small" loading={flying} onClick={() => void startFlight()}>
+        <Button variant="primary" size="sm" loading={flying} onClick={() => void startFlight()}>
           沿剖面飞行
         </Button>
         {flying && (
-          <Button size="small" onClick={cancelTransectFlight}>
+          <Button size="sm" onClick={cancelTransectFlight}>
             停止
           </Button>
         )}
@@ -337,7 +338,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
 
       <div className={styles.chartTitle}>
         沿剖面真实地形
-        {sampling && <LoadingOutlined className={styles.loadingIcon} />}
+        {sampling && <Loader2Icon className={`${styles.loadingIcon} size-3.5 animate-spin`} />}
       </div>
 
       <svg viewBox={`0 0 ${PROFILE_W} ${PROFILE_H}`} className={styles.profile} role="img" aria-label="沿剖面真实地形高程">
@@ -369,7 +370,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
           x2={PROFILE_W - PROFILE_RIGHT}
           y1={profileLayout.baseY}
           y2={profileLayout.baseY}
-          stroke="rgba(5, 5, 5, 0.15)"
+          stroke="var(--border-strong)"
           strokeWidth="1"
         />
         <polyline

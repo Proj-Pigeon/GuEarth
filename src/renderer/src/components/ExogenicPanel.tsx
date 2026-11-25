@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react'
 import * as Cesium from 'cesium'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import styles from './ExogenicPanel.module.css'
 
 export interface ExogenicPanelProps {
@@ -83,7 +83,7 @@ export function ExogenicPanel({ viewer, onClose }: ExogenicPanelProps) {
     <div className={styles.exogenicPanel} role="group" aria-label="外力作用过程">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>外力作用过程</span>
-        <Button type="text" size="small" aria-label="关闭外力作用过程" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭外力作用过程" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <div className={styles.chain}>
         {stages.map((stage, index) => (
@@ -106,7 +106,7 @@ export function ExogenicPanel({ viewer, onClose }: ExogenicPanelProps) {
           <div className={styles.stageForce}>主要动力：{activeStage.force}</div>
           <div className={styles.stageDesc}>{activeStage.description}</div>
           {activeStage.site && (
-            <Button size="small" onClick={() => flyToSite(activeStage)}>
+            <Button size="sm" onClick={() => flyToSite(activeStage)}>
               在地球上查看：{activeStage.site.label}
             </Button>
           )}

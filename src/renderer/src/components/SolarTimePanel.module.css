@@ -6,14 +6,14 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 8px 10px;
   width: min(680px, calc(100vw - 600px));
   min-width: 480px;
-  padding: 12px 20px 8px;
-  background: #ffffff;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 8px;
-  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  padding: 12px 20px 10px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
   z-index: 10;
 }
 
@@ -56,23 +56,19 @@
 }
 
 .clockPrimary {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   font-weight: 600;
 }
 
 .clockSecondary {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
-}
-
-.chartToggleActive {
-  color: #1677ff;
 }
 
 .hourSlider {
   flex-basis: 100%;
-  margin: 2px 12px 20px 12px;
+  margin: 2px 12px 6px 12px;
 }
 
 .chartAnchor {

@@ -9,10 +9,10 @@
   width: min(560px, calc(100vw - 700px));
   min-width: 340px;
   padding: 12px 16px 20px;
-  background: #ffffff;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 8px;
-  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
 }
 
 .monthTimelineStacked {
@@ -32,14 +32,14 @@
 }
 
 .monthValue {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
 }
 
 .seasonText {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
   white-space: nowrap;
@@ -47,5 +47,5 @@
 
 .monthSlider {
   flex: 1;
-  margin: 0 10px 12px 10px;
+  margin: 0 10px 4px 10px;
 }

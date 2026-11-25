@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import LineChart, { type ChartSeries } from './charts/LineChart'
 import styles from './AtmosphereLayersPanel.module.css'
 
@@ -52,7 +52,7 @@ export function AtmosphereLayersPanel({ onClose }: AtmosphereLayersPanelProps) {
     <div className={styles.layersPanel} role="group" aria-label="大气垂直分层">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>大气垂直分层</span>
-        <Button type="text" size="small" aria-label="关闭大气垂直分层" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭大气垂直分层" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <div className={styles.chartTitle}>气温随高度的分布（横轴：气温，纵轴：高度）</div>
       <LineChart

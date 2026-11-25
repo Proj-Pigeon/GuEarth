@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as Cesium from 'cesium'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import styles from './LandformGuidePanel.module.css'
 
 export interface LandformGuidePanelProps {
@@ -96,7 +96,7 @@ export function LandformGuidePanel({ viewer, onClose }: LandformGuidePanelProps)
     <div className={styles.guidePanel} role="group" aria-label="典型地貌识别">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>典型地貌识别</span>
-        <Button type="text" size="small" aria-label="关闭典型地貌识别" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭典型地貌识别" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <div className={styles.siteList}>
         {sites.map((site) => (

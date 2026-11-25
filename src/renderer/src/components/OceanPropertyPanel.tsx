@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import LineChart, { type ChartSeries } from './charts/LineChart'
 import styles from './OceanPropertyPanel.module.css'
 
@@ -61,7 +61,7 @@ export function OceanPropertyPanel({ onClose }: OceanPropertyPanelProps) {
     <div className={styles.oceanPanel} role="group" aria-label="海水温度与盐度">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>海水温度与盐度</span>
-        <Button type="text" size="small" aria-label="关闭海水温度与盐度" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭海水温度与盐度" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <div className={styles.chartTitle}>表层海水温度随纬度分布</div>
       <LineChart series={temperatureSeries} xMin={-60} xMax={60} xName="纬度" yName="温度(℃)" yMin={0} yMax={32} height={150} />

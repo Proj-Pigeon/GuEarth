@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
-import dayjs, { type Dayjs } from 'dayjs'
-import { CaretRightOutlined, CloseOutlined, PauseOutlined } from '@ant-design/icons'
-import { Button, DatePicker, Slider } from 'antd'
+import { PauseIcon, PlayIcon, XIcon } from 'lucide-react'
+import { Button, MonthDayPicker, Slider } from '@renderer/components/ui'
 import { useVisibleAnimation } from '@renderer/composables/useVisibleAnimation'
 import { useSolarStore } from '@renderer/stores/solar'
 import {
@@ -72,7 +71,6 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
   const [localHour, setLocalHour] = useState(10)
   const [isPlaying, setIsPlaying] = useState(false)
 
-  const dateValue = useMemo(() => dayjs(date), [date])
   const declination = useMemo(() => declinationForDate(parts.month, parts.day), [parts.month, parts.day])
   const length = useMemo(() => dayLength(latitude, declination), [latitude, declination])
   const crossings = useMemo(() => horizonCrossingsDeg(latitude, declination), [latitude, declination])
@@ -131,31 +129,20 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
     if (dt > 0) setLocalHour((prev) => (prev + dt * LOCAL_HOURS_PER_SECOND) % 24)
   })
 
-  function handleDateChange(value: Dayjs | null): void {
-    if (value) setDate(value.format('YYYY-MM-DD'))
-  }
-
   return (
     <div className={styles.solarPathPanel} role="group" aria-label="太阳视运动轨迹">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>太阳视运动轨迹</span>
         <span className={styles.panelSubtitle}>{date}</span>
-        <Button type="text" size="small" aria-label="关闭太阳视运动轨迹" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭太阳视运动轨迹" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <div className={styles.presetRow}>
         {presets.map((preset) => (
-          <Button key={preset.key} size="small" onClick={() => setPreset(preset.key)}>
+          <Button key={preset.key} size="sm" onClick={() => setPreset(preset.key)}>
             {preset.label}
           </Button>
         ))}
-        <DatePicker
-          value={dateValue}
-          size="small"
-          format="M月D日"
-          allowClear={false}
-          aria-label="观察日期"
-          onChange={handleDateChange}
-        />
+        <MonthDayPicker value={date} aria-label="观察日期" onChange={setDate} />
       </div>
       <div className={styles.latitudeRow}>
         <span className={styles.rowLabel}>观察点纬度</span>
@@ -166,7 +153,7 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
           step={1}
           marks={latitudeMarks}
           className={styles.latitudeSlider}
-          ariaLabelForHandle="观察点纬度"
+          aria-label="观察点纬度"
           onChange={(value) => setLatitude(value)}
         />
         <span className={styles.rowValue}>{latLabel(latitude)}</span>
@@ -177,9 +164,9 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
         role="img"
         aria-label="太阳视运动轨迹天穹图，外圈为地平圈，圆心为天顶"
       >
-        <circle cx={CENTER} cy={CENTER} r={HORIZON_RADIUS} fill="rgba(0, 0, 0, 0.02)" stroke="rgba(0, 0, 0, 0.45)" strokeWidth="1.5" />
-        <circle cx={CENTER} cy={CENTER} r={(HORIZON_RADIUS * 2) / 3} fill="none" stroke="rgba(0, 0, 0, 0.08)" strokeDasharray="3 4" />
-        <circle cx={CENTER} cy={CENTER} r={HORIZON_RADIUS / 3} fill="none" stroke="rgba(0, 0, 0, 0.08)" strokeDasharray="3 4" />
+        <circle cx={CENTER} cy={CENTER} r={HORIZON_RADIUS} fill="var(--subtle)" stroke="var(--ink-tertiary)" strokeWidth="1.5" />
+        <circle cx={CENTER} cy={CENTER} r={(HORIZON_RADIUS * 2) / 3} fill="none" stroke="var(--hairline)" strokeDasharray="3 4" />
+        <circle cx={CENTER} cy={CENTER} r={HORIZON_RADIUS / 3} fill="none" stroke="var(--hairline)" strokeDasharray="3 4" />
         <text x={CENTER} y={16} className={styles.directionLabel}>北</text>
         <text x={SVG_SIZE - 16} y={CENTER + 4} className={styles.directionLabel}>东</text>
         <text x={CENTER} y={SVG_SIZE - 6} className={styles.directionLabel}>南</text>
@@ -188,13 +175,13 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
         {pathPoints && <path d={pathPoints} fill="none" stroke={PATH_COLOR} strokeWidth="2.5" />}
         {sunriseDot && (
           <g>
-            <circle cx={sunriseDot.x} cy={sunriseDot.y} r="4" fill="#faad14" stroke="#ffffff" strokeWidth="1.5" />
+            <circle cx={sunriseDot.x} cy={sunriseDot.y} r="4" fill="#faad14" stroke="var(--surface)" strokeWidth="1.5" />
             <text x={sunriseDot.x + 7} y={sunriseDot.y + 4} className={styles.markerLabel}>日出</text>
           </g>
         )}
         {sunsetDot && (
           <g>
-            <circle cx={sunsetDot.x} cy={sunsetDot.y} r="4" fill="#faad14" stroke="#ffffff" strokeWidth="1.5" />
+            <circle cx={sunsetDot.x} cy={sunsetDot.y} r="4" fill="#faad14" stroke="var(--surface)" strokeWidth="1.5" />
             <text x={sunsetDot.x + 7} y={sunsetDot.y + 4} className={styles.markerLabel}>日落</text>
           </g>
         )}
@@ -207,7 +194,7 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
         {sunDot && (
           <g>
             <circle cx={sunDot.x} cy={sunDot.y} r="7" fill="none" stroke={SUN_COLOR} strokeWidth="1" opacity="0.4" />
-            <circle cx={sunDot.x} cy={sunDot.y} r="5" fill={SUN_COLOR} stroke="#ffffff" strokeWidth="1.5" />
+            <circle cx={sunDot.x} cy={sunDot.y} r="5" fill={SUN_COLOR} stroke="var(--surface)" strokeWidth="1.5" />
           </g>
         )}
         {length.state !== 'polar-night' && (
@@ -247,11 +234,11 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
       </div>
       <div className={styles.timeRow}>
         <Button
-          type={isPlaying ? 'primary' : 'default'}
+          variant={isPlaying ? 'primary' : 'default'}
           shape="circle"
-          size="small"
+          size="sm"
           aria-label={isPlaying ? '暂停视运动演示' : '播放视运动演示'}
-          icon={isPlaying ? <PauseOutlined /> : <CaretRightOutlined />}
+          icon={isPlaying ? <PauseIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
           onClick={() => setIsPlaying((prev) => !prev)}
         />
         <Slider
@@ -261,7 +248,7 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
           step={0.25}
           marks={timeMarks}
           className={styles.timeSlider}
-          ariaLabelForHandle="地方时"
+          aria-label="地方时"
           onChange={(value) => setLocalHour(value)}
         />
         <span className={styles.rowValue}>地方时 {formatClock(localHour)}</span>

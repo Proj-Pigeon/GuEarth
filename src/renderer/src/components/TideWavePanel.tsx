@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button, Segmented } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button, Segmented } from '@renderer/components/ui'
 import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 import styles from './TideWavePanel.module.css'
 
@@ -64,12 +64,12 @@ export function TideWavePanel({ onClose }: TideWavePanelProps) {
         <span className={styles.panelTitle}>潮汐与波浪</span>
         <Segmented
           value={tab}
-          size="small"
+          size="sm"
           options={tabOptions}
           aria-label="波浪或潮汐"
           onChange={(value) => setTab(value as Tab)}
         />
-        <Button type="text" size="small" aria-label="关闭潮汐与波浪" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭潮汐与波浪" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       {tab === 'wave' ? (
         <svg viewBox="0 0 340 200" className={styles.tideSvg} role="img" aria-label="波浪与水质点运动示意">
@@ -135,8 +135,8 @@ export function TideWavePanel({ onClose }: TideWavePanelProps) {
               <stop offset="100%" stopColor={dc.sun} />
             </radialGradient>
           </defs>
-          <rect x="0" y="0" width="340" height="200" rx="8" fill="#f8f9fb" />
-          <line x1="8" y1="96" x2="332" y2="96" stroke="rgba(0,0,0,0.14)" strokeDasharray="4 5" />
+          <rect x="0" y="0" width="340" height="200" rx="8" fill="var(--subtle)" />
+          <line x1="8" y1="96" x2="332" y2="96" stroke="var(--hairline)" strokeDasharray="4 5" />
           <circle cx="318" cy="96" r="14" fill="url(#tw-sun)" />
           <text x="318" y="128" textAnchor="middle" className={styles.svgLabel} fill={dc.inkSecondary}>
             太阳
@@ -158,13 +158,13 @@ export function TideWavePanel({ onClose }: TideWavePanelProps) {
           <text x="170" y="150" textAnchor="middle" className={styles.svgLabel} fill={dc.inkSecondary}>
             地球
           </text>
-          <text x="116" y="66" className={styles.svgLabel} fill={dc.primary} fontWeight="600" textAnchor="middle">
+          <text x="116" y="66" className={styles.svgLabel} fill={dc.coldAir} fontWeight="600" textAnchor="middle">
             潮汐隆起
           </text>
-          <text x="228" y="132" className={styles.svgLabel} fill={dc.primary} fontWeight="600" textAnchor="middle">
+          <text x="228" y="132" className={styles.svgLabel} fill={dc.coldAir} fontWeight="600" textAnchor="middle">
             潮汐隆起
           </text>
-          <circle cx="170" cy="96" r="74" fill="none" stroke="rgba(0,0,0,0.1)" strokeDasharray="2 5" />
+          <circle cx="170" cy="96" r="74" fill="none" stroke="var(--hairline)" strokeDasharray="2 5" />
           <circle cx={moonX} cy={moonY} r="9" fill={dc.moon} />
           <circle cx={moonX - 3} cy={moonY - 3} r="2" fill="rgba(255,255,255,0.28)" />
           <circle cx={moonX + 2} cy={moonY + 3} r="1.4" fill="rgba(255,255,255,0.2)" />
@@ -185,7 +185,7 @@ export function TideWavePanel({ onClose }: TideWavePanelProps) {
       {tab === 'tide' && (
         <Segmented
           value={tideMode}
-          size="small"
+          size="sm"
           options={tideModeOptions}
           aria-label="大潮或小潮"
           onChange={(value) => setTideMode(value as TideMode)}

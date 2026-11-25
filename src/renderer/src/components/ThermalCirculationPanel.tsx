@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button, Segmented } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button, Segmented } from '@renderer/components/ui'
 import { diagramFont } from './diagram/diagramTheme'
 import styles from './ThermalCirculationPanel.module.css'
 
@@ -135,7 +135,7 @@ function valleyConfig(current: Period): SceneConfig {
 
 function urbanConfig(): SceneConfig {
   return {
-    grounds: [{ d: 'M0 152 L320 152 L320 210 L0 210 Z', fill: 'rgba(0, 0, 0, 0.06)' }],
+    grounds: [{ d: 'M0 152 L320 152 L320 210 L0 210 Z', fill: 'var(--muted)' }],
     arrows: [
       { d: 'M160 132 L160 46', color: RISING, label: '热岛气流上升', labelAt: [172, 92] },
       { d: 'M154 44 Q 100 30 62 60', color: WIND },
@@ -175,19 +175,19 @@ export function ThermalCirculationPanel({ onClose }: ThermalCirculationPanelProp
         <span className={styles.panelTitle}>热力环流</span>
         <Segmented
           value={scene}
-          size="small"
+          size="sm"
           options={sceneOptions}
           aria-label="环流场景"
           onChange={(value) => setScene(value as SceneId)}
         />
-        {onClose && <Button type="text" size="small" aria-label="关闭热力环流" icon={<CloseOutlined />} onClick={onClose} />}
+        {onClose && <Button variant="ghost" size="sm" aria-label="关闭热力环流" icon={<XIcon className="size-3.5" />} onClick={onClose} />}
       </div>
       {showPeriodToggle && (
         <div className={styles.periodRow}>
           <span className={styles.rowLabel}>时间</span>
           <Segmented
             value={period}
-            size="small"
+            size="sm"
             options={periodOptions}
             aria-label="昼与夜"
             onChange={(value) => setPeriod(value as Period)}
@@ -199,20 +199,20 @@ export function ThermalCirculationPanel({ onClose }: ThermalCirculationPanelProp
           <circle cx="292" cy="26" r="9" fill="#faad14" />
         ) : (
           <g>
-            <circle cx="292" cy="26" r="9" fill="rgba(0, 0, 0, 0.25)" />
-            <circle cx="296" cy="23" r="8" fill="#ffffff" />
+            <circle cx="292" cy="26" r="9" fill="var(--ink-tertiary)" />
+            <circle cx="296" cy="23" r="8" fill="var(--surface)" />
           </g>
         )}
         {sceneConfig.grounds.map((ground, index) => (
-          <path key={index} d={ground.d} fill={ground.fill} stroke="rgba(0, 0, 0, 0.35)" strokeWidth="1.5" />
+          <path key={index} d={ground.d} fill={ground.fill} stroke="var(--ink-tertiary)" strokeWidth="1.5" />
         ))}
         {scene === 'urban' && (
           <g>
             {BUILDINGS.map(([bx, bw, bh]) => (
-              <rect key={`b-${bx}`} x={bx} y={152 - bh} width={bw} height={bh} fill="rgba(0, 0, 0, 0.3)" rx="1.5" />
+              <rect key={`b-${bx}`} x={bx} y={152 - bh} width={bw} height={bh} fill="var(--ink-tertiary)" rx="1.5" />
             ))}
             {SUBURB_HOUSES.map(([hx, hw]) => (
-              <rect key={`h-${hx}`} x={hx} y={152 - hw} width={hw} height={hw} fill="rgba(0, 0, 0, 0.18)" rx="1" />
+              <rect key={`h-${hx}`} x={hx} y={152 - hw} width={hw} height={hw} fill="var(--border-strong)" rx="1" />
             ))}
           </g>
         )}
@@ -240,7 +240,7 @@ export function ThermalCirculationPanel({ onClose }: ThermalCirculationPanelProp
         ))}
         <defs>
           <marker id="circ-arrowhead" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 Z" fill="rgba(0,0,0,0.55)" />
+            <path d="M0,0 L7,3.5 L0,7 Z" fill="var(--ink-secondary)" />
           </marker>
         </defs>
         <g fontSize="11" fontFamily={diagramFont}>
@@ -257,7 +257,7 @@ export function ThermalCirculationPanel({ onClose }: ThermalCirculationPanelProp
             </text>
           ))}
           {sceneConfig.placeLabels.map((place, index) => (
-            <text key={`p-${index}`} x={place.at[0]} y={place.at[1]} textAnchor="middle" fill="rgba(0,0,0,0.65)">
+            <text key={`p-${index}`} x={place.at[0]} y={place.at[1]} textAnchor="middle" fill="var(--ink-secondary)">
               {place.text}
             </text>
           ))}

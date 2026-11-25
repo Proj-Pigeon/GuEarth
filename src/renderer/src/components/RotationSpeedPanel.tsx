@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import LineChart, { type ChartSeries } from './charts/LineChart'
 import styles from './RotationSpeedPanel.module.css'
 
@@ -57,7 +57,7 @@ export function RotationSpeedPanel({ onClose }: RotationSpeedPanelProps) {
     <div className={styles.rotationPanel} role="group" aria-label="地球自转速度演示">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>地球自转的速度与周期</span>
-        <Button type="text" size="small" aria-label="关闭自转速度演示" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭自转速度演示" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <div className={styles.chartTitle}>自转线速度随纬度变化（v = 1670 × cos φ 千米/时）</div>
       <LineChart
@@ -78,8 +78,8 @@ export function RotationSpeedPanel({ onClose }: RotationSpeedPanelProps) {
         role="img"
         aria-label="恒星日与太阳日对比示意图：地球公转一段后需多转59分才能再次对准太阳"
       >
-        <line x1={STAR.x} y1={STAR.y} x2={E1.x} y2={E1.y} stroke="rgba(0, 0, 0, 0.2)" strokeDasharray="3 4" />
-        <line x1={STAR.x} y1={STAR.y} x2={E2.x} y2={E2.y} stroke="rgba(0, 0, 0, 0.2)" strokeDasharray="3 4" />
+        <line x1={STAR.x} y1={STAR.y} x2={E1.x} y2={E1.y} stroke="var(--border-strong)" strokeDasharray="3 4" />
+        <line x1={STAR.x} y1={STAR.y} x2={E2.x} y2={E2.y} stroke="var(--border-strong)" strokeDasharray="3 4" />
         <g transform={`translate(${STAR.x}, ${STAR.y})`}>
           <circle r="3" fill="#722ed1" />
           <circle r="7" fill="none" stroke="#722ed1" strokeDasharray="2 2" />
@@ -89,10 +89,10 @@ export function RotationSpeedPanel({ onClose }: RotationSpeedPanelProps) {
           <circle r={SUN.r} fill="#fa8c16" />
         </g>
         <text x={SUN.x} y={SUN.y + SUN.r + 14} className={styles.axisLabel} textAnchor="middle">太阳</text>
-        <path d="M 165 122 Q 200 108 226 84" fill="none" stroke="rgba(0, 0, 0, 0.35)" strokeDasharray="4 4" markerEnd="url(#orbit-arrow)" />
+        <path d="M 165 122 Q 200 108 226 84" fill="none" stroke="var(--ink-tertiary)" strokeDasharray="4 4" markerEnd="url(#orbit-arrow)" />
         <defs>
           <marker id="orbit-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M0,0 L8,4 L0,8 z" fill="rgba(0, 0, 0, 0.35)" />
+            <path d="M0,0 L8,4 L0,8 z" fill="var(--ink-tertiary)" />
           </marker>
           <marker id="solid-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
             <path d="M0,0 L8,4 L0,8 z" fill="#1677ff" />
@@ -102,10 +102,10 @@ export function RotationSpeedPanel({ onClose }: RotationSpeedPanelProps) {
           </marker>
         </defs>
         <text x="196" y="122" className={styles.axisLabel}>公转方向</text>
-        <circle cx={E1.x} cy={E1.y} r={E1.r} fill="#52c41a" stroke="#ffffff" strokeWidth="2" />
+        <circle cx={E1.x} cy={E1.y} r={E1.r} fill="#52c41a" stroke="var(--surface)" strokeWidth="2" />
         <line x1={E1.x} y1={E1.y} x2={e1SunArrow.x} y2={e1SunArrow.y} stroke="#1677ff" strokeWidth="2" markerEnd="url(#solid-arrow)" />
         <text x={E1.x + 4} y={E1.y - 16} className={styles.earthLabel}>位置① P 指向太阳（也是恒星方向）</text>
-        <circle cx={E2.x} cy={E2.y} r={E2.r} fill="#52c41a" stroke="#ffffff" strokeWidth="2" />
+        <circle cx={E2.x} cy={E2.y} r={E2.r} fill="#52c41a" stroke="var(--surface)" strokeWidth="2" />
         <line x1={E2.x} y1={E2.y} x2={e2StarArrow.x} y2={e2StarArrow.y} stroke="#1677ff" strokeWidth="2" markerEnd="url(#solid-arrow)" />
         <line x1={E2.x} y1={E2.y} x2={e2SunArrow.x} y2={e2SunArrow.y} stroke="rgba(22, 119, 255, 0.55)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#dash-arrow)" />
         <text x={E2.x + 6} y={E2.y - 24} className={styles.earthLabel}>位置② 已转 360°：P 仍指恒星（恒星日）</text>

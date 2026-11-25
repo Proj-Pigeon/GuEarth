@@ -1,5 +1,5 @@
-import { CloseOutlined } from '@ant-design/icons'
-import { Button, Segmented } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button, Segmented } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
 import { ensoPhaseMeta, ensoPhaseOptions, type EnsoPhase } from '@renderer/thematic/ensoPhases'
 import styles from './EnsoPanel.module.css'
@@ -17,12 +17,12 @@ export function EnsoPanel({ onClose }: EnsoPanelProps) {
     <div className={styles.ensoPanel} role="group" aria-label="ENSO 演示">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>ENSO：厄尔尼诺与拉尼娜</span>
-        <Button type="text" size="small" aria-label="关闭 ENSO 演示" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭 ENSO 演示" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <Segmented
         value={phase}
         options={ensoPhaseOptions}
-        size="small"
+        size="sm"
         aria-label="ENSO 相位"
         onChange={(value) => setEnsoPhase(value as EnsoPhase)}
       />

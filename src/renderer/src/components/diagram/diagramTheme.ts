@@ -1,9 +1,9 @@
 export const diagramColors = {
-  ink: 'rgba(0, 0, 0, 0.88)',
-  inkSecondary: 'rgba(0, 0, 0, 0.65)',
-  inkTertiary: 'rgba(0, 0, 0, 0.45)',
-  hairline: 'rgba(5, 5, 5, 0.06)',
-  primary: '#1677ff',
+  ink: 'var(--ink)',
+  inkSecondary: 'var(--ink-secondary)',
+  inkTertiary: 'var(--ink-tertiary)',
+  hairline: 'var(--hairline)',
+  primary: 'var(--primary)',
   warmAir: '#f5222d',
   coldAir: '#1677ff',
   warmAirSoft: 'rgba(245, 34, 45, 0.55)',
@@ -26,10 +26,10 @@ export const diagramColors = {
   mantle: '#d48265',
   outerCore: '#f5a623',
   innerCore: '#fa541c',
-  neutralArrow: 'rgba(0, 0, 0, 0.55)',
-  cloud: 'rgba(0, 0, 0, 0.16)',
+  neutralArrow: 'var(--ink-secondary)',
+  cloud: 'var(--border-strong)',
   sun: '#faad14',
-  moon: '#595959'
+  moon: 'var(--ink-secondary)'
 } as const
 
 export const diagramFont = "'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', sans-serif"

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CloseOutlined, ReloadOutlined } from '@ant-design/icons'
-import { Button, Select } from 'antd'
+import { RefreshCwIcon, XIcon } from 'lucide-react'
+import { Button, Select } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
 import { useGlobeStore } from '@renderer/stores/globe'
 import type { PoiStatisticsResult } from '../../../preload'
@@ -140,7 +140,7 @@ export function CitiesPanel({ onClose }: CitiesPanelProps) {
     <div className={styles.citiesPanel} role="group" aria-label="城镇与中心地">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>城镇体系与中心地</span>
-        <Button type="text" size="small" aria-label="关闭城镇面板" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭城镇面板" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
 
       <div className={styles.chartTitle}>城市等级体系（{CITY_TIER_META.length} 级）</div>
@@ -173,27 +173,31 @@ export function CitiesPanel({ onClose }: CitiesPanelProps) {
       <div className={styles.casePickers}>
         <Select
           value={selectedHigh.name}
-          size="small"
+          size="sm"
           className={styles.caseSelect}
           options={caseOptions}
-          onChange={(value) => selectCase('high', String(value))}
+          onChange={(value) => {
+            if (value) selectCase('high', String(value))
+          }}
         />
         <span className={styles.vs}>vs</span>
         <Select
           value={selectedLow.name}
-          size="small"
+          size="sm"
           className={styles.caseSelect}
           options={caseOptions}
-          onChange={(value) => selectCase('low', String(value))}
+          onChange={(value) => {
+            if (value) selectCase('low', String(value))
+          }}
         />
       </div>
       {missingKey && <div className={styles.panelNote}>请先在「设置 → 地图」中配置高德地图密钥。</div>}
       <Button
         className={styles.panelAction}
-        size="small"
+        size="sm"
         block
         disabled={running || missingKey}
-        icon={<ReloadOutlined spin={running} />}
+        icon={<RefreshCwIcon className={running ? 'size-3.5 animate-spin' : 'size-3.5'} />}
         onClick={() => void runVerification()}
       >
         {running ? '统计中…' : '开始对比统计'}
@@ -216,7 +220,7 @@ export function CitiesPanel({ onClose }: CitiesPanelProps) {
       )}
       <Button
         className={styles.panelAction}
-        size="small"
+        size="sm"
         block
         disabled={cityTiersEnabled}
         onClick={() => setOverlay('city-tiers', true)}
