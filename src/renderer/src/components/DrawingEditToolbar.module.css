@@ -10,9 +10,10 @@
   min-height: 52px;
   padding: 8px 12px;
   overflow-x: auto;
-  background: #ffffff;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
   transform: translateX(-50%);
 }
 
@@ -25,7 +26,7 @@
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -34,9 +35,9 @@
   width: 34px;
   height: 32px;
   padding: 2px;
-  border: 1px solid rgba(5, 5, 5, 0.15);
-  border-radius: 6px;
-  background: #ffffff;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--elevated);
   cursor: pointer;
 }
 
@@ -45,7 +46,11 @@
   flex: 0 0 160px;
 }
 
-.fontControl :global(.ant-select) {
+.numberControl {
+  width: 96px;
+}
+
+.fontSelect {
   width: 190px;
 }
 
@@ -66,7 +71,7 @@
     flex-basis: 120px;
   }
 
-  .fontControl :global(.ant-select) {
+  .fontSelect {
     width: 140px;
   }
 }

@@ -1,6 +1,19 @@
 import { useMemo, useState, type MouseEvent } from 'react'
-import { Alert, Button, Collapse, Drawer, Modal, Radio, Select, Slider, Switch, Tooltip } from 'antd'
-import { CloseOutlined, MoreOutlined, ReloadOutlined } from '@ant-design/icons'
+import { MoreHorizontalIcon, RotateCwIcon, XIcon } from 'lucide-react'
+import {
+  Accordion,
+  Alert,
+  Button,
+  Drawer,
+  Modal,
+  RadioDot,
+  RadioGroup,
+  RadioItem,
+  Select,
+  Slider,
+  Switch,
+  Tooltip
+} from '@renderer/components/ui'
 import {
   basemapCategories,
   providerCatalog,
@@ -114,13 +127,16 @@ export function LayerPanel({
       open={open}
       placement="right"
       size={360}
-      mask={false}
-      closable={false}
-      styles={{ body: { padding: '16px' } }}
       title={
         <div className={styles.panelTitle}>
           <h2 className={styles.panelHeading}>图层管理</h2>
-          <Button type="text" aria-label="关闭图层管理" icon={<CloseOutlined />} onClick={onClose} />
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="关闭图层管理"
+            icon={<XIcon className="size-4" />}
+            onClick={onClose}
+          />
         </div>
       }
       onClose={onClose}
@@ -132,7 +148,12 @@ export function LayerPanel({
           title={error}
           className={styles.panelAlert}
           action={
-            <Button type="text" size="small" icon={<ReloadOutlined />} onClick={onRetry}>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<RotateCwIcon className="size-3.5" />}
+              onClick={onRetry}
+            >
               重试
             </Button>
           }
@@ -140,7 +161,7 @@ export function LayerPanel({
       )}
       <div className={styles.layerSpin}>
         <section className={styles.panelSection}>
-          <div>
+          <div className={styles.basemapList}>
             {basemapOptions.map((option) => (
               <div
                 key={option.id}
@@ -151,7 +172,7 @@ export function LayerPanel({
                 }
                 onClick={() => onSelect(option.activeProviderId)}
               >
-                <Radio
+                <RadioDot
                   checked={option.selected}
                   aria-label={`选择${option.name}底图`}
                   onClick={(event) => event.stopPropagation()}
@@ -163,11 +184,11 @@ export function LayerPanel({
                 </div>
                 <Tooltip title={`${option.name}设置`}>
                   <Button
-                    type="text"
-                    size="small"
+                    variant="ghost"
+                    size="sm"
                     className={styles.moreButton}
                     aria-label={`${option.name}设置`}
-                    icon={<MoreOutlined />}
+                    icon={<MoreHorizontalIcon className="size-4" />}
                     onClick={(event) => openSettings(option.id, event)}
                   />
                 </Tooltip>
@@ -184,14 +205,17 @@ export function LayerPanel({
             value={terrainProviderId}
             className={styles.fullSelect}
             options={terrainSelectOptions}
-            onChange={(value: string) => onTerrain(value)}
+            aria-label="选择 3D 地形"
+            onChange={(value) => {
+              if (value) onTerrain(value)
+            }}
           />
           {terrainDegraded && (
             <div className={styles.terrainActiveHint}>当前实际使用「{activeTerrainName}」</div>
           )}
           <div className={styles.terrainSliderHead}>
             <span>垂直夸张</span>
-            <span>{terrainExaggeration}×</span>
+            <span className="font-mono">{terrainExaggeration}×</span>
           </div>
           <Slider
             value={terrainExaggeration}
@@ -199,15 +223,16 @@ export function LayerPanel({
             max={5}
             step={0.5}
             marks={exaggerationMarks}
-            ariaLabelForHandle="地形垂直夸张倍数"
-            onChange={(value: number) => onTerrainExaggeration(value)}
+            aria-label="地形垂直夸张倍数"
+            onChange={(value) => onTerrainExaggeration(value)}
           />
           <div className={styles.terrainLightingRow}>
             <span>太阳光照</span>
             <Switch
-              size="small"
+              size="sm"
               checked={terrainLighting}
-              onChange={(value: boolean) => onTerrainLighting(value)}
+              aria-label="太阳光照"
+              onChange={(value) => onTerrainLighting(value)}
             />
           </div>
           {terrainError && (
@@ -228,18 +253,18 @@ export function LayerPanel({
             <div className={styles.modalBlock}>
               <div className={styles.settingHead}>
                 <span>不透明度</span>
-                <span>{settingsOpacity}%</span>
+                <span className="font-mono">{settingsOpacity}%</span>
               </div>
               <Slider
                 value={settingsOpacity}
                 min={0}
                 max={100}
                 step={5}
-                ariaLabelForHandle={`${settingsCategory.name}不透明度`}
+                aria-label={`${settingsCategory.name}不透明度`}
                 onChange={handleSettingsOpacity}
               />
             </div>
-            <Collapse
+            <Accordion
               items={[
                 {
                   key: 'advanced',
@@ -249,20 +274,21 @@ export function LayerPanel({
                       <div className={styles.settingHead}>
                         <span>供应商</span>
                       </div>
-                      <Radio.Group
+                      <RadioGroup
                         value={settingsCategory.activeProviderId}
                         className={styles.providerGroup}
-                        onChange={(event) => onSelect(String(event.target.value))}
+                        aria-label="底图供应商"
+                        onChange={(value) => onSelect(value)}
                       >
                         {settingsCategory.providers.map((provider) => (
-                          <Radio key={provider.id} value={provider.id} className={styles.providerRadio}>
+                          <RadioItem key={provider.id} value={provider.id} className={styles.providerRadio}>
                             <div className={styles.providerCopy}>
                               <div className={styles.providerName}>{provider.name}</div>
                               <div className={styles.providerDescription}>{provider.description}</div>
                             </div>
-                          </Radio>
+                          </RadioItem>
                         ))}
-                      </Radio.Group>
+                      </RadioGroup>
                     </>
                   )
                 }

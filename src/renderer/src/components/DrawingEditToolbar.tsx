@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { Button, Input, InputNumber, Select, Switch, Tooltip } from 'antd'
-import { DeleteOutlined } from '@ant-design/icons'
+import { Trash2Icon } from 'lucide-react'
+import { Button, Input, NumberInput, Select, Switch, Tooltip } from '@renderer/components/ui'
 import type { DrawnShape } from '@renderer/stores/drawing'
 import { useFlightStopsStore } from '@renderer/stores/flightStops'
 import styles from './DrawingEditToolbar.module.css'
@@ -60,11 +60,12 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
       {(shape.kind === 'polyline' || shape.kind === 'polygon' || shape.kind === 'arrow') && (
         <label className={styles.styleControl}>
           <span>线宽</span>
-          <InputNumber
+          <NumberInput
             value={shape.lineWidth}
             min={1}
             max={12}
             step={1}
+            className={styles.numberControl}
             aria-label="线宽"
             onChange={(value) => {
               if (typeof value === 'number') onChange({ lineWidth: value })
@@ -89,18 +90,22 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
             <Select
               value={shape.fontFamily}
               options={fontOptions}
-              showSearch={{ optionFilterProp: 'label' }}
+              searchable
+              className={styles.fontSelect}
               aria-label="系统字体"
-              onChange={(value: string) => onChange({ fontFamily: value })}
+              onChange={(value) => {
+                if (value) onChange({ fontFamily: value })
+              }}
             />
           </label>
           <label className={styles.styleControl}>
             <span>字号</span>
-            <InputNumber
+            <NumberInput
               value={shape.fontSize}
               min={8}
               max={72}
               step={1}
+              className={styles.numberControl}
               aria-label="字号"
               onChange={(value) => {
                 if (typeof value === 'number') onChange({ fontSize: value })
@@ -119,10 +124,10 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
       )}
       <Tooltip title="删除标注">
         <Button
-          type="text"
+          variant="ghost"
           danger
           aria-label="删除标注"
-          icon={<DeleteOutlined />}
+          icon={<Trash2Icon className="size-4" />}
           onClick={onRemove}
         />
       </Tooltip>

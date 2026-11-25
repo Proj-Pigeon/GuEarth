@@ -7,10 +7,10 @@
 
 .panelHeading {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
-  font-size: 20px;
+  color: var(--ink);
+  font-size: 16px;
   font-weight: 600;
-  line-height: 28px;
+  line-height: 24px;
 }
 
 .panelAlert {
@@ -25,7 +25,7 @@
 .panelSection {
   padding: 0 0 16px;
   margin: 0 0 16px;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .panelSection:last-child {
@@ -39,7 +39,7 @@
   align-items: center;
   justify-content: space-between;
   margin: 0 0 8px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
 }
@@ -50,7 +50,7 @@
 
 .terrainActiveHint {
   margin-top: 6px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
 }
@@ -60,7 +60,7 @@
   align-items: center;
   justify-content: space-between;
   margin-top: 12px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 13px;
   line-height: 20px;
 }
@@ -69,8 +69,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 4px;
-  color: rgba(0, 0, 0, 0.65);
+  margin-top: 8px;
+  color: var(--ink-secondary);
   font-size: 13px;
   line-height: 20px;
 }
@@ -79,43 +79,54 @@
   margin-top: 8px;
 }
 
+.basemapList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .basemapItem {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   min-height: 48px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
   cursor: pointer;
+  transition: background-color 0.1s ease-out;
+}
+
+.basemapItem:hover {
+  background: var(--hover-fill);
 }
 
 .basemapItemSelected {
-  background: rgba(22, 119, 255, 0.06);
+  background: var(--active-fill);
 }
 
 .basemapCopy {
   flex: 1;
   min-width: 0;
-  margin-left: 4px;
 }
 
 .basemapName {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
-  line-height: 22px;
+  font-weight: 500;
+  line-height: 20px;
 }
 
 .basemapDescription {
   overflow: hidden;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
-  line-height: 20px;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .moreButton {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
 }
 
 .modalBlock {
@@ -126,7 +137,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: rgba(0, 0, 0, 0.65);
+  margin-bottom: 4px;
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
 }
@@ -134,19 +146,13 @@
 .providerGroup {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   margin-top: 8px;
 }
 
 .providerRadio {
-  display: flex;
-  align-items: flex-start;
   margin: 0;
-}
-
-.providerRadio :global(.ant-radio) {
-  margin-top: 1px;
 }
 
 .providerCopy {
@@ -154,13 +160,13 @@
 }
 
 .providerName {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
-  line-height: 22px;
+  line-height: 20px;
 }
 
 .providerDescription {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
-  line-height: 20px;
+  line-height: 18px;
 }

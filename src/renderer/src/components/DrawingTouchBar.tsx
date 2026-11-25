@@ -1,5 +1,5 @@
-import { CheckOutlined, CloseOutlined, UndoOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { CheckIcon, Undo2Icon, XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import type { DrawTool } from '@renderer/stores/drawing'
 import styles from './DrawingTouchBar.module.css'
 
@@ -32,7 +32,7 @@ export function DrawingTouchBar({
         <Button
           className={styles.touchBarBtn}
           disabled={undoDisabled}
-          icon={<UndoOutlined />}
+          icon={<Undo2Icon className="size-4" />}
           aria-label="撤销上一个点"
           onClick={onUndo}
         >
@@ -41,10 +41,10 @@ export function DrawingTouchBar({
       )}
       {canFinish && (
         <Button
-          type="primary"
+          variant="primary"
           className={styles.touchBarBtn}
           disabled={finishDisabled}
-          icon={<CheckOutlined />}
+          icon={<CheckIcon className="size-4" />}
           aria-label="完成绘制"
           onClick={onFinish}
         >
@@ -54,7 +54,7 @@ export function DrawingTouchBar({
       <Button
         className={styles.touchBarBtn}
         danger
-        icon={<CloseOutlined />}
+        icon={<XIcon className="size-4" />}
         aria-label="取消绘制"
         onClick={onCancel}
       >

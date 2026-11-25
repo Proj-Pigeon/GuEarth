@@ -7,16 +7,14 @@
   align-items: center;
   gap: 8px;
   padding: 8px;
-  background: #ffffff;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
   z-index: 10;
 }
 
 .touchBarBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   min-width: 44px;
   height: 44px;
   font-size: 14px;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Button, Modal, Tabs, type TabsProps } from 'antd'
+import { Button, Modal, Tabs, type TabItem } from '@renderer/components/ui'
 import agreementMarkdown from '../../../../docs/policies/MIRROR-SERVICE-AGREEMENT.md?raw'
 import acceptableUseMarkdown from '../../../../docs/policies/ACCEPTABLE-USE-POLICY.md?raw'
 import {
@@ -19,7 +19,7 @@ const policies: Record<MirrorPolicyId, ParsedPolicyMarkdown> = {
   'acceptable-use': parsePolicyMarkdown(acceptableUseMarkdown, MIRROR_POLICY_FALLBACK_TITLES['acceptable-use'])
 }
 
-const tabItems: TabsProps['items'] = [
+const tabItems: TabItem[] = [
   { key: 'agreement', label: policies.agreement.title },
   { key: 'acceptable-use', label: policies['acceptable-use'].title }
 ]
@@ -52,15 +52,14 @@ export function MirrorPolicyModal(_props: MirrorPolicyModalProps) {
       title={activePolicy.title}
       width={680}
       zIndex={1350}
-      centered
       onCancel={closeMirrorPolicy}
       footer={
-        <Button type="primary" onClick={closeMirrorPolicy}>
+        <Button variant="primary" onClick={closeMirrorPolicy}>
           关闭
         </Button>
       }
     >
-      <Tabs activeKey={mirrorPolicyActiveId} size="small" items={tabItems} onChange={handleTabChange} />
+      <Tabs activeKey={mirrorPolicyActiveId} items={tabItems} onChange={handleTabChange} className="mb-3" />
       <div ref={policyBodyRef} className={`${styles.policyBody} ${styles.policyMarkdown}`}>
         {renderedNodes}
       </div>

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { message } from 'antd'
+import { appToast } from '@renderer/components/ui/toast'
 import type { UpdateCheckOutcome, UpdateState, UpdaterEvent } from '../../../preload'
 import { updateReadyHint } from './updateCopy'
 
@@ -87,22 +87,22 @@ function applyEvent(event: UpdaterEvent): void {
         percent: selectUpdaterPercent({ received, total: state.total })
       }
     })
-    message.success(`新版本 v${event.version} 已下载完成，${updateReadyHint(event.packageKind)}`, 8)
+    appToast.success(`新版本 v${event.version} 已下载完成，${updateReadyHint(event.packageKind)}`, 8)
   } else if (event.type === 'error') {
     useUpdaterStore.setState((state) => ({
       status: state.version ? 'available' : 'idle'
     }))
-    message.error(event.message, 6)
+    appToast.error(event.message, 6)
   }
 }
 
 export const useUpdaterStore = create<UpdaterStore>()(
   subscribeWithSelector((set, get) => {
     function reportCheckOutcome(outcome: UpdateCheckOutcome): void {
-      if (outcome === 'available') message.success(`发现新版本 v${get().version}`)
-      else if (outcome === 'latest') message.info('当前已是最新版本')
-      else if (outcome === 'disabled') message.warning('当前环境不支持检查更新')
-      else message.error('检查更新失败，请稍后重试')
+      if (outcome === 'available') appToast.success(`发现新版本 v${get().version}`)
+      else if (outcome === 'latest') appToast.info('当前已是最新版本')
+      else if (outcome === 'disabled') appToast.warning('当前环境不支持检查更新')
+      else appToast.error('检查更新失败，请稍后重试')
     }
 
     return {
@@ -141,14 +141,14 @@ export const useUpdaterStore = create<UpdaterStore>()(
           await window.guEarth.updater.download()
         } catch (error) {
           set({ status: 'available' })
-          message.error(`无法开始下载：${stripIpcErrorPrefix(error)}`, 6)
+          appToast.error(`无法开始下载：${stripIpcErrorPrefix(error)}`, 6)
         }
       },
       async installNow(): Promise<void> {
         try {
           await window.guEarth.updater.install()
         } catch (error) {
-          message.error(`无法启动安装：${stripIpcErrorPrefix(error)}`, 6)
+          appToast.error(`无法启动安装：${stripIpcErrorPrefix(error)}`, 6)
         }
       },
       async checkNow(): Promise<void> {
@@ -157,7 +157,7 @@ export const useUpdaterStore = create<UpdaterStore>()(
         try {
           reportCheckOutcome(await window.guEarth.updater.check())
         } catch {
-          message.error('检查更新失败，请稍后重试')
+          appToast.error('检查更新失败，请稍后重试')
         } finally {
           set({ checking: false })
         }

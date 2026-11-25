@@ -1,14 +1,25 @@
 import { useState } from 'react'
 import {
-  ArrowDownOutlined,
-  ArrowUpOutlined,
-  CloseOutlined,
-  EyeOutlined,
-  PlayCircleOutlined,
-  PlusOutlined,
-  SaveOutlined
-} from '@ant-design/icons'
-import { Alert, Button, Drawer, Empty, Input, InputNumber, Modal, Popconfirm, Tooltip } from 'antd'
+  ArrowDownIcon,
+  ArrowUpIcon,
+  EyeIcon,
+  PencilIcon,
+  PlayIcon,
+  PlusIcon,
+  XIcon
+} from 'lucide-react'
+import {
+  Alert,
+  Button,
+  Drawer,
+  Empty,
+  Input,
+  Modal,
+  NumberInput,
+  Popconfirm,
+  TextArea,
+  Tooltip
+} from '@renderer/components/ui'
 import { thematicLayerCatalog } from '@renderer/stores/climate'
 import type { TeachingScene } from '../../../preload'
 import styles from './SceneBookmarksPanel.module.css'
@@ -105,19 +116,23 @@ export function SceneBookmarksPanel({
         open={open}
         placement="right"
         size={360}
-        mask={false}
-        closable={false}
-        styles={{ body: { padding: '16px', display: 'flex', flexDirection: 'column' } }}
+        bodyStyle={{ display: 'flex', flexDirection: 'column' }}
         title={
           <div className={styles.panelTitle}>
             <h2>教学场景</h2>
-            <Button type="text" aria-label="关闭教学场景" icon={<CloseOutlined />} onClick={onClose} />
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="关闭教学场景"
+              icon={<XIcon className="size-4" />}
+              onClick={onClose}
+            />
           </div>
         }
         onClose={onClose}
       >
         <div className={styles.panelToolbar}>
-          <Button type="primary" block icon={<PlusOutlined />} onClick={openSave}>
+          <Button variant="primary" block icon={<PlusIcon className="size-4" />} onClick={openSave}>
             保存当前画面为场景
           </Button>
           {saveError && <Alert type="error" showIcon title={saveError} className={styles.panelAlert} />}
@@ -157,54 +172,59 @@ export function SceneBookmarksPanel({
                   <div className={styles.sceneItemActions}>
                     <Tooltip title="预览此场景">
                       <Button
-                        type="text"
+                        variant="ghost"
+                        size="sm"
                         className={styles.sceneAction}
                         aria-label="预览此场景"
-                        icon={<EyeOutlined />}
+                        icon={<EyeIcon className="size-3.5" />}
                         onClick={() => onPreview(scene.id)}
                       />
                     </Tooltip>
                     <Tooltip title="编辑">
                       <Button
-                        type="text"
+                        variant="ghost"
+                        size="sm"
                         className={styles.sceneAction}
                         aria-label="编辑场景"
-                        icon={<SaveOutlined />}
+                        icon={<PencilIcon className="size-3.5" />}
                         onClick={() => openEdit(scene)}
                       />
                     </Tooltip>
                     <Tooltip title="上移">
                       <Button
-                        type="text"
+                        variant="ghost"
+                        size="sm"
                         className={styles.sceneAction}
                         disabled={index === 0}
                         aria-label="上移场景"
-                        icon={<ArrowUpOutlined />}
+                        icon={<ArrowUpIcon className="size-3.5" />}
                         onClick={() => onMove(scene.id, -1)}
                       />
                     </Tooltip>
                     <Tooltip title="下移">
                       <Button
-                        type="text"
+                        variant="ghost"
+                        size="sm"
                         className={styles.sceneAction}
                         disabled={index === scenes.length - 1}
                         aria-label="下移场景"
-                        icon={<ArrowDownOutlined />}
+                        icon={<ArrowDownIcon className="size-3.5" />}
                         onClick={() => onMove(scene.id, 1)}
                       />
                     </Tooltip>
                     <Popconfirm
                       title="删除此场景？"
                       okText="删除"
-                      okButtonProps={{ danger: true }}
+                      okDanger
                       cancelText="取消"
                       onConfirm={() => onRemove(scene.id)}
                     >
                       <Button
-                        type="text"
+                        variant="ghost"
+                        size="sm"
                         className={styles.sceneAction}
                         aria-label="删除场景"
-                        icon={<CloseOutlined />}
+                        icon={<XIcon className="size-3.5" />}
                       />
                     </Popconfirm>
                   </div>
@@ -215,10 +235,10 @@ export function SceneBookmarksPanel({
         </div>
         <div className={styles.panelFooter}>
           <Button
-            type="primary"
+            variant="primary"
             className={styles.footerButton}
             disabled={!canPlay}
-            icon={<PlayCircleOutlined />}
+            icon={<PlayIcon className="size-4" />}
             onClick={() => onPlay('manual')}
           >
             逐幕播放
@@ -248,7 +268,7 @@ export function SceneBookmarksPanel({
         </div>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>旁白字幕（可选）</span>
-          <Input.TextArea
+          <TextArea
             value={saveNarration}
             placeholder="播放时显示在画面下方的讲解词"
             rows={3}
@@ -277,7 +297,7 @@ export function SceneBookmarksPanel({
         </div>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>旁白字幕</span>
-          <Input.TextArea
+          <TextArea
             value={editNarration}
             rows={3}
             maxLength={500}
@@ -287,11 +307,12 @@ export function SceneBookmarksPanel({
         </div>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>每幕停留（秒）</span>
-          <InputNumber
+          <NumberInput
             value={editDwellSeconds}
             min={1}
             max={60}
             className={styles.dwellInput}
+            aria-label="每幕停留秒数"
             onChange={(value) => setEditDwellSeconds(typeof value === 'number' ? value : 6)}
           />
         </div>

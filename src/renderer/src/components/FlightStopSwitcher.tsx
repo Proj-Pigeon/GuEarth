@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Button, Divider, Dropdown, Tooltip, type MenuProps } from 'antd'
-import { CloseOutlined, DownOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react'
+import { Button, DropdownMenu, Separator, Tooltip, type DropdownMenuEntry } from '@renderer/components/ui'
 import { useFlightStopsStore, type FlyToExecutor } from '@renderer/stores/flightStops'
 import styles from './FlightStopSwitcher.module.css'
 
@@ -35,7 +35,7 @@ export function FlightStopSwitcher({ flyTo }: FlightStopSwitcherProps) {
     void next(flyTo)
   }
 
-  const handleSelect: MenuProps['onClick'] = ({ key }) => {
+  function handleSelect(key: string): void {
     const index = Number(key)
     setMenuOpen(false)
     if (Number.isInteger(index)) void goTo(index, flyTo)
@@ -46,11 +46,19 @@ export function FlightStopSwitcher({ flyTo }: FlightStopSwitcherProps) {
     dismiss()
   }
 
-  const menuItems: MenuProps['items'] = stops.map((stop, index) => ({
+  const menuItems: DropdownMenuEntry[] = stops.map((stop, index) => ({
     key: String(index),
     label: (
       <div className={styles.flightSwitcherMenuRow}>
-        <span className={styles.flightSwitcherMenuIndex}>{index + 1}</span>
+        <span
+          className={
+            index === activeIndex
+              ? `${styles.flightSwitcherMenuIndex} ${styles.flightSwitcherMenuIndexActive}`
+              : styles.flightSwitcherMenuIndex
+          }
+        >
+          {index + 1}
+        </span>
         <div className={styles.flightSwitcherMenuContent}>
           <div className={styles.flightSwitcherMenuName}>{stop.name}</div>
           {stop.note ? <div className={styles.flightSwitcherMenuNote}>{stop.note}</div> : null}
@@ -63,28 +71,25 @@ export function FlightStopSwitcher({ flyTo }: FlightStopSwitcherProps) {
     <div className={styles.flightSwitcher} role="region" aria-label="飞行地点切换">
       <Tooltip title="上一个地点" placement="top">
         <Button
-          type="text"
+          variant="ghost"
           className={styles.switcherBtn}
           disabled={!canPrev}
           aria-label="上一个地点"
-          icon={<LeftOutlined />}
+          icon={<ChevronLeftIcon className="size-4" />}
           onClick={handlePrev}
         />
       </Tooltip>
-      <Dropdown
+      <DropdownMenu
         open={menuOpen}
         onOpenChange={setMenuOpen}
-        trigger={['click']}
-        placement="top"
-        menu={{
-          className: styles.flightSwitcherMenu,
-          selectedKeys: [String(activeIndex)],
-          items: menuItems,
-          onClick: handleSelect
-        }}
+        placement="topLeft"
+        menuClassName={styles.flightSwitcherMenu}
+        selectedKeys={[String(activeIndex)]}
+        items={menuItems}
+        onSelect={handleSelect}
       >
         <Button
-          type="text"
+          variant="ghost"
           className={styles.switcherTrigger}
           aria-label={`当前第 ${activeIndex + 1} 个地点，共 ${total} 个：${currentStop?.name ?? ''}，${menuOpen ? '点击收起地点列表' : '点击展开地点列表'}`}
           aria-haspopup="menu"
@@ -96,30 +101,30 @@ export function FlightStopSwitcher({ flyTo }: FlightStopSwitcherProps) {
           <span className={styles.switcherName} title={currentStop?.name}>
             {currentStop?.name}
           </span>
-          <DownOutlined
+          <ChevronDownIcon
             className={
               menuOpen ? `${styles.switcherArrow} ${styles.switcherArrowOpen}` : styles.switcherArrow
             }
           />
         </Button>
-      </Dropdown>
+      </DropdownMenu>
       <Tooltip title="下一个地点" placement="top">
         <Button
-          type="text"
+          variant="ghost"
           className={styles.switcherBtn}
           disabled={!canNext}
           aria-label="下一个地点"
-          icon={<RightOutlined />}
+          icon={<ChevronRightIcon className="size-4" />}
           onClick={handleNext}
         />
       </Tooltip>
-      <Divider orientation="vertical" className={styles.switcherDivider} />
+      <Separator orientation="vertical" className={styles.switcherDivider} />
       <Tooltip title="关闭地点切换" placement="top">
         <Button
-          type="text"
+          variant="ghost"
           className={styles.switcherBtn}
           aria-label="关闭地点切换"
-          icon={<CloseOutlined />}
+          icon={<XIcon className="size-4" />}
           onClick={handleClose}
         />
       </Tooltip>

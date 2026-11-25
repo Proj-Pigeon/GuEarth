@@ -6,27 +6,21 @@
 
 .consentParagraph {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   line-height: 22px;
-}
-
-.consentDomain {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 13px;
-  line-height: 20px;
 }
 
 .consentCheckboxRow {
   margin-top: 4px;
   padding: 12px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.02);
-  border: 1px solid rgba(5, 5, 5, 0.06);
+  border-radius: 10px;
+  background: var(--subtle);
+  border: 1px solid var(--hairline);
 }
 
 .checkboxLabel {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   line-height: 22px;
 }
@@ -40,6 +34,8 @@
   vertical-align: baseline;
   white-space: normal;
   text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .consentFooter {

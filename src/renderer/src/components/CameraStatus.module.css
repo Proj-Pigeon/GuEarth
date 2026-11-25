@@ -3,35 +3,44 @@
   bottom: 16px;
   right: 16px;
   display: flex;
-  gap: 12px;
-  background: #ffffff;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 8px;
-  padding: 8px 12px;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 6px 10px;
+  box-shadow: var(--shadow-panel);
+  z-index: 9;
 }
 
-@media (max-width: 1320px) {
+@media (max-width: 1260px) {
   .cameraStatus {
-    bottom: 80px;
+    bottom: 72px;
+  }
+}
+
+@media (max-width: 1360px) {
+  :global(.touch-ui) .cameraStatus {
+    bottom: 76px;
   }
 }
 
 .statusItem {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .label {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 12px;
-  line-height: 20px;
-  color: rgba(0, 0, 0, 0.45);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--ink-tertiary);
 }
 
 .value {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 13px;
-  line-height: 20px;
-  color: rgba(0, 0, 0, 0.88);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
