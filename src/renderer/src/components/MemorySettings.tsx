@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { App as AntdApp, Button, Input, Popconfirm, Spin, Switch, Tag } from 'antd'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { PlusIcon, Trash2Icon } from 'lucide-react'
+import { Button, Input, Popconfirm, Spinner, Switch, Tag, useToast } from '@renderer/components/ui'
 import type { AgentMemory } from '../../../preload'
 import { useAiStore } from '@renderer/stores/ai'
 import styles from './MemorySettings.module.css'
@@ -18,7 +18,7 @@ function formatTime(timestamp: number): string {
 }
 
 export function MemorySettings({ active }: MemorySettingsProps) {
-  const { message } = AntdApp.useApp()
+  const toast = useToast()
   const memoryEnabled = useAiStore((state) => state.settings.memoryEnabled)
   const setMemoryEnabled = useAiStore((state) => state.setMemoryEnabled)
 
@@ -40,7 +40,7 @@ export function MemorySettings({ active }: MemorySettingsProps) {
         if (!cancelled) setMemories(list)
       })
       .catch(() => {
-        if (!cancelled) message.error('无法读取记忆列表，请重试')
+        if (!cancelled) toast.error('无法读取记忆列表，请重试')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -48,7 +48,7 @@ export function MemorySettings({ active }: MemorySettingsProps) {
     return () => {
       cancelled = true
     }
-  }, [active, message])
+  }, [active, toast])
 
   async function addMemory(): Promise<void> {
     const content = draft.trim()
@@ -58,9 +58,9 @@ export function MemorySettings({ active }: MemorySettingsProps) {
       const next = await window.guEarth.ai.memory.add(content)
       setMemories(next)
       setDraft('')
-      message.success('已添加记忆')
+      toast.success('已添加记忆')
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '记忆添加失败')
+      toast.error(error instanceof Error ? error.message : '记忆添加失败')
     } finally {
       setAdding(false)
     }
@@ -70,9 +70,9 @@ export function MemorySettings({ active }: MemorySettingsProps) {
     try {
       const next = await window.guEarth.ai.memory.delete(memory.id)
       setMemories(next)
-      message.success('已删除记忆')
+      toast.success('已删除记忆')
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '记忆删除失败')
+      toast.error(error instanceof Error ? error.message : '记忆删除失败')
     }
   }
 
@@ -81,9 +81,9 @@ export function MemorySettings({ active }: MemorySettingsProps) {
     setSwitchBusy(true)
     try {
       await setMemoryEnabled(value)
-      message.success(value ? '记忆功能已开启' : '记忆功能已关闭')
+      toast.success(value ? '记忆功能已开启' : '记忆功能已关闭')
     } catch {
-      message.error('设置保存失败，请重试')
+      toast.error('设置保存失败，请重试')
     } finally {
       setSwitchBusy(false)
     }
@@ -107,23 +107,24 @@ export function MemorySettings({ active }: MemorySettingsProps) {
       <div className={styles.memoryAdd}>
         <Input
           value={draft}
+          className={styles.memoryInput}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="添加偏好，如：我是高中地理老师，喜欢结合案例讲解"
           maxLength={300}
           onPressEnter={() => void addMemory()}
         />
         <Button
-          type="primary"
+          variant="primary"
           loading={adding}
           disabled={!draft.trim()}
-          icon={<PlusOutlined />}
+          icon={<PlusIcon className="size-3.5" />}
           onClick={() => void addMemory()}
         >
           添加
         </Button>
       </div>
 
-      <Spin spinning={loading}>
+      <Spinner spinning={loading}>
         {sortedMemories.length === 0 && !loading ? (
           <div className={styles.memoryEmpty}>暂无记录</div>
         ) : (
@@ -133,7 +134,7 @@ export function MemorySettings({ active }: MemorySettingsProps) {
                 <div className={styles.memoryItemBody}>
                   <p className={styles.memoryItemContent}>{memory.content}</p>
                   <div className={styles.memoryItemMeta}>
-                    <Tag color={memory.source === 'agent' ? 'blue' : 'green'} className={styles.memoryItemTag}>
+                    <Tag tone={memory.source === 'agent' ? 'outline' : 'neutral'}>
                       {memory.source === 'agent' ? '助手保存' : '手动添加'}
                     </Tag>
                     <span className={styles.memoryItemTime}>{formatTime(memory.createdAt)}</span>
@@ -142,13 +143,15 @@ export function MemorySettings({ active }: MemorySettingsProps) {
                 <Popconfirm
                   title="删除这条记忆？"
                   okText="删除"
+                  okDanger
                   cancelText="取消"
                   onConfirm={() => void removeMemory(memory)}
                 >
                   <Button
-                    type="text"
+                    variant="ghost"
+                    size="sm"
                     danger
-                    icon={<DeleteOutlined />}
+                    icon={<Trash2Icon className="size-3.5" />}
                     aria-label={`删除记忆 ${memory.content.slice(0, 12)}`}
                   />
                 </Popconfirm>
@@ -156,7 +159,7 @@ export function MemorySettings({ active }: MemorySettingsProps) {
             ))}
           </ul>
         )}
-      </Spin>
+      </Spinner>
       {sortedMemories.length > 0 && (
         <div className={styles.memoryCount}>共 {sortedMemories.length} 条记忆，上限 100 条</div>
       )}

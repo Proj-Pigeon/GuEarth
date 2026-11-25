@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { AuiIf, ComposerPrimitive, useAui, useAuiState } from '@assistant-ui/react'
-import { Dropdown, type MenuProps } from 'antd'
 import { ArrowUpIcon, ChevronUpIcon, SquareIcon, type LucideIcon } from 'lucide-react'
+import { DropdownMenu, type DropdownMenuEntry } from '@renderer/components/ui'
 import { useAiStore } from '@renderer/stores/ai'
 import type { AiModelConfig, AiProviderConfig } from '../../../../preload'
 import { cn } from '@renderer/lib/utils'
@@ -125,9 +125,8 @@ export function EoqComposer({ commands }: EoqComposerProps) {
 
   const activeModelLabel = activeModel?.label || activeModel?.id || '选择模型'
 
-  const handleModelSelect = useCallback<NonNullable<MenuProps['onClick']>>(
-    (info) => {
-      const choice = String(info.key)
+  const handleModelSelect = useCallback(
+    (choice: string) => {
       const separatorIndex = choice.indexOf(':')
       if (separatorIndex < 0) return
       setModelMenuOpen(false)
@@ -136,7 +135,7 @@ export function EoqComposer({ commands }: EoqComposerProps) {
     [setActiveModel]
   )
 
-  const modelMenuItems = useMemo<MenuProps['items']>(() => {
+  const modelMenuItems = useMemo<DropdownMenuEntry[]>(() => {
     if (modelProviders.length === 0) {
       return [
         {
@@ -170,7 +169,7 @@ export function EoqComposer({ commands }: EoqComposerProps) {
         <div
           role="listbox"
           aria-label="快捷指令"
-          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 animate-eoq-fade-up rounded-xl border border-border bg-background p-1 shadow-[0_6px_16px_rgba(0,0,0,0.08),0_3px_6px_-4px_rgba(0,0,0,0.12)] motion-reduce:animate-none"
+          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 animate-eoq-fade-up rounded-xl border border-hairline bg-popover p-1 shadow-[var(--shadow-popup)] motion-reduce:animate-none"
         >
           {filteredCommands.map((command, index) => {
             const IconComponent = command.icon
@@ -186,19 +185,19 @@ export function EoqComposer({ commands }: EoqComposerProps) {
                 onClick={() => selectCommand(command)}
                 className={cn(
                   'flex w-full cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2.5 py-1.5 text-left text-[13px] leading-[22px] transition-colors duration-100',
-                  active ? 'bg-accent text-primary' : 'text-foreground hover:bg-foreground/[0.04]'
+                  active ? 'bg-active-fill text-ink' : 'text-ink-secondary hover:bg-hover-fill hover:text-ink'
                 )}
               >
                 <IconComponent
                   className={cn(
                     'size-3.5 shrink-0',
-                    active ? 'text-primary' : 'text-muted-foreground'
+                    active ? 'text-ink' : 'text-ink-tertiary'
                   )}
                 />
                 <span className={cn('w-20 shrink-0 font-mono text-[12px]', active && 'font-semibold')}>
                   {command.name}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground">
+                <span className="min-w-0 flex-1 truncate text-[12px] text-ink-tertiary">
                   {command.label}
                 </span>
               </button>
@@ -212,7 +211,7 @@ export function EoqComposer({ commands }: EoqComposerProps) {
           onClick={(event) => {
             if (event.target === event.currentTarget) inputRef.current?.focus()
           }}
-          className="flex cursor-text flex-col gap-2 rounded-2xl border border-foreground/12 bg-background px-3 pt-2.5 pb-2 transition-[border-color,box-shadow] duration-200 hover:border-foreground/22 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/12 motion-reduce:transition-none"
+          className="flex cursor-text flex-col gap-2 rounded-2xl border border-border-strong bg-elevated px-3 pt-2.5 pb-2 transition-[border-color,box-shadow] duration-200 hover:border-ink/25 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/12 motion-reduce:transition-none"
         >
           <ComposerPrimitive.Input
             ref={inputRef}
@@ -235,18 +234,14 @@ export function EoqComposer({ commands }: EoqComposerProps) {
                 disabled={isRunning}
                 onCompress={() => void compressContext()}
               />
-              <Dropdown
+              <DropdownMenu
                 open={modelMenuOpen}
-                trigger={['click']}
-                placement="topLeft"
-                menu={{
-                  className: styles.modelMenu,
-                  selectable: true,
-                  selectedKeys: [`${settings.activeProviderId}:${settings.activeModelId}`],
-                  items: modelMenuItems,
-                  onClick: handleModelSelect
-                }}
                 onOpenChange={setModelMenuOpen}
+                placement="topLeft"
+                menuClassName={styles.modelMenu}
+                selectedKeys={[`${settings.activeProviderId}:${settings.activeModelId}`]}
+                items={modelMenuItems}
+                onSelect={handleModelSelect}
               >
                 <button
                   type="button"
@@ -254,7 +249,7 @@ export function EoqComposer({ commands }: EoqComposerProps) {
                   aria-label="选择模型"
                   aria-haspopup="menu"
                   aria-expanded={modelMenuOpen}
-                  className="inline-flex h-7 max-w-[168px] min-w-0 cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent px-2 text-[12px] leading-5 text-foreground/65 transition-colors duration-100 hover:bg-foreground/[0.04] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-7 max-w-[168px] min-w-0 cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent px-2 text-[12px] leading-5 text-ink-secondary transition-colors duration-100 hover:bg-hover-fill hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span className="truncate">{activeModelLabel}</span>
                   <ChevronUpIcon
@@ -264,7 +259,7 @@ export function EoqComposer({ commands }: EoqComposerProps) {
                     )}
                   />
                 </button>
-              </Dropdown>
+              </DropdownMenu>
             </div>
 
             <div className="flex shrink-0 items-center">

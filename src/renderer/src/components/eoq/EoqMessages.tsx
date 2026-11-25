@@ -15,7 +15,6 @@ import {
   useAuiState,
   type PartState
 } from '@assistant-ui/react'
-import { App as AntdApp } from 'antd'
 import {
   AlertCircleIcon,
   AlertTriangleIcon,
@@ -25,6 +24,7 @@ import {
   PencilIcon,
   RefreshCwIcon
 } from 'lucide-react'
+import { useConfirm, useToast } from '@renderer/components/ui'
 import { useAiStore, type ChatMessage, type ToolStep } from '@renderer/stores/ai'
 import { cn } from '@renderer/lib/utils'
 import EoqIconButton from './EoqIconButton'
@@ -99,7 +99,7 @@ function EoqUserMessage() {
             <button
               type="button"
               onClick={cancelEdit}
-              className="h-7 cursor-pointer rounded-md border border-border bg-background px-2.5 text-[12px] leading-5 text-foreground/65 transition-colors duration-100 hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="h-7 cursor-pointer rounded-md border border-border-strong bg-elevated px-2.5 text-[12px] leading-5 text-ink-secondary transition-colors duration-100 hover:bg-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
             >
               取消
             </button>
@@ -107,7 +107,7 @@ function EoqUserMessage() {
               type="button"
               disabled={!editingDraft.trim()}
               onClick={() => confirmEdit(chatMessage)}
-              className="h-7 cursor-pointer rounded-md border-0 bg-primary px-3 text-[12px] leading-5 text-primary-foreground transition-colors duration-100 hover:bg-[#4096ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:bg-foreground/[0.06] disabled:text-foreground/25"
+              className="h-7 cursor-pointer rounded-md border-0 bg-primary px-3 text-[12px] leading-5 text-primary-foreground transition-colors duration-100 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:bg-muted disabled:text-ink-disabled"
             >
               发送
             </button>
@@ -232,9 +232,9 @@ function EoqAssistantMessage() {
       {chatMessage.status === 'streaming' && modelRetryNotice && (
         <div
           role="status"
-          className="flex items-start gap-2 rounded-lg border border-[#faad14]/35 bg-[#faad14]/[0.06] px-3 py-2 text-[12px] leading-5 text-foreground/80"
+          className="flex items-start gap-2 rounded-lg border border-warning/35 bg-warning/[0.06] px-3 py-2 text-[12px] leading-5 text-ink-secondary"
         >
-          <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-[#faad14]" />
+          <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-warning" />
           <span className="min-w-0 flex-1 break-words">{modelRetryNotice}</span>
         </div>
       )}
@@ -250,7 +250,7 @@ function EoqAssistantMessage() {
             type="button"
             disabled={isStreaming}
             onClick={() => void retryLast()}
-            className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border border-destructive/30 bg-background px-2 py-0.5 text-[12px] leading-5 text-destructive transition-colors duration-100 hover:bg-destructive/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[4px] border border-destructive/30 bg-elevated px-2 py-0.5 text-[12px] leading-5 text-destructive transition-colors duration-100 hover:bg-destructive/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <RefreshCwIcon className="size-3" />
             重试
@@ -268,7 +268,7 @@ function EoqAssistantMessage() {
             tooltip={copiedMessageId === chatMessage.id ? '已复制' : '复制回复'}
             size="sm"
             className={cn(
-              copiedMessageId === chatMessage.id && 'text-[#52c41a] hover:text-[#52c41a]'
+              copiedMessageId === chatMessage.id && 'text-success hover:text-success'
             )}
             onClick={() => copyAnswer(chatMessage)}
           >
@@ -296,7 +296,8 @@ export interface EoqMessagesProps {
 }
 
 export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
-  const { message: antdMessage, modal } = AntdApp.useApp()
+  const toast = useToast()
+  const confirm = useConfirm()
   const messages = useAiStore((state) => state.messages)
   const currentConversationId = useAiStore((state) => state.currentConversationId)
   const resendFrom = useAiStore((state) => state.resendFrom)
@@ -351,7 +352,7 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
         void resendFrom(chatMessage.id, text)
         return
       }
-      modal.confirm({
+      confirm({
         title: '重新发送编辑后的提问？',
         content: '此提问之后的对话内容将被丢弃。',
         okText: '发送',
@@ -362,7 +363,7 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
         }
       })
     },
-    [cancelEdit, discardsFollowing, editingDraft, modal, resendFrom]
+    [cancelEdit, confirm, discardsFollowing, editingDraft, resendFrom]
   )
 
   const handleEditKeydown = useCallback(
@@ -394,10 +395,10 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
           }, 1600)
         })
         .catch(() => {
-          antdMessage.error('复制失败，请重试')
+          toast.error('复制失败，请重试')
         })
     },
-    [antdMessage]
+    [toast]
   )
 
   const handleRegenerate = useCallback(
@@ -406,7 +407,7 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
         void regenerate(chatMessage.id)
         return
       }
-      modal.confirm({
+      confirm({
         title: '重新生成此回复？',
         content: '此回复之后的对话内容将被丢弃。',
         okText: '重新生成',
@@ -414,7 +415,7 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
         onOk: () => void regenerate(chatMessage.id)
       })
     },
-    [discardsFollowing, modal, regenerate]
+    [confirm, discardsFollowing, regenerate]
   )
 
   return (

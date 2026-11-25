@@ -7,7 +7,7 @@
 
 .sectionTitle {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 20px;
   font-weight: 600;
   line-height: 28px;
@@ -16,7 +16,7 @@
 .settingsBlock {
   padding: 16px 0;
   margin-top: 16px;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .settingsBlock:last-child {
@@ -28,7 +28,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
 }
@@ -67,17 +67,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .settingTitle {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   line-height: 22px;
 }
 
 .settingDesc {
   margin: 4px 0 0;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
 }
@@ -91,17 +92,12 @@
   vertical-align: baseline;
   white-space: normal;
   text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .proxyModeGroup {
-  display: flex;
-  width: 100%;
   max-width: 420px;
-}
-
-.proxyModeGroup :global(.ant-radio-button-wrapper) {
-  flex: 1;
-  text-align: center;
 }
 
 .proxyInput {
@@ -117,70 +113,70 @@
 
 .proxyResult {
   margin-top: 8px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
   word-break: break-all;
 }
 
 .proxyResultOk {
-  color: #389e0d;
+  color: var(--success);
 }
 
 .proxyResultFail {
-  color: #cf1322;
+  color: var(--destructive);
 }
 
 .mirrorSourceSection {
-  margin-top: var(--ant-margin, 16px);
-  padding-top: var(--ant-padding-sm, 12px);
-  border-top: 1px solid var(--ant-color-split, rgba(5, 5, 5, 0.06));
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
 }
 
 .mirrorSourceHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--ant-margin-xs, 8px);
+  gap: 8px;
   max-width: 420px;
-  margin-bottom: var(--ant-margin-xs, 8px);
+  margin-bottom: 8px;
 }
 
 .mirrorSourceHeading {
-  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
-  font-size: var(--ant-font-size-sm, 12px);
+  color: var(--ink-secondary);
+  font-size: 12px;
   line-height: 20px;
 }
 
 .mirrorSourceHint {
-  margin: var(--ant-margin-xs, 8px) 0 0;
-  color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
-  font-size: var(--ant-font-size-sm, 12px);
+  margin: 8px 0 0;
+  color: var(--ink-tertiary);
+  font-size: 12px;
   line-height: 20px;
 }
 
 .mirrorProbeList {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--ant-margin-sm, 12px);
-  margin-top: var(--ant-margin-xxs, 4px);
-  font-size: var(--ant-font-size-sm, 12px);
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 12px;
   line-height: 20px;
 }
 
 .mirrorProbeItem {
-  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
+  color: var(--ink-secondary);
 }
 
 .mirrorProbeOk {
-  color: var(--ant-color-success, #52c41a);
+  color: var(--success);
 }
 
 .mirrorProbeFail {
-  color: var(--ant-color-error, #ff4d4f);
+  color: var(--destructive);
 }
 
 .touchModeSelect {
-  min-width: 112px;
+  width: 112px;
   flex-shrink: 0;
 }

@@ -1,14 +1,15 @@
 import { useCallback, useRef, useState } from 'react'
-import { Modal } from 'antd'
 import {
-  ControlOutlined,
-  ExperimentOutlined,
-  GlobalOutlined,
-  InfoCircleOutlined,
-  RobotOutlined,
-  SafetyCertificateOutlined,
-  UserOutlined
-} from '@ant-design/icons'
+  BotIcon,
+  FlaskConicalIcon,
+  GlobeIcon,
+  InfoIcon,
+  ShieldCheckIcon,
+  SlidersHorizontalIcon,
+  UserIcon,
+  type LucideIcon
+} from 'lucide-react'
+import { Modal } from '@renderer/components/ui'
 import { useSettingsWindowStore, type SettingsSection } from '@renderer/stores/settingsWindow'
 import AccountSettings from './settings/AccountSettings'
 import GeneralSettings from './settings/GeneralSettings'
@@ -29,7 +30,7 @@ type PendingAction = { kind: 'navigate'; section: SettingsSection } | { kind: 'c
 interface NavItem {
   id: SettingsSection
   label: string
-  icon: typeof ControlOutlined
+  icon: LucideIcon
 }
 
 interface NavGroup {
@@ -41,18 +42,18 @@ const NAV_GROUPS: NavGroup[] = [
   {
     caption: '常规',
     items: [
-      { id: 'account', label: '账户', icon: UserOutlined },
-      { id: 'general', label: '通用', icon: ControlOutlined },
-      { id: 'map', label: '地图', icon: GlobalOutlined }
+      { id: 'account', label: '账户', icon: UserIcon },
+      { id: 'general', label: '通用', icon: SlidersHorizontalIcon },
+      { id: 'map', label: '地图', icon: GlobeIcon }
     ]
   },
-  { caption: 'EOQ 助手', items: [{ id: 'ai', label: 'AI', icon: RobotOutlined }] },
+  { caption: 'EOQ 助手', items: [{ id: 'ai', label: 'AI', icon: BotIcon }] },
   {
     caption: '系统',
     items: [
-      { id: 'privacy', label: '隐私', icon: SafetyCertificateOutlined },
-      { id: 'laboratory', label: '实验室', icon: ExperimentOutlined },
-      { id: 'about', label: '关于', icon: InfoCircleOutlined }
+      { id: 'privacy', label: '隐私', icon: ShieldCheckIcon },
+      { id: 'laboratory', label: '实验室', icon: FlaskConicalIcon },
+      { id: 'about', label: '关于', icon: InfoIcon }
     ]
   }
 ]
@@ -156,19 +157,15 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
         open={isOpen}
         title="设置"
         width={960}
-        centered
         footer={null}
         closable={!laboratoryBusy}
         maskClosable={settingsInteractive}
         keyboard={settingsInteractive}
-        wrapClassName={styles.settingsModal}
-        styles={{
-          body: {
-            padding: 0,
-            display: 'flex',
-            overflow: 'hidden',
-            height: 'min(680px, calc(100vh - 120px))'
-          }
+        bodyStyle={{
+          padding: 0,
+          display: 'flex',
+          overflow: 'hidden',
+          height: 'min(680px, calc(100vh - 120px))'
         }}
         onCancel={requestClose}
       >
@@ -249,6 +246,7 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
         open={confirmOpen}
         title="AI 设置尚未保存"
         width={420}
+        zIndex={1360}
         okText="保存设置"
         cancelText="忽略"
         confirmLoading={confirmSaving}

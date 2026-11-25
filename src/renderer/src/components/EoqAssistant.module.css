@@ -7,7 +7,7 @@
 
 .panelHeading {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
@@ -37,7 +37,7 @@
   width: 2px;
   height: 48px;
   border-radius: 2px;
-  background: rgba(5, 5, 5, 0.12);
+  background: var(--border-strong);
   content: '';
   transform: translateY(-50%);
   transition: background 0.2s ease, height 0.2s ease;
@@ -46,11 +46,11 @@
 .drawerResizeHandle:hover::after,
 .drawerResizeHandle:focus-visible::after {
   height: 64px;
-  background: #1677ff;
+  background: var(--ring);
 }
 
 .drawerResizeHandle:focus-visible {
-  outline: 2px solid #1677ff;
+  outline: 2px solid var(--ring);
   outline-offset: -2px;
 }
 
@@ -59,14 +59,12 @@
   overflow-y: auto;
 }
 
-.historyItem :global(.ant-dropdown-menu-title-content) {
-  display: flex;
-  align-items: center;
+.historyItem {
   width: 100%;
 }
 
 .historyItemActive {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--active-fill);
 }
 
 .historyItemBody {
@@ -74,15 +72,15 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .historyItemTitle {
   flex: 1;
   min-width: 0;
-  color: rgba(0, 0, 0, 0.88);
-  font-size: 14px;
-  line-height: 22px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 20px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -90,23 +88,24 @@
 
 .historyItemTime {
   flex-shrink: 0;
-  color: rgba(0, 0, 0, 0.45);
-  font-size: 12px;
-  line-height: 20px;
+  color: var(--ink-tertiary);
+  font-size: 11px;
+  line-height: 18px;
 }
 
 .historyDelete {
   flex-shrink: 0;
   height: 24px;
+  width: 24px;
 }
 
 .historyEmpty {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
 }
 
 .deleteConfirmText {
   margin: 0 0 12px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 14px;
   line-height: 22px;
 }
@@ -134,7 +133,7 @@
 .modelMenuId {
   min-width: 0;
   overflow: hidden;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -142,7 +141,7 @@
 
 .aiDisclaimer {
   margin: 0;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 18px;
   text-align: center;

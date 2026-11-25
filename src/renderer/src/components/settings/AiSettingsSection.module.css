@@ -7,7 +7,7 @@
 
 .sectionTitle {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 20px;
   font-weight: 600;
   line-height: 28px;
@@ -20,20 +20,13 @@
 }
 
 .unsavedTag {
-  margin-inline-end: 0;
-}
-
-.sectionDesc {
-  margin: 4px 0 0;
-  color: rgba(0, 0, 0, 0.45);
-  font-size: 12px;
-  line-height: 20px;
+  margin: 0;
 }
 
 .settingsBlock {
   padding: 16px 0;
   margin-top: 16px;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .settingsBlock:last-of-type {
@@ -41,7 +34,7 @@
 }
 
 .blockHeading {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
   margin-bottom: 8px;
@@ -53,13 +46,6 @@
 
 .readFailureAlert {
   margin-top: 12px;
-}
-
-.defaultHint {
-  margin-top: 4px;
-  color: rgba(0, 0, 0, 0.45);
-  font-size: 12px;
-  line-height: 20px;
 }
 
 .providerColumns {
@@ -79,17 +65,26 @@
 .providerItem {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   min-height: 36px;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
   cursor: pointer;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink-secondary);
   font-size: 14px;
+  transition: background-color 0.1s ease-out, color 0.1s ease-out;
 }
 
-.providerItemSelected {
-  background: rgba(22, 119, 255, 0.06);
+.providerItem:hover {
+  background: var(--hover-fill);
+  color: var(--ink);
+}
+
+.providerItemSelected,
+.providerItemSelected:hover {
+  background: var(--active-fill);
+  color: var(--ink);
+  font-weight: 500;
 }
 
 .providerItemName {
@@ -100,8 +95,8 @@
 }
 
 .providerItemTag {
-  margin-inline-end: 0;
-  transform: scale(0.83);
+  font-size: 11px;
+  padding: 0 6px;
 }
 
 .providerEditor {
@@ -110,7 +105,7 @@
 }
 
 .providerEditorEmpty {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 14px;
   display: flex;
   align-items: center;
@@ -126,7 +121,7 @@
 .fieldLabel {
   width: 64px;
   flex-shrink: 0;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 13px;
 }
 
@@ -137,7 +132,7 @@
 }
 
 .modelsHeading {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   margin: 4px 0 8px;
 }
@@ -161,31 +156,31 @@
 }
 
 .modelsEmpty {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 13px;
   padding: 8px 0;
 }
 
 .modelList {
-  border-top: 1px solid rgba(5, 5, 5, 0.06);
+  border-top: 1px solid var(--hairline);
 }
 
 .modelListRow {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 10px 4px;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--hairline);
   cursor: pointer;
   transition: background-color 0.1s ease-out;
 }
 
 .modelListRow:hover {
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--hover-fill);
 }
 
 .modelListRow:focus-visible {
-  outline: 2px solid #1677ff;
+  outline: 2px solid var(--ring);
   outline-offset: -2px;
 }
 
@@ -196,7 +191,7 @@
 
 .modelName {
   overflow: hidden;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   line-height: 22px;
   text-overflow: ellipsis;
@@ -206,7 +201,7 @@
 .modelCode {
   margin-top: 2px;
   overflow: hidden;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 12px;
   line-height: 20px;
@@ -215,7 +210,7 @@
 }
 
 .modelListRowDisabled .modelName {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
 }
 
 .modelActions {
@@ -225,15 +220,7 @@
   gap: 4px;
 }
 
-.modelActions :global(.ant-btn) {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-}
-
 .modelPagination {
-  display: flex;
-  justify-content: flex-end;
   margin-top: 12px;
 }
 
@@ -244,14 +231,14 @@
 }
 
 .modelField > label {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   white-space: nowrap;
 }
 
 .visionLabel {
   cursor: help;
-  text-decoration: underline dotted rgba(0, 0, 0, 0.35);
+  text-decoration: underline dotted var(--ink-tertiary);
   text-underline-offset: 3px;
 }
 
@@ -271,11 +258,11 @@
 }
 
 .modelEditor .fieldLabel {
-  width: 80px;
+  width: 96px;
 }
 
 .levelSelect {
-  width: 76px;
+  width: 84px;
 }
 
 .providerDanger {
@@ -286,13 +273,8 @@
 
 .importSummary {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
-}
-
-.importSummary :global(.ant-alert) {
-  flex: 1;
-  min-width: 0;
 }
 
 .importOption {
@@ -300,34 +282,75 @@
   flex-shrink: 0;
   align-items: center;
   gap: 8px;
-  padding-top: 6px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
 }
 
-.importTable {
-  margin-top: 16px;
+.importTableWrap {
+  margin-top: 14px;
 }
 
-.importRowFailed > td {
-  background: rgba(255, 77, 79, 0.06) !important;
+.importTableScroll {
+  max-height: 400px;
+  overflow: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+}
+
+.importTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.importTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+  background: var(--subtle);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.importTable tbody td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: middle;
+}
+
+.importTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.importTableEmpty {
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--ink-tertiary);
+}
+
+.importRowFailed td {
+  background: color-mix(in srgb, var(--destructive) 6%, transparent);
 }
 
 .importFailure {
-  margin-left: 8px;
-  color: #cf1322;
+  color: var(--destructive);
+  font-size: 12px;
 }
 
 .importNote {
-  margin-left: 8px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
+  font-size: 12px;
 }
 
 .importCapabilities {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
 }
 
 .teachingToggle {
@@ -342,14 +365,14 @@
 }
 
 .teachingToggleTitle {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   line-height: 22px;
 }
 
 .teachingToggleDesc {
   margin-top: 4px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
 }
@@ -360,5 +383,5 @@
   gap: 8px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid rgba(5, 5, 5, 0.06);
+  border-top: 1px solid var(--hairline);
 }

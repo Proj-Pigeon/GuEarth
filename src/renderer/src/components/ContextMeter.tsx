@@ -1,11 +1,6 @@
 import { useMemo, useState } from 'react'
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  CompressOutlined,
-  LoadingOutlined
-} from '@ant-design/icons'
-import { Button, Popover, Progress } from 'antd'
+import { CheckCircle2Icon, Loader2Icon, Minimize2Icon, XCircleIcon } from 'lucide-react'
+import { Button, Popover, Progress } from '@renderer/components/ui'
 import type { AiContextStats } from '../../../preload'
 import type { ContextCompressionStatus } from '@renderer/stores/ai'
 import styles from './ContextMeter.module.css'
@@ -26,13 +21,13 @@ interface Segment {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  system: '#eb2f96',
-  user: '#1677ff',
-  assistant: '#fa8c16',
-  tool: '#52c41a'
+  system: '#525252',
+  user: '#0d0d0d',
+  assistant: '#8f8f8f',
+  tool: '#a3a3a3'
 }
 
-const FREE_COLOR = '#f0f0f0'
+const FREE_COLOR = 'var(--muted)'
 
 function formatTokens(tokens: number): string {
   const trim = (value: string): string => value.replace(/\.0$/, '')
@@ -57,7 +52,8 @@ export function ContextMeter({
 
   const percent = Math.min(100, Math.max(0, Math.round(stats.usagePercent)))
   const tone = percent >= 80 ? 'error' : percent > 70 ? 'warning' : 'normal'
-  const strokeColor = tone === 'error' ? '#ff4d4f' : tone === 'warning' ? '#faad14' : '#1677ff'
+  const strokeColor =
+    tone === 'error' ? 'var(--destructive)' : tone === 'warning' ? 'var(--warning)' : 'var(--primary)'
   const statusText =
     status === 'compressing'
       ? '正在整理对话…'
@@ -73,7 +69,7 @@ export function ContextMeter({
         key: category.key,
         label: category.label,
         tokens: category.tokens,
-        color: CATEGORY_COLORS[category.key] ?? '#8c8c8c'
+        color: CATEGORY_COLORS[category.key] ?? '#737373'
       })),
       ...(free > 0 ? [{ key: 'free', label: '剩余空间', tokens: free, color: FREE_COLOR }] : [])
     ]
@@ -120,11 +116,11 @@ export function ContextMeter({
         ))}
       </div>
       <Button
-        type="primary"
-        size="small"
+        variant="primary"
+        size="sm"
         block
         loading={status === 'compressing'}
-        icon={<CompressOutlined />}
+        icon={<Minimize2Icon className="size-3.5" />}
         disabled={disabled || stats.usedTokens === 0}
         onClick={() => onCompress?.()}
       >
@@ -137,7 +133,6 @@ export function ContextMeter({
     <Popover
       open={open}
       onOpenChange={setOpen}
-      trigger="click"
       placement="topLeft"
       content={popoverContent}
     >
@@ -152,18 +147,18 @@ export function ContextMeter({
             type="circle"
             percent={percent}
             size={18}
-            strokeWidth={14}
+            strokeWidth={3}
             strokeColor={strokeColor}
             showInfo={false}
           />
         </span>
         <span className={styles.contextStatus}>
           {status === 'compressing' ? (
-            <LoadingOutlined spin />
+            <Loader2Icon className="size-3 animate-spin" />
           ) : status === 'error' ? (
-            <CloseCircleOutlined />
+            <XCircleIcon className="size-3 text-destructive" />
           ) : notice ? (
-            <CheckCircleOutlined />
+            <CheckCircle2Icon className="size-3 text-success" />
           ) : null}
           <span
             className={

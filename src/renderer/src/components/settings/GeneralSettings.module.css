@@ -7,7 +7,7 @@
 
 .sectionTitle {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 20px;
   font-weight: 600;
   line-height: 28px;
@@ -16,7 +16,7 @@
 .settingsBlock {
   padding: 16px 0;
   margin-top: 16px;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .settingsBlock:last-child {
@@ -25,7 +25,7 @@
 
 .settingRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
@@ -36,18 +36,25 @@
 }
 
 .settingTitle {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   line-height: 22px;
+}
+
+.settingDesc {
+  margin: 2px 0 0;
+  color: var(--ink-tertiary);
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .directoryPath {
   margin-top: 12px;
   padding: 8px 12px;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.02);
-  color: rgba(0, 0, 0, 0.65);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--subtle);
+  color: var(--ink-secondary);
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 13px;
   line-height: 20px;
@@ -56,5 +63,5 @@
 
 .directoryEmpty {
   font-family: inherit;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
 }

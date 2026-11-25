@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { App as AntdApp, Button } from 'antd'
-import { CopyOutlined, ReloadOutlined } from '@ant-design/icons'
+import { CopyIcon, RotateCwIcon } from 'lucide-react'
+import { Button, useToast } from '@renderer/components/ui'
 import { useUpdaterStore } from '@renderer/stores/updater'
 import { logger } from '../../../../common/logger'
 import styles from './AboutSettings.module.css'
@@ -8,7 +8,7 @@ import styles from './AboutSettings.module.css'
 export interface AboutSettingsProps {}
 
 export function AboutSettings(_props: AboutSettingsProps) {
-  const { message } = AntdApp.useApp()
+  const toast = useToast()
   const currentVersion = useUpdaterStore((state) => state.currentVersion)
   const checking = useUpdaterStore((state) => state.checking)
   const checkNow = useUpdaterStore((state) => state.checkNow)
@@ -22,9 +22,9 @@ export function AboutSettings(_props: AboutSettingsProps) {
     setCopying(true)
     try {
       await window.guEarth.logs.copy(logger.dump())
-      message.success('诊断日志已复制到剪贴板')
+      toast.success('诊断日志已复制到剪贴板')
     } catch {
-      message.error('复制失败，请重试')
+      toast.error('复制失败，请重试')
     } finally {
       setCopying(false)
     }
@@ -40,7 +40,7 @@ export function AboutSettings(_props: AboutSettingsProps) {
             <div className={styles.settingTitle}>当前版本</div>
             <p className={`${styles.settingDesc} ${styles.versionText}`}>{versionText}</p>
           </div>
-          <Button loading={checking} icon={<ReloadOutlined />} onClick={() => void checkNow()}>
+          <Button loading={checking} icon={<RotateCwIcon className="size-3.5" />} onClick={() => void checkNow()}>
             检查更新
           </Button>
         </div>
@@ -51,7 +51,7 @@ export function AboutSettings(_props: AboutSettingsProps) {
           <div className={styles.settingCopy}>
             <div className={styles.settingTitle}>诊断信息</div>
           </div>
-          <Button loading={copying} icon={<CopyOutlined />} onClick={() => void copyDiagnostics()}>
+          <Button loading={copying} icon={<CopyIcon className="size-3.5" />} onClick={() => void copyDiagnostics()}>
             复制
           </Button>
         </div>

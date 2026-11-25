@@ -69,7 +69,7 @@ export function EoqToolGroup({ group, failedCount, children }: EoqToolGroupProps
           ) : failedCount > 0 ? (
             <XCircleIcon className="size-3.5 shrink-0 animate-eoq-pop text-destructive" />
           ) : (
-            <CheckIcon className="size-3.5 shrink-0 animate-eoq-pop text-[#52c41a]" />
+            <CheckIcon className="size-3.5 shrink-0 animate-eoq-pop text-success" />
           )}
         </span>
       </CollapsibleTrigger>

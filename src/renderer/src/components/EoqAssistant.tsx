@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { ThreadPrimitive } from '@assistant-ui/react'
-import { Button, Checkbox, Drawer, Dropdown, Modal, Tooltip, type MenuProps } from 'antd'
 import {
   HistoryIcon,
   Minimize2Icon,
@@ -9,6 +8,7 @@ import {
   Trash2Icon,
   XIcon
 } from 'lucide-react'
+import { Button, Checkbox, Drawer, DropdownMenu, Modal, Tooltip, type DropdownMenuEntry } from '@renderer/components/ui'
 import { useAiStore } from '@renderer/stores/ai'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import type { StoredAiConversationSummary } from '../../../preload'
@@ -188,10 +188,10 @@ export function EoqAssistant() {
     [isStreaming, send]
   )
 
-  const handleHistoryMenuClick = useCallback<NonNullable<MenuProps['onClick']>>(
-    (info) => {
+  const handleHistorySelect = useCallback(
+    (key: string) => {
       setHistoryOpen(false)
-      void openConversation(String(info.key))
+      void openConversation(key)
     },
     [openConversation]
   )
@@ -220,7 +220,7 @@ export function EoqAssistant() {
     void deleteConversation(target.id)
   }, [deleteConversation, deleteNoAsk, deleteTarget, setSkipDeleteConversationConfirm])
 
-  const historyMenuItems = useMemo<MenuProps['items']>(() => {
+  const historyMenuItems = useMemo<DropdownMenuEntry[]>(() => {
     if (conversations.length === 0) {
       return [
         {
@@ -245,8 +245,8 @@ export function EoqAssistant() {
           <span className={styles.historyItemTime}>{formatConversationTime(conversation.updatedAt)}</span>
           <Tooltip title="删除会话">
             <Button
-              type="text"
-              size="small"
+              variant="ghost"
+              size="sm"
               danger
               className={styles.historyDelete}
               aria-label={`删除会话 ${conversation.title}`}
@@ -265,22 +265,14 @@ export function EoqAssistant() {
         open={isPanelOpen}
         placement="right"
         size={drawerWidth}
-        mask={false}
-        closable={false}
-        rootClassName="eoq-drawer"
-        styles={{
-          header: {
-            padding: '12px 16px',
-            borderBottom: '1px solid rgba(5, 5, 5, 0.06)'
-          },
-          body: {
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '12px 16px 10px',
-            gap: '8px',
-            position: 'relative',
-            overflow: 'hidden'
-          }
+        className="eoq-drawer"
+        bodyStyle={{
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '12px 16px 10px',
+          gap: '8px',
+          position: 'relative',
+          overflow: 'hidden'
         }}
         title={
           <div className={styles.panelTitle}>
@@ -297,17 +289,14 @@ export function EoqAssistant() {
                   <PlusIcon className="size-4" />
                 </EoqIconButton>
               )}
-              <Dropdown
+              <DropdownMenu
                 open={historyOpen}
-                trigger={['click']}
-                placement="bottomRight"
-                styles={{ root: { width: '300px' } }}
-                menu={{
-                  className: styles.historyMenu,
-                  items: historyMenuItems,
-                  onClick: handleHistoryMenuClick
-                }}
                 onOpenChange={setHistoryOpen}
+                placement="bottomRight"
+                popupClassName="w-[300px]"
+                menuClassName={styles.historyMenu}
+                items={historyMenuItems}
+                onSelect={handleHistorySelect}
               >
                 <span className="inline-flex">
                   <EoqIconButton
@@ -320,7 +309,7 @@ export function EoqAssistant() {
                     <HistoryIcon className="size-4" />
                   </EoqIconButton>
                 </span>
-              </Dropdown>
+              </DropdownMenu>
               <EoqIconButton
                 tooltip="设置"
                 tooltipPlacement="bottom"
@@ -378,13 +367,13 @@ export function EoqAssistant() {
         title="删除会话"
         width={400}
         okText="删除"
-        okButtonProps={{ danger: true }}
+        okDanger
         cancelText="取消"
         onOk={confirmDeleteConversation}
         onCancel={() => setDeleteConfirmOpen(false)}
       >
         <p className={styles.deleteConfirmText}>删除后「{deleteTarget?.title}」将无法恢复。</p>
-        <Checkbox checked={deleteNoAsk} onChange={(event) => setDeleteNoAsk(event.target.checked)}>
+        <Checkbox checked={deleteNoAsk} onChange={(checked) => setDeleteNoAsk(checked)}>
           不再提示
         </Checkbox>
       </Modal>

@@ -1,21 +1,21 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react'
-import { Tooltip } from 'antd'
 import { cva, type VariantProps } from 'class-variance-authority'
+import { Tooltip } from '@renderer/components/ui'
 import { cn } from '@renderer/lib/utils'
 
 const eoqIconButtonVariants = cva(
-  'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border-0 transition-[background-color,color,opacity,transform] duration-100 ease-out outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 active:scale-95 disabled:pointer-events-none disabled:cursor-not-allowed motion-reduce:transition-none',
+  'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border-0 transition-[background-color,color,opacity,transform] duration-100 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-1 active:scale-95 disabled:pointer-events-none disabled:cursor-not-allowed motion-reduce:transition-none',
   {
     variants: {
       variant: {
         ghost:
-          'bg-transparent text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-40',
+          'bg-transparent text-ink-tertiary hover:bg-hover-fill hover:text-ink disabled:opacity-40',
         outline:
-          'border border-border bg-background text-foreground/65 shadow-sm hover:border-foreground/20 hover:text-foreground disabled:opacity-40',
+          'border border-border-strong bg-elevated text-ink-secondary shadow-xs hover:border-ink/25 hover:text-ink disabled:opacity-40',
         primary:
-          'bg-primary text-primary-foreground hover:bg-[#4096ff] active:bg-[#0958d9] disabled:bg-foreground/[0.06] disabled:text-foreground/25',
+          'bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-muted disabled:text-ink-disabled',
         ink:
-          'bg-foreground text-background hover:opacity-85 disabled:bg-foreground/[0.06] disabled:text-foreground/25'
+          'bg-primary text-primary-foreground hover:bg-primary-hover disabled:bg-muted disabled:text-ink-disabled'
       },
       size: {
         sm: 'size-7 text-[14px]',

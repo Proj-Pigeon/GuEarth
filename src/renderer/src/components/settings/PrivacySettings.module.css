@@ -7,7 +7,7 @@
 
 .sectionTitle {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 20px;
   font-weight: 600;
   line-height: 28px;
@@ -16,7 +16,7 @@
 .settingsBlock {
   padding: 16px 0;
   margin-top: 16px;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .settingsBlock:last-child {
@@ -42,14 +42,14 @@
 }
 
 .settingTitle {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   line-height: 22px;
 }
 
 .settingDesc {
   margin: 4px 0 0;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
 }
@@ -62,21 +62,21 @@
 
 .disclosureIntro {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   line-height: 22px;
 }
 
 .disclosureCard {
   padding: 12px 16px;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--subtle);
 }
 
 .disclosureCardTitle {
   margin-bottom: 8px;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
@@ -85,7 +85,7 @@
 .disclosureList {
   margin: 0;
   padding-left: 18px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 13px;
   line-height: 21px;
   display: flex;
@@ -95,14 +95,14 @@
 
 .disclosureDestination {
   margin: 0;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 13px;
   line-height: 20px;
 }
 
 .disclosureNotice {
   margin: 0;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
 }

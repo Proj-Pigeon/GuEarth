@@ -9,7 +9,7 @@
   border: 0;
   border-radius: 9999px;
   background: transparent;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -17,12 +17,12 @@
 }
 
 .contextMeter:hover {
-  background: rgba(0, 0, 0, 0.04);
-  color: rgba(0, 0, 0, 0.88);
+  background: var(--hover-fill);
+  color: var(--ink);
 }
 
 .contextMeter:focus-visible {
-  outline: 2px solid #1677ff;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
@@ -36,21 +36,13 @@
   height: 18px;
 }
 
-.contextRing :global(.ant-progress) {
-  line-height: 0;
-}
-
-.contextRing :global(.ant-progress-inner) {
-  display: block;
-}
-
 .contextStatus {
   display: flex;
   align-items: center;
   gap: 4px;
   min-width: 0;
   overflow: hidden;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
   text-overflow: ellipsis;
@@ -65,7 +57,7 @@
 }
 
 .contextCard {
-  width: 320px;
+  width: 300px;
   max-width: calc(100vw - 48px);
 }
 
@@ -78,14 +70,14 @@
 }
 
 .contextCardTitle {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
 }
 
 .contextCardTotal {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
   font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
@@ -117,7 +109,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 12px 0 16px;
+  margin: 12px 0 14px;
 }
 
 .contextLegendRow {
@@ -139,7 +131,7 @@
 .contextLegendLabel {
   min-width: 0;
   overflow: hidden;
-  color: rgba(0, 0, 0, 0.78);
+  color: var(--ink-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -147,7 +139,7 @@
 .contextLegendTokens,
 .contextLegendShare {
   margin-left: auto;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 12px;
 }
@@ -160,10 +152,6 @@
 .contextLegendShare {
   min-width: 44px;
   text-align: right;
-}
-
-.contextCard :global(.ant-btn) {
-  height: 32px;
 }
 
 @media (max-width: 360px) {
