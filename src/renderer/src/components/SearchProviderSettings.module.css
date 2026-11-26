@@ -9,33 +9,48 @@
   width: 100%;
 }
 
-.searchDescription {
-  margin: 0 0 16px;
-  color: rgba(0, 0, 0, 0.65);
-  font-size: 14px;
-  line-height: 22px;
+.card {
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--subtle);
+}
+
+.cardTitle {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.cardBody {
+  padding: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.fieldLabel {
+  color: var(--ink-secondary);
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .searchKeyActions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.searchHint {
-  margin: 12px 0 0;
-  color: rgba(0, 0, 0, 0.65);
-  font-size: 12px;
-  line-height: 20px;
-}
-
-.searchEndpoint {
-  display: block;
-  margin-top: 8px;
-  overflow-wrap: anywhere;
-}
-
-.searchEndpoint :global(code) {
-  white-space: normal;
-  word-break: break-all;
 }

@@ -1,13 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import dayjs, { type Dayjs } from 'dayjs'
-import { Button, DatePicker, Slider, Tooltip } from 'antd'
-import {
-  CaretRightOutlined,
-  LineChartOutlined,
-  PauseOutlined,
-  RetweetOutlined
-} from '@ant-design/icons'
+import { LineChartIcon, PauseIcon, PlayIcon, RepeatIcon } from 'lucide-react'
 import type * as Cesium from 'cesium'
+import { Button, MonthDayPicker, Slider, Tooltip } from '@renderer/components/ui'
 import { useVisibleAnimation } from '@renderer/composables/useVisibleAnimation'
 import { useSolarStore } from '@renderer/stores/solar'
 import { useClimateStore } from '@renderer/stores/climate'
@@ -59,7 +53,6 @@ export function SolarTimePanel({ viewer, renderChart }: SolarTimePanelProps) {
 
   if (!active) return null
 
-  const dateValue = dayjs(date)
   const panelClasses = [
     styles.solarPanel,
     hasActiveOverlay ? styles.solarPanelStacked : '',
@@ -71,33 +64,24 @@ export function SolarTimePanel({ viewer, renderChart }: SolarTimePanelProps) {
   return (
     <div className={panelClasses} role="group" aria-label="太阳光照时间轴">
       <Button
-        type={isPlaying ? 'primary' : 'default'}
+        variant={isPlaying ? 'primary' : 'default'}
         shape="circle"
         aria-label={isPlaying ? '暂停时间流逝' : '播放昼夜交替'}
-        icon={isPlaying ? <PauseOutlined /> : <CaretRightOutlined />}
+        icon={isPlaying ? <PauseIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
         onClick={togglePlaying}
       />
       <Tooltip title="直射点回归运动（按年推进日期）">
         <Button
-          type={isAnnualPlaying ? 'primary' : 'default'}
+          variant={isAnnualPlaying ? 'primary' : 'default'}
           shape="circle"
           aria-label={isAnnualPlaying ? '暂停直射点回归运动' : '播放直射点回归运动'}
-          icon={isAnnualPlaying ? <PauseOutlined /> : <RetweetOutlined />}
+          icon={isAnnualPlaying ? <PauseIcon className="size-3.5" /> : <RepeatIcon className="size-3.5" />}
           onClick={toggleAnnualPlaying}
         />
       </Tooltip>
-      <DatePicker
-        value={dateValue}
-        size="small"
-        format="M月D日"
-        allowClear={false}
-        aria-label="模拟日期"
-        onChange={(value: Dayjs | null) => {
-          if (value) setDate(value.format('YYYY-MM-DD'))
-        }}
-      />
+      <MonthDayPicker value={date} aria-label="模拟日期" onChange={setDate} />
       {presets.map((preset) => (
-        <Button key={preset.key} size="small" onClick={() => setPreset(preset.key)}>
+        <Button key={preset.key} size="sm" onClick={() => setPreset(preset.key)}>
           {preset.label}
         </Button>
       ))}
@@ -107,11 +91,10 @@ export function SolarTimePanel({ viewer, renderChart }: SolarTimePanelProps) {
       </div>
       <Tooltip title="昼夜规律曲线">
         <Button
-          type="text"
-          size="small"
-          className={chartOpen ? styles.chartToggleActive : undefined}
+          variant={chartOpen ? 'primary' : 'ghost'}
+          size="sm"
           aria-label="昼夜规律曲线"
-          icon={<LineChartOutlined />}
+          icon={<LineChartIcon className="size-3.5" />}
           onClick={() => setChartOpen((open) => !open)}
         />
       </Tooltip>
@@ -122,7 +105,7 @@ export function SolarTimePanel({ viewer, renderChart }: SolarTimePanelProps) {
         step={0.25}
         marks={marks}
         className={styles.hourSlider}
-        ariaLabelForHandle="模拟时刻（北京时间）"
+        aria-label="模拟时刻（北京时间）"
         onChange={(value: number) => setHour(value)}
       />
       {chartOpen && renderChart ? (

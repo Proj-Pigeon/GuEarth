@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button, Segmented } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button, Segmented } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
 import {
   POPULATION_CENSUS_YEAR,
@@ -66,12 +66,12 @@ export function PopulationPanel({ onClose }: PopulationPanelProps) {
         <span className={styles.panelTitle}>人口</span>
         <Segmented
           value={tab}
-          size="small"
+          size="sm"
           options={tabOptions}
           aria-label="人口面板标签"
           onChange={(value) => setTab(value as Tab)}
         />
-        <Button type="text" size="small" aria-label="关闭人口面板" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭人口面板" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
 
       {tab === 'pyramid' ? (
@@ -128,7 +128,7 @@ export function PopulationPanel({ onClose }: PopulationPanelProps) {
           ))}
           <Button
             className={styles.panelAction}
-            size="small"
+            size="sm"
             block
             disabled={provincePopulationEnabled}
             onClick={() => setOverlay('province-population', true)}
@@ -158,7 +158,7 @@ export function PopulationPanel({ onClose }: PopulationPanelProps) {
           ))}
           <Button
             className={styles.panelAction}
-            size="small"
+            size="sm"
             block
             disabled={huLineEnabled}
             onClick={() => setOverlay('hu-line', true)}

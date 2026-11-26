@@ -17,6 +17,12 @@ import {
   type TouchEnvironment,
   type TouchInteractionMode
 } from '../../../common/touchInteraction'
+import {
+  normalizeThemeMode,
+  resolveTheme,
+  type ResolvedTheme,
+  type ThemeMode
+} from '../../../common/themeMode'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
 import type { GuEarthSettingsPatch, TileMirrorStatus } from '../../../preload'
 import { useFailureStore } from './failure'
@@ -150,6 +156,8 @@ export interface GlobeState {
   networkProxy: string
   touchInteractionMode: TouchInteractionMode
   touchInteractionActive: boolean
+  themeMode: ThemeMode
+  resolvedTheme: ResolvedTheme
   providerCredentials: Record<string, { configured: boolean; updatedAt: number | null }>
   isLayerPanelOpen: boolean
   isGlobeReady: boolean
@@ -197,6 +205,7 @@ export interface GlobeActions {
   setSceneMode: (mode: SceneMode) => void
   setLevelViewActive: (value: boolean) => void
   setTouchInteractionMode: (value: unknown) => Promise<void>
+  setThemeMode: (value: unknown) => Promise<void>
 }
 
 export type GlobeStore = GlobeState & GlobeActions
@@ -205,6 +214,15 @@ const coarsePointerQuery =
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     ? window.matchMedia('(pointer: coarse)')
     : undefined
+
+const darkSchemeQuery =
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-color-scheme: dark)')
+    : undefined
+
+function detectSystemPrefersDark(): boolean {
+  return Boolean(darkSchemeQuery?.matches)
+}
 
 function detectTouchEnvironment(): TouchEnvironment {
   if (typeof window === 'undefined') return { coarsePointer: false, maxTouchPoints: 0 }
@@ -217,8 +235,22 @@ function detectTouchEnvironment(): TouchEnvironment {
 
 let touchEnvironment: TouchEnvironment = detectTouchEnvironment()
 
+function readInitialTheme(): { themeMode: ThemeMode; resolvedTheme: ResolvedTheme } {
+  const boot = typeof window !== 'undefined' ? window.guEarth?.initialTheme : undefined
+  if (boot) {
+    const themeMode = normalizeThemeMode(boot.themeMode)
+    const resolvedTheme: ResolvedTheme =
+      boot.resolvedTheme === 'dark' || boot.resolvedTheme === 'light'
+        ? boot.resolvedTheme
+        : resolveTheme(themeMode, detectSystemPrefersDark())
+    return { themeMode, resolvedTheme }
+  }
+  return { themeMode: 'light', resolvedTheme: resolveTheme('light', detectSystemPrefersDark()) }
+}
+
 export function createInitialGlobeState(): GlobeState {
   touchEnvironment = detectTouchEnvironment()
+  const initialTheme = readInitialTheme()
   return {
     layers: defaultLayers.map((layer) => ({ ...layer })),
     selectedLayerId: 'osm',
@@ -243,6 +275,8 @@ export function createInitialGlobeState(): GlobeState {
     networkProxy: '',
     touchInteractionMode: 'auto',
     touchInteractionActive: resolveTouchInteractionActive('auto', touchEnvironment),
+    themeMode: initialTheme.themeMode,
+    resolvedTheme: initialTheme.resolvedTheme,
     providerCredentials: {},
     isLayerPanelOpen: false,
     isGlobeReady: false,
@@ -270,6 +304,7 @@ let mirrorPersistSeq = 0
 let mirrorSourcePersistSeq = 0
 let mirrorSourceSettledSeq = 0
 let touchModePersistSeq = 0
+let themeModePersistSeq = 0
 
 async function persistSettingsPatch(patch: GuEarthSettingsPatch): Promise<boolean> {
   if (!apiAvailable()) return true
@@ -398,6 +433,7 @@ export const useGlobeStore = create<GlobeStore>()(
           const settings = await window.guEarth.settings.get()
           const nextTileMirrorSource = normalizeMirrorEndpointPreference(settings.tileMirrorSource)
           const nextTouchInteractionMode = normalizeTouchInteractionMode(settings.touchInteractionMode)
+          const nextThemeMode = normalizeThemeMode(settings.themeMode)
           mirrorConsentKnown = true
           set((state) => ({
             selectedLayerId: providerFor(settings.selectedImageryProviderId) ? settings.selectedImageryProviderId : 'osm',
@@ -411,6 +447,8 @@ export const useGlobeStore = create<GlobeStore>()(
             activeMirrorEndpoint: nextTileMirrorSource !== 'auto' ? nextTileMirrorSource : state.activeMirrorEndpoint,
             touchInteractionMode: nextTouchInteractionMode,
             touchInteractionActive: resolveTouchInteractionActive(nextTouchInteractionMode, touchEnvironment),
+            themeMode: nextThemeMode,
+            resolvedTheme: resolveTheme(nextThemeMode, detectSystemPrefersDark()),
             networkProxy: settings.networkProxy ?? '',
             providerStyles: Object.fromEntries(providerCatalog.map((provider) => [provider.id, styleFor(provider.id, settings.providerStyles?.[provider.id] ?? provider.defaultStyleId)])),
             providerCredentials: settings.providerCredentials,
@@ -628,6 +666,33 @@ export const useGlobeStore = create<GlobeStore>()(
           })
         }
         useFailureStore.getState().reportDegrade('触摸操作设置保存失败，已恢复原设置')
+      },
+      async setThemeMode(value: unknown): Promise<void> {
+        const mode = normalizeThemeMode(value)
+        const previousMode = get().themeMode
+        if (mode === previousMode) return
+        set({
+          themeMode: mode,
+          resolvedTheme: resolveTheme(mode, detectSystemPrefersDark())
+        })
+        const seq = ++themeModePersistSeq
+        const saved = await persistSettingsPatch({ themeMode: mode })
+        if (saved || seq !== themeModePersistSeq) return
+        let restored = previousMode
+        try {
+          const settings = await window.guEarth.settings.get()
+          restored = normalizeThemeMode(settings.themeMode)
+        } catch {
+          restored = previousMode
+        }
+        if (seq !== themeModePersistSeq) return
+        if (get().themeMode === mode) {
+          set({
+            themeMode: restored,
+            resolvedTheme: resolveTheme(restored, detectSystemPrefersDark())
+          })
+        }
+        useFailureStore.getState().reportDegrade('外观主题设置保存失败，已恢复原设置')
       }
     }
   })
@@ -656,7 +721,16 @@ function refreshTouchEnvironment(): void {
   syncTouchInteractionActive()
 }
 
+function syncResolvedTheme(): void {
+  const state = useGlobeStore.getState()
+  const resolvedTheme = resolveTheme(state.themeMode, detectSystemPrefersDark())
+  if (resolvedTheme !== state.resolvedTheme) {
+    useGlobeStore.setState({ resolvedTheme })
+  }
+}
+
 coarsePointerQuery?.addEventListener?.('change', refreshTouchEnvironment)
+darkSchemeQuery?.addEventListener?.('change', syncResolvedTheme)
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener('pointerdown', handleEnvironmentPointer)
 }
@@ -678,5 +752,6 @@ export function resetGlobeStore(): void {
   mirrorSourcePersistSeq = 0
   mirrorSourceSettledSeq = 0
   touchModePersistSeq = 0
+  themeModePersistSeq = 0
   useGlobeStore.setState(createInitialGlobeState())
 }

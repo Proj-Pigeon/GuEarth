@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
-import { Alert, App as AntdApp, Button, Modal, Spin } from 'antd'
-import { ReloadOutlined } from '@ant-design/icons'
+import { RotateCwIcon } from 'lucide-react'
+import { Alert, Button, Modal, Spinner, useConfirm, useToast } from '@renderer/components/ui'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 import { isLikelyMainlandChinaEnv } from '../../common/tileMirror'
 import type { PlaceSuggestion } from '../../preload'
@@ -83,6 +83,7 @@ import UpdateDialog from '@renderer/components/UpdateDialog'
 import WalkerCirculationOverlay from '@renderer/components/WalkerCirculationOverlay'
 import WaterBodyPanel from '@renderer/components/WaterBodyPanel'
 import WaterCyclePanel from '@renderer/components/WaterCyclePanel'
+import WindowControls from '@renderer/components/WindowControls'
 import WindParticles from '@renderer/components/WindParticles'
 import ZonationFlightHud from '@renderer/components/ZonationFlightHud'
 import ZonationPanel from '@renderer/components/ZonationPanel'
@@ -91,7 +92,8 @@ import styles from './App.module.css'
 const DEFAULT_SYSTEM_FONTS = ['Arial', 'Segoe UI', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei']
 
 export function App() {
-  const { message, modal } = AntdApp.useApp()
+  const toast = useToast()
+  const confirm = useConfirm()
 
   const isLayerPanelOpen = useGlobeStore((state) => state.isLayerPanelOpen)
   const layers = useGlobeStore((state) => state.layers)
@@ -441,7 +443,7 @@ export function App() {
       return
     }
     if (updaterStatus === 'ready') {
-      modal.confirm({
+      confirm({
         title: `重启并安装新版本 v${updaterVersion}？`,
         content: updateInstallContent(updaterPackageKind),
         okText: '重启安装',
@@ -449,15 +451,15 @@ export function App() {
         onOk: () => useUpdaterStore.getState().installNow()
       })
     }
-  }, [modal, updaterPackageKind, updaterStatus, updaterVersion])
+  }, [confirm, updaterPackageKind, updaterStatus, updaterVersion])
 
   const handleToggleLab = useCallback(() => {
     if (nightBasemapActive) {
-      message.info('夜光模式下地理实验室不可用，切换回其他底图后恢复')
+      toast.info('夜光模式下地理实验室不可用，切换回其他底图后恢复')
       return
     }
     setIsLabOpen((open) => !open)
-  }, [message, nightBasemapActive])
+  }, [nightBasemapActive, toast])
 
   const handleOpenScenes = useCallback(() => {
     useAiStore.getState().setPanelOpen(false)
@@ -475,10 +477,10 @@ export function App() {
         const nextState = useScenesStore.getState()
         if (!nextState.saveError) captureTelemetryEvent('scene_saved', { scene_count: nextState.scenes.length })
       } catch (error) {
-        message.warning(error instanceof Error ? error.message : '地球尚未就绪，暂时无法保存场景')
+        toast.warning(error instanceof Error ? error.message : '地球尚未就绪，暂时无法保存场景')
       }
     },
-    [message, scenePlayer]
+    [scenePlayer, toast]
   )
 
   const handlePreviewScene = useCallback(
@@ -531,14 +533,14 @@ export function App() {
   }, [])
 
   const handleClearShapes = useCallback(() => {
-    modal.confirm({
+    confirm({
       title: '清除全部标注？',
       okText: '清除',
-      okButtonProps: { danger: true },
+      danger: true,
       cancelText: '取消',
       onOk: () => useDrawingStore.getState().clearAll()
     })
-  }, [modal])
+  }, [confirm])
 
   const handleFlyShape = useCallback(
     (id: string) => {
@@ -560,6 +562,7 @@ export function App() {
 
   return (
     <div className={touchInteractionActive ? `${styles.app} touch-ui` : styles.app}>
+      <WindowControls />
       <div
         ref={globeContainerRef}
         className={activeTool ? `${styles.globe} ${styles.globeDrawing}` : styles.globe}
@@ -572,7 +575,7 @@ export function App() {
       />
       {showGlobeLoading && (
         <div className={styles.globeLoading}>
-          <Spin spinning={!globeLoadTimedOut && !globeError && !webglNotice} size="small" />
+          <Spinner spinning={!globeLoadTimedOut && !globeError && !webglNotice} size="sm" />
           <span className={styles.globeLoadingText} role="status">
             {globeLoadingText}
           </span>
@@ -587,7 +590,7 @@ export function App() {
             <span className={styles.globeLoadingStage}>若持续无法加载，可在「设置 → 地图」开启国内地图加速</span>
           )}
           {globeLoadingRetryable && (
-            <Button type="text" size="small" icon={<ReloadOutlined />} onClick={handleRetry}>
+            <Button variant="ghost" size="sm" icon={<RotateCwIcon className="size-3.5" />} onClick={handleRetry}>
               重试
             </Button>
           )}

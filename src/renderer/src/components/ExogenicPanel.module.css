@@ -10,10 +10,10 @@
   max-height: calc(100vh - 160px);
   overflow-y: auto;
   padding: 12px 16px 16px;
-  background: #ffffff;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 8px;
-  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
   z-index: 10;
 }
 
@@ -25,7 +25,7 @@
 
 .panelTitle {
   margin-right: auto;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
@@ -43,15 +43,15 @@
   align-items: center;
   gap: 6px;
   padding: 5px 9px;
-  border: 1.5px solid rgba(5, 5, 5, 0.1);
+  border: 1.5px solid var(--border-strong);
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--subtle);
   cursor: pointer;
 }
 
 .chainActive {
-  background: #ffffff;
-  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15);
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--active-fill);
 }
 
 .chainDot {
@@ -61,13 +61,13 @@
 }
 
 .chainName {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 12px;
   font-weight: 600;
 }
 
 .chainArrow {
-  color: rgba(0, 0, 0, 0.35);
+  color: var(--ink-tertiary);
   font-size: 13px;
 }
 
@@ -76,25 +76,26 @@
   flex-direction: column;
   gap: 6px;
   padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 6px;
+  background: var(--subtle);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
 }
 
 .stageForce {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 12px;
   font-weight: 600;
   line-height: 20px;
 }
 
 .stageDesc {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 19px;
 }
 
 .panelNote {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 19px;
 }

@@ -1,11 +1,9 @@
 import * as Sentry from '@sentry/electron/renderer'
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
-import { StyleProvider } from '@ant-design/cssinjs'
-import { App as AntdApp, ConfigProvider } from 'antd'
-import zhCN from 'antd/locale/zh_CN'
+import { CSPProvider } from '@base-ui/react/csp-provider'
 import App from './App'
 import './assets/main.css'
 import './assets/touch.css'
@@ -16,6 +14,7 @@ import { describeError, installGlobalErrorListeners, notifyCrashMessage } from '
 import { isErrorReportingEnabled, onPrivacySettingsChange } from './lib/privacyRuntime'
 import { capturePosthogException, syncPosthogPrivacy } from './posthog'
 import { useGlobeStore } from './stores/globe'
+import { ConfirmDialogProvider, ToastProvider, TooltipProvider } from './components/ui'
 
 attachConsoleLogTee('renderer')
 
@@ -48,15 +47,6 @@ installGlobalErrorListeners()
 
 dayjs.locale('zh-cn')
 
-const antdTheme = {
-  token: {
-    colorPrimary: '#1677ff',
-    borderRadius: 6,
-    fontFamily:
-      "-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'WenQuanYi Micro Hei', sans-serif"
-  }
-}
-
 function handleRenderError(error: unknown, info?: { componentStack?: string }): void {
   notifyCrashMessage(describeError(error))
   if (isErrorReportingEnabled()) {
@@ -66,8 +56,19 @@ function handleRenderError(error: unknown, info?: { componentStack?: string }): 
   console.error(error)
 }
 
+function applyDocumentTheme(theme: 'light' | 'dark'): void {
+  document.documentElement.classList.toggle('dark', theme === 'dark')
+  document.documentElement.style.colorScheme = theme
+}
+
+if (window.guEarth?.platform) {
+  document.documentElement.dataset.platform = window.guEarth.platform
+}
+applyDocumentTheme(useGlobeStore.getState().resolvedTheme)
+
 function Root() {
   const touchInteractionActive = useGlobeStore((state) => state.touchInteractionActive)
+  const resolvedTheme = useGlobeStore((state) => state.resolvedTheme)
 
   useEffect(() => {
     document.documentElement.classList.toggle('touch-ui', touchInteractionActive)
@@ -76,18 +77,20 @@ function Root() {
     }
   }, [touchInteractionActive])
 
+  useLayoutEffect(() => {
+    applyDocumentTheme(resolvedTheme)
+  }, [resolvedTheme])
+
   return (
-    <StyleProvider layer>
-      <ConfigProvider
-        locale={zhCN}
-        theme={antdTheme}
-        componentSize={touchInteractionActive ? 'large' : 'middle'}
-      >
-        <AntdApp>
-          <App />
-        </AntdApp>
-      </ConfigProvider>
-    </StyleProvider>
+    <CSPProvider disableStyleElements>
+      <TooltipProvider delay={350} closeDelay={0}>
+        <ToastProvider>
+          <ConfirmDialogProvider>
+            <App />
+          </ConfirmDialogProvider>
+        </ToastProvider>
+      </TooltipProvider>
+    </CSPProvider>
   )
 }
 

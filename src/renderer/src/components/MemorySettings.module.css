@@ -13,7 +13,7 @@
 }
 
 .memoryToggleTitle {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
@@ -21,7 +21,7 @@
 
 .memoryToggleDesc {
   margin: 4px 0 0;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
 }
@@ -31,14 +31,14 @@
   gap: 8px;
 }
 
-.memoryAdd :global(.ant-input) {
+.memoryInput {
   flex: 1;
   min-width: 0;
 }
 
 .memoryEmpty {
   padding: 16px 0;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 13px;
   line-height: 22px;
   text-align: center;
@@ -57,7 +57,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .memoryItem:last-child {
@@ -71,7 +71,7 @@
 
 .memoryItemContent {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
   line-height: 22px;
   word-break: break-word;
@@ -84,20 +84,14 @@
   margin-top: 4px;
 }
 
-.memoryItemTag {
-  margin-inline-end: 0;
-  transform: scale(0.83);
-  transform-origin: left center;
-}
-
 .memoryItemTime {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
 }
 
 .memoryCount {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
 }

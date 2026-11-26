@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { App as AntdApp, Button, Modal, Switch, Tag } from 'antd'
+import { Button, Modal, Switch, Tag, useToast } from '@renderer/components/ui'
 import { PRIVACY_DISCLOSURES, privacyDisclosureFor, type PrivacySettingKey } from '../../../../common/privacy'
 import { usePrivacyStore } from '@renderer/stores/privacy'
 import styles from './PrivacySettings.module.css'
@@ -7,7 +7,7 @@ import styles from './PrivacySettings.module.css'
 export interface PrivacySettingsProps {}
 
 export function PrivacySettings(_props: PrivacySettingsProps) {
-  const { message } = AntdApp.useApp()
+  const toast = useToast()
   const errorReportingEnabled = usePrivacyStore((state) => state.errorReportingEnabled)
   const telemetryEnabled = usePrivacyStore((state) => state.telemetryEnabled)
   const aiTelemetryEnabled = usePrivacyStore((state) => state.aiTelemetryEnabled)
@@ -40,8 +40,8 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
     setSavingKey(key)
     try {
       const saved = await setPrivacySetting(key, false)
-      if (saved) message.success(`已关闭“${privacyDisclosureFor(key).title}”`)
-      else message.error('隐私设置保存失败，请重试')
+      if (saved) toast.success(`已关闭“${privacyDisclosureFor(key).title}”`)
+      else toast.error('隐私设置保存失败，请重试')
     } finally {
       setSavingKey(null)
     }
@@ -60,9 +60,9 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
       const saved = await setPrivacySetting(key, true)
       if (saved) {
         setPendingKey(null)
-        message.success(`已开启“${privacyDisclosureFor(key).title}”`)
+        toast.success(`已开启“${privacyDisclosureFor(key).title}”`)
       } else {
-        message.error('隐私设置保存失败，请重试')
+        toast.error('隐私设置保存失败，请重试')
       }
     } finally {
       setConfirmLoading(false)
@@ -81,7 +81,7 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
               <div className={styles.settingCopy}>
                 <div className={styles.settingTitleRow}>
                   <span className={styles.settingTitle}>{item.title}</span>
-                  <Tag color={enabled ? 'blue' : undefined}>{enabled ? '已开启' : '已关闭'}</Tag>
+                  <Tag tone={enabled ? 'info' : 'neutral'}>{enabled ? '已开启' : '已关闭'}</Tag>
                 </div>
                 <p className={styles.settingDesc}>{item.summary}</p>
               </div>
@@ -101,18 +101,17 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
         open={pendingDisclosure !== null}
         title={pendingDisclosure?.confirmTitle}
         width={520}
-        zIndex={1300}
-        mask={{ closable: false }}
+        zIndex={1360}
+        maskClosable={false}
         closable={!confirmLoading}
         keyboard={!confirmLoading}
-        centered
         onCancel={cancelEnable}
         footer={
           <div className={styles.disclosureFooter}>
             <Button disabled={confirmLoading} onClick={cancelEnable}>
               取消
             </Button>
-            <Button type="primary" loading={confirmLoading} onClick={() => void confirmEnable()}>
+            <Button variant="primary" loading={confirmLoading} onClick={() => void confirmEnable()}>
               已知晓并开启
             </Button>
           </div>

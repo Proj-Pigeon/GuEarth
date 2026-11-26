@@ -21,12 +21,12 @@ let forceMarkdownMode = 'normal'
 const realMarkdownUrl = pathToFileURL(resolve('src/renderer/src/utils/markdown.ts')).href
 
 const reactUrl = import.meta.resolve('react')
-const antdStubUrl = `data:text/javascript,${encodeURIComponent(`
+const uiStubUrl = `data:text/javascript,${encodeURIComponent(`
   import { createElement } from ${JSON.stringify(reactUrl)}
   export function Modal({ open, children }) {
     return open ? createElement('div', { className: 'mock-modal' }, children) : null
   }
-  export const message = {
+  export const appToast = {
     success() {},
     error() {},
     warning() {},
@@ -36,8 +36,8 @@ const antdStubUrl = `data:text/javascript,${encodeURIComponent(`
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier === 'antd') {
-      return { url: antdStubUrl, shortCircuit: true }
+    if (specifier === '@renderer/components/ui' || specifier === '@renderer/components/ui/toast') {
+      return { url: uiStubUrl, shortCircuit: true }
     }
     if (specifier === '@renderer/utils/markdown' && context.parentURL.endsWith('/UpdateDialog.tsx')) {
       return { url: 'virtual:update-dialog-markdown', shortCircuit: true }

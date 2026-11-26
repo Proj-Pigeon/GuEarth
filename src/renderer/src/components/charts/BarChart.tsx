@@ -3,6 +3,7 @@ import { use, type EChartsCoreOption } from 'echarts/core'
 import { BarChart as EChartsBarChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
+import { useGlobeStore } from '@renderer/stores/globe'
 import EChartBase from './EChartBase'
 import styles from './BarChart.module.css'
 
@@ -36,8 +37,6 @@ interface TooltipParam {
 }
 
 const MONO_FONT = 'SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace'
-const INK_TERTIARY = 'rgba(0, 0, 0, 0.45)'
-const HAIRLINE = 'rgba(5, 5, 5, 0.06)'
 
 function formatNumber(value: number): string {
   const magnitude = Math.abs(value)
@@ -58,29 +57,39 @@ export function BarChart({
   yName,
   height = 180
 }: BarChartProps) {
+  const resolvedTheme = useGlobeStore((state) => state.resolvedTheme)
+
   const option = useMemo<EChartsCoreOption>(() => {
+    const isDark = resolvedTheme === 'dark'
+    const axisInk = isDark ? 'rgba(236, 236, 236, 0.55)' : 'rgba(13, 13, 13, 0.48)'
+    const axisLine = isDark ? 'rgba(255, 255, 255, 0.24)' : 'rgba(13, 13, 13, 0.32)'
+    const splitLine = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'
+    const legendInk = isDark ? 'rgba(236, 236, 236, 0.72)' : 'rgba(13, 13, 13, 0.65)'
+    const tooltipBg = isDark ? '#262626' : '#0d0d0d'
+    const tooltipBorder = isDark ? 'rgba(255, 255, 255, 0.12)' : 'transparent'
+
     const horizontal = orientation === 'horizontal'
     const valueAxis = {
       type: 'value',
       min: valueMin,
       max: valueMax,
       name: horizontal ? xName : yName,
-      nameTextStyle: { color: INK_TERTIARY, fontSize: 11, align: 'left' },
+      nameTextStyle: { color: axisInk, fontSize: 11, align: 'left' },
       axisLabel: {
-        color: INK_TERTIARY,
+        color: axisInk,
         fontFamily: MONO_FONT,
         fontSize: 11,
         formatter: (value: number) => (absValues ? formatNumber(Math.abs(value)) : formatNumber(value))
       },
       axisLine: { show: false },
       axisTick: { show: false },
-      splitLine: { lineStyle: { color: HAIRLINE } }
+      splitLine: { lineStyle: { color: splitLine } }
     }
     const categoryAxis = {
       type: 'category',
       data: categories,
-      axisLabel: { color: INK_TERTIARY, fontFamily: MONO_FONT, fontSize: 11, hideOverlap: true },
-      axisLine: { show: true, lineStyle: { color: INK_TERTIARY } },
+      axisLabel: { color: axisInk, fontFamily: MONO_FONT, fontSize: 11, hideOverlap: true },
+      axisLine: { show: true, lineStyle: { color: axisLine } },
       axisTick: { show: false },
       splitLine: { show: false }
     }
@@ -94,14 +103,15 @@ export function BarChart({
             itemWidth: 10,
             itemHeight: 10,
             itemGap: 12,
-            textStyle: { color: 'rgba(0, 0, 0, 0.65)', fontSize: 11 }
+            textStyle: { color: legendInk, fontSize: 11 }
           }
         : undefined,
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        borderWidth: 0,
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
+        borderWidth: isDark ? 1 : 0,
         padding: [4, 8],
         textStyle: { color: '#ffffff', fontSize: 12, lineHeight: 20 },
         formatter: (params: unknown) => {
@@ -129,7 +139,7 @@ export function BarChart({
         emphasis: { disabled: true }
       }))
     }
-  }, [categories, series, orientation, stacked, showLegend, absValues, valueMin, valueMax, xName, yName])
+  }, [categories, series, orientation, stacked, showLegend, absValues, valueMin, valueMax, xName, yName, resolvedTheme])
 
   return <EChartBase className={styles.barChart} option={option} style={{ height: `${height}px` }} />
 }

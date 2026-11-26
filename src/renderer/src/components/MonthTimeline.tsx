@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { Button, Slider } from 'antd'
-import { CaretRightOutlined, PauseOutlined } from '@ant-design/icons'
+import { PauseIcon, PlayIcon } from 'lucide-react'
 import type * as Cesium from 'cesium'
+import { Button, Slider } from '@renderer/components/ui'
 import { useVisibleAnimation } from '@renderer/composables/useVisibleAnimation'
 import { useClimateStore } from '@renderer/stores/climate'
 import { useFlightStopsStore } from '@renderer/stores/flightStops'
@@ -56,10 +56,10 @@ export function MonthTimeline({ viewer }: MonthTimelineProps) {
       aria-label="月份时间轴"
     >
       <Button
-        type={isPlaying ? 'primary' : 'default'}
+        variant={isPlaying ? 'primary' : 'default'}
         shape="circle"
         aria-label={isPlaying ? '暂停月份播放' : '播放月份动画'}
-        icon={isPlaying ? <PauseOutlined /> : <CaretRightOutlined />}
+        icon={isPlaying ? <PauseIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
         onClick={togglePlaying}
       />
       <div className={styles.monthReadout}>
@@ -73,7 +73,7 @@ export function MonthTimeline({ viewer }: MonthTimelineProps) {
         step={1}
         marks={marks}
         className={styles.monthSlider}
-        ariaLabelForHandle="月份选择"
+        aria-label="月份选择"
         onChange={(value: number) => setMonth(value)}
       />
     </div>

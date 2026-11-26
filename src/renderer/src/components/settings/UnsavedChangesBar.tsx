@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Button } from 'antd'
-import { ExclamationCircleFilled } from '@ant-design/icons'
+import { AlertCircleIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import styles from './UnsavedChangesBar.module.css'
 
 export interface UnsavedChangesBarProps {
@@ -41,13 +41,13 @@ export function UnsavedChangesBar({ open, saving, onSave, onDiscard }: UnsavedCh
         if (!open) setRendered(false)
       }}
     >
-      <ExclamationCircleFilled className={styles.unsavedBarIcon} aria-hidden="true" />
+      <AlertCircleIcon className={styles.unsavedBarIcon} aria-hidden="true" />
       <span className={styles.unsavedBarText}>您似乎有新的改动！</span>
       <div className={styles.unsavedBarActions}>
         <Button disabled={saving} onClick={onDiscard}>
           舍弃
         </Button>
-        <Button type="primary" loading={saving} onClick={onSave}>
+        <Button variant="primary" loading={saving} onClick={onSave}>
           保存
         </Button>
       </div>

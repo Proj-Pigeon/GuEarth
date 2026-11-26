@@ -14,15 +14,23 @@
 
 .failureAlert {
   max-width: 100%;
-  border-radius: 8px;
-  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  background: var(--elevated);
+  box-shadow: var(--shadow-popup);
   pointer-events: auto;
+}
+
+.failureAlert[data-alert-type='warning'] {
+  background: color-mix(in srgb, var(--warning) 10%, var(--elevated));
+}
+
+.failureAlert[data-alert-type='error'] {
+  background: color-mix(in srgb, var(--destructive) 9%, var(--elevated));
 }
 
 .failureText {
   display: block;
   overflow: hidden;
-  color: rgba(0, 0, 0, 0.88);
+  color: inherit;
   font-size: 13px;
   line-height: 20px;
   text-overflow: ellipsis;

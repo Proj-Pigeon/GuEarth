@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { CloseOutlined, UndoOutlined } from '@ant-design/icons'
-import { Button, Slider } from 'antd'
+import { RotateCcwIcon, XIcon } from 'lucide-react'
+import { Button, Slider } from '@renderer/components/ui'
 import styles from './ObliquityPanel.module.css'
 
 export interface ObliquityPanelProps {
@@ -114,13 +114,13 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>黄赤交角可调探究</span>
         <Button
-          type="text"
-          size="small"
+          variant="ghost"
+          size="sm"
           aria-label="恢复真实黄赤交角 23.5 度"
-          icon={<UndoOutlined />}
+          icon={<RotateCcwIcon className="size-3.5" />}
           onClick={() => setObliquity(REAL_OBLIQUITY)}
         />
-        <Button type="text" size="small" aria-label="关闭黄赤交角探究" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭黄赤交角探究" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <div className={styles.sliderRow}>
         <span className={styles.rowLabel}>黄赤交角</span>
@@ -131,7 +131,7 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
           step={0.5}
           marks={obliquityMarks}
           className={styles.obliquitySlider}
-          ariaLabelForHandle="黄赤交角"
+          aria-label="黄赤交角"
           onChange={(value) => setObliquity(value)}
         />
         <span className={styles.rowValue}>{fmt(obliquity)}°</span>
@@ -143,7 +143,7 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
         role="img"
         aria-label="太阳直射点纬度随日期变化的正弦曲线"
       >
-        <line x1="0" y1={curveY(0)} x2={CURVE_WIDTH} y2={curveY(0)} stroke="rgba(0, 0, 0, 0.25)" strokeWidth="1" strokeDasharray="4 3" />
+        <line x1="0" y1={curveY(0)} x2={CURVE_WIDTH} y2={curveY(0)} stroke="var(--border-strong)" strokeWidth="1" strokeDasharray="4 3" />
         <line x1="0" y1={curveY(obliquity)} x2={CURVE_WIDTH} y2={curveY(obliquity)} stroke="rgba(250, 140, 22, 0.55)" strokeWidth="1" strokeDasharray="4 3" />
         <line x1="0" y1={curveY(-obliquity)} x2={CURVE_WIDTH} y2={curveY(-obliquity)} stroke="rgba(250, 140, 22, 0.55)" strokeWidth="1" strokeDasharray="4 3" />
         <path d={curvePoints} fill="none" stroke={TROPIC_COLOR} strokeWidth="2" />
@@ -163,7 +163,7 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
               y1={CURVE_HEIGHT}
               x2={(mark.day / 365) * CURVE_WIDTH}
               y2={CURVE_HEIGHT + 4}
-              stroke="rgba(0, 0, 0, 0.45)"
+              stroke="var(--ink-tertiary)"
             />
             <text
               x={(mark.day / 365) * CURVE_WIDTH}
@@ -186,7 +186,7 @@ export function ObliquityPanel({ onClose }: ObliquityPanelProps) {
         >
           {boundaryMarks.map((mark) => (
             <g key={`${mark.label}-${mark.latitude}`}>
-              <line x1="-6" y1={barY(mark.latitude)} x2="-2" y2={barY(mark.latitude)} stroke="rgba(0, 0, 0, 0.45)" />
+              <line x1="-6" y1={barY(mark.latitude)} x2="-2" y2={barY(mark.latitude)} stroke="var(--ink-tertiary)" />
               <text x="-8" y={barY(mark.latitude) + 4} className={styles.axisLabel} textAnchor="end">
                 {mark.label}
               </text>

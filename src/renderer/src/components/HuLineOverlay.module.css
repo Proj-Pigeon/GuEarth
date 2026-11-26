@@ -4,10 +4,10 @@
   top: 0;
   min-width: 132px;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(83, 29, 171, 0.35);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-panel);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -16,7 +16,7 @@
 }
 
 .huCardTitle {
-  color: #531dab;
+  color: var(--ink);
   font-size: 12px;
   font-weight: 600;
   line-height: 20px;
@@ -27,18 +27,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
 }
 
 .huCardValue {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
 }
 
 .huCardValueStrong {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-weight: 600;
-  color: #531dab;
+  color: var(--ink);
 }

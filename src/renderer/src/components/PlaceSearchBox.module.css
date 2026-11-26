@@ -2,78 +2,137 @@
   position: absolute;
   top: 16px;
   left: 16px;
-  width: min(400px, calc(100vw - 32px));
+  width: min(400px, calc(100vw - 176px));
   z-index: 10;
+  -webkit-app-region: no-drag;
 }
 
-.placeAutocomplete {
-  width: 100%;
+:global(html[data-platform='darwin']:not([data-fullscreen='true'])) .placeSearch {
+  left: 84px;
+  width: min(400px, calc(100vw - 100px));
 }
 
-.placeSearch :global(.ant-input-affix-wrapper) {
-  border-radius: 6px;
-}
-
-.placeProviderSpace {
-  display: inline-block;
-  width: 72px;
-  height: 1px;
-}
-
-.placeProviderButton {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 2;
-  display: inline-flex;
+.searchBar {
+  display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  width: 72px;
-  height: 32px;
-  padding: 4px 8px;
-  color: rgba(0, 0, 0, 0.65);
-  border-left: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 0 6px 6px 0;
-  background: #ffffff;
+  width: 100%;
+  height: 40px;
+  padding: 0 10px 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+  transition: border-color 0.1s ease-out, box-shadow 0.1s ease-out;
 }
 
-.placeProviderButton:hover {
-  color: rgba(0, 0, 0, 0.88);
-  background: rgba(0, 0, 0, 0.04);
+.searchBarWithProvider {
+  padding-right: 0;
 }
 
-.placeProviderButton :global(.anticon) {
-  margin-inline-start: 0;
-  font-size: 12px;
-}
-
-.placeProviderButton:focus-visible {
-  outline: 2px solid #1677ff;
-  outline-offset: -2px;
+.searchBar:focus-within {
+  border-color: var(--ring);
+  box-shadow: var(--shadow-panel), 0 0 0 2px color-mix(in srgb, var(--ring) 12%, transparent);
 }
 
 .placeSearchIcon {
-  color: rgba(0, 0, 0, 0.45);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--ink-tertiary);
+}
+
+.searchInput {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 22px;
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: var(--ink-tertiary);
+}
+
+.clearButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--ink-tertiary);
+  cursor: pointer;
+}
+
+.clearButton:hover {
+  background: var(--muted);
+  color: var(--ink);
+}
+
+.placeProviderButton {
+  height: 100%;
+  min-height: 100%;
+  padding: 0 12px;
+  border: 0;
+  border-left: 1px solid var(--hairline);
+  border-radius: 0;
+  color: var(--ink-secondary);
+}
+
+.placeDropdown {
+  width: var(--anchor-width);
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-popup);
+  outline: none;
+}
+
+.placeList {
+  max-height: 288px;
+  overflow-y: auto;
+  padding: 4px;
+  outline: none;
+}
+
+.placeItem {
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.placeItem[data-highlighted],
+.placeItem:hover {
+  background: var(--muted);
 }
 
 .placeOption {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 4px 0;
 }
 
 .placeOptionName {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 14px;
-  line-height: 22px;
+  line-height: 20px;
 }
 
 .placeOptionMeta {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
-  line-height: 20px;
+  line-height: 18px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -83,25 +142,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: rgba(0, 0, 0, 0.45);
+  padding: 8px 10px;
+  color: var(--ink-tertiary);
   font-size: 12px;
   line-height: 20px;
 }
 
 .placeStatusError {
-  color: #ff4d4f;
+  color: var(--destructive);
 }
 
 .placeRetry {
-  height: 20px;
-  padding: 0 4px;
+  height: 22px;
+  padding: 0 6px;
   font-size: 12px;
-}
-
-.placeLoadingIcon {
-  margin-right: 6px;
-}
-
-.placeDropdown :global(.ant-select-item-option-content) {
-  white-space: normal;
 }

@@ -7,37 +7,49 @@
 
 .sectionTitle {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 20px;
   font-weight: 600;
   line-height: 28px;
 }
 
-.sectionDesc {
-  margin: 4px 0 0;
-  color: rgba(0, 0, 0, 0.45);
-  font-size: 12px;
-  line-height: 20px;
-}
-
-.notice,
 .settingsBlock {
   margin-top: 24px;
 }
 
 .blockHeading {
-  margin: 0 0 8px;
-  color: rgba(0, 0, 0, 0.88);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 24px;
+  margin: 0 0 10px;
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
 }
 
-.dataDescription {
-  margin: 0 0 16px;
-  color: rgba(0, 0, 0, 0.65);
-  font-size: 14px;
-  line-height: 22px;
+.card {
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--subtle);
+}
+
+.cardTitle {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.cardBody {
+  padding: 14px;
 }
 
 .providerRow {
@@ -53,7 +65,7 @@
 
 .providerHost {
   margin: 4px 0 0;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 13px;
   line-height: 20px;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
@@ -66,14 +78,33 @@
   gap: 4px;
 }
 
-.loading {
-  width: 100%;
-}
-
 .loadingSpace {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-height: 96px;
 }
 
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formLabel {
+  color: var(--ink-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.fieldError {
+  color: var(--destructive);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .formError {
-  margin-bottom: 16px;
+  margin-top: 8px;
 }

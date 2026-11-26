@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import * as Cesium from 'cesium'
-import { CloseOutlined, EnvironmentOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { MapPinIcon, XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
 import { useTransportStore } from '@renderer/stores/transport'
 import {
@@ -65,7 +65,7 @@ export function TransportPanel({ viewer, onClose }: TransportPanelProps) {
     <div className={styles.transportPanel} role="group" aria-label="交通运输布局">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>交通运输布局 · 高铁网络</span>
-        <Button type="text" size="small" aria-label="关闭交通运输面板" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭交通运输面板" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
 
       <YearTimeline />
@@ -83,10 +83,10 @@ export function TransportPanel({ viewer, onClose }: TransportPanelProps) {
         {caseLines.map((line) => (
           <Button
             key={line.name}
-            size="small"
+            size="sm"
             className={styles.caseButton}
             disabled={line.openedYear > displayYear}
-            icon={<EnvironmentOutlined />}
+            icon={<MapPinIcon className="size-3.5" />}
             onClick={() => void flyToLine(line)}
           >
             {line.name.split('（')[0]} · {line.openedYear}
@@ -96,7 +96,7 @@ export function TransportPanel({ viewer, onClose }: TransportPanelProps) {
 
       <Button
         className={styles.panelAction}
-        size="small"
+        size="sm"
         block
         disabled={hsrOverlayEnabled}
         onClick={() => setOverlay('hsr-network', true)}

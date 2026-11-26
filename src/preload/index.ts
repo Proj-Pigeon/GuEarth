@@ -4,6 +4,7 @@ import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiSta
 import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
 import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, TileMirrorMode } from '../common/tileMirror'
 import type { TouchInteractionMode } from '../common/touchInteraction'
+import { isThemeMode, type ResolvedTheme, type ThemeMode } from '../common/themeMode'
 import type { EnsoPhase } from '../common/thematicState'
 import type { LaboratoryProvider, LaboratoryProviderInput, OnlineDataSnapshot } from '../common/onlineData'
 
@@ -22,6 +23,7 @@ export interface GuEarthSettings {
   tileMirrorSource: MirrorEndpointPreference
   mirrorConsentPrompted: boolean
   touchInteractionMode: TouchInteractionMode
+  themeMode: ThemeMode
   networkProxy: string
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
@@ -42,6 +44,7 @@ export interface GuEarthSettingsPatch {
   tileMirrorSource?: MirrorEndpointPreference
   mirrorConsentPrompted?: boolean
   touchInteractionMode?: TouchInteractionMode
+  themeMode?: ThemeMode
   networkProxy?: string
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'
@@ -466,6 +469,60 @@ export interface UpdateState {
 
 export type UpdateCheckOutcome = 'available' | 'latest' | 'failed' | 'disabled'
 
+export interface WindowControlsState {
+  maximized: boolean
+  fullScreen: boolean
+  platform: string
+}
+
+export interface InitialThemeBootstrap {
+  themeMode: ThemeMode
+  resolvedTheme: ResolvedTheme
+}
+
+function readInitialThemeBootstrap(): InitialThemeBootstrap {
+  try {
+    const raw = ipcRenderer.sendSync('app:initial-theme') as Partial<InitialThemeBootstrap> | undefined
+    if (raw && isThemeMode(raw.themeMode) && (raw.resolvedTheme === 'dark' || raw.resolvedTheme === 'light')) {
+      return {
+        themeMode: raw.themeMode,
+        resolvedTheme: raw.resolvedTheme
+      }
+    }
+  } catch {
+    void 0
+  }
+  return { themeMode: 'light', resolvedTheme: 'light' }
+}
+
+const initialTheme = readInitialThemeBootstrap()
+
+interface PreloadDocumentElement {
+  classList: { toggle: (token: string, force?: boolean) => boolean }
+  style: { colorScheme: string }
+  dataset: Record<string, string | undefined>
+}
+
+interface PreloadGlobal {
+  document?: { documentElement?: PreloadDocumentElement | null }
+  addEventListener?: (type: string, listener: () => void, options?: { once?: boolean }) => void
+}
+
+function applyInitialDocumentAttributes(): void {
+  const host = globalThis as unknown as PreloadGlobal
+  const root = host.document?.documentElement
+  if (!root) return
+  root.classList.toggle('dark', initialTheme.resolvedTheme === 'dark')
+  root.style.colorScheme = initialTheme.resolvedTheme
+  root.dataset.platform = process.platform
+}
+
+applyInitialDocumentAttributes()
+const preloadHost = globalThis as unknown as PreloadGlobal
+if (!preloadHost.document?.documentElement && typeof preloadHost.addEventListener === 'function') {
+  preloadHost.addEventListener('DOMContentLoaded', applyInitialDocumentAttributes, { once: true })
+}
+
 export type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState }
 
 export type UpdaterEvent =
@@ -475,6 +532,8 @@ export type UpdaterEvent =
   | { type: 'error'; message: string }
 
 const api = {
+  platform: process.platform,
+  initialTheme,
   versions: {
     electron: process.versions.electron,
     node: process.versions.node,
@@ -543,6 +602,17 @@ const api = {
   },
   system: {
     fonts: (): Promise<string[]> => ipcRenderer.invoke('system:fonts')
+  },
+  windowControls: {
+    getState: (): Promise<WindowControlsState> => ipcRenderer.invoke('window:get-state'),
+    minimize: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
+    toggleMaximize: (): Promise<void> => ipcRenderer.invoke('window:toggle-maximize'),
+    close: (): Promise<void> => ipcRenderer.invoke('window:close'),
+    onStateChange: (listener: (state: WindowControlsState) => void): (() => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, payload: WindowControlsState): void => listener(payload)
+      ipcRenderer.on('window:state-changed', wrapped)
+      return () => ipcRenderer.removeListener('window:state-changed', wrapped)
+    }
   },
   account: {
     getState: (): Promise<AccountState> => ipcRenderer.invoke('account:get-state'),

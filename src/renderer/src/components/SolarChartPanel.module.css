@@ -3,10 +3,10 @@
   flex-direction: column;
   gap: 4px;
   padding: 12px 16px 16px;
-  background: #ffffff;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 8px;
-  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
 }
 
 .chartHeader {
@@ -17,7 +17,7 @@
 
 .declination {
   margin-left: auto;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
@@ -30,7 +30,7 @@
 }
 
 .latitudeLabel {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 20px;
   flex: none;
@@ -38,21 +38,21 @@
 
 .latitudeSlider {
   flex: 1;
-  margin: 0 0 8px;
+  margin: 0 0 4px;
 }
 
 .latitudeValue {
   flex: none;
   min-width: 44px;
   text-align: right;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 12px;
   line-height: 20px;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 
 .chartTitle {
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   font-size: 12px;
   font-weight: 600;
   line-height: 20px;

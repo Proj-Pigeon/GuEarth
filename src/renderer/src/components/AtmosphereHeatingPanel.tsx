@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button, Segmented, Tag } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button, Segmented, Tag } from '@renderer/components/ui'
 import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 import styles from './AtmosphereHeatingPanel.module.css'
 
@@ -144,14 +144,14 @@ export function AtmosphereHeatingPanel({ onClose }: AtmosphereHeatingPanelProps)
     <div className={styles.heatingPanel} role="group" aria-label="大气受热过程演示">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>大气受热过程</span>
-        <Button type="text" size="small" aria-label="关闭大气受热过程" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭大气受热过程" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <div className={styles.controlRow}>
         <div className={styles.controlGroup}>
           <span className={styles.controlLabel}>昼夜</span>
           <Segmented
             value={period}
-            size="small"
+            size="sm"
             options={periodOptions}
             aria-label="昼夜"
             onChange={(value) => setPeriod(value as Period)}
@@ -161,7 +161,7 @@ export function AtmosphereHeatingPanel({ onClose }: AtmosphereHeatingPanelProps)
           <span className={styles.controlLabel}>云量</span>
           <Segmented
             value={cloud}
-            size="small"
+            size="sm"
             options={cloudOptions}
             aria-label="云量"
             onChange={(value) => setCloud(value as CloudCover)}

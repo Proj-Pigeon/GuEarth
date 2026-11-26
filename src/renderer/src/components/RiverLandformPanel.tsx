@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
-import { CloseOutlined, LoadingOutlined } from '@ant-design/icons'
-import { Alert, Button } from 'antd'
+import { Loader2Icon, XIcon } from 'lucide-react'
+import { Alert, Button } from '@renderer/components/ui'
 import LineChart, { type ChartSeries } from './charts/LineChart'
 import styles from './RiverLandformPanel.module.css'
 
@@ -187,14 +187,14 @@ export function RiverLandformPanel({ viewer, onClose }: RiverLandformPanelProps)
     <div className={styles.riverPanel} role="group" aria-label="河流地貌发育">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>河流地貌发育</span>
-        <Button type="text" size="small" aria-label="关闭河流地貌" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭河流地貌" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <div className={styles.reachRow}>
         {reaches.map((reach) => (
           <Button
             key={reach.id}
-            size="small"
-            type={reach.id === activeReach.id ? 'primary' : 'default'}
+            size="sm"
+            variant={reach.id === activeReach.id ? 'primary' : 'default'}
             onClick={() => selectReach(reach)}
           >
             {reach.stage}
@@ -205,7 +205,7 @@ export function RiverLandformPanel({ viewer, onClose }: RiverLandformPanelProps)
       <div className={styles.landformLine}>{activeReach.landform}</div>
       <div className={styles.chartTitle}>
         沿河真实高程剖面
-        {sampling && <LoadingOutlined className={styles.loadingIcon} />}
+        {sampling && <Loader2Icon className={`${styles.loadingIcon} size-3.5 animate-spin`} />}
       </div>
       <LineChart
         series={series}

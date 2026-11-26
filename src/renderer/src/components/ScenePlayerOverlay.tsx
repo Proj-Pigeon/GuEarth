@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { Button, Segmented, Spin } from 'antd'
-import { StepForwardOutlined } from '@ant-design/icons'
+import { SkipForwardIcon } from 'lucide-react'
+import { Button, Segmented, Spinner } from '@renderer/components/ui'
 import { useScenesStore, type RecordingPrewarmQuality } from '@renderer/stores/scenes'
 import type { PlayerState } from '@renderer/composables/useScenePlayer'
 import styles from './ScenePlayerOverlay.module.css'
@@ -61,7 +61,7 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
     <div className={styles.sceneOverlay}>
       {player.prewarming ? (
         <div className={styles.prewarmMask}>
-          <Spin />
+          <Spinner size="md" />
           <div className={styles.prewarmText}>{isRecordingPreparing ? prewarmNotice : '正在准备课程资源…'}</div>
           {prewarmProgress && <div className={styles.prewarmProgress}>{prewarmProgress}</div>}
           {isRecordingPreparing && (
@@ -70,7 +70,7 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
               <Segmented<RecordingPrewarmQuality>
                 value={recording.prewarmQuality}
                 options={prewarmQualityOptions}
-                size="small"
+                size="sm"
                 onChange={(value) => setRecording({ prewarmQuality: value })}
               />
             </div>
@@ -79,7 +79,7 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
           {isRecordingPreparing && (
             <div className={styles.prewarmActions}>
               <Button
-                size="small"
+                size="sm"
                 onClick={(event) => {
                   event.stopPropagation()
                   skipRecordingPrewarm()
@@ -88,7 +88,7 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
                 跳过预加载
               </Button>
               <Button
-                size="small"
+                size="sm"
                 danger
                 onClick={(event) => {
                   event.stopPropagation()
@@ -120,7 +120,7 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
           {recordNotice && <div className={styles.recordNotice}>{recordNotice}</div>}
           <div className={styles.sceneControls}>
             <Button
-              icon={<StepForwardOutlined />}
+              icon={<SkipForwardIcon className="size-4" />}
               onClick={(event) => {
                 event.stopPropagation()
                 onNext()

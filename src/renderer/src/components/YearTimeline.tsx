@@ -1,5 +1,5 @@
-import { Button, Slider } from 'antd'
-import { CaretRightOutlined, PauseOutlined } from '@ant-design/icons'
+import { PauseIcon, PlayIcon } from 'lucide-react'
+import { Button, Slider } from '@renderer/components/ui'
 import { useVisibleAnimation } from '@renderer/composables/useVisibleAnimation'
 import { useTransportStore } from '@renderer/stores/transport'
 import { HSR_END_YEAR, HSR_START_YEAR, hsrMileageAt } from '@renderer/thematic/hsrLines'
@@ -32,10 +32,10 @@ export function YearTimeline(_props: YearTimelineProps) {
   return (
     <div className={styles.yearTimeline} role="group" aria-label="年份时间轴">
       <Button
-        type={isPlaying ? 'primary' : 'default'}
+        variant={isPlaying ? 'primary' : 'default'}
         shape="circle"
         aria-label={isPlaying ? '暂停年份播放' : '播放年份动画'}
-        icon={isPlaying ? <PauseOutlined /> : <CaretRightOutlined />}
+        icon={isPlaying ? <PauseIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
         onClick={togglePlaying}
       />
       <div className={styles.yearReadout}>
@@ -49,8 +49,7 @@ export function YearTimeline(_props: YearTimelineProps) {
         step={1}
         marks={marks}
         className={styles.yearSlider}
-        ariaLabelForHandle="年份选择"
-        tooltip={{ open: false }}
+        aria-label="年份选择"
         onChange={(value: number) => setYear(value)}
       />
     </div>

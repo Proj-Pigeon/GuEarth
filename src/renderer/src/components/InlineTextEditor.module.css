@@ -26,9 +26,9 @@
 }
 
 .textEditor:focus {
-  outline: 2px solid rgba(22, 119, 255, 0.35);
+  outline: 2px solid var(--ring);
 }
 
 .textEditor::placeholder {
-  color: rgba(0, 0, 0, 0.4);
+  color: var(--ink-tertiary);
 }

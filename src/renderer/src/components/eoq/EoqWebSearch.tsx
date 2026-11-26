@@ -80,7 +80,7 @@ export function EoqWebSearch({ step, busy, onRetry }: EoqWebSearchProps) {
                   type="button"
                   disabled={busy}
                   onClick={() => onRetry?.(query)}
-                  className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-[12px] text-primary transition-colors duration-100 hover:text-[#4096ff] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-[12px] text-ink underline underline-offset-2 transition-opacity duration-100 hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <RotateCwIcon className="size-3" />
                   重新搜索

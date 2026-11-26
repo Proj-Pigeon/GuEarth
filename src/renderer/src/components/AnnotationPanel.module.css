@@ -11,18 +11,19 @@
 }
 
 .panelKicker {
-  color: rgba(0, 0, 0, 0.45);
-  font-size: 12px;
-  line-height: 20px;
-  letter-spacing: 0;
+  color: var(--ink-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.04em;
 }
 
 .panelHeading {
   margin: 0;
-  color: rgba(0, 0, 0, 0.88);
-  font-size: 20px;
+  color: var(--ink);
+  font-size: 16px;
   font-weight: 600;
-  line-height: 28px;
+  line-height: 24px;
 }
 
 .panelActions {
@@ -31,7 +32,7 @@
 }
 
 .shapeCount {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   font-size: 12px;
 }
 
@@ -40,37 +41,23 @@
 }
 
 .treeWrap {
-  margin-left: -8px;
-  margin-right: -8px;
-}
-
-.treeWrap :global(.ant-tree-treenode) {
-  align-items: center;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.treeWrap :global(.ant-tree-switcher) {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  line-height: 32px;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: -6px;
+  margin-right: -6px;
 }
 
-.treeWrap :global(.ant-tree-node-content-wrapper) {
-  flex: 1;
-  width: 0;
-  min-width: 0;
-  overflow: hidden;
+.treeNodeWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  outline: none;
 }
 
-.treeWrap :global(.ant-tree-title) {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
+.treeNodeWrap:focus-visible > .treeRow {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
 }
 
 .topLevelDrop {
@@ -78,27 +65,89 @@
   right: 16px;
   bottom: 16px;
   left: 16px;
-  z-index: 1;
+  z-index: 2;
   padding: 8px 12px;
-  border: 1px dashed #1677ff;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #1677ff;
+  border: 1px dashed var(--ring);
+  border-radius: 8px;
+  background: var(--elevated);
+  color: var(--ink);
   text-align: center;
   font-size: 12px;
 }
 
 .treeRow {
-  gap: 4px;
+  position: relative;
+  gap: 6px;
   width: 100%;
   min-width: 0;
-  height: 32px;
+  height: 34px;
+  padding-right: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.1s ease-out;
+}
+
+.treeRow:hover {
+  background: var(--hover-fill);
+}
+
+.treeRowSelected {
+  background: var(--active-fill);
+}
+
+.dropBefore {
+  box-shadow: inset 0 2px 0 0 var(--ring);
+}
+
+.dropAfter {
+  box-shadow: inset 0 -2px 0 0 var(--ring);
+}
+
+.dropInside {
+  background: var(--active-fill);
+  outline: 1px dashed var(--ring);
+}
+
+.expandToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  flex: none;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-tertiary);
+  cursor: pointer;
+}
+
+.expandToggle:hover {
+  background: var(--muted);
+  color: var(--ink);
+}
+
+.expandSpacer {
+  width: 20px;
+  flex: none;
+}
+
+.expandChevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s ease-out;
+}
+
+.expandChevronOpen {
+  transform: rotate(90deg);
 }
 
 .rowIcon {
+  width: 15px;
+  height: 15px;
   flex: none;
-  color: rgba(0, 0, 0, 0.45);
-  margin-right: 4px;
+  color: var(--ink-tertiary);
 }
 
 .rowName {
@@ -107,8 +156,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: rgba(0, 0, 0, 0.88);
-  font-size: 14px;
+  color: var(--ink);
+  font-size: 13px;
 }
 
 .rowActions {
@@ -117,9 +166,10 @@
   align-items: center;
   visibility: hidden;
   opacity: 0;
-  transition: opacity 0.2s ease-in-out;
+  transition: opacity 0.15s ease-out;
 }
 
+.treeNodeWrap:focus > .treeRow .rowActions,
 .treeRow:hover .rowActions,
 .treeRow:focus-within .rowActions,
 .rowActionsVisible {
@@ -129,22 +179,18 @@
 
 .rowAction {
   flex: none;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   padding: 0;
 }
 
 .shapeTag {
   flex: none;
-  margin-right: 0;
-  color: rgba(0, 0, 0, 0.65);
-  background: rgba(0, 0, 0, 0.04);
-  border: none;
-  border-radius: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rowActions {
+  .rowActions,
+  .expandChevron {
     transition-duration: 0.01ms;
   }
 }

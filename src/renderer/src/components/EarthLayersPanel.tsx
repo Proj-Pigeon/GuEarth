@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui'
 import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 import styles from './EarthLayersPanel.module.css'
 
@@ -92,7 +92,7 @@ export function EarthLayersPanel({ onClose }: EarthLayersPanelProps) {
     <div className={styles.layersPanel} role="group" aria-label="地球圈层结构">
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>地球的圈层结构</span>
-        <Button type="text" size="small" aria-label="关闭地球圈层结构" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭地球圈层结构" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       <svg viewBox="0 0 340 210" className={styles.earthSvg} role="img" aria-label="地球内部圈层切球剖面示意">
         <defs>
@@ -132,7 +132,7 @@ export function EarthLayersPanel({ onClose }: EarthLayersPanelProps) {
             />
           </g>
         ))}
-        <line x1="0" y1="178" x2="340" y2="178" stroke="rgba(0,0,0,0.32)" strokeWidth="1.5" />
+        <line x1="0" y1="178" x2="340" y2="178" stroke="var(--ink-tertiary)" strokeWidth="1.5" />
         <g fontFamily={diagramFont} fontSize="10">
           {callouts.map((c) => (
             <g key={c.id} className={styles.callout} onClick={() => setActive(c.id)}>
@@ -155,7 +155,7 @@ export function EarthLayersPanel({ onClose }: EarthLayersPanelProps) {
           <text x="328" y="192" textAnchor="end" fill={dc.inkTertiary}>
             古登堡面
           </text>
-          <path d="M 40 186 L 60 178 M 300 186 L 256 178" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" />
+          <path d="M 40 186 L 60 178 M 300 186 L 256 178" stroke="var(--border-strong)" strokeWidth="0.8" />
           <text x="170" y="206" textAnchor="middle" fill={dc.inkTertiary}>
             剖面比例经夸张示意（真实地壳仅约地球半径 1/375）
           </text>

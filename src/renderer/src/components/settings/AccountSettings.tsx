@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, App as AntdApp, Avatar, Button, Space, Tag } from 'antd'
-import { CheckCircleOutlined, CopyOutlined, ExportOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons'
+import { CheckCircle2Icon, CopyIcon, ExternalLinkIcon, LogInIcon, LogOutIcon } from 'lucide-react'
+import { Alert, Avatar, Button, Tag, useConfirm, useToast } from '@renderer/components/ui'
 import { useAccountStore } from '@renderer/stores/account'
 import styles from './AccountSettings.module.css'
 
 export interface AccountSettingsProps {}
 
 export function AccountSettings(_props: AccountSettingsProps) {
-  const { message, modal } = AntdApp.useApp()
+  const toast = useToast()
+  const confirm = useConfirm()
   const phase = useAccountStore((state) => state.phase)
   const profile = useAccountStore((state) => state.profile)
   const userCode = useAccountStore((state) => state.userCode)
@@ -62,7 +63,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
     try {
       await navigator.clipboard.writeText(userCode)
     } catch {
-      message.error('复制失败，请手动记录验证码')
+      toast.error('复制失败，请手动记录验证码')
       return
     }
     setCopied(true)
@@ -74,11 +75,11 @@ export function AccountSettings(_props: AccountSettingsProps) {
   }
 
   function confirmSignOut(): void {
-    modal.confirm({
+    confirm({
       title: '退出登录？',
       content: '退出后需要重新登录。',
       okText: '退出登录',
-      okButtonProps: { danger: true },
+      danger: true,
       cancelText: '取消',
       onOk: () => signOut()
     })
@@ -94,7 +95,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
           type="error"
           showIcon
           title={error}
-          closable={{ onClose: () => clearError() }}
+          onClose={() => clearError()}
         />
       )}
 
@@ -105,14 +106,14 @@ export function AccountSettings(_props: AccountSettingsProps) {
           showIcon
           title="本机已退出，请到账号中心手动移除此设备"
           action={
-            <Space orientation="vertical" size={4}>
-              <Button size="small" icon={<ExportOutlined />} onClick={() => void openDeviceList()}>
+            <div className="flex flex-col gap-1">
+              <Button size="sm" icon={<ExternalLinkIcon className="size-3.5" />} onClick={() => void openDeviceList()}>
                 打开设备列表
               </Button>
-              <Button size="small" type="text" onClick={() => void dismissRevocationWarning()}>
+              <Button size="sm" variant="ghost" onClick={() => void dismissRevocationWarning()}>
                 我知道了
               </Button>
-            </Space>
+            </div>
           }
         />
       )}
@@ -121,9 +122,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
         {signedIn ? (
           <div className={`${styles.settingRow} ${styles.settingRowCenter}`}>
             <div className={styles.accountIdentity}>
-              <Avatar className={styles.identityAvatar} size={40}>
-                {avatarInitial}
-              </Avatar>
+              <Avatar className={styles.identityAvatar} size={40} fallback={avatarInitial} />
               <div className={styles.identityCopy}>
                 <div className={styles.identityName}>{displayName}</div>
                 {emailText && <div className={styles.identityEmail}>{emailText}</div>}
@@ -133,7 +132,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
               danger
               loading={phase === 'signing-out'}
               disabled={busy}
-              icon={<LogoutOutlined />}
+              icon={<LogOutIcon className="size-4" />}
               onClick={confirmSignOut}
             >
               退出登录
@@ -147,7 +146,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
                   <span className={styles.settingTitle}>
                     {phase === 'finalizing' ? '正在完成登录' : '等待浏览器确认'}
                   </span>
-                  <Tag color={challengeExpired ? 'error' : 'processing'}>
+                  <Tag tone={challengeExpired ? 'error' : 'info'}>
                     {challengeExpired ? '已超时' : `剩余 ${remainingText}`}
                   </Tag>
                 </div>
@@ -165,23 +164,23 @@ export function AccountSettings(_props: AccountSettingsProps) {
                 <div className={styles.challengeCode} aria-label="登录验证码">
                   {userCode}
                 </div>
-                <Space size={8} wrap>
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
-                    size="small"
-                    icon={copied ? <CheckCircleOutlined /> : <CopyOutlined />}
+                    size="sm"
+                    icon={copied ? <CheckCircle2Icon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
                     onClick={() => void copyUserCode()}
                   >
                     {copied ? '已复制' : '复制验证码'}
                   </Button>
                   <Button
-                    size="small"
+                    size="sm"
                     disabled={!verificationUri}
-                    icon={<ExportOutlined />}
+                    icon={<ExternalLinkIcon className="size-3.5" />}
                     onClick={() => void openVerification()}
                   >
                     打开确认页
                   </Button>
-                </Space>
+                </div>
               </div>
             )}
           </>
@@ -191,10 +190,10 @@ export function AccountSettings(_props: AccountSettingsProps) {
               <div className={styles.settingTitle}>鸽巢通行证</div>
             </div>
             <Button
-              type="primary"
+              variant="primary"
               loading={loginLoading}
               disabled={busy || phase === 'restoring'}
-              icon={<LoginOutlined />}
+              icon={<LogInIcon className="size-4" />}
               onClick={() => void login()}
             >
               登录

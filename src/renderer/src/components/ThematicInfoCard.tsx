@@ -1,5 +1,5 @@
-import { Button, Tag } from 'antd'
-import { CloseOutlined, InfoCircleOutlined, RobotOutlined } from '@ant-design/icons'
+import { BotIcon, InfoIcon, XIcon } from 'lucide-react'
+import { Button, Tag } from '@renderer/components/ui'
 import { useAiStore } from '@renderer/stores/ai'
 import { useFeatureFocusStore } from '@renderer/stores/featureFocus'
 import { useGlobeStore } from '@renderer/stores/globe'
@@ -29,9 +29,9 @@ export function ThematicInfoCard(_props: ThematicInfoCardProps) {
     <>
       {isLayerPanelOpen && (
         <div className={styles.occlusionHint} role="status">
-          <InfoCircleOutlined />
+          <InfoIcon className="size-3.5 shrink-0" />
           <span>成因讲解卡片被图层面板遮挡，关闭面板后即可查看</span>
-          <Button type="link" size="small" onClick={() => setLayerPanelOpen(false)}>
+          <Button variant="link" size="sm" onClick={() => setLayerPanelOpen(false)}>
             关闭面板
           </Button>
         </div>
@@ -40,16 +40,16 @@ export function ThematicInfoCard(_props: ThematicInfoCardProps) {
         <div className={styles.cardHead}>
           <Tag className={styles.cardTag}>{focused.layerName}</Tag>
           <Button
-            type="text"
-            size="small"
+            variant="ghost"
+            size="sm"
             aria-label="关闭"
-            icon={<CloseOutlined />}
+            icon={<XIcon className="size-3.5" />}
             onClick={clearFocus}
           />
         </div>
         <h3 className={styles.cardTitle}>{focused.name}</h3>
         <p className={styles.cardSummary}>{focused.summary}</p>
-        <Button type="primary" size="small" block icon={<RobotOutlined />} onClick={explainWithAi}>
+        <Button variant="primary" size="sm" block icon={<BotIcon className="size-3.5" />} onClick={explainWithAi}>
           让 AI 讲解成因
         </Button>
       </div>

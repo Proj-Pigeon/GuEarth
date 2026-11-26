@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { Alert, App, Button, Tooltip } from 'antd'
-import { CloseOutlined, ReloadOutlined } from '@ant-design/icons'
+import { RotateCwIcon, XIcon } from 'lucide-react'
+import { Alert, Button, Tooltip, useToast } from '@renderer/components/ui'
 import { useFailureStore, type FailureNotice } from '@renderer/stores/failure'
 import styles from './FailureBanner.module.css'
 
@@ -11,7 +11,7 @@ function alertType(notice: FailureNotice): 'error' | 'warning' {
 }
 
 export function FailureBanner(_props: FailureBannerProps) {
-  const { message } = App.useApp()
+  const toast = useToast()
   const active = useFailureStore((state) => state.active)
   const degradationCount = useFailureStore((state) => state.degradations.length)
   const retrying = useFailureStore((state) => state.retrying)
@@ -22,9 +22,9 @@ export function FailureBanner(_props: FailureBannerProps) {
   useEffect(() => {
     if (!degradationCount) return
     for (const notice of takeDegradations()) {
-      void message.warning(notice.message, 6)
+      toast.warning(notice.message, 6)
     }
-  }, [degradationCount, takeDegradations, message])
+  }, [degradationCount, takeDegradations, toast])
 
   const bannerNotices = active.filter((notice) => notice.scope !== 'webgl')
   if (!bannerNotices.length) return null
@@ -46,10 +46,10 @@ export function FailureBanner(_props: FailureBannerProps) {
             <span className={styles.failureActions}>
               {notice.retryable && (
                 <Button
-                  type="text"
-                  size="small"
+                  variant="ghost"
+                  size="sm"
                   loading={Boolean(retrying[notice.scope])}
-                  icon={<ReloadOutlined />}
+                  icon={<RotateCwIcon className="size-3.5" />}
                   onClick={() => void retry(notice.scope)}
                 >
                   重试
@@ -57,10 +57,10 @@ export function FailureBanner(_props: FailureBannerProps) {
               )}
               <Tooltip title="忽略">
                 <Button
-                  type="text"
-                  size="small"
+                  variant="ghost"
+                  size="sm"
                   aria-label="忽略提示"
-                  icon={<CloseOutlined />}
+                  icon={<XIcon className="size-3.5" />}
                   onClick={() => clearFailure(notice.scope)}
                 />
               </Tooltip>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as Cesium from 'cesium'
-import { CloseOutlined } from '@ant-design/icons'
-import { Button, Segmented } from 'antd'
+import { XIcon } from 'lucide-react'
+import { Button, Segmented } from '@renderer/components/ui'
 import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 import styles from './FoldFaultPanel.module.css'
 
@@ -71,12 +71,12 @@ export function FoldFaultPanel({ viewer, onClose }: FoldFaultPanelProps) {
         <span className={styles.panelTitle}>褶皱与断层</span>
         <Segmented
           value={tab}
-          size="small"
+          size="sm"
           options={tabOptions}
           aria-label="褶皱或断层"
           onChange={(value) => setTab(value as Tab)}
         />
-        <Button type="text" size="small" aria-label="关闭褶皱与断层" icon={<CloseOutlined />} onClick={onClose} />
+        <Button variant="ghost" size="sm" aria-label="关闭褶皱与断层" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>
       {tab === 'fold' ? (
         <svg viewBox="0 0 340 180" className={styles.foldSvg} role="img" aria-label="背斜与向斜剖面示意">
@@ -85,7 +85,7 @@ export function FoldFaultPanel({ viewer, onClose }: FoldFaultPanelProps) {
               <path d="M0,0 L6,3 L0,6 Z" fill={dc.fault} opacity="0.85" />
             </marker>
           </defs>
-          <rect x="0" y="0" width="340" height="180" rx="8" fill="#fbf7f2" />
+          <rect x="0" y="0" width="340" height="180" rx="8" fill="var(--subtle)" />
           {foldLayers.map((layer) => (
             <g key={layer.dy}>
               <path
@@ -136,7 +136,7 @@ export function FoldFaultPanel({ viewer, onClose }: FoldFaultPanelProps) {
               <stop offset="100%" stopColor="#a8937c" />
             </linearGradient>
           </defs>
-          <rect x="0" y="0" width="340" height="180" rx="8" fill="#fbf7f2" />
+          <rect x="0" y="0" width="340" height="180" rx="8" fill="var(--subtle)" />
           <rect x="0" y="148" width="340" height="32" fill={dc.strataBase} />
           <g stroke="rgba(0,0,0,0.28)" strokeWidth="1">
             <path d="M 4 96 L 82 96 L 82 148 L 4 148 Z" fill="url(#ff-graben)" />
@@ -182,7 +182,7 @@ export function FoldFaultPanel({ viewer, onClose }: FoldFaultPanelProps) {
       <div className={styles.sectionTitle}>在地球上观察</div>
       <div className={styles.caseRow}>
         {cases.map((item) => (
-          <Button key={item.name} size="small" onClick={() => flyToCase(item)}>
+          <Button key={item.name} size="sm" onClick={() => flyToCase(item)}>
             {item.name}
           </Button>
         ))}

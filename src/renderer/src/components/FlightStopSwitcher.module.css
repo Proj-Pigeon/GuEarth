@@ -8,10 +8,10 @@
   gap: 4px;
   max-width: calc(100vw - 32px);
   padding: 4px 8px;
-  background: #ffffff;
-  border: 1px solid rgba(5, 5, 5, 0.06);
-  border-radius: 8px;
-  box-shadow: var(--ant-box-shadow-secondary, 0 4px 12px rgba(0, 0, 0, 0.08));
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
   z-index: 12;
 }
 
@@ -20,24 +20,6 @@
   height: 32px;
   min-width: 32px;
   padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(0, 0, 0, 0.65);
-  border-radius: 4px;
-  font-size: 14px;
-  transition:
-    color 0.1s ease-out,
-    background-color 0.1s ease-out;
-}
-
-.switcherBtn:not(:disabled):hover {
-  background: rgba(0, 0, 0, 0.04);
-  color: rgba(0, 0, 0, 0.88);
-}
-
-.switcherBtn:disabled {
-  color: rgba(0, 0, 0, 0.25);
 }
 
 .switcherTrigger {
@@ -47,20 +29,6 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  border-radius: 4px;
-  transition:
-    color 0.1s ease-out,
-    background-color 0.1s ease-out;
-}
-
-.switcherTrigger:hover {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.switcherBtn:focus-visible,
-.switcherTrigger:focus-visible {
-  outline: 2px solid #1677ff;
-  outline-offset: 1px;
 }
 
 .switcherCounter {
@@ -69,7 +37,7 @@
   font-size: 13px;
   line-height: 20px;
   font-variant-numeric: tabular-nums;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--ink-secondary);
 }
 
 .switcherName {
@@ -80,13 +48,14 @@
   white-space: nowrap;
   font-size: 14px;
   line-height: 22px;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
 }
 
 .switcherArrow {
   flex-shrink: 0;
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+  width: 14px;
+  height: 14px;
+  color: var(--ink-tertiary);
   transition: transform 0.2s ease-in-out;
 }
 
@@ -97,14 +66,12 @@
 .switcherDivider {
   margin: 0 2px;
   height: 16px;
-  border-inline-start-color: rgba(5, 5, 5, 0.06);
 }
 
 .flightSwitcherMenu {
   min-width: 220px;
   max-width: 320px;
   max-height: 260px;
-  overflow-y: auto;
 }
 
 .flightSwitcherMenuRow {
@@ -118,9 +85,9 @@
   flex-shrink: 0;
   width: 20px;
   height: 20px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.04);
-  color: rgba(0, 0, 0, 0.65);
+  border-radius: 6px;
+  background: var(--muted);
+  color: var(--ink-secondary);
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 12px;
   line-height: 20px;
@@ -128,9 +95,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-:global(.ant-dropdown-menu-item-selected) .flightSwitcherMenuIndex {
-  background: #1677ff;
-  color: #ffffff;
+.flightSwitcherMenuIndexActive {
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .flightSwitcherMenuContent {
@@ -139,9 +106,9 @@
 }
 
 .flightSwitcherMenuName {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 20px;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -150,15 +117,13 @@
 .flightSwitcherMenuNote {
   font-size: 12px;
   line-height: 18px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ink-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .switcherBtn,
-  .switcherTrigger,
   .switcherArrow {
     transition-duration: 0.01ms;
   }

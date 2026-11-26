@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, App as AntdApp, Button, Input, Radio, Select, Switch, Tag, type RadioChangeEvent } from 'antd'
-import { DeleteOutlined, SaveOutlined } from '@ant-design/icons'
+import { SaveIcon, Trash2Icon } from 'lucide-react'
+import { Alert, Button, PasswordInput, Input, Segmented, Select, Switch, Tag, useToast } from '@renderer/components/ui'
 import { credentialOnlyProviders, providerCatalog, useGlobeStore } from '@renderer/stores/globe'
 import { networkProxyMode, normalizeNetworkProxy, type NetworkProxyMode } from '../../../../common/networkProxy'
 import {
@@ -36,8 +36,20 @@ const touchInteractionModeOptions = touchInteractionModes.map((mode) => ({
   label: touchInteractionModeLabels[mode]
 }))
 
+const proxyModeOptions: Array<{ value: NetworkProxyMode; label: string }> = [
+  { value: 'system', label: '跟随系统' },
+  { value: 'direct', label: '直连' },
+  { value: 'custom', label: '自定义' }
+]
+
+const mirrorSourceOptions: Array<{ value: MirrorEndpointPreference; label: string }> = [
+  { value: 'auto', label: '自动匹配' },
+  { value: 'edgeone', label: 'EdgeOne' },
+  { value: 'cloudflare', label: 'Cloudflare' }
+]
+
 export function MapSettings(_props: MapSettingsProps) {
-  const { message } = AntdApp.useApp()
+  const toast = useToast()
   const networkProxy = useGlobeStore((state) => state.networkProxy)
   const selectedLayerId = useGlobeStore((state) => state.selectedLayerId)
   const tileCacheEnabled = useGlobeStore((state) => state.tileCacheEnabled)
@@ -99,7 +111,13 @@ export function MapSettings(_props: MapSettingsProps) {
     tileMirrorEnabled &&
     mirrorFallenBackProviders.length > 0 &&
     (mirrorFallenBackProviders.includes(selectedLayerId) || mirroredProviders.length === 0)
-  const tileMirrorStatusColor = tileMirrorFallenBack ? 'orange' : tileMirrorRouteActive ? 'blue' : undefined
+  const tileMirrorStatusTone = tileMirrorFallenBack
+    ? 'warning'
+    : tileMirrorRouteActive
+      ? mirrorProbingEndpoints
+        ? 'info'
+        : 'success'
+      : 'neutral'
   const tileMirrorStatusLabel = tileMirrorFallenBack
     ? '镜像异常，已回退直连'
     : tileMirrorRouteActive
@@ -145,14 +163,11 @@ export function MapSettings(_props: MapSettingsProps) {
   const normalizedProxyDraft = normalizeNetworkProxy(proxyDraft)
   const proxyApplyEnabled = normalizedProxyDraft !== '' && normalizedProxyDraft !== networkProxy
 
-  function handleCredentialProviderChange(nextId: string): void {
+  function handleCredentialProviderChange(nextId: string | undefined): void {
+    if (!nextId) return
     setCredentialProviderId(nextId)
     setCredentialDraft('')
     setCredentialSkDraft('')
-  }
-
-  function handleTileMirrorSourceChange(event: RadioChangeEvent): void {
-    setTileMirrorSource(event.target.value as MirrorEndpointPreference)
   }
 
   async function reprobeMirrorEndpoints(): Promise<void> {
@@ -163,17 +178,17 @@ export function MapSettings(_props: MapSettingsProps) {
       const probes = status.endpointProbes ?? []
       const anyReachable = probes.some((probe) => probe.ok)
       if (!anyReachable) {
-        message.warning('镜像源测速失败，请检查网络连接或代理设置')
+        toast.warning('镜像源测速失败，请检查网络连接或代理设置')
         return
       }
       const active = status.activeEndpoint ?? activeMirrorEndpoint
       if (tileMirrorSource === 'auto') {
-        message.success(`测速完成，已匹配 ${mirrorEndpointShortLabel(active)} 镜像源`)
+        toast.success(`测速完成，已匹配 ${mirrorEndpointShortLabel(active)} 镜像源`)
       } else {
-        message.success('镜像源测速完成')
+        toast.success('镜像源测速完成')
       }
     } catch {
-      message.error('镜像源测速失败，请重试')
+      toast.error('镜像源测速失败，请重试')
     }
   }
 
@@ -182,9 +197,9 @@ export function MapSettings(_props: MapSettingsProps) {
     try {
       const status = await window.guEarth.tiles.resetMirrorFallback()
       applyTileMirrorStatus(status)
-      message.info('已重新尝试镜像线路')
+      toast.info('已重新尝试镜像线路')
     } catch {
-      message.error('重置镜像状态失败，请重试')
+      toast.error('重置镜像状态失败，请重试')
     }
   }
 
@@ -206,7 +221,7 @@ export function MapSettings(_props: MapSettingsProps) {
       const status = await window.guEarth.settings.setProviderApiKey(id, value)
       setCredentialStatus(id, status)
     } catch {
-      message.error('保存失败，请重试')
+      toast.error('保存失败，请重试')
       return
     }
     if (touchesSecurityKey) {
@@ -216,13 +231,13 @@ export function MapSettings(_props: MapSettingsProps) {
           : await window.guEarth.settings.clearProviderApiKey(`${id}-sk`)
         setCredentialStatus(`${id}-sk`, securityStatus)
       } catch {
-        message.error('主密钥已保存，但签名密钥保存失败，请重试')
+        toast.error('主密钥已保存，但签名密钥保存失败，请重试')
         return
       }
     }
     setCredentialDraft('')
     setCredentialSkDraft('')
-    message.success('密钥已保存')
+    toast.success('密钥已保存')
   }
 
   async function clearCredential(): Promise<void> {
@@ -235,14 +250,13 @@ export function MapSettings(_props: MapSettingsProps) {
       setCredentialStatus(`${id}-sk`, securityStatus)
       setCredentialDraft('')
       setCredentialSkDraft('')
-      message.success('密钥已清除')
+      toast.success('密钥已清除')
     } catch {
-      message.error('密钥清除失败')
+      toast.error('密钥清除失败')
     }
   }
 
-  function handleProxyModeChange(event: RadioChangeEvent): void {
-    const mode = event.target.value as NetworkProxyMode
+  function handleProxyModeChange(mode: NetworkProxyMode): void {
     if (mode === 'custom') {
       setProxyPendingCustom(true)
       return
@@ -296,17 +310,19 @@ export function MapSettings(_props: MapSettingsProps) {
           <div className={styles.blockHeading}>
             <span>地图搜索密钥</span>
             {selectedCredentialStatus?.configured &&
-              (!requiresSecurityKey || selectedSecurityCredentialStatus?.configured) && <Tag color="green">已配置</Tag>}
+              (!requiresSecurityKey || selectedSecurityCredentialStatus?.configured) && (
+                <Tag tone="success">已配置</Tag>
+              )}
           </div>
           <Select
             value={credentialProviderId}
             options={keyProviderOptions}
             className={styles.fullWidth}
+            aria-label="选择地图搜索供应商"
             onChange={handleCredentialProviderChange}
           />
-          <Input
+          <PasswordInput
             value={credentialDraft}
-            type="password"
             placeholder={
               credentialProviderId === 'amap'
                 ? '输入高德 Web 服务 Key'
@@ -319,9 +335,8 @@ export function MapSettings(_props: MapSettingsProps) {
             onPressEnter={() => void saveCredential()}
           />
           {supportsSecurityKey && (
-            <Input
+            <PasswordInput
               value={credentialSkDraft}
-              type="password"
               placeholder={securityKeyPlaceholder}
               className={styles.keyInput}
               onChange={(event) => setCredentialSkDraft(event.target.value)}
@@ -330,7 +345,7 @@ export function MapSettings(_props: MapSettingsProps) {
           )}
           {supportsSecurityKey && !requiresSecurityKey && (
             <Alert
-              type="info"
+              type="neutral"
               title={
                 credentialProviderId === 'amap'
                   ? '仅在高德控制台开启数字签名时填写签名私钥'
@@ -342,16 +357,16 @@ export function MapSettings(_props: MapSettingsProps) {
           )}
           <div className={styles.keyActions}>
             <Button
-              type="primary"
+              variant="primary"
               disabled={!credentialDraft.trim() || (requiresSecurityKey && !credentialSkDraft.trim())}
-              icon={<SaveOutlined />}
+              icon={<SaveIcon className="size-3.5" />}
               onClick={() => void saveCredential()}
             >
               保存
             </Button>
             <Button
               disabled={!selectedCredentialStatus?.configured && !selectedSecurityCredentialStatus?.configured}
-              icon={<DeleteOutlined />}
+              icon={<Trash2Icon className="size-3.5" />}
               onClick={() => void clearCredential()}
             >
               清除
@@ -364,11 +379,14 @@ export function MapSettings(_props: MapSettingsProps) {
         <div className={styles.blockHeading}>
           <span>网络代理</span>
         </div>
-        <Radio.Group value={proxyModeView} className={styles.proxyModeGroup} onChange={handleProxyModeChange}>
-          <Radio.Button value="system">跟随系统</Radio.Button>
-          <Radio.Button value="direct">直连</Radio.Button>
-          <Radio.Button value="custom">自定义</Radio.Button>
-        </Radio.Group>
+        <Segmented<NetworkProxyMode>
+          value={proxyModeView}
+          options={proxyModeOptions}
+          block
+          className={styles.proxyModeGroup}
+          aria-label="网络代理模式"
+          onChange={handleProxyModeChange}
+        />
         {proxyModeView === 'custom' && (
           <Input
             value={proxyDraft}
@@ -380,7 +398,7 @@ export function MapSettings(_props: MapSettingsProps) {
         )}
         <div className={styles.proxyActions}>
           {proxyModeView === 'custom' && (
-            <Button type="primary" disabled={!proxyApplyEnabled} onClick={applyProxy}>
+            <Button variant="primary" disabled={!proxyApplyEnabled} onClick={applyProxy}>
               应用
             </Button>
           )}
@@ -403,7 +421,7 @@ export function MapSettings(_props: MapSettingsProps) {
             <div className={styles.settingTitle}>地图缓存</div>
             <p className={styles.settingDesc}>将浏览过的地图保存在本地，再次打开更快、更省流量</p>
           </div>
-          <Switch checked={tileCacheEnabled} onChange={(value) => setTileCacheEnabled(value)} />
+          <Switch checked={tileCacheEnabled} aria-label="地图缓存" onChange={(value) => setTileCacheEnabled(value)} />
         </div>
       </section>
 
@@ -412,21 +430,21 @@ export function MapSettings(_props: MapSettingsProps) {
           <div className={styles.settingCopy}>
             <div className={styles.settingTitleRow}>
               <span className={styles.settingTitle}>海外资源镜像服务</span>
-              <Tag color={tileMirrorStatusColor}>{tileMirrorStatusLabel}</Tag>
+              <Tag tone={tileMirrorStatusTone}>{tileMirrorStatusLabel}</Tag>
               {tileMirrorFallenBack && (
-                <Button type="link" className={styles.policyInlineLink} onClick={() => void retryTileMirror()}>
+                <Button variant="link" className={styles.policyInlineLink} onClick={() => void retryTileMirror()}>
                   重试镜像
                 </Button>
               )}
             </div>
             <p className={styles.settingDesc}>
               由咕咕地球携手奈索星联团队提供加速服务，加速海外底图、3D 地形与教学数据加载。启用即表示同意
-              <Button type="link" className={styles.policyInlineLink} onClick={() => openMirrorPolicy('agreement')}>
+              <Button variant="link" className={styles.policyInlineLink} onClick={() => openMirrorPolicy('agreement')}>
                 《咕咕地球镜像服务使用协议》
               </Button>
               与
               <Button
-                type="link"
+                variant="link"
                 className={styles.policyInlineLink}
                 onClick={() => openMirrorPolicy('acceptable-use')}
               >
@@ -442,15 +460,18 @@ export function MapSettings(_props: MapSettingsProps) {
           <div className={styles.mirrorSourceSection}>
             <div className={styles.mirrorSourceHeader}>
               <span className={styles.mirrorSourceHeading}>镜像服务源</span>
-              <Button size="small" loading={mirrorProbingEndpoints} onClick={() => void reprobeMirrorEndpoints()}>
+              <Button size="sm" loading={mirrorProbingEndpoints} onClick={() => void reprobeMirrorEndpoints()}>
                 {mirrorProbingEndpoints ? '测速中…' : '重新测速'}
               </Button>
             </div>
-            <Radio.Group value={tileMirrorSource} className={styles.proxyModeGroup} onChange={handleTileMirrorSourceChange}>
-              <Radio.Button value="auto">自动匹配</Radio.Button>
-              <Radio.Button value="edgeone">EdgeOne</Radio.Button>
-              <Radio.Button value="cloudflare">Cloudflare</Radio.Button>
-            </Radio.Group>
+            <Segmented<MirrorEndpointPreference>
+              value={tileMirrorSource}
+              options={mirrorSourceOptions}
+              block
+              className={styles.proxyModeGroup}
+              aria-label="镜像服务源"
+              onChange={(value) => setTileMirrorSource(value)}
+            />
             <p className={styles.mirrorSourceHint}>{tileMirrorSourceHint}</p>
             {mirrorProbeEntries.length > 0 && (
               <div className={styles.mirrorProbeList}>
@@ -474,7 +495,7 @@ export function MapSettings(_props: MapSettingsProps) {
             <div className={styles.settingTitleRow}>
               <span className={styles.settingTitle}>触摸操作</span>
               {touchInteractionMode !== 'off' && (
-                <Tag color={touchInteractionActive ? 'blue' : undefined}>
+                <Tag tone={touchInteractionActive ? 'info' : 'neutral'}>
                   {touchInteractionActive ? '触摸交互已启用' : '未检测到触摸设备'}
                 </Tag>
               )}
