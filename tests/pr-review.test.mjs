@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { setImmediate as nextTurn } from 'node:timers/promises'
-import { transpileModule } from 'typescript'
+import { transpileModule } from '@typescript/typescript6'
 
 const tileFsUrl = `data:text/javascript,${encodeURIComponent(`
   import { readdir, stat, unlink as remove } from 'node:fs/promises'

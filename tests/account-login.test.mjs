@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { setImmediate as nextTurn } from 'node:timers/promises'
 import { test, vi } from 'vitest'
 import { compileFunction } from 'node:vm'
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
 import * as passport from '../src/common/passport.ts'
 import { serialQueue } from '../src/main/jsonStore.ts'
 

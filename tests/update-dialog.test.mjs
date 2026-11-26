@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 import { test } from 'vitest'
 import { pathToFileURL } from 'node:url'
 import { JSDOM } from 'jsdom'
-import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { test } from 'vitest'
 import { compileFunction } from 'node:vm'
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
 import * as shared from '../src/common/onlineData.ts'
 import * as tileMirror from '../src/common/tileMirror.ts'
 
