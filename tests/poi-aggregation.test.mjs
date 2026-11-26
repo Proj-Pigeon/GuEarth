@@ -35,7 +35,7 @@ test('aggregatePois counts every fetched poi but classifies only valid typecodes
   ])
   assert.equal(aggregation.fetched, 7)
   assert.equal(aggregation.sampled, 3)
-  assert.deepEqual([...aggregation.counts.entries()].sort(), [['05', 2], ['06', 1]])
+  assert.deepEqual([...aggregation.counts.entries()].sort(([a], [b]) => a.localeCompare(b)), [['05', 2], ['06', 1]])
 })
 
 test('aggregatePois accumulates across paginated responses', () => {

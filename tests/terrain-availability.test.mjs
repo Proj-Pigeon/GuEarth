@@ -12,7 +12,6 @@ function availabilityProbe() {
       void x
       void y
       void level
-      return
     },
     requestTileGeometry() {
       if (this._hasAvailability) {state.availabilityRequests += 1}

@@ -272,7 +272,6 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
         videoCompleteResolve = resolveVideo
         videoCompleteReject = rejectVideo
       })
-      const encodeStartedAt = Date.now()
       const encodeBudgetMs = Math.max(OFFSCREEN_ENCODE_TIMEOUT_MS, frameIndex * OFFSCREEN_ENCODE_MS_PER_FRAME)
       await Promise.all([
         withOffscreenTimeout(

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { net } from 'electron'
-import type { PoiCategoryCount, PoiStatisticsRequest, PoiStatisticsResult } from '../../common/poiStatistics'
+import type { PoiStatisticsRequest, PoiStatisticsResult } from '../../common/poiStatistics'
 import { gcj02ToWgs84, wgs84ToGcj02 } from '../geo'
 import { readProviderKey } from '../keyVault'
 import {

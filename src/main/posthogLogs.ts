@@ -21,6 +21,7 @@ export function createGatedLogRecordExporter(
   return {
     export(logs, resultCallback) {
       if (!isEnabled()) {
+        // oxlint-disable-next-line typescript/no-unsafe-enum-assignment -- 0 is `ExportResultCode.SUCCESS`, and `@opentelemetry/core` is not a direct dependency
         resultCallback({ code: 0 })
         return
       }
@@ -97,7 +98,7 @@ export function capturePosthogLog(
   try {
     activeLogger.emit({ severityText, body, attributes })
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   }
 }
 
@@ -118,7 +119,7 @@ export async function shutdownPosthogLogs(): Promise<void> {
       })
     ])
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   } finally {
     if (controller) {controller.active = false}
     if (timeout) {clearTimeout(timeout)}

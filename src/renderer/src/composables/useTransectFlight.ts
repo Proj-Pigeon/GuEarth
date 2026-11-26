@@ -256,8 +256,7 @@ async function prewarmTransectTiles(viewer: Cesium.Viewer, path: TransectWaypoin
 
 function replaceOverlay(viewer: Cesium.Viewer, path: TransectWaypoint[], altitudes: number[], token: symbol): Cesium.Entity[] {
   clearTransectOverlay()
-  const entities: Cesium.Entity[] = []
-  entities.push(
+  const entities: Cesium.Entity[] = [
     viewer.entities.add({
       polyline: {
         positions: path.map(([longitude, latitude], index) => Cesium.Cartesian3.fromDegrees(longitude, latitude, altitudes[index])),
@@ -266,7 +265,7 @@ function replaceOverlay(viewer: Cesium.Viewer, path: TransectWaypoint[], altitud
         clampToGround: false
       }
     })
-  )
+  ]
   for (const index of [0, path.length - 1]) {
     entities.push(
       viewer.entities.add({

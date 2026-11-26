@@ -635,7 +635,7 @@ export const useGlobeStore = create<GlobeStore>()(
         const seq = ++touchModePersistSeq
         const saved = await persistSettingsPatch({ touchInteractionMode: mode })
         if (saved || seq !== touchModePersistSeq) {return}
-        let restored = previousMode
+        let restored: TouchInteractionMode
         try {
           const settings = await window.guEarth.settings.get()
           restored = normalizeTouchInteractionMode(settings.touchInteractionMode)
@@ -662,7 +662,7 @@ export const useGlobeStore = create<GlobeStore>()(
         const seq = ++themeModePersistSeq
         const saved = await persistSettingsPatch({ themeMode: mode })
         if (saved || seq !== themeModePersistSeq) {return}
-        let restored = previousMode
+        let restored: ThemeMode
         try {
           const settings = await window.guEarth.settings.get()
           restored = normalizeThemeMode(settings.themeMode)

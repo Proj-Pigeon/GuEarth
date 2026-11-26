@@ -32,7 +32,7 @@ function regionText(place: PlaceSuggestion): string {
   const region = [place.province, place.city, place.district]
     .filter((part) => part && part !== place.name)
     .join(' · ')
-  return [region, place.address].filter((part) => part).join(' · ')
+  return [region, place.address].filter(Boolean).join(' · ')
 }
 
 function providerName(id?: PlaceSearchProvider): string {

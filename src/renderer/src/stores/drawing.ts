@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import type { AnnotationDocument, AnnotationEntry } from '../../../preload'
+import type { AnnotationDocument, AnnotationEntry, StoredShape } from '../../../preload'
 import { referencedShapeIds } from '@renderer/lib/annotationReferences'
 import { logger } from '../../../common/logger'
 import { useFailureStore } from './failure'
@@ -24,7 +24,7 @@ export interface GeoPosition {
   height: number
 }
 
-export interface DrawnShape extends Omit<import('../../../preload').StoredShape, 'kind' | 'positions'> {
+export interface DrawnShape extends Omit<StoredShape, 'kind' | 'positions'> {
   kind: ShapeKind
   positions: GeoPosition[]
 }

@@ -327,6 +327,7 @@ export function createScenePlayerController(
         await delay(snapshot.basemapId && snapshot.basemapId !== previousBasemapId ? BASEMAP_SETTLE_MS : STATE_SETTLE_MS)
         setCameraView(view.camera, centerTarget)
         requestSceneRender()
+        // oxlint-disable-next-line eslint/no-loop-func -- reads the latest cancellation state on purpose
         await waitTilesLoaded(PREWARM_TILE_TIMEOUT_MS, () => aborted || runId !== id)
         await delay(PREWARM_HOLD_MS)
       }
@@ -436,6 +437,7 @@ export function createScenePlayerController(
         await delay(STATE_SETTLE_MS)
         await flyCamera(scene.snapshot.camera, scene.flyDurationMs / 1000, centerTarget)
         if (aborted || runId !== id) {break}
+        // oxlint-disable-next-line eslint/no-loop-func -- reads the latest cancellation state on purpose
         await waitTilesLoaded(PLAY_TILE_TIMEOUT_MS, () => aborted || runId !== id)
         if (aborted || runId !== id) {break}
         updatePlayerState({ narration: scene.narration })

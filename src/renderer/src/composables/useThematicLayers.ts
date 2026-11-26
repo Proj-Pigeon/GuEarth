@@ -247,7 +247,7 @@ function monsoonRibbonSegments(smooth: [number, number][], maxWidthDeg: number):
     const leftRing = sampled.slice(from, to + 1).map((p) => [p.left, p.leftLat])
     const rightRing = sampled.slice(from, to + 1).reverse().map((p) => [p.right, p.rightLat])
     const alpha = monsoonAlphaProfile(((from + to) / 2 / MONSOON_RIBBON_SAMPLES) ** 0.85)
-    segments.push({ positions: Cesium.Cartesian3.fromDegreesArray(leftRing.concat(rightRing).flat()), alpha })
+    segments.push({ positions: Cesium.Cartesian3.fromDegreesArray([...leftRing, ...rightRing].flat()), alpha })
   }
   const base = pathPointAt(smooth, headBase).position
   const tip = pathPointAt(smooth, 1).position
@@ -1669,6 +1669,7 @@ function attachThematicLayers(
           console.error(`[thematic] failed to build layer: ${layer.id}`, error)
           continue
         }
+        // oxlint-disable-next-line eslint/no-loop-func -- reads the latest `disposed` state on purpose
         void current.dataSources.add(dataSource).then(() => {
           if (disposed || sources.get(layer.id) !== dataSource) {
             if (!current.isDestroyed()) {current.dataSources.remove(dataSource, true)}

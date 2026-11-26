@@ -107,7 +107,7 @@ export const usePrivacyStore = create<PrivacyStore>()(
           applyLocal(settledSnapshot)
           set({ hydrated: true })
         } catch {
-          return
+          // Best effort, so the failure is ignored.
         } finally {
           hydratePromise = null
         }

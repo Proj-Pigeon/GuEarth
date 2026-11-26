@@ -2,7 +2,6 @@ import { XIcon } from 'lucide-react'
 import { Button, Segmented } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
 import { ensoPhaseMeta, ensoPhaseOptions } from '@renderer/thematic/ensoPhases';
-import type { EnsoPhase } from '@renderer/thematic/ensoPhases';
 import styles from './EnsoPanel.module.css'
 
 export interface EnsoPanelProps {

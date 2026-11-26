@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
-import { init, use } from 'echarts/core';
+import { init, use as registerEcharts } from 'echarts/core';
 import type { EChartsCoreOption, EChartsType } from 'echarts/core';
 import { SVGRenderer } from 'echarts/renderers'
 
-use([SVGRenderer])
+registerEcharts([SVGRenderer])
 
 export interface EChartBaseProps {
   option: EChartsCoreOption

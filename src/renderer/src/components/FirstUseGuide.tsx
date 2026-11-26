@@ -43,7 +43,7 @@ function clearLegacyCompletion(): void {
   try {
     window.localStorage.removeItem(legacyCompletedKey)
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   }
 }
 
@@ -331,7 +331,7 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
     return () => {
       const previous = previousFocusRef.current
       previousFocusRef.current = null
-      if (previous && previous.isConnected) {
+      if (previous?.isConnected) {
         previous.focus({ preventScroll: true })
       }
     }

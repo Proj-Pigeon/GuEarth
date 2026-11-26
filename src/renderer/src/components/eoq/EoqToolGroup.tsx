@@ -31,7 +31,7 @@ export function EoqToolGroup({ group, failedCount, children }: EoqToolGroupProps
 
   const total = group.indices.length
   if (total <= 1) {
-    return <>{children}</>
+    return children
   }
 
   const running = group.status.type === 'running'

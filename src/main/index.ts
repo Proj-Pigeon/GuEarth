@@ -49,7 +49,7 @@ import { resolveOffscreenEntry } from './offscreenPaths'
 import { offscreenCaptureSize, offscreenConcatPlaylist, offscreenFrameDurations, offscreenFrameRate, offscreenScriptDurationMs } from './offscreenTiming'
 import { deliverMacOffscreenVideo, deliverMacOffscreenVideoComplete, encodeMacOffscreenRecording, noteMacOffscreenFrameAck } from './offscreenMac';
 import type { OffscreenMacSessionHost } from './offscreenMac';
-import { assertEncryptionAvailable, assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
+import { assertSafeId, clearProviderKey, hasProviderKey, initKeyVault, readProviderKey, writeProviderKey } from './keyVault'
 import { baiduLngLatToTile, tileCenter, wgs84ToBd09 } from './geo'
 import { AiSettingsStore } from './ai/settingsStore'
 import { AiChatHistoryStore } from './ai/chatHistoryStore'
@@ -820,8 +820,8 @@ async function serveOriginTile(providerId: string, key: TileKey, remoteUrl: stri
       if (tileMirrorRouter.noteOriginFailure(providerId)) {notifyMirrorRouteChange(previous)}
       const stale = await cachedTileResponse(key, true)
       if (stale) {return stale}
-    } else {
-      if (tileMirrorRouter.noteOriginSuccess(providerId)) {notifyMirrorRouteChange(previous)}
+    } else if (tileMirrorRouter.noteOriginSuccess(providerId)) {
+      notifyMirrorRouteChange(previous)
     }
     return new Response(`Tile request failed: ${payload.status}`, { status: payload.status })
   } catch (error) {
@@ -880,7 +880,7 @@ function normalizeShape(value: unknown): StoredShape {
   const minimum = value.kind === 'point' || value.kind === 'text' ? 1 : value.kind === 'polygon' ? 3 : 2
   if (positions.length < minimum || positions.length > 500) {throw new Error('无效的标注坐标')}
   const validColor = (color: unknown, fallback: string): string => typeof color === 'string' && /^#[\da-f]{6}$/i.test(color) ? color.toLowerCase() : fallback
-  const fontFamily = typeof value.fontFamily === 'string' && value.fontFamily.length <= 128 && /^[\p{L}\p{N} .,'()&_\-]+$/u.test(value.fontFamily) ? value.fontFamily : 'Arial'
+  const fontFamily = typeof value.fontFamily === 'string' && value.fontFamily.length <= 128 && /^[\p{L}\p{N} .,'()&_-]+$/u.test(value.fontFamily) ? value.fontFamily : 'Arial'
   const fontSize = typeof value.fontSize === 'number' && Number.isFinite(value.fontSize) ? Math.min(72, Math.max(8, value.fontSize)) : 13
   const lineWidth = typeof value.lineWidth === 'number' && Number.isFinite(value.lineWidth) ? Math.min(12, Math.max(1, value.lineWidth)) : 3
   return {
@@ -1137,6 +1137,7 @@ function registerIpcHandlers(): void {
             if (!match) {continue}
             for (const family of match[1].replace(/\s*\([^)]*\)\s*$/, '').split(/\s*&\s*/)) {
               const name = family.trim()
+              // oxlint-disable-next-line eslint/max-depth -- one level per registry line and font family
               if (name && name.length <= 128) {families.add(name)}
             }
           }
@@ -1503,9 +1504,9 @@ function registerIpcHandlers(): void {
   })
   ipcMain.handle('recordings:offscreen-cancel', (): void => { cancelOffscreenRecording?.() })
   ipcMain.handle('recordings:offscreen-stats', (): OffscreenRecordingProbeResult => offscreenRecordingStats())
-  ipcMain.handle('logging:copy-report', (_event, rendererDump: unknown): void => {
+  ipcMain.handle('logging:copy-report', async (_event, rendererDump: unknown): Promise<void> => {
     if (typeof rendererDump !== 'string') {throw new TypeError('无效的日志数据')}
-    clipboard.writeText([
+    await clipboard.writeText([
       '=== 咕咕地球诊断日志 ===',
       `版本 ${app.getVersion()} | Electron ${process.versions.electron} | Chrome ${process.versions.chrome} | Node ${process.versions.node} | ${process.platform} ${process.getSystemVersion()}`,
       `生成时间 ${new Date().toLocaleString()}`,
@@ -1559,7 +1560,7 @@ function terminateOffscreenEncoder(encoder: ReturnType<typeof spawn> | null): vo
   try {
     encoder.kill()
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   }
 }
 
@@ -1728,7 +1729,7 @@ async function removeStaleOffscreenDirectories(directory: string): Promise<void>
         await rm(path, { recursive: true, force: true }).catch(() => {})
       }))
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   }
 }
 
@@ -2015,9 +2016,9 @@ function createWindow(): void {
   })
 
   if (process.env.ELECTRON_RENDERER_URL) {
-    win.loadURL(process.env.ELECTRON_RENDERER_URL)
+    void win.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
-    win.loadFile(join(__dirname, '../renderer/index.html'))
+    void win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
@@ -2034,7 +2035,7 @@ app.on('second-instance', () => {
   window.focus()
 })
 
-app.whenReady().then(async () => {
+void app.whenReady().then(async () => {
   if (!hasSingleInstanceLock) {return}
   logger.info('app', '应用启动', `version=${app.getVersion()} packaged=${app.isPackaged}`)
   const userDataPath = app.getPath('userData')
@@ -2095,6 +2096,7 @@ app.whenReady().then(async () => {
         return
       } catch (error) {
         logger.warn('ai', 'EOQ HawDB 初始化失败，已降级为 JSON 存储', error)
+        // oxlint-disable-next-line promise/no-nesting -- closing is best effort while falling back to JSON storage
         await eoqHawdb.close().catch(() => {})
       }
     } else {
@@ -2157,7 +2159,7 @@ app.on('will-quit', () => {
   try {
     teardownOffscreenRecording?.()
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   } finally {
     if (mirrorFallbackExpiryTimer) {
       clearTimeout(mirrorFallbackExpiryTimer)

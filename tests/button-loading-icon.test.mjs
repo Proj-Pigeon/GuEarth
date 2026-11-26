@@ -6,7 +6,6 @@ import ts from '@typescript/typescript6'
 
 const RENDERER_ROOT = resolve('src/renderer/src')
 const BUTTON_TAGS = new Set(['Button'])
-const ICON_TAG_RE = /Icon$/
 
 function collectTsxFiles(dir) {
   const results = []
@@ -50,7 +49,7 @@ function hasLoadingAttr(attributes) {
 }
 
 function isIconTag(tag, importedIcons) {
-  return importedIcons.has(tag) || tag.endsWith("Icon") || tag === 'svg'
+  return importedIcons.has(tag) || tag.endsWith('Icon') || tag === 'svg'
 }
 
 function findIconsInJsxChildren(children, importedIcons, sourceFile) {
@@ -120,6 +119,7 @@ test('all loading buttons place icons in the icon prop so loading replaces the o
     const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     const importedIcons = extractImportedIcons(sourceFile)
 
+    // oxlint-disable-next-line eslint/no-loop-func -- counts buttons across files
     walkTsx(sourceFile, (node) => {
       if (ts.isJsxSelfClosingElement(node)) {
         const tag = jsxTagName(node.tagName)

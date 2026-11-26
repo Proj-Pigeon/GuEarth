@@ -4,7 +4,6 @@ import { MapPinIcon, XIcon } from 'lucide-react'
 import { Button, Segmented } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
 import { SEA_LEVEL_SCENARIOS, coastalZones, inundationByZone, scenarioSummary, seaLevelFacts, totalGridCellCount, useSeaLevelStore } from '@renderer/thematic/seaLevelRise';
-import type { SeaLevelScenario } from '@renderer/thematic/seaLevelRise';
 import { ensureSeaLevelSamples } from '@renderer/composables/seaLevelSampling'
 import BarChart from './charts/BarChart';
 import type { BarSeries } from './charts/BarChart';

@@ -82,7 +82,7 @@ export async function fetchTyphoonFeed(credentials: QWeatherCredentials, cancell
     signal.throwIfAborted()
     let response: Response
     try {
-      response = await net.fetch(`https://${host}/v7/tropical/${endpoint}?${new URLSearchParams({ ...params, unit: 'm' })}`, {
+      response = await net.fetch(`https://${host}/v7/tropical/${endpoint}?${new URLSearchParams({ ...params, unit: 'm' }).toString()}`, {
         headers: { 'X-QW-Api-Key': credentials.apiKey }, redirect: 'error', signal
       })
     } catch {

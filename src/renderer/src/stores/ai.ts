@@ -411,7 +411,7 @@ export const useAiStore = create<AiStore>()(
         const stats = await window.guEarth.ai.getContextStats(contextEntries())
         set({ contextStats: cloneContextStats(stats) })
       } catch {
-        return
+        // Best effort, so the failure is ignored.
       }
     }
 
@@ -904,7 +904,7 @@ export const useAiStore = create<AiStore>()(
           const remaining = await window.guEarth.ai.chatHistory.delete(id)
           set({ conversations: [...remaining] })
         } catch {
-          return
+          // Best effort, so the failure is ignored.
         }
       },
       persistConversation,

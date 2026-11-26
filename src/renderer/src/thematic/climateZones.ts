@@ -23,10 +23,6 @@ const plateauNorthEdge: [number, number][] = [
   [104, 37.4], [100.5, 38.2], [95.5, 36.6], [89, 36], [83, 34.8], [78, 32.6]
 ]
 
-const plateauEastEdge: [number, number][] = [
-  [104, 37.4], [103.5, 34.8], [102.8, 31.5], [101.8, 28.5], [100.8, 25.5], [99.5, 22.5], [97.8, 21.7]
-]
-
 const tropicalMainlandRing: [number, number][] = [
   ...tropicsLine,
   [116, 22.6], [114.5, 22.3], [113, 22], [111.5, 21.5], [110.3, 20.4],

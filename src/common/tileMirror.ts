@@ -96,7 +96,7 @@ export function selectBestMirrorEndpoint(
   const reachable = probes
     .filter((probe) => probe.ok && typeof probe.latencyMs === 'number' && Number.isFinite(probe.latencyMs))
     .sort((a, b) => {
-      const diff = (a.latencyMs as number) - (b.latencyMs as number)
+      const diff = a.latencyMs! - b.latencyMs!
       if (diff !== 0) {return diff}
       return mirrorEndpointIds.indexOf(a.endpoint) - mirrorEndpointIds.indexOf(b.endpoint)
     })

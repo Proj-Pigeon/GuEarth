@@ -220,6 +220,7 @@ test('late terrain does not revive a superseded flight', async () => {
   const pending = terrainScene(() => new Promise((resolve) => { resolveTile = resolve }))
   let cancelled = false
   const superseded = resolveFlightDestination(pending, SUMMIT_LON, SUMMIT_LAT, 5000, { isCancelled: () => cancelled })
+  // oxlint-disable-next-line eslint/no-unmodified-loop-condition -- `resolveTile` is set by the stubbed request while the loop awaits
   for (let attempt = 0; attempt < 8 && !resolveTile; attempt += 1) {await Promise.resolve()}
   assert.equal(typeof resolveTile, 'function')
   cancelled = true

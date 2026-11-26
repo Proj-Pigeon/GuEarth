@@ -73,7 +73,7 @@ export function hazelPlatformForAssetName(fileName: string): string | null {
 }
 
 export function assetNameFromUrl(downloadUrl: string): string | null {
-  let pathname = ''
+  let pathname: string
   try {
     const parsed = new URL(downloadUrl)
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {return null}
@@ -83,7 +83,7 @@ export function assetNameFromUrl(downloadUrl: string): string | null {
   }
   const raw = pathname.split('/').pop() ?? ''
   if (!raw) {return null}
-  let name = ''
+  let name: string
   try {
     name = decodeURIComponent(raw)
   } catch {

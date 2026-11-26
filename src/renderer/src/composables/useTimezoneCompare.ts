@@ -123,7 +123,7 @@ export function useTimezoneCompare(viewer: Cesium.Viewer | undefined): UseTimezo
     picksRef.current.push({ label: picksRef.current.length === 0 ? 'A' : 'B', longitude, latitude })
     if (!dataSourceRef.current) {
       dataSourceRef.current = new Cesium.CustomDataSource('timezone-compare')
-      current.dataSources.add(dataSourceRef.current)
+      void current.dataSources.add(dataSourceRef.current)
     }
     addPick(picksRef.current[picksRef.current.length - 1], picksRef.current.length === 1 ? PICK_A_COLOR : PICK_B_COLOR)
     if (picksRef.current.length === 2) {

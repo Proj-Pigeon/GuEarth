@@ -122,6 +122,7 @@ function sleep(ms: number): Promise<void> {
 
 async function holdWhileWaiting(ms: number): Promise<void> {
   const deadline = Date.now() + ms
+  // oxlint-disable-next-line eslint/no-unmodified-loop-condition -- `prewarmSkipped` changes from IPC events while the loop awaits
   while (!prewarmSkipped && Date.now() < deadline) {
     await sleep(Math.max(1, Math.min(120, deadline - Date.now())))
   }
@@ -129,6 +130,7 @@ async function holdWhileWaiting(ms: number): Promise<void> {
 
 async function holdScene(ms: number): Promise<void> {
   const deadline = Date.now() + Math.max(0, ms)
+  // oxlint-disable-next-line eslint/no-unmodified-loop-condition -- `advancePending` changes from IPC events while the loop awaits
   while (!advancePending && Date.now() < deadline) {
     await sleep(Math.max(1, Math.min(200, deadline - Date.now())))
   }
@@ -382,8 +384,8 @@ async function prewarm(script: OffscreenRecordingScript, views: PrewarmView[]): 
     setCamera(views[index].camera)
     reportProgress('preparing', index + 1, views.length, timedOut)
     const viewStartedAt = Date.now()
-    let loaded = true
-    let revision = prewarmRevision
+    let loaded: boolean
+    let revision: number
     do {
       revision = prewarmRevision
       const config = RECORD_PREWARM_QUALITY_CONFIG[prewarmQuality]

@@ -85,7 +85,7 @@ export function captureAiGeneration(capture: AiGenerationCapture): void {
       }
     })
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   }
 }
 
@@ -108,7 +108,7 @@ export function captureAiSpan(capture: AiSpanCapture): void {
       }
     })
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   }
 }
 
@@ -124,7 +124,7 @@ export async function shutdownPosthog(): Promise<void> {
       })
     ])
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   } finally {
     if (timeout) {clearTimeout(timeout)}
   }

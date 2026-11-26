@@ -79,7 +79,7 @@ export function EoqAssistant() {
     try {
       window.localStorage.setItem('guearth.eoq-drawer-width', String(width))
     } catch {
-      return
+      // Best effort, so the failure is ignored.
     }
   }, [])
 
@@ -91,7 +91,7 @@ export function EoqAssistant() {
         setDrawerWidth(clampDrawerWidth(stored, maxWidth))
       }
     } catch {
-      return
+      // Best effort, so the failure is ignored.
     }
   }, [clampDrawerWidth])
 

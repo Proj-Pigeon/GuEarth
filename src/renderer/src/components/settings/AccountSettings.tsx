@@ -54,6 +54,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
   const challengeExpired = phase === 'awaiting-approval' && remainingSeconds <= 0
 
   const displayName = storeDisplayName || '未命名账户'
+  // oxlint-disable-next-line typescript/no-misused-spread -- spreading splits by code point, so the initial keeps surrogate pairs whole
   const avatarInitial = [...displayName][0]?.toUpperCase() || 'U'
   const emailText = profile?.email || profile?.username || ''
   const loginLoading = phase === 'creating' || phase === 'restoring'

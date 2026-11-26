@@ -288,6 +288,7 @@ function wrapStreamingTokens(children: ReactNode[], state: StreamingState, insid
           state,
           insideCode || (typeof child.type === 'string' && nonStreamingTags.has(child.type))
         )
+        // oxlint-disable-next-line react/no-clone-element -- wraps nested Markdown nodes without knowing their component
         result.push(cloneElement(child, undefined, ...wrappedNested))
       } else {
         result.push(child)

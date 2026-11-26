@@ -5,9 +5,10 @@ import { chmod, copyFile, mkdir, mkdtemp, rm, stat } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 
+// oxlint-disable-next-line typescript/strict-void-return -- `promisify` reads `execFile`'s callback overload
 const runFile = promisify(execFile)
 
 const ffmpegVersion = '8.1.3'
@@ -113,7 +114,7 @@ export function isApprovedArchiveRedirectUrl(url) {
 
 export function archiveRedirectTarget(location, currentUrl) {
   if (location == null || location === '') {throw new Error(`下载重定向缺少目标地址：${rejectedArchiveLabel(currentUrl)}`)}
-  let resolved = null
+  let resolved
   try {
     resolved = new URL(location, currentUrl).href
   } catch {
@@ -286,6 +287,7 @@ export async function fetchFfmpeg({ repoRoot, force = false, platform = process.
           console.warn(`来源不可用：${error instanceof Error ? error.message : String(error)}`)
         }
       }
+      // oxlint-disable-next-line typescript/only-throw-error -- rethrows the last download error as it was caught
       if (lastError) {throw lastError}
     }
     await runFile(tarCommand(), ['-xf', archivePath, '-C', workDirectory, build.binaryMemberPath], { windowsHide: true })

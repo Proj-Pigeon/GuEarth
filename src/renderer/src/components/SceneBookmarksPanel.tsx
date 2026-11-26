@@ -35,9 +35,9 @@ export interface SceneBookmarksPanelProps {
   scenes: TeachingScene[]
   saveError: string
   onClose: () => void
-  onSave: (name: string, narration: string) => void
+  onSave: (name: string, narration: string) => void | Promise<void>
   onPreview: (id: string) => void
-  onUpdate: (id: string, changes: SceneEditPayload) => void
+  onUpdate: (id: string, changes: SceneEditPayload) => void | Promise<void>
   onRemove: (id: string) => void
   onMove: (id: string, offset: -1 | 1) => void
   onPlay: (mode: 'manual' | 'auto') => void
@@ -88,7 +88,7 @@ export function SceneBookmarksPanel({
     const name = saveName.trim()
     if (!name) {return}
     setSaveVisible(false)
-    onSave(name, saveNarration.trim())
+    void onSave(name, saveNarration.trim())
   }
 
   function openEdit(scene: TeachingScene): void {
@@ -103,7 +103,7 @@ export function SceneBookmarksPanel({
     const name = editName.trim()
     if (!name) {return}
     setEditVisible(false)
-    onUpdate(editId, {
+    void onUpdate(editId, {
       name,
       narration: editNarration.trim(),
       dwellSeconds: Math.min(60, Math.max(1, editDwellSeconds ?? 6))

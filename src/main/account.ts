@@ -554,7 +554,7 @@ async function restoreSession(): Promise<void> {
       if (!profile) {throw error}
       logger.warn('account', '恢复登录状态时获取账户信息失败，已沿用本机缓存的账户信息', error)
     }
-    signedInAt = signedInAt || Date.now()
+    signedInAt ||= Date.now()
     pendingRemoteRevocation = false
     await persistAccount()
     setPhase('signed-in')

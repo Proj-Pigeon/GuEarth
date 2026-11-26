@@ -5,7 +5,7 @@ const pending = new Set<Promise<unknown>>()
 
 export function serialQueue() {
   let tail: Promise<unknown> = Promise.resolve()
-  return function enqueue<T>(operation: () => Promise<T>): Promise<T> {
+  return function <T>(operation: () => Promise<T>): Promise<T> {
     const result = tail.then(operation)
     tail = result.catch(() => {})
     pending.add(result)

@@ -8,6 +8,7 @@ import { pipeline } from 'node:stream/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 
+// oxlint-disable-next-line typescript/strict-void-return -- `promisify` reads `execFile`'s callback overload
 const runFile = promisify(execFile)
 
 export const HAWDB_VERSION = '0.35.1'
@@ -130,7 +131,7 @@ export function isApprovedArchiveRedirectUrl(url) {
 
 export function archiveRedirectTarget(location, currentUrl) {
   if (location == null || location === '') {throw new Error(`下载重定向缺少目标地址：${rejectedArchiveLabel(currentUrl)}`)}
-  let resolved = null
+  let resolved
   try {
     resolved = new URL(location, currentUrl).href
   } catch {

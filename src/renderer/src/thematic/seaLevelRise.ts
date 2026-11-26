@@ -259,7 +259,7 @@ export const FALLBACK_LAND_HEIGHT = 0.05
 
 export function isLandCell(lon: number, lat: number, height: number): boolean {
   const mask = useSeaLevelStore.getState().landMask
-  if (mask && mask(lon, lat)) {return true}
+  if (mask?.(lon, lat)) {return true}
   return height > FALLBACK_LAND_HEIGHT
 }
 

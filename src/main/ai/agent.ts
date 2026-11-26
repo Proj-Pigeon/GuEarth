@@ -370,12 +370,6 @@ function imageUnsupported(error: unknown): boolean {
   return /image|vision|multimodal|modal|unsupported|不支持|图片/i.test(message)
 }
 
-function stringifyArgSummary(args: unknown): string {
-  if (typeof args !== 'object' || args === null) {return ''}
-  const entries = Object.entries(args as Record<string, unknown>).filter(([, value]) => value !== undefined)
-  return entries.map(([key, value]) => `${key}=${typeof value === 'string' ? value : JSON.stringify(value)}`).join(' ')
-}
-
 function estimateTokens(text: string): number {
   let cjk = 0
   for (const char of text) {if (/[\u4E00-\u9FFF\u3000-\u303F\uFF00-\uFFEF]/.test(char)) {cjk += 1}}

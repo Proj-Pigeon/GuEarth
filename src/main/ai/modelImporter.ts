@@ -58,16 +58,11 @@ function safeUrl(value: string): URL {
   return url
 }
 
-function endpoint(baseUrl: string, protocol: AiProtocol): string {
+function endpoint(baseUrl: string): string {
   const base = safeUrl(baseUrl)
   const path = base.pathname.replace(/\/+$/, '')
-  if (protocol === 'anthropic') {
-    if (!path || path === '/') {base.pathname = '/v1/models'}
-    else {base.pathname = `${path}/models`}
-  } else {
-    if (!path || path === '/') {base.pathname = '/v1/models'}
-    else {base.pathname = `${path}/models`}
-  }
+  if (!path || path === '/') {base.pathname = '/v1/models'}
+  else {base.pathname = `${path}/models`}
   base.search = ''
   base.hash = ''
   return base.toString()
@@ -128,7 +123,7 @@ async function fetchProviderIds(provider: AiProviderConfig, apiKey: string): Pro
   const headers = provider.protocol === 'anthropic'
     ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
     : { Authorization: `Bearer ${apiKey}` }
-  const url = endpoint(provider.baseUrl, provider.protocol)
+  const url = endpoint(provider.baseUrl)
   if (provider.protocol === 'openai') {return modelIds(parseJson(await fetchText(url, { headers })))}
   const ids: string[] = []
   const seen = new Set<string>()

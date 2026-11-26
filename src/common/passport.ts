@@ -72,6 +72,7 @@ export function isValidInstallationId(value: unknown): value is string {
 }
 
 export function sanitizeDeviceNameText(value: string): string {
+  // oxlint-disable-next-line eslint/no-control-regex -- device names must not contain control characters
   return value.replaceAll(/[\u0000-\u001F\u007F]/g, ' ').replaceAll(/\s+/g, ' ').trim()
 }
 
@@ -79,6 +80,7 @@ export function isValidDeviceName(value: unknown): value is string {
   if (typeof value !== 'string') {return false}
   if (value !== value.trim()) {return false}
   if (value === '') {return false}
+  // oxlint-disable-next-line eslint/no-control-regex -- device names must not contain NUL or line breaks
   if (/[\u0000\u000A\u000D]/.test(value)) {return false}
   return utf8ByteLength(value) <= MAX_DEVICE_NAME_BYTES
 }

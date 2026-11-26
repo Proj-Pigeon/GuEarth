@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { use } from 'echarts/core';
+import { use as registerEcharts } from 'echarts/core';
 import type { EChartsCoreOption } from 'echarts/core';
 import { LineChart as EChartsLineChart } from 'echarts/charts'
 import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
@@ -8,7 +8,7 @@ import { useGlobeStore } from '@renderer/stores/globe'
 import EChartBase from './EChartBase'
 import styles from './LineChart.module.css'
 
-use([EChartsLineChart, GridComponent, TooltipComponent, MarkLineComponent, SVGRenderer])
+registerEcharts([EChartsLineChart, GridComponent, TooltipComponent, MarkLineComponent, SVGRenderer])
 
 export interface ChartSeries {
   name: string

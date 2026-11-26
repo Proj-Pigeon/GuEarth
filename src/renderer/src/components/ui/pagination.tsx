@@ -30,11 +30,13 @@ function buildPages(current: number, totalPages: number): (number | 'ellipsis')[
   return pages
 }
 
+const DEFAULT_PAGE_SIZE_OPTIONS = [20, 50, 100]
+
 export function Pagination({
   current,
   total,
   pageSize,
-  pageSizeOptions = [20, 50, 100],
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   showSizeChanger = false,
   showQuickJumper = false,
   showTotal = false,

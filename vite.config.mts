@@ -23,6 +23,7 @@ export default liangmi({
         'react-perf/jsx-no-new-object-as-prop': 'off',
         'react-perf/jsx-no-new-array-as-prop': 'off',
         'react-perf/jsx-no-new-function-as-prop': 'off',
+        'react/jsx-no-constructed-context-values': 'off',
         // React Compiler checks. Fixing them changes render and effect timing, so they need testing in the running app first.
         'react/refs': 'off',
         'react/set-state-in-effect': 'off',
@@ -94,7 +95,9 @@ export default liangmi({
         'eslint/no-throw-literal': 'off',
         'typescript/only-throw-error': 'off',
         'typescript/prefer-promise-reject-errors': 'off',
-        'eslint/default-param-last': 'off'
+        'eslint/default-param-last': 'off',
+        // Untyped `.mjs` tests make type-aware void checks guess wrong.
+        'typescript/no-confusing-void-expression': 'off'
       }
     }
   ],

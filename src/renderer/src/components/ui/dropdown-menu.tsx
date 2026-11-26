@@ -51,12 +51,14 @@ export interface DropdownMenuProps {
   children: ReactElement<Record<string, unknown>>
 }
 
+const NO_SELECTED_KEYS: string[] = []
+
 export function DropdownMenu({
   open,
   onOpenChange,
   placement = 'bottomLeft',
   items,
-  selectedKeys = [],
+  selectedKeys = NO_SELECTED_KEYS,
   menuClassName,
   popupClassName,
   onSelect,

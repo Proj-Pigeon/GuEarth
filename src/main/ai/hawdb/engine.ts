@@ -356,7 +356,7 @@ export class EoqHawdbEngine {
     await mkdir(this.dbRoot, { recursive: true })
     const lib = new HawdbLibrary(payload.libraryPath)
     let db: HawdbDatabase
-    let dbOwned = false
+    let dbOwned: boolean
     if (process.platform === 'win32') {
       db = lib.openInMemory()
       dbOwned = true
@@ -370,7 +370,7 @@ export class EoqHawdbEngine {
       this.storageMode = 'memory-snapshot'
     } else {
       let diskDb: HawdbDatabase | null = null
-      let schemaReady = false
+      let schemaReady: boolean
       try {
         diskDb = lib.open(join(this.dbRoot, 'db'), { durability: 'sync_on_every_write' })
         ensureEoqSchema(diskDb)

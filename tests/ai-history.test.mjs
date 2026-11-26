@@ -275,7 +275,7 @@ test('upgrades a valid v1 index and refuses a recovered body with a different ID
   const { path } = await fixture(t)
   await mkdir(`${path}.d`)
   const retained = conversation('retained')
-  const { messages, compression, ...entry } = retained
+  const { messages: _messages, compression: _compression, ...entry } = retained
   await writeFile(join(`${path}.d`, 'index.json'), JSON.stringify({ version: 1, conversations: [entry] }))
   await writeFile(join(`${path}.d`, 'retained.json'), JSON.stringify(retained))
   const store = new AiChatHistoryStore()

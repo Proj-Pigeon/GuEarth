@@ -41,6 +41,7 @@ export function gcj02ToWgs84(longitude: number, latitude: number): [number, numb
 }
 
 function gcj02ToBd09(longitude: number, latitude: number): [number, number] {
+  // oxlint-disable-next-line unicorn/prefer-modern-math-apis -- keeps the published BD-09 formula exactly
   const z = Math.sqrt(longitude * longitude + latitude * latitude) + 0.00002 * Math.sin(latitude * coordinatePi)
   const theta = Math.atan2(latitude, longitude) + 0.000003 * Math.cos(longitude * coordinatePi)
   return [z * Math.cos(theta) + 0.0065, z * Math.sin(theta) + 0.006]

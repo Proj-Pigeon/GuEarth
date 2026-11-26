@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import { compileFunction } from 'node:vm'
 import { ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
 import { test } from 'vite-plus/test'
@@ -16,7 +15,6 @@ const source = readFileSync(new URL('../src/main/ai/modelImporter.ts', import.me
 const { outputText } = transpileModule(source, {
   compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 }
 })
-const nodeRequire = createRequire(import.meta.url)
 
 function loadImporter(respond, key = 'secret-key') {
   const requests = []
@@ -35,7 +33,7 @@ function loadImporter(respond, key = 'secret-key') {
   return { ...api, requests }
 }
 
-const response = (body, status = 200) => new Response(JSON.stringify(body), { status })
+const response = (body, status = 200) => Response.json(body, { status })
 const catalog = {
   openai: {
     id: 'openai',

@@ -1,6 +1,5 @@
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { Worker } from 'node:worker_threads'
 import type { AgentMemory, StoredAiConversation, StoredAiConversationSummary } from '../../../preload'
 import { EoqHawdbEngine } from './engine'
