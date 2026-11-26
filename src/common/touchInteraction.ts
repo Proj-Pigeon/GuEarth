@@ -15,8 +15,15 @@ export interface TouchEnvironment {
   maxTouchPoints: number
 }
 
-export function resolveTouchInteractionActive(mode: TouchInteractionMode, environment: TouchEnvironment): boolean {
-  if (mode === 'on') {return true}
-  if (mode === 'off') {return false}
+export function resolveTouchInteractionActive(
+  mode: TouchInteractionMode,
+  environment: TouchEnvironment
+): boolean {
+  if (mode === 'on') {
+    return true
+  }
+  if (mode === 'off') {
+    return false
+  }
   return environment.coarsePointer || environment.maxTouchPoints > 0
 }

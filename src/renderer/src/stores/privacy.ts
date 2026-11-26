@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../../../common/privacy';
-import type { PrivacySettingKey, PrivacySettings } from '../../../common/privacy';
+
+import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../../../common/privacy'
+import type { PrivacySettingKey, PrivacySettings } from '../../../common/privacy'
 import { applyRendererPrivacySettings } from '../lib/privacyRuntime'
 
 const PRIVACY_KEYS: readonly PrivacySettingKey[] = [
@@ -54,9 +55,11 @@ let appliedSeq: Record<PrivacySettingKey, number> = zeroPrivacyRecord()
 
 function applyLocal(next: PrivacySettings): void {
   const effective: PrivacySettings = {
-    errorReportingEnabled: pendingDisableCounts.errorReportingEnabled > 0 ? false : next.errorReportingEnabled,
+    errorReportingEnabled:
+      pendingDisableCounts.errorReportingEnabled > 0 ? false : next.errorReportingEnabled,
     telemetryEnabled: pendingDisableCounts.telemetryEnabled > 0 ? false : next.telemetryEnabled,
-    aiTelemetryEnabled: pendingDisableCounts.aiTelemetryEnabled > 0 ? false : next.aiTelemetryEnabled
+    aiTelemetryEnabled:
+      pendingDisableCounts.aiTelemetryEnabled > 0 ? false : next.aiTelemetryEnabled
   }
   usePrivacyStore.setState({
     errorReportingEnabled: effective.errorReportingEnabled,
@@ -90,8 +93,12 @@ export const usePrivacyStore = create<PrivacyStore>()(
   subscribeWithSelector((set, get) => ({
     ...createInitialPrivacyState(),
     async hydrate(): Promise<void> {
-      if (get().hydrated) {return}
-      if (hydratePromise) {return hydratePromise}
+      if (get().hydrated) {
+        return
+      }
+      if (hydratePromise) {
+        return hydratePromise
+      }
       hydratePromise = (async () => {
         const seqAtStart = { ...latestSeq }
         try {
@@ -124,7 +131,9 @@ export const usePrivacyStore = create<PrivacyStore>()(
       }
       if (typeof window === 'undefined' || !window.guEarth?.settings) {
         activeUpdates[key] -= 1
-        if (!enabled) {pendingDisableCounts[key] -= 1}
+        if (!enabled) {
+          pendingDisableCounts[key] -= 1
+        }
         settledSnapshot = { ...settledSnapshot, [key]: enabled }
         applyLocal(settledSnapshot)
         return true
@@ -132,14 +141,18 @@ export const usePrivacyStore = create<PrivacyStore>()(
       try {
         const saved = await window.guEarth.settings.update({ [key]: enabled })
         activeUpdates[key] -= 1
-        if (!enabled) {pendingDisableCounts[key] -= 1}
+        if (!enabled) {
+          pendingDisableCounts[key] -= 1
+        }
         const resolved = resolvePrivacySettings(saved as unknown as Record<string, unknown>)
         mergeSnapshot(resolved, seqAtStart, key, seq)
         applyLocal(settledSnapshot)
         return true
       } catch {
         activeUpdates[key] -= 1
-        if (!enabled) {pendingDisableCounts[key] -= 1}
+        if (!enabled) {
+          pendingDisableCounts[key] -= 1
+        }
         applyLocal(settledSnapshot)
         return false
       }

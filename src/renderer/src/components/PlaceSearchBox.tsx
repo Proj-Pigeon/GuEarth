@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
-import { ChevronDownIcon, Loader2Icon, SearchIcon, XIcon } from 'lucide-react'
-import { Button, DropdownMenu } from '@renderer/components/ui';
-import type { DropdownMenuEntry } from '@renderer/components/ui';
-import { useGlobeStore } from '@renderer/stores/globe'
+import { Button, DropdownMenu } from '@renderer/components/ui'
+import type { DropdownMenuEntry } from '@renderer/components/ui'
 import { useFailureStore } from '@renderer/stores/failure'
+import { useGlobeStore } from '@renderer/stores/globe'
+import { ChevronDownIcon, Loader2Icon, SearchIcon, XIcon } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
 import type { PlaceSearchProvider, PlaceSuggestion } from '../../../preload'
+
 import styles from './PlaceSearchBox.module.css'
 
 export interface PlaceSearchBoxProps {
@@ -30,13 +32,13 @@ const providerDefinitions: { id: PlaceSearchProvider; name: string }[] = [
 
 function regionText(place: PlaceSuggestion): string {
   const region = [place.province, place.city, place.district]
-    .filter((part) => part && part !== place.name)
+    .filter(part => part && part !== place.name)
     .join(' · ')
   return [region, place.address].filter(Boolean).join(' · ')
 }
 
 function providerName(id?: PlaceSearchProvider): string {
-  return providerDefinitions.find((item) => item.id === id)?.name ?? ''
+  return providerDefinitions.find(item => item.id === id)?.name ?? ''
 }
 
 function statusOption(text: string, isError: boolean, retry?: () => void): PlaceOption {
@@ -60,8 +62,8 @@ function placeOption(place: PlaceSuggestion, index: number): PlaceOption {
 }
 
 export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
-  const providerCredentials = useGlobeStore((state) => state.providerCredentials)
-  const reportDegrade = useFailureStore((state) => state.reportDegrade)
+  const providerCredentials = useGlobeStore(state => state.providerCredentials)
+  const reportDegrade = useFailureStore(state => state.reportDegrade)
 
   const [keyword, setKeyword] = useState('')
   const [options, setOptions] = useState<PlaceOption[]>([])
@@ -81,12 +83,12 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
   })
 
   const availableProviders = useMemo(
-    () => providerDefinitions.filter((item) => providerCredentials[item.id]?.configured),
+    () => providerDefinitions.filter(item => providerCredentials[item.id]?.configured),
     [providerCredentials]
   )
   const showProviderSelect = availableProviders.length > 1
   const provider = useMemo(
-    () => availableProviders.find((item) => item.id === preferredProvider) ?? availableProviders[0],
+    () => availableProviders.find(item => item.id === preferredProvider) ?? availableProviders[0],
     [availableProviders, preferredProvider]
   )
   const providerId = provider?.id
@@ -106,7 +108,9 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
       }
       const retryLast = (): void => {
         const query = lastQueryRef.current.trim()
-        if (query) {void search(query)}
+        if (query) {
+          void search(query)
+        }
       }
       setOptions([
         {
@@ -126,10 +130,16 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
         }
         return
       }
-      if (seq !== requestSeqRef.current) {return}
-      if (result.superseded) {return}
+      if (seq !== requestSeqRef.current) {
+        return
+      }
+      if (result.superseded) {
+        return
+      }
       if (result.fellBackFrom) {
-        reportDegrade(`${providerName(result.fellBackFrom)}不可用，已改用${providerName(result.source)}`)
+        reportDegrade(
+          `${providerName(result.fellBackFrom)}不可用，已改用${providerName(result.source)}`
+        )
       }
       if (result.error) {
         setOptions([statusOption(result.error, true, retryLast)])
@@ -149,34 +159,49 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
     const previousProvider = previousRef.current.providerId
     previousRef.current = { text: keyword, providerId }
 
-    if (debounceTimerRef.current) {clearTimeout(debounceTimerRef.current)}
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
     requestSeqRef.current += 1
     setOptions([])
     if (suppressWatchRef.current) {
       suppressWatchRef.current = false
-      if (providerId === previousProvider && keyword !== previousText) {return}
+      if (providerId === previousProvider && keyword !== previousText) {
+        return
+      }
     }
     const query = keyword.trim()
-    if (!query) {return}
+    if (!query) {
+      return
+    }
     debounceTimerRef.current = setTimeout(() => {
       void search(query)
     }, 300)
   }, [keyword, providerId, credentialUpdatedAt, search])
 
   useEffect(() => {
-    if (!showProviderSelect) {setProviderMenuOpen(false)}
+    if (!showProviderSelect) {
+      setProviderMenuOpen(false)
+    }
   }, [showProviderSelect])
 
-  useEffect(() => 
-    () => {
-      if (debounceTimerRef.current) {clearTimeout(debounceTimerRef.current)}
+  useEffect(
+    () => () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
       requestSeqRef.current += 1
-    }
-  , [])
+    },
+    []
+  )
 
   function handleSelectOption(option: PlaceOption): void {
-    if (!option.place) {return}
-    if (debounceTimerRef.current) {clearTimeout(debounceTimerRef.current)}
+    if (!option.place) {
+      return
+    }
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
     requestSeqRef.current += 1
     suppressWatchRef.current = keyword !== option.place.name
     setKeyword(option.place.name)
@@ -186,8 +211,12 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
   }
 
   function handleProviderSelect(key: string): void {
-    if (key !== 'amap' && key !== 'baidu') {return}
-    if (!availableProviders.some((item) => item.id === key)) {return}
+    if (key !== 'amap' && key !== 'baidu') {
+      return
+    }
+    if (!availableProviders.some(item => item.id === key)) {
+      return
+    }
     setPreferredProvider(key)
     setProviderMenuOpen(false)
     requestAnimationFrame(() => {
@@ -196,7 +225,7 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
     })
   }
 
-  const providerMenuItems: DropdownMenuEntry[] = availableProviders.map((item) => ({
+  const providerMenuItems: DropdownMenuEntry[] = availableProviders.map(item => ({
     key: item.id,
     label: item.name
   }))
@@ -204,37 +233,39 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
   const popupVisible = suggestionsOpen && !providerMenuOpen && options.length > 0
 
   return (
-    <div className={styles.placeSearch} data-guide-target="place-search">
+    <div className={styles.placeSearch} data-guide-target='place-search'>
       <BaseAutocomplete.Root<PlaceOption>
         items={options}
         value={keyword}
         open={popupVisible}
         filter={null}
-        itemToStringValue={(item) => item.place?.name ?? item.value}
-        onValueChange={(next) => {
+        itemToStringValue={item => item.place?.name ?? item.value}
+        onValueChange={next => {
           setKeyword(next)
           setSuggestionsOpen(true)
         }}
-        onOpenChange={(nextOpen) => setSuggestionsOpen(nextOpen)}
+        onOpenChange={nextOpen => setSuggestionsOpen(nextOpen)}
       >
         <div
           ref={searchBarRef}
           className={
-            showProviderSelect ? `${styles.searchBar} ${styles.searchBarWithProvider}` : styles.searchBar
+            showProviderSelect
+              ? `${styles.searchBar} ${styles.searchBarWithProvider}`
+              : styles.searchBar
           }
         >
-          <SearchIcon className={styles.placeSearchIcon} aria-hidden="true" />
+          <SearchIcon className={styles.placeSearchIcon} aria-hidden='true' />
           <BaseAutocomplete.Input
             ref={searchInputRef}
-            placeholder="输入关键词以搜索"
-            aria-label="搜索地点"
+            placeholder='输入关键词以搜索'
+            aria-label='搜索地点'
             className={styles.searchInput}
           />
           {keyword && (
             <button
-              type="button"
-              aria-label="清除搜索关键词"
-              onMouseDown={(event) => event.preventDefault()}
+              type='button'
+              aria-label='清除搜索关键词'
+              onMouseDown={event => event.preventDefault()}
               onClick={() => {
                 setKeyword('')
                 setOptions([])
@@ -242,32 +273,34 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
               }}
               className={styles.clearButton}
             >
-              <XIcon className="size-3.5" />
+              <XIcon className='size-3.5' />
             </button>
           )}
           {showProviderSelect && (
             <DropdownMenu
               open={providerMenuOpen}
               onOpenChange={setProviderMenuOpen}
-              placement="bottomRight"
+              placement='bottomRight'
               selectedKeys={provider ? [provider.id] : []}
               items={providerMenuItems}
               onSelect={handleProviderSelect}
             >
               <Button
-                variant="ghost"
-                size="sm"
+                variant='ghost'
+                size='sm'
                 className={styles.placeProviderButton}
                 aria-label={`搜索源：${provider?.name ?? ''}`}
-                aria-haspopup="menu"
+                aria-haspopup='menu'
                 aria-expanded={providerMenuOpen}
-                onMouseDown={(event) => event.stopPropagation()}
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') {setProviderMenuOpen(false)}
+                onMouseDown={event => event.stopPropagation()}
+                onKeyDown={event => {
+                  if (event.key === 'Escape') {
+                    setProviderMenuOpen(false)
+                  }
                 }}
               >
                 <span>{provider?.name}</span>
-                <ChevronDownIcon className="size-3.5 text-ink-tertiary" />
+                <ChevronDownIcon className='text-ink-tertiary size-3.5' />
               </Button>
             </DropdownMenu>
           )}
@@ -275,9 +308,9 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
         <BaseAutocomplete.Portal>
           <BaseAutocomplete.Positioner
             anchor={searchBarRef}
-            align="start"
+            align='start'
             sideOffset={6}
-            className="z-[1500] outline-none"
+            className='z-[1500] outline-none'
           >
             <BaseAutocomplete.Popup className={styles.placeDropdown}>
               <BaseAutocomplete.List className={styles.placeList}>
@@ -305,15 +338,17 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
                           : styles.placeStatus
                       }
                     >
-                      {option.loading && <Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />}
+                      {option.loading && (
+                        <Loader2Icon className='size-3.5 animate-spin' aria-hidden='true' />
+                      )}
                       <span>{option.statusText}</span>
                       {option.retry && (
                         <Button
-                          variant="ghost"
-                          size="sm"
+                          variant='ghost'
+                          size='sm'
                           className={styles.placeRetry}
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={(event) => {
+                          onMouseDown={event => event.preventDefault()}
+                          onClick={event => {
                             event.stopPropagation()
                             option.retry?.()
                           }}

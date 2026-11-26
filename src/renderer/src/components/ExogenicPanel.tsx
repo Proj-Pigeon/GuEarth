@@ -1,7 +1,8 @@
-import { Fragment, useState } from 'react'
+import { Button } from '@renderer/components/ui'
 import * as Cesium from 'cesium'
 import { XIcon } from 'lucide-react'
-import { Button } from '@renderer/components/ui'
+import { Fragment, useState } from 'react'
+
 import styles from './ExogenicPanel.module.css'
 
 export interface ExogenicPanelProps {
@@ -31,7 +32,8 @@ const stages: ChainStage[] = [
     id: 'erosion',
     name: '侵蚀作用',
     force: '流水、风力、冰川、海浪',
-    description: '风化产物与岩石被外力破坏并搬离原地：流水下切成 V 形谷、风蚀雅丹、冰川刨蚀 U 形谷、海浪蚀出海蚀崖。',
+    description:
+      '风化产物与岩石被外力破坏并搬离原地：流水下切成 V 形谷、风蚀雅丹、冰川刨蚀 U 形谷、海浪蚀出海蚀崖。',
     color: '#fa8c16',
     site: { label: '虎跳峡流水侵蚀', longitude: 100.05, latitude: 27.25, height: 45_000 }
   },
@@ -39,7 +41,8 @@ const stages: ChainStage[] = [
     id: 'transportation',
     name: '搬运作用',
     force: '流水、风力、冰川',
-    description: '外力将碎屑物质搬运离开：河流挟带泥沙（黄河“一碗水半碗沙”）、风沙运移、冰川携带冰碛物。',
+    description:
+      '外力将碎屑物质搬运离开：河流挟带泥沙（黄河“一碗水半碗沙”）、风沙运移、冰川携带冰碛物。',
     color: '#722ed1',
     site: { label: '黄河中游泥沙搬运', longitude: 110.5, latitude: 35.5, height: 400_000 }
   },
@@ -47,7 +50,8 @@ const stages: ChainStage[] = [
     id: 'deposition',
     name: '堆积作用',
     force: '流速/风速降低、冰川消融',
-    description: '外力减弱，物质沉积：山前冲积扇、河流三角洲、风积沙丘、冰碛垄。粒径大的先沉积、小的后沉积，出现分选性。',
+    description:
+      '外力减弱，物质沉积：山前冲积扇、河流三角洲、风积沙丘、冰碛垄。粒径大的先沉积、小的后沉积，出现分选性。',
     color: '#13c2c2',
     site: { label: '长江三角洲堆积', longitude: 120.7, latitude: 31.6, height: 300_000 }
   },
@@ -55,7 +59,8 @@ const stages: ChainStage[] = [
     id: 'lithification',
     name: '固结成岩',
     force: '压实、胶结',
-    description: '松散堆积物经漫长地质时期压实胶结，重新变成沉积岩（砂岩、页岩、石灰岩），完成岩石循环。',
+    description:
+      '松散堆积物经漫长地质时期压实胶结，重新变成沉积岩（砂岩、页岩、石灰岩），完成岩石循环。',
     color: '#595959'
   }
 ]
@@ -68,29 +73,45 @@ export function ExogenicPanel({ viewer, onClose }: ExogenicPanelProps) {
   }
 
   function flyToSite(stage: ChainStage): void {
-    if (!stage.site) {return}
+    if (!stage.site) {
+      return
+    }
     if (viewer && !viewer.isDestroyed()) {
       viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(stage.site.longitude, stage.site.latitude, stage.site.height),
+        destination: Cesium.Cartesian3.fromDegrees(
+          stage.site.longitude,
+          stage.site.latitude,
+          stage.site.height
+        ),
         duration: 1.4
       })
     }
   }
 
-  const activeStage = stages.find((item) => item.id === activeId)
+  const activeStage = stages.find(item => item.id === activeId)
 
   return (
-    <div className={styles.exogenicPanel} role="group" aria-label="外力作用过程">
+    <div className={styles.exogenicPanel} role='group' aria-label='外力作用过程'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>外力作用过程</span>
-        <Button variant="ghost" size="sm" aria-label="关闭外力作用过程" icon={<XIcon className="size-3.5" />} onClick={onClose} />
+        <Button
+          variant='ghost'
+          size='sm'
+          aria-label='关闭外力作用过程'
+          icon={<XIcon className='size-3.5' />}
+          onClick={onClose}
+        />
       </div>
       <div className={styles.chain}>
         {stages.map((stage, index) => (
           <Fragment key={stage.id}>
             <button
-              type="button"
-              className={stage.id === activeId ? `${styles.chainNode} ${styles.chainActive}` : styles.chainNode}
+              type='button'
+              className={
+                stage.id === activeId
+                  ? `${styles.chainNode} ${styles.chainActive}`
+                  : styles.chainNode
+              }
               style={{ borderColor: stage.color }}
               onClick={() => selectStage(stage)}
             >
@@ -106,7 +127,7 @@ export function ExogenicPanel({ viewer, onClose }: ExogenicPanelProps) {
           <div className={styles.stageForce}>主要动力：{activeStage.force}</div>
           <div className={styles.stageDesc}>{activeStage.description}</div>
           {activeStage.site && (
-            <Button size="sm" onClick={() => flyToSite(activeStage)}>
+            <Button size='sm' onClick={() => flyToSite(activeStage)}>
               在地球上查看：{activeStage.site.label}
             </Button>
           )}

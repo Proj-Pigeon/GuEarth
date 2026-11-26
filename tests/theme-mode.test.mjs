@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
+
 import { test } from 'vite-plus/test'
-import { isThemeMode, normalizeThemeMode, resolveTheme, themeModes } from '../src/common/themeMode.ts'
+
+import {
+  isThemeMode,
+  normalizeThemeMode,
+  resolveTheme,
+  themeModes
+} from '../src/common/themeMode.ts'
 
 test('isThemeMode accepts only light, dark, and system', () => {
   assert.deepEqual([...themeModes], ['light', 'dark', 'system'])

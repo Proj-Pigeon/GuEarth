@@ -1,6 +1,6 @@
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
-import { MinusIcon, PlusIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { MinusIcon, PlusIcon } from 'lucide-react'
 
 export interface NumberInputProps {
   value?: number | null
@@ -34,7 +34,7 @@ export function NumberInput({
       max={max}
       step={step}
       disabled={disabled}
-      onValueChange={(next) => onChange?.(next)}
+      onValueChange={next => onChange?.(next)}
       className={cn('inline-flex', className)}
     >
       <BaseNumberField.Group
@@ -45,21 +45,21 @@ export function NumberInput({
         )}
       >
         <BaseNumberField.Decrement
-          aria-label="减少"
-          className="inline-flex h-full w-6 shrink-0 cursor-pointer items-center justify-center border-0 border-r border-hairline bg-transparent text-ink-secondary transition-colors hover:bg-muted hover:text-ink disabled:cursor-not-allowed disabled:text-ink-disabled"
+          aria-label='减少'
+          className='border-hairline text-ink-secondary hover:bg-muted hover:text-ink disabled:text-ink-disabled inline-flex h-full w-6 shrink-0 cursor-pointer items-center justify-center border-0 border-r bg-transparent transition-colors disabled:cursor-not-allowed'
         >
-          <MinusIcon className="size-3" />
+          <MinusIcon className='size-3' />
         </BaseNumberField.Decrement>
         <BaseNumberField.Input
           aria-label={ariaLabel}
           placeholder={placeholder}
-          className="min-w-0 flex-1 border-0 bg-transparent px-2 text-center font-mono text-inherit outline-none placeholder:text-ink-tertiary disabled:cursor-not-allowed"
+          className='placeholder:text-ink-tertiary min-w-0 flex-1 border-0 bg-transparent px-2 text-center font-mono text-inherit outline-none disabled:cursor-not-allowed'
         />
         <BaseNumberField.Increment
-          aria-label="增加"
-          className="inline-flex h-full w-6 shrink-0 cursor-pointer items-center justify-center border-0 border-l border-hairline bg-transparent text-ink-secondary transition-colors hover:bg-muted hover:text-ink disabled:cursor-not-allowed disabled:text-ink-disabled"
+          aria-label='增加'
+          className='border-hairline text-ink-secondary hover:bg-muted hover:text-ink disabled:text-ink-disabled inline-flex h-full w-6 shrink-0 cursor-pointer items-center justify-center border-0 border-l bg-transparent transition-colors disabled:cursor-not-allowed'
         >
-          <PlusIcon className="size-3" />
+          <PlusIcon className='size-3' />
         </BaseNumberField.Increment>
       </BaseNumberField.Group>
     </BaseNumberField.Root>

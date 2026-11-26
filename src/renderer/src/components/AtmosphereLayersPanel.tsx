@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
-import { XIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui'
-import LineChart from './charts/LineChart';
-import type { ChartSeries } from './charts/LineChart';
+import { XIcon } from 'lucide-react'
+import { useMemo } from 'react'
+
+import LineChart from './charts/LineChart'
+import type { ChartSeries } from './charts/LineChart'
+
 import styles from './AtmosphereLayersPanel.module.css'
 
 export interface AtmosphereLayersPanelProps {
@@ -12,9 +14,15 @@ export interface AtmosphereLayersPanelProps {
 const TEMP_COLOR = '#1677ff'
 
 const profilePoints: [number, number][] = []
-for (let h = 0; h <= 12; h += 1) {profilePoints.push([15 - (h * 70) / 12, h])}
-for (let h = 13; h <= 50; h += 1) {profilePoints.push([-55 + ((h - 12) * 52) / 38, h])}
-for (let h = 51; h <= 85; h += 1) {profilePoints.push([-3 - ((h - 50) * 87) / 35, h])}
+for (let h = 0; h <= 12; h += 1) {
+  profilePoints.push([15 - (h * 70) / 12, h])
+}
+for (let h = 13; h <= 50; h += 1) {
+  profilePoints.push([-55 + ((h - 12) * 52) / 38, h])
+}
+for (let h = 51; h <= 85; h += 1) {
+  profilePoints.push([-3 - ((h - 50) * 87) / 35, h])
+}
 
 const layers = [
   {
@@ -45,31 +53,39 @@ const layers = [
 
 export function AtmosphereLayersPanel({ onClose }: AtmosphereLayersPanelProps) {
   const series = useMemo<ChartSeries[]>(
-    () => [{ name: '大气垂直温度廓线', color: TEMP_COLOR, points: profilePoints, markY: [12, 50, 85] }],
+    () => [
+      { name: '大气垂直温度廓线', color: TEMP_COLOR, points: profilePoints, markY: [12, 50, 85] }
+    ],
     []
   )
 
   return (
-    <div className={styles.layersPanel} role="group" aria-label="大气垂直分层">
+    <div className={styles.layersPanel} role='group' aria-label='大气垂直分层'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>大气垂直分层</span>
-        <Button variant="ghost" size="sm" aria-label="关闭大气垂直分层" icon={<XIcon className="size-3.5" />} onClick={onClose} />
+        <Button
+          variant='ghost'
+          size='sm'
+          aria-label='关闭大气垂直分层'
+          icon={<XIcon className='size-3.5' />}
+          onClick={onClose}
+        />
       </div>
       <div className={styles.chartTitle}>气温随高度的分布（横轴：气温，纵轴：高度）</div>
       <LineChart
         series={series}
         xMin={-100}
         xMax={20}
-        xName="气温(℃)"
-        yName="高度(千米)"
+        xName='气温(℃)'
+        yName='高度(千米)'
         yMin={0}
         yMax={100}
         height={210}
       />
-      {layers.map((layer) => (
+      {layers.map(layer => (
         <div key={layer.name} className={styles.layerItem}>
           <div className={styles.layerName}>{layer.name}</div>
-          {layer.facts.map((fact) => (
+          {layer.facts.map(fact => (
             <div key={fact} className={styles.layerFact}>
               · {fact}
             </div>
@@ -77,7 +93,8 @@ export function AtmosphereLayersPanel({ onClose }: AtmosphereLayersPanelProps) {
         </div>
       ))}
       <div className={styles.panelNote}>
-        曲线折点即分层界线：对流层顶约 12 千米、平流层顶约 50 千米、中间层顶约 85 千米；气温在界线处变化趋势反转。
+        曲线折点即分层界线：对流层顶约 12 千米、平流层顶约 50 千米、中间层顶约 85
+        千米；气温在界线处变化趋势反转。
       </div>
     </div>
   )

@@ -10,7 +10,9 @@ export async function readResponseText(
   options: { maxBytes: number; controller: AbortController; tooLargeMessage: string }
 ): Promise<string> {
   const { maxBytes, controller, tooLargeMessage } = options
-  if (!response.body) {return ''}
+  if (!response.body) {
+    return ''
+  }
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   const chunks: string[] = []
@@ -18,7 +20,9 @@ export async function readResponseText(
   try {
     while (true) {
       const { done, value } = await reader.read()
-      if (done) {break}
+      if (done) {
+        break
+      }
       totalBytes += value.byteLength
       if (totalBytes > maxBytes) {
         const error = new ResponseTooLargeError(tooLargeMessage)

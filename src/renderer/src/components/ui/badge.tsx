@@ -1,6 +1,6 @@
-import { forwardRef } from 'react';
-import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@renderer/lib/utils'
+import { forwardRef } from 'react'
+import type { HTMLAttributes, ReactNode } from 'react'
 
 export type BadgeTone = 'primary' | 'info' | 'success' | 'warning' | 'error'
 
@@ -28,36 +28,35 @@ const countToneClasses: Record<BadgeTone, string> = {
   error: 'bg-destructive text-destructive-foreground'
 }
 
-export const Badge = forwardRef<HTMLSpanElement, BadgeProps>((
-  { dot = false, count, tone = 'primary', className, children, ...props },
-  ref
-) => {
-  const showDot = dot && count === undefined
-  const showCount = typeof count === 'number' && count > 0
-  return (
-    <span ref={ref} className={cn('relative inline-flex', className)} {...props}>
-      {children}
-      {showDot && (
-        <span
-          aria-hidden="true"
-          className={cn(
-            'pointer-events-none absolute top-0.5 right-0.5 size-2 rounded-full ring-2 ring-surface',
-            dotToneClasses[tone]
-          )}
-        />
-      )}
-      {showCount && (
-        <span
-          className={cn(
-            'pointer-events-none absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-medium',
-            countToneClasses[tone]
-          )}
-        >
-          {count > 99 ? '99+' : count}
-        </span>
-      )}
-    </span>
-  )
-})
+export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
+  ({ dot = false, count, tone = 'primary', className, children, ...props }, ref) => {
+    const showDot = dot && count === undefined
+    const showCount = typeof count === 'number' && count > 0
+    return (
+      <span ref={ref} className={cn('relative inline-flex', className)} {...props}>
+        {children}
+        {showDot && (
+          <span
+            aria-hidden='true'
+            className={cn(
+              'pointer-events-none absolute top-0.5 right-0.5 size-2 rounded-full ring-2 ring-surface',
+              dotToneClasses[tone]
+            )}
+          />
+        )}
+        {showCount && (
+          <span
+            className={cn(
+              'pointer-events-none absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-medium',
+              countToneClasses[tone]
+            )}
+          >
+            {count > 99 ? '99+' : count}
+          </span>
+        )}
+      </span>
+    )
+  }
+)
 
 export default Badge

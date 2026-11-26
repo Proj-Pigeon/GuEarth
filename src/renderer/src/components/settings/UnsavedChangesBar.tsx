@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { AlertCircleIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui'
+import { AlertCircleIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+
 import styles from './UnsavedChangesBar.module.css'
 
 export interface UnsavedChangesBarProps {
@@ -29,25 +30,29 @@ export function UnsavedChangesBar({ open, saving, onSave, onDiscard }: UnsavedCh
     return () => clearTimeout(timer)
   }, [open])
 
-  if (!rendered) {return null}
+  if (!rendered) {
+    return null
+  }
 
   return (
     <div
       className={visible ? `${styles.unsavedBar} ${styles.unsavedBarVisible}` : styles.unsavedBar}
-      role="region"
-      aria-label="未保存的改动"
-      aria-live="polite"
+      role='region'
+      aria-label='未保存的改动'
+      aria-live='polite'
       onTransitionEnd={() => {
-        if (!open) {setRendered(false)}
+        if (!open) {
+          setRendered(false)
+        }
       }}
     >
-      <AlertCircleIcon className={styles.unsavedBarIcon} aria-hidden="true" />
+      <AlertCircleIcon className={styles.unsavedBarIcon} aria-hidden='true' />
       <span className={styles.unsavedBarText}>您似乎有新的改动！</span>
       <div className={styles.unsavedBarActions}>
         <Button disabled={saving} onClick={onDiscard}>
           舍弃
         </Button>
-        <Button variant="primary" loading={saving} onClick={onSave}>
+        <Button variant='primary' loading={saving} onClick={onSave}>
           保存
         </Button>
       </div>

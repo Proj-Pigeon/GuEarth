@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
+
 import { test } from 'vite-plus/test'
 
-import { offscreenCaptureSize, offscreenConcatPlaylist, offscreenFrameDurations, offscreenFrameRate, offscreenScriptDurationMs } from '../src/main/offscreenTiming.ts'
+import {
+  offscreenCaptureSize,
+  offscreenConcatPlaylist,
+  offscreenFrameDurations,
+  offscreenFrameRate,
+  offscreenScriptDurationMs
+} from '../src/main/offscreenTiming.ts'
 
 test('script duration excludes the first scene flight and clamps negative timings', () => {
   const duration = offscreenScriptDurationMs([
@@ -22,8 +29,8 @@ test('encoded frame rate preserves wall clock duration when capture drops frames
   const throttledRate = offscreenFrameRate(150, 10_000)
   assert.equal(Math.round(fullRate), 30)
   assert.equal(Math.round(throttledRate), 15)
-  assert.ok(Math.abs(300 / fullRate * 1000 - 10_000) < 1)
-  assert.ok(Math.abs(150 / throttledRate * 1000 - 10_000) < 1)
+  assert.ok(Math.abs((300 / fullRate) * 1000 - 10_000) < 1)
+  assert.ok(Math.abs((150 / throttledRate) * 1000 - 10_000) < 1)
 })
 
 test('encoded frame rate never returns zero or a non-finite value', () => {
@@ -55,30 +62,46 @@ test('frame durations follow the real capture timeline instead of an average rat
   const frameTimes = [0, 500, 1000, 2000]
   const durations = offscreenFrameDurations(frameTimes, 2600)
   assert.deepEqual(durations, [0.5, 0.5, 1, 0.6])
-  assert.equal(durations.reduce((total, value) => total + value, 0), 2.6)
+  assert.equal(
+    durations.reduce((total, value) => total + value, 0),
+    2.6
+  )
 })
 
 test('frame durations never collapse below the minimum step', () => {
   const durations = offscreenFrameDurations([0, 0, 10], 10)
-  assert.ok(durations.every((value) => value >= 1 / 240))
+  assert.ok(durations.every(value => value >= 1 / 240))
 })
 
 test('concat playlist lists every frame with its own duration', () => {
-  const playlist = offscreenConcatPlaylist(['frame-00000000.jpg', 'frame-00000001.jpg'], [0.5, 0.25])
-  assert.equal(playlist, "ffconcat version 1.0\nfile 'frame-00000000.jpg'\noption framerate 1000\nduration 0.500000\nfile 'frame-00000001.jpg'\noption framerate 1000\nduration 0.250000\nfile 'frame-00000001.jpg'\noption framerate 1000\n")
+  const playlist = offscreenConcatPlaylist(
+    ['frame-00000000.jpg', 'frame-00000001.jpg'],
+    [0.5, 0.25]
+  )
+  assert.equal(
+    playlist,
+    "ffconcat version 1.0\nfile 'frame-00000000.jpg'\noption framerate 1000\nduration 0.500000\nfile 'frame-00000001.jpg'\noption framerate 1000\nduration 0.250000\nfile 'frame-00000001.jpg'\noption framerate 1000\n"
+  )
 })
 
 test('concat playlist pins a fine sub-file timebase so short capture gaps survive', () => {
   const playlist = offscreenConcatPlaylist(['a.jpg', 'b.jpg'], [0.05, 0.1])
   const lines = playlist.trim().split('\n')
-  const fileIndexes = lines.map((line, index) => (line.startsWith('file') ? index : -1)).filter((index) => index >= 0)
+  const fileIndexes = lines
+    .map((line, index) => (line.startsWith('file') ? index : -1))
+    .filter(index => index >= 0)
   assert.equal(fileIndexes.length, 3)
-  for (const index of fileIndexes) {assert.equal(lines[index + 1], 'option framerate 1000')}
+  for (const index of fileIndexes) {
+    assert.equal(lines[index + 1], 'option framerate 1000')
+  }
 })
 
 test('concat playlist repeats the final frame so its duration is honoured', () => {
   const playlist = offscreenConcatPlaylist(['only.jpg'], [1.5])
-  const entries = playlist.trim().split('\n').filter((line) => line.startsWith('file'))
+  const entries = playlist
+    .trim()
+    .split('\n')
+    .filter(line => line.startsWith('file'))
   assert.equal(entries.length, 2)
   assert.equal(entries[1], "file 'only.jpg'")
   assert.equal(playlist.match(/option framerate 1000/g).length, 2)

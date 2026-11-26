@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
-import { XIcon } from 'lucide-react'
 import { Button, Segmented } from '@renderer/components/ui'
-import LineChart from './charts/LineChart';
-import type { ChartSeries } from './charts/LineChart';
+import { XIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
+
+import LineChart from './charts/LineChart'
+import type { ChartSeries } from './charts/LineChart'
+
 import styles from './WaterBodyPanel.module.css'
 
 export interface WaterBodyPanelProps {
@@ -131,21 +133,36 @@ export function WaterBodyPanel({ onClose }: WaterBodyPanelProps) {
   const meta = rechargeMeta[recharge]
 
   return (
-    <div className={styles.waterBodyPanel} role="group" aria-label="陆地水体与河流补给">
+    <div className={styles.waterBodyPanel} role='group' aria-label='陆地水体与河流补给'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>陆地水体与河流补给</span>
-        <Button variant="ghost" size="sm" aria-label="关闭陆地水体与河流补给" icon={<XIcon className="size-3.5" />} onClick={onClose} />
+        <Button
+          variant='ghost'
+          size='sm'
+          aria-label='关闭陆地水体与河流补给'
+          icon={<XIcon className='size-3.5' />}
+          onClick={onClose}
+        />
       </div>
       <Segmented
         value={recharge}
-        size="sm"
+        size='sm'
         options={rechargeOptions}
-        aria-label="补给类型"
-        onChange={(value) => setRecharge(value as RechargeType)}
+        aria-label='补给类型'
+        onChange={value => setRecharge(value as RechargeType)}
       />
       <div className={styles.chartTitle}>{meta.example}</div>
-      <LineChart series={series} xMin={1} xMax={12} xName="月份" yName="相对流量" yMin={0} yMax={12} height={160} />
-      {meta.features.map((feature) => (
+      <LineChart
+        series={series}
+        xMin={1}
+        xMax={12}
+        xName='月份'
+        yName='相对流量'
+        yMin={0}
+        yMax={12}
+        height={160}
+      />
+      {meta.features.map(feature => (
         <div key={feature} className={styles.fact}>
           · {feature}
         </div>

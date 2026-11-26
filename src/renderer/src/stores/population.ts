@@ -20,7 +20,7 @@ export function createInitialPopulationState(): PopulationState {
 }
 
 export const usePopulationStore = create<PopulationStore>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector(set => ({
     ...createInitialPopulationState(),
     setPanel(value: PopulationPanel): void {
       set({ panel: value })

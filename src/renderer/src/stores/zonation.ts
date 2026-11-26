@@ -32,7 +32,7 @@ export function createInitialZonationState(): ZonationState {
 }
 
 export const useZonationStore = create<ZonationStore>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector(set => ({
     ...createInitialZonationState(),
     setPanel(value: ZonationPanel | null): void {
       set({ panel: value })

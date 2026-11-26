@@ -1,14 +1,41 @@
-import { app, BrowserWindow, ipcMain, net } from 'electron'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { createWriteStream, existsSync, mkdirSync, readdirSync, realpathSync, renameSync, rmSync } from 'node:fs';
-import type { WriteStream } from 'node:fs';
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  realpathSync,
+  renameSync,
+  rmSync
+} from 'node:fs'
+import type { WriteStream } from 'node:fs'
 import { join } from 'node:path'
+
+import { app, BrowserWindow, ipcMain, net } from 'electron'
+
 import { logger } from '../common/logger'
 import type { UpdateCheckOutcome, UpdateState, UpdaterEvent } from '../preload'
-import { assetNameFromUrl, assetNameMatchesFeed, debInstallPlan, findTrustedExecutable, installAppImageFile, isDebInstallLocation, isPathInsideDirectory, resolveUpdateTarget, updateFeedPath } from './updateChannel';
-import type { UpdateRuntime, UpdateTarget } from './updateChannel';
-import { compareVersions, extractAssetDigest, hashFile, isRecord, parseSha256, releaseTagCandidates } from './updateIntegrity'
+import {
+  assetNameFromUrl,
+  assetNameMatchesFeed,
+  debInstallPlan,
+  findTrustedExecutable,
+  installAppImageFile,
+  isDebInstallLocation,
+  isPathInsideDirectory,
+  resolveUpdateTarget,
+  updateFeedPath
+} from './updateChannel'
+import type { UpdateRuntime, UpdateTarget } from './updateChannel'
+import {
+  compareVersions,
+  extractAssetDigest,
+  hashFile,
+  isRecord,
+  parseSha256,
+  releaseTagCandidates
+} from './updateIntegrity'
 
 const DEFAULT_UPDATE_BASE_URL = 'https://guearth-updater.isla.fan'
 const GITHUB_API_BASE = 'https://api.github.com'
@@ -32,13 +59,17 @@ let assetFileName = ''
 let installing = false
 
 function debInstallDetected(): boolean {
-  const candidates = [process.execPath, process.resourcesPath].filter((value): value is string => Boolean(value))
+  const candidates = [process.execPath, process.resourcesPath].filter((value): value is string =>
+    Boolean(value)
+  )
   const resolved: string[] = []
   for (const candidate of candidates) {
     resolved.push(candidate)
     try {
       const real = realpathSync(candidate)
-      if (real !== candidate) {resolved.push(real)}
+      if (real !== candidate) {
+        resolved.push(real)
+      }
     } catch {
       void 0
     }
@@ -62,7 +93,9 @@ function currentTarget(): UpdateTarget | null {
 }
 
 function updateCheckEnabled(): boolean {
-  return (app.isPackaged || process.env.GUEARTH_UPDATE_URL !== undefined) && currentTarget() !== null
+  return (
+    (app.isPackaged || process.env.GUEARTH_UPDATE_URL !== undefined) && currentTarget() !== null
+  )
 }
 
 function updateBaseUrl(): string {
@@ -70,8 +103,12 @@ function updateBaseUrl(): string {
 }
 
 function installerPathFor(target: UpdateTarget, targetVersion: string): string {
-  if (target.kind === 'nsis') {return join(downloadsDir, `guearth-${targetVersion}-setup.exe`)}
-  if (target.kind === 'appimage') {return join(downloadsDir, `guearth-${targetVersion}-${target.arch}.AppImage`)}
+  if (target.kind === 'nsis') {
+    return join(downloadsDir, `guearth-${targetVersion}-setup.exe`)
+  }
+  if (target.kind === 'appimage') {
+    return join(downloadsDir, `guearth-${targetVersion}-${target.arch}.AppImage`)
+  }
   return join(downloadsDir, `guearth-${targetVersion}-${target.arch}.deb`)
 }
 
@@ -89,12 +126,16 @@ function snapshot(): UpdateState {
 
 function emit(event: UpdaterEvent): void {
   for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {win.webContents.send('updater:event', event)}
+    if (!win.isDestroyed()) {
+      win.webContents.send('updater:event', event)
+    }
   }
 }
 
 function cleanupStaleInstallers(keepPath: string): void {
-  if (!existsSync(downloadsDir)) {return}
+  if (!existsSync(downloadsDir)) {
+    return
+  }
   for (const name of readdirSync(downloadsDir)) {
     const path = join(downloadsDir, name)
     if (path !== keepPath) {
@@ -107,17 +148,28 @@ function cleanupStaleInstallers(keepPath: string): void {
   }
 }
 
-async function resolveDigestFromGitHub(rawName: unknown, version: string, downloadUrl: string): Promise<string | null> {
+async function resolveDigestFromGitHub(
+  rawName: unknown,
+  version: string,
+  downloadUrl: string
+): Promise<string | null> {
   for (const tag of releaseTagCandidates(rawName, version)) {
     try {
-      const response = await net.fetch(`${GITHUB_API_BASE}/repos/${RELEASES_REPO}/releases/tags/${encodeURIComponent(tag)}`, {
-        headers: { Accept: 'application/vnd.github+json' },
-        signal: AbortSignal.timeout(CHECK_TIMEOUT_MS)
-      })
-      if (response.status !== 200) {continue}
+      const response = await net.fetch(
+        `${GITHUB_API_BASE}/repos/${RELEASES_REPO}/releases/tags/${encodeURIComponent(tag)}`,
+        {
+          headers: { Accept: 'application/vnd.github+json' },
+          signal: AbortSignal.timeout(CHECK_TIMEOUT_MS)
+        }
+      )
+      if (response.status !== 200) {
+        continue
+      }
       const digest = extractAssetDigest(await response.json(), downloadUrl)
       if (digest) {
-        logger.info('updater', '更新源清单未携带 sha256，已从 GitHub 发布资产摘要解析校验值', { tag })
+        logger.info('updater', '更新源清单未携带 sha256，已从 GitHub 发布资产摘要解析校验值', {
+          tag
+        })
         return digest
       }
     } catch {
@@ -128,28 +180,55 @@ async function resolveDigestFromGitHub(rawName: unknown, version: string, downlo
 }
 
 async function checkForUpdate(): Promise<UpdateCheckOutcome> {
-  if (status === 'downloading' || status === 'ready') {return 'available'}
+  if (status === 'downloading' || status === 'ready') {
+    return 'available'
+  }
   const target = currentTarget()
-  if (!target) {return 'disabled'}
+  if (!target) {
+    return 'disabled'
+  }
   try {
-    const response = await net.fetch(updateFeedPath(updateBaseUrl(), target.feedPlatform, app.getVersion()), { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) })
-    if (response.status === 204) {return 'latest'}
-    if (!response.ok) {return 'failed'}
-    const payload: unknown = await response.json()
-    if (!isRecord(payload)) {return 'failed'}
-    const remoteVersion = typeof payload.name === 'string' ? payload.name.replace(/^v/, '').trim() : ''
-    const url = typeof payload.url === 'string' ? payload.url.trim() : ''
-    if (!VERSION_PATTERN.test(remoteVersion)) {return 'failed'}
-    if (compareVersions(remoteVersion, app.getVersion()) <= 0) {return 'latest'}
-    if (!/^https?:\/\/\S+$/i.test(url)) {return 'failed'}
-    const assetName = assetNameFromUrl(url)
-    if (!assetName || !assetNameMatchesFeed(assetName, target.feedPlatform)) {
-      logger.warn('updater', '更新包与当前安装平台不匹配，已忽略该更新', { feedPlatform: target.feedPlatform, assetName: assetName ?? '' })
+    const response = await net.fetch(
+      updateFeedPath(updateBaseUrl(), target.feedPlatform, app.getVersion()),
+      { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) }
+    )
+    if (response.status === 204) {
+      return 'latest'
+    }
+    if (!response.ok) {
       return 'failed'
     }
-    const sha256 = parseSha256(payload.sha256) ?? (await resolveDigestFromGitHub(payload.name, remoteVersion, url))
+    const payload: unknown = await response.json()
+    if (!isRecord(payload)) {
+      return 'failed'
+    }
+    const remoteVersion =
+      typeof payload.name === 'string' ? payload.name.replace(/^v/, '').trim() : ''
+    const url = typeof payload.url === 'string' ? payload.url.trim() : ''
+    if (!VERSION_PATTERN.test(remoteVersion)) {
+      return 'failed'
+    }
+    if (compareVersions(remoteVersion, app.getVersion()) <= 0) {
+      return 'latest'
+    }
+    if (!/^https?:\/\/\S+$/i.test(url)) {
+      return 'failed'
+    }
+    const assetName = assetNameFromUrl(url)
+    if (!assetName || !assetNameMatchesFeed(assetName, target.feedPlatform)) {
+      logger.warn('updater', '更新包与当前安装平台不匹配，已忽略该更新', {
+        feedPlatform: target.feedPlatform,
+        assetName: assetName ?? ''
+      })
+      return 'failed'
+    }
+    const sha256 =
+      parseSha256(payload.sha256) ??
+      (await resolveDigestFromGitHub(payload.name, remoteVersion, url))
     if (!sha256) {
-      logger.warn('updater', '更新源清单与 GitHub 发布资产均未提供有效 sha256，已忽略该更新', { version: remoteVersion })
+      logger.warn('updater', '更新源清单与 GitHub 发布资产均未提供有效 sha256，已忽略该更新', {
+        version: remoteVersion
+      })
       return 'failed'
     }
     version = remoteVersion
@@ -160,7 +239,11 @@ async function checkForUpdate(): Promise<UpdateCheckOutcome> {
     assetFileName = assetName
     status = 'available'
     emit({ type: 'available', version, notes, packageKind: target.kind })
-    logger.info('updater', '发现可用更新', { version, feedPlatform: target.feedPlatform, assetName })
+    logger.info('updater', '发现可用更新', {
+      version,
+      feedPlatform: target.feedPlatform,
+      assetName
+    })
     return 'available'
   } catch (error) {
     logger.warn('updater', '检查更新失败', error instanceof Error ? error.message : String(error))
@@ -176,7 +259,9 @@ function finishStream(stream: WriteStream): Promise<void> {
 }
 
 async function cachedInstallerIsTrustworthy(path: string): Promise<boolean> {
-  if (!expectedSha256) {return false}
+  if (!expectedSha256) {
+    return false
+  }
   try {
     return (await hashFile(path)) === expectedSha256
   } catch {
@@ -186,7 +271,9 @@ async function cachedInstallerIsTrustworthy(path: string): Promise<boolean> {
 
 async function downloadUpdate(): Promise<void> {
   const target = activeTarget
-  if (status !== 'available' || !downloadUrl || !target) {throw new Error('当前没有可用更新')}
+  if (status !== 'available' || !downloadUrl || !target) {
+    throw new Error('当前没有可用更新')
+  }
   status = 'downloading'
   const finalPath = installerPathFor(target, version)
   if (existsSync(finalPath) && (await cachedInstallerIsTrustworthy(finalPath))) {
@@ -214,25 +301,38 @@ async function downloadUpdate(): Promise<void> {
       streamClosed = true
     })
     const streamFailure = new Promise<never>((_, reject) => {
-      activeStream.once('error', (error) => reject(error))
+      activeStream.once('error', error => reject(error))
     })
     void streamFailure.catch(() => {})
     const response = await net.fetch(downloadUrl, { redirect: 'follow' })
-    if (!response.ok || !response.body) {throw new Error(`下载失败（HTTP ${response.status}）`)}
+    if (!response.ok || !response.body) {
+      throw new Error(`下载失败（HTTP ${response.status}）`)
+    }
     const contentType = response.headers.get('content-type') ?? ''
-    if (contentType.includes('text/html')) {throw new Error('更新下载地址无效')}
+    if (contentType.includes('text/html')) {
+      throw new Error('更新下载地址无效')
+    }
     const lengthHeader = Number(response.headers.get('content-length') ?? 0)
     totalBytes = Number.isFinite(lengthHeader) && lengthHeader > 0 ? lengthHeader : 0
     reader = response.body.getReader()
     let lastEmitAt = 0
     for (;;) {
       const { done, value } = await Promise.race([reader.read(), streamFailure])
-      if (done) {break}
-      if (!value?.byteLength) {continue}
+      if (done) {
+        break
+      }
+      if (!value?.byteLength) {
+        continue
+      }
       receivedBytes += value.byteLength
       hash.update(value)
       if (!activeStream.write(Buffer.from(value))) {
-        await Promise.race([new Promise<void>((resolve) => { activeStream.once('drain', () => resolve()) }), streamFailure])
+        await Promise.race([
+          new Promise<void>(resolve => {
+            activeStream.once('drain', () => resolve())
+          }),
+          streamFailure
+        ])
       }
       const now = Date.now()
       if (now - lastEmitAt >= PROGRESS_EMIT_INTERVAL_MS) {
@@ -240,9 +340,13 @@ async function downloadUpdate(): Promise<void> {
         emit({ type: 'progress', received: receivedBytes, total: totalBytes })
       }
     }
-    if (totalBytes > 0 && receivedBytes !== totalBytes) {throw new Error('更新下载不完整')}
+    if (totalBytes > 0 && receivedBytes !== totalBytes) {
+      throw new Error('更新下载不完整')
+    }
     await Promise.race([finishStream(activeStream), streamFailure])
-    if (hash.digest('hex') !== expectedSha256) {throw new Error('更新包校验失败，安装包可能与发布版本不一致')}
+    if (hash.digest('hex') !== expectedSha256) {
+      throw new Error('更新包校验失败，安装包可能与发布版本不一致')
+    }
     renameSync(tempPath, finalPath)
     installerPath = finalPath
     status = 'ready'
@@ -251,7 +355,7 @@ async function downloadUpdate(): Promise<void> {
     cleanupStaleInstallers(finalPath)
   } catch (error) {
     if (stream && !streamClosed) {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         stream!.once('close', () => resolve())
         stream!.destroy()
       })
@@ -312,20 +416,37 @@ function relaunch(binary: string, extraEnv?: Record<string, string>): void {
 
 async function installDebPackage(filePath: string): Promise<void> {
   const uid = typeof process.getuid === 'function' ? process.getuid() : -1
-  const plan = debInstallPlan(filePath, uid, findTrustedExecutable('dpkg'), findTrustedExecutable('pkexec'))
-  if (!plan) {throw new Error('未找到 dpkg 或 pkexec，无法安装 deb 更新')}
+  const plan = debInstallPlan(
+    filePath,
+    uid,
+    findTrustedExecutable('dpkg'),
+    findTrustedExecutable('pkexec')
+  )
+  if (!plan) {
+    throw new Error('未找到 dpkg 或 pkexec，无法安装 deb 更新')
+  }
   const code = await runCommand(plan.command, plan.args)
-  if (code === 0) {return}
-  if (code === 126 || code === 127) {throw new Error('系统授权未完成，更新未安装')}
+  if (code === 0) {
+    return
+  }
+  if (code === 126 || code === 127) {
+    throw new Error('系统授权未完成，更新未安装')
+  }
   throw new Error(`deb 安装失败（退出码 ${code}）`)
 }
 
 async function installUpdate(): Promise<void> {
-  if (installing) {return}
+  if (installing) {
+    return
+  }
   const target = activeTarget
   const filePath = installerPath
-  if (status !== 'ready' || !filePath || !target || !existsSync(filePath)) {throw new Error('更新尚未下载完成')}
-  if (!isPathInsideDirectory(filePath, downloadsDir)) {throw new Error('更新包路径无效')}
+  if (status !== 'ready' || !filePath || !target || !existsSync(filePath)) {
+    throw new Error('更新尚未下载完成')
+  }
+  if (!isPathInsideDirectory(filePath, downloadsDir)) {
+    throw new Error('更新包路径无效')
+  }
   installing = true
   try {
     if (!(await cachedInstallerIsTrustworthy(filePath))) {
@@ -339,10 +460,14 @@ async function installUpdate(): Promise<void> {
       installWindows(filePath)
       return
     }
-    if (!assetNameMatchesFeed(assetFileName, target.feedPlatform)) {throw new Error('更新包与当前平台不匹配')}
+    if (!assetNameMatchesFeed(assetFileName, target.feedPlatform)) {
+      throw new Error('更新包与当前平台不匹配')
+    }
     if (target.kind === 'appimage') {
       const appImagePath = process.env.APPIMAGE
-      if (!appImagePath) {throw new Error('当前不是 AppImage 运行环境，无法替换安装文件')}
+      if (!appImagePath) {
+        throw new Error('当前不是 AppImage 运行环境，无法替换安装文件')
+      }
       const destination = installAppImageFile(filePath, appImagePath, assetFileName)
       relaunch(destination, { APPIMAGE: destination, APPIMAGE_SILENT_INSTALL: 'true' })
       return
@@ -364,16 +489,26 @@ export function initUpdater(userDataUpdatesPath: string): void {
   downloadsDir = userDataUpdatesPath
   ipcMain.handle('updater:get-state', () => snapshot())
   ipcMain.handle('updater:download', () => {
-    if (status === 'downloading') {throw new Error('更新正在下载中')}
-    if (status === 'ready') {return}
-    if (status !== 'available' || !downloadUrl || !activeTarget) {throw new Error('当前没有可用更新')}
+    if (status === 'downloading') {
+      throw new Error('更新正在下载中')
+    }
+    if (status === 'ready') {
+      return
+    }
+    if (status !== 'available' || !downloadUrl || !activeTarget) {
+      throw new Error('当前没有可用更新')
+    }
     void downloadUpdate()
   })
   ipcMain.handle('updater:install', () => installUpdate())
   ipcMain.handle('updater:check', (): Promise<UpdateCheckOutcome> => {
-    if (!updateCheckEnabled()) {return Promise.resolve('disabled')}
+    if (!updateCheckEnabled()) {
+      return Promise.resolve('disabled')
+    }
     return checkForUpdate()
   })
-  if (!updateCheckEnabled()) {return}
+  if (!updateCheckEnabled()) {
+    return
+  }
   void checkForUpdate()
 }

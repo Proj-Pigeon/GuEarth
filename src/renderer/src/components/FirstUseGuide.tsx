@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode, Ref } from 'react';
-import { createPortal } from 'react-dom'
-import { XIcon } from 'lucide-react'
 import { Button, Checkbox } from '@renderer/components/ui'
-import { computeGuideCardPosition } from '@renderer/lib/guidePosition';
-import type { GuidePlacement, GuideRectBox } from '@renderer/lib/guidePosition';
+import { computeGuideCardPosition } from '@renderer/lib/guidePosition'
+import type { GuidePlacement, GuideRectBox } from '@renderer/lib/guidePosition'
+import { XIcon } from 'lucide-react'
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
+import type { ReactNode, Ref } from 'react'
+import { createPortal } from 'react-dom'
 
 export interface FirstUseGuideHandle {
   start: () => void
@@ -52,14 +60,14 @@ function getTargetElement(name: string): HTMLElement | null {
 }
 
 function waitNextFrame(): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     window.requestAnimationFrame(() => resolve())
   })
 }
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return [...container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
-    (element) => element.getClientRects().length > 0
+    element => element.getClientRects().length > 0
   )
 }
 
@@ -68,7 +76,10 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   const [current, setCurrent] = useState(0)
   const [dontPromptAgain, setDontPromptAgain] = useState(true)
   const [targetRect, setTargetRect] = useState<GuideRectBox | null>(null)
-  const [cardSize, setCardSize] = useState({ width: DEFAULT_CARD_WIDTH, height: DEFAULT_CARD_HEIGHT })
+  const [cardSize, setCardSize] = useState({
+    width: DEFAULT_CARD_WIDTH,
+    height: DEFAULT_CARD_HEIGHT
+  })
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === 'undefined' ? 1440 : window.innerWidth,
     height: typeof window === 'undefined' ? 900 : window.innerHeight
@@ -163,11 +174,11 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
       {
         title: '配置 AI 模型',
         description: (
-          <div className="grid gap-3">
+          <div className='grid gap-3'>
             <div>在这里添加 AI 服务商、密钥和模型并设为默认，即可开始对话。</div>
             <Checkbox
               checked={dontPromptAgain}
-              onChange={(checked) => {
+              onChange={checked => {
                 dontPromptAgainRef.current = checked
                 setDontPromptAgain(checked)
               }}
@@ -186,9 +197,13 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   const activeStep = steps[current] ?? steps[0]
 
   const measureTarget = useCallback(() => {
-    if (!openRef.current) {return}
+    if (!openRef.current) {
+      return
+    }
     const step = steps[currentRef.current]
-    if (!step) {return}
+    if (!step) {
+      return
+    }
     const element = getTargetElement(step.targetName)
     if (!element) {
       setTargetRect(null)
@@ -208,7 +223,9 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   }, [steps])
 
   useEffect(() => {
-    if (!open) {return}
+    if (!open) {
+      return
+    }
     const handleViewportResize = (): void => {
       setViewport({ width: window.innerWidth, height: window.innerHeight })
       measureTarget()
@@ -225,33 +242,43 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   }, [open, current, measureTarget])
 
   useLayoutEffect(() => {
-    if (!open) {return}
+    if (!open) {
+      return
+    }
     const card = cardRef.current
-    if (!card) {return}
+    if (!card) {
+      return
+    }
     const measureCard = (): void => {
       const rect = card.getBoundingClientRect()
       const nextWidth = Math.round(rect.width) || DEFAULT_CARD_WIDTH
       const nextHeight = Math.round(rect.height) || DEFAULT_CARD_HEIGHT
-      setCardSize((previous) =>
+      setCardSize(previous =>
         previous.width === nextWidth && previous.height === nextHeight
           ? previous
           : { width: nextWidth, height: nextHeight }
       )
     }
     measureCard()
-    if (typeof ResizeObserver === 'undefined') {return}
+    if (typeof ResizeObserver === 'undefined') {
+      return
+    }
     const observer = new ResizeObserver(measureCard)
     observer.observe(card)
     return () => observer.disconnect()
   }, [open, current])
 
   async function handleChange(nextStep: number): Promise<void> {
-    if (transitioningRef.current) {return}
+    if (transitioningRef.current) {
+      return
+    }
     transitioningRef.current = true
     onStepChangeRef.current?.(nextStep)
     await waitNextFrame()
     if ([6, 7, 8].includes(nextStep) || [6, 7, 8].includes(currentRef.current)) {
-      await new Promise((resolve) => { window.setTimeout(resolve, 320) })
+      await new Promise(resolve => {
+        window.setTimeout(resolve, 320)
+      })
     }
     if (!unmountedRef.current) {
       currentRef.current = nextStep
@@ -287,15 +314,21 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
 
   useEffect(() => {
     async function checkFirstUse(): Promise<void> {
-      if (!readyRef.current || autoPromptCheckedRef.current) {return}
+      if (!readyRef.current || autoPromptCheckedRef.current) {
+        return
+      }
       autoPromptCheckedRef.current = true
       try {
         const settings = await window.guEarth.settings.get()
-        if (unmountedRef.current) {return}
+        if (unmountedRef.current) {
+          return
+        }
         if (settings.setupGuideDismissed !== null) {
           dontPromptAgainRef.current = settings.setupGuideDismissed
           setDontPromptAgain(settings.setupGuideDismissed)
-          if (!settings.setupGuideDismissed && readyRef.current && !openRef.current) {start()}
+          if (!settings.setupGuideDismissed && readyRef.current && !openRef.current) {
+            start()
+          }
           return
         }
         if (readLegacyCompletion()) {
@@ -311,12 +344,18 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
         }
         dontPromptAgainRef.current = true
         setDontPromptAgain(true)
-        if (readyRef.current && !openRef.current) {start()}
+        if (readyRef.current && !openRef.current) {
+          start()
+        }
       } catch {
-        if (unmountedRef.current) {return}
+        if (unmountedRef.current) {
+          return
+        }
         dontPromptAgainRef.current = true
         setDontPromptAgain(true)
-        if (readyRef.current && !openRef.current) {start()}
+        if (readyRef.current && !openRef.current) {
+          start()
+        }
       }
     }
 
@@ -324,7 +363,9 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   }, [ready, start])
 
   useEffect(() => {
-    if (!open) {return}
+    if (!open) {
+      return
+    }
     previousFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null
     cardRef.current?.focus({ preventScroll: true })
@@ -338,25 +379,35 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   }, [open])
 
   useEffect(() => {
-    if (!open) {return}
+    if (!open) {
+      return
+    }
     const card = cardRef.current
-    if (!card) {return}
+    if (!card) {
+      return
+    }
     if (!card.contains(document.activeElement)) {
       card.focus({ preventScroll: true })
     }
   }, [open, current])
 
   useEffect(() => {
-    if (!open) {return}
+    if (!open) {
+      return
+    }
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
         event.preventDefault()
         handleClose()
         return
       }
-      if (event.key !== 'Tab') {return}
+      if (event.key !== 'Tab') {
+        return
+      }
       const card = cardRef.current
-      if (!card) {return}
+      if (!card) {
+        return
+      }
       const focusables = getFocusableElements(card)
       if (focusables.length === 0) {
         event.preventDefault()
@@ -385,7 +436,9 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [open, handleClose])
 
-  if (!open || typeof document === 'undefined') {return null}
+  if (!open || typeof document === 'undefined') {
+    return null
+  }
 
   const { top: cardTop, left: cardLeft } = computeGuideCardPosition(
     targetRect,
@@ -399,43 +452,48 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   const isLast = current >= steps.length - 1
 
   return createPortal(
-    <div className="fixed inset-0 z-[1400]" role="dialog" aria-modal="true" aria-label={activeStep.title}>
-      <svg className="pointer-events-auto fixed inset-0 h-full w-full" aria-hidden="true">
+    <div
+      className='fixed inset-0 z-[1400]'
+      role='dialog'
+      aria-modal='true'
+      aria-label={activeStep.title}
+    >
+      <svg className='pointer-events-auto fixed inset-0 h-full w-full' aria-hidden='true'>
         <defs>
-          <mask id="guearth-guide-spotlight">
-            <rect x="0" y="0" width="100%" height="100%" fill="white" />
+          <mask id='guearth-guide-spotlight'>
+            <rect x='0' y='0' width='100%' height='100%' fill='white' />
             {targetRect && (
               <rect
                 x={targetRect.left}
                 y={targetRect.top}
                 width={targetRect.width}
                 height={targetRect.height}
-                rx="10"
-                fill="black"
+                rx='10'
+                fill='black'
               />
             )}
           </mask>
         </defs>
         <rect
-          x="0"
-          y="0"
-          width="100%"
-          height="100%"
-          fill="rgba(0, 0, 0, 0.48)"
-          mask="url(#guearth-guide-spotlight)"
+          x='0'
+          y='0'
+          width='100%'
+          height='100%'
+          fill='rgba(0, 0, 0, 0.48)'
+          mask='url(#guearth-guide-spotlight)'
         />
       </svg>
 
       {targetRect && (
         <div
-          aria-hidden="true"
+          aria-hidden='true'
           style={{
             top: targetRect.top,
             left: targetRect.left,
             width: targetRect.width,
             height: targetRect.height
           }}
-          className="pointer-events-none fixed rounded-[10px] ring-2 ring-white/80"
+          className='pointer-events-none fixed rounded-[10px] ring-2 ring-white/80'
         />
       )}
 
@@ -443,35 +501,38 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
         ref={cardRef}
         tabIndex={-1}
         style={{ top: cardTop, left: cardLeft, width: DEFAULT_CARD_WIDTH }}
-        className="fixed flex flex-col gap-3 rounded-2xl border border-hairline bg-elevated p-4 text-ink shadow-[var(--shadow-dialog)] outline-none"
+        className='border-hairline bg-elevated text-ink fixed flex flex-col gap-3 rounded-2xl border p-4 shadow-[var(--shadow-dialog)] outline-none'
       >
-        <div className="flex items-start justify-between gap-2">
-          <div className="text-[14px] leading-5 font-semibold text-ink">{activeStep.title}</div>
+        <div className='flex items-start justify-between gap-2'>
+          <div className='text-ink text-[14px] leading-5 font-semibold'>{activeStep.title}</div>
           <Button
-            variant="ghost"
-            size="sm"
-            aria-label="关闭引导"
-            icon={<XIcon className="size-3.5" />}
+            variant='ghost'
+            size='sm'
+            aria-label='关闭引导'
+            icon={<XIcon className='size-3.5' />}
             onClick={handleClose}
           />
         </div>
-        <div className="text-[13px] leading-5 text-ink-secondary">{activeStep.description}</div>
-        <div className="flex items-center justify-between pt-1">
-          <span className="font-mono text-[12px] text-ink-tertiary">
+        <div className='text-ink-secondary text-[13px] leading-5'>{activeStep.description}</div>
+        <div className='flex items-center justify-between pt-1'>
+          <span className='text-ink-tertiary font-mono text-[12px]'>
             {current + 1} / {steps.length}
           </span>
-          <div className="flex items-center gap-2">
+          <div className='flex items-center gap-2'>
             {current > 0 && (
-              <Button size="sm" onClick={() => void handleChange(current - 1)}>
+              <Button size='sm' onClick={() => void handleChange(current - 1)}>
                 上一步
               </Button>
             )}
             <Button
-              size="sm"
-              variant="primary"
+              size='sm'
+              variant='primary'
               onClick={() => {
-                if (isLast) {handleFinish()}
-                else {void handleChange(current + 1)}
+                if (isLast) {
+                  handleFinish()
+                } else {
+                  void handleChange(current + 1)
+                }
               }}
             >
               {isLast ? '完成' : '下一步'}

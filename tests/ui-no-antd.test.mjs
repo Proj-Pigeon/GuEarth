@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
+
 import { test } from 'vite-plus/test'
 
 const SRC_ROOT = resolve('src')
@@ -15,8 +16,11 @@ const FORBIDDEN_PATTERNS = [
 function collectSourceFiles(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name)
-    if (entry.isDirectory()) {collectSourceFiles(full, out)}
-    else if (/\.(ts|tsx|css|html)$/.test(entry.name)) {out.push(full)}
+    if (entry.isDirectory()) {
+      collectSourceFiles(full, out)
+    } else if (/\.(ts|tsx|css|html)$/.test(entry.name)) {
+      out.push(full)
+    }
   }
   return out
 }
@@ -37,6 +41,8 @@ test('renderer and main sources have zero Ant Design imports or style tokens', (
 test('package.json does not depend on antd or @ant-design packages', () => {
   const pkg = JSON.parse(readFileSync(resolve('package.json'), 'utf8'))
   const allDeps = { ...pkg.dependencies, ...pkg.devDependencies }
-  const antDeps = Object.keys(allDeps).filter((name) => name === 'antd' || name.startsWith('@ant-design/'))
+  const antDeps = Object.keys(allDeps).filter(
+    name => name === 'antd' || name.startsWith('@ant-design/')
+  )
   assert.deepEqual(antDeps, [])
 })

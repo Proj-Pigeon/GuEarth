@@ -24,7 +24,9 @@
   background: var(--surface);
   box-shadow: var(--shadow-panel);
   overflow: hidden;
-  transition: border-color 0.1s ease-out, box-shadow 0.1s ease-out;
+  transition:
+    border-color 0.1s ease-out,
+    box-shadow 0.1s ease-out;
 }
 
 .searchBarWithProvider {
@@ -33,7 +35,9 @@
 
 .searchBar:focus-within {
   border-color: var(--ring);
-  box-shadow: var(--shadow-panel), 0 0 0 2px color-mix(in srgb, var(--ring) 12%, transparent);
+  box-shadow:
+    var(--shadow-panel),
+    0 0 0 2px color-mix(in srgb, var(--ring) 12%, transparent);
 }
 
 .placeSearchIcon {

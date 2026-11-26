@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+
 import { test } from 'vite-plus/test'
+
 import { viirsCacheStyleId, viirsGranuleDate } from '../src/common/viirs.ts'
 
 test('viirsGranuleDate lags two UTC days behind the request time', () => {
@@ -15,6 +17,9 @@ test('viirsGranuleDate crosses month and year boundaries on the UTC calendar', (
 
 test('viirsCacheStyleId scopes cache keys by the granule date so stale granules are never served', () => {
   assert.equal(viirsCacheStyleId('night', '2026-10-09'), 'night-20261009')
-  assert.notEqual(viirsCacheStyleId('night', '2026-10-09'), viirsCacheStyleId('night', '2026-10-06'))
+  assert.notEqual(
+    viirsCacheStyleId('night', '2026-10-09'),
+    viirsCacheStyleId('night', '2026-10-06')
+  )
   assert.match(viirsCacheStyleId('night'), /^night-\d{8}$/)
 })

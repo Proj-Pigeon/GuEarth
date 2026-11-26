@@ -27,7 +27,8 @@ export const temperatureZoneBands: TemperatureZoneBand[] = [
     north: 90,
     color: '#1677ff',
     labelAt: [40, 78],
-    summary: '北极圈以北地区。有极昼极夜现象，全年获得的太阳辐射最少，气温很低，是地球上年平均气温最低的地区。'
+    summary:
+      '北极圈以北地区。有极昼极夜现象，全年获得的太阳辐射最少，气温很低，是地球上年平均气温最低的地区。'
   },
   {
     id: 'north-temperate',

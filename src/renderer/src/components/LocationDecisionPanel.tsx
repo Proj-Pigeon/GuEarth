@@ -1,9 +1,14 @@
-import { useMemo, useRef, useState } from 'react'
-import * as Cesium from 'cesium'
-import { MapPinIcon, MessageSquareIcon, RotateCcwIcon, XIcon } from 'lucide-react'
 import { Button, Segmented, Switch } from '@renderer/components/ui'
 import { useAiStore } from '@renderer/stores/ai'
-import { buildDecisionPrompt, decisionCases, decisionSandboxIntro } from '@renderer/thematic/decisionSandbox'
+import {
+  buildDecisionPrompt,
+  decisionCases,
+  decisionSandboxIntro
+} from '@renderer/thematic/decisionSandbox'
+import * as Cesium from 'cesium'
+import { MapPinIcon, MessageSquareIcon, RotateCcwIcon, XIcon } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+
 import styles from './LocationDecisionPanel.module.css'
 
 export interface LocationDecisionPanelProps {
@@ -11,18 +16,18 @@ export interface LocationDecisionPanelProps {
   onClose: () => void
 }
 
-const caseOptions = decisionCases.map((item) => ({ label: item.name, value: item.id }))
+const caseOptions = decisionCases.map(item => ({ label: item.name, value: item.id }))
 
 export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanelProps) {
-  const setPanelOpen = useAiStore((state) => state.setPanelOpen)
-  const send = useAiStore((state) => state.send)
+  const setPanelOpen = useAiStore(state => state.setPanelOpen)
+  const send = useAiStore(state => state.send)
 
   const [activeCaseId, setActiveCaseId] = useState(decisionCases[0].id)
   const [selectedFactorIds, setSelectedFactorIds] = useState<string[]>([])
   const flyingRef = useRef(false)
 
   const activeCase = useMemo(
-    () => decisionCases.find((item) => item.id === activeCaseId) ?? decisionCases[0],
+    () => decisionCases.find(item => item.id === activeCaseId) ?? decisionCases[0],
     [activeCaseId]
   )
 
@@ -32,8 +37,8 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
   }
 
   function toggleFactor(factorId: string): void {
-    setSelectedFactorIds((previous) =>
-      previous.includes(factorId) ? previous.filter((id) => id !== factorId) : [...previous, factorId]
+    setSelectedFactorIds(previous =>
+      previous.includes(factorId) ? previous.filter(id => id !== factorId) : [...previous, factorId]
     )
   }
 
@@ -47,8 +52,12 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
   }
 
   function flyToPlace(): void {
-    if (flyingRef.current) {return}
-    if (!viewer || viewer.isDestroyed()) {return}
+    if (flyingRef.current) {
+      return
+    }
+    if (!viewer || viewer.isDestroyed()) {
+      return
+    }
     flyingRef.current = true
     const settle = (): void => {
       flyingRef.current = false
@@ -67,17 +76,23 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
   }
 
   return (
-    <div className={styles.decisionPanel} role="group" aria-label="区位决策沙盘">
+    <div className={styles.decisionPanel} role='group' aria-label='区位决策沙盘'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>区位决策沙盘</span>
-        <Button variant="ghost" size="sm" aria-label="关闭区位决策沙盘" icon={<XIcon className="size-3.5" />} onClick={onClose} />
+        <Button
+          variant='ghost'
+          size='sm'
+          aria-label='关闭区位决策沙盘'
+          icon={<XIcon className='size-3.5' />}
+          onClick={onClose}
+        />
       </div>
 
       <Segmented
         value={activeCase.id}
         options={caseOptions}
         className={styles.casePicker}
-        onChange={(value) => selectCase(String(value))}
+        onChange={value => selectCase(String(value))}
       />
 
       <div className={styles.intro}>{decisionSandboxIntro}</div>
@@ -86,16 +101,18 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
       <div className={styles.caseContext}>{activeCase.context}</div>
 
       <div className={styles.factorList}>
-        {activeCase.factors.map((factor) => {
+        {activeCase.factors.map(factor => {
           const selected = selectedFactorIds.includes(factor.id)
           return (
             <div
               key={factor.id}
-              className={selected ? `${styles.factorRow} ${styles.factorRowSelected}` : styles.factorRow}
+              className={
+                selected ? `${styles.factorRow} ${styles.factorRowSelected}` : styles.factorRow
+              }
             >
               <div className={styles.factorMain}>
                 <Switch
-                  size="sm"
+                  size='sm'
                   checked={selected}
                   aria-label={`因素开关：${factor.name}`}
                   onChange={() => toggleFactor(factor.id)}
@@ -103,7 +120,7 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
                 <span className={styles.factorName}>
                   {factor.name}
                   {factor.essential && (
-                    <span className={styles.factorEssential} title="该情境的关键因素">
+                    <span className={styles.factorEssential} title='该情境的关键因素'>
                       ★
                     </span>
                   )}
@@ -117,23 +134,28 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
 
       <div className={styles.actionRow}>
         <Button
-          variant="ghost"
-          size="sm"
+          variant='ghost'
+          size='sm'
           className={styles.caseFly}
-          aria-label="飞往该地"
-          icon={<MapPinIcon className="size-3.5" />}
+          aria-label='飞往该地'
+          icon={<MapPinIcon className='size-3.5' />}
           onClick={flyToPlace}
         >
           飞往该地
         </Button>
-        <Button size="sm" disabled={selectedFactorIds.length === 0} icon={<RotateCcwIcon className="size-3.5" />} onClick={resetSelection}>
+        <Button
+          size='sm'
+          disabled={selectedFactorIds.length === 0}
+          icon={<RotateCcwIcon className='size-3.5' />}
+          onClick={resetSelection}
+        >
           重置
         </Button>
         <Button
-          variant="primary"
-          size="sm"
+          variant='primary'
+          size='sm'
           className={styles.critiqueButton}
-          icon={<MessageSquareIcon className="size-3.5" />}
+          icon={<MessageSquareIcon className='size-3.5' />}
           onClick={requestCritique}
         >
           按高考答题结构请 AI 点评

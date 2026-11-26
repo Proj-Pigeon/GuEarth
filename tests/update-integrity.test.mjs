@@ -3,11 +3,20 @@ import { createHash } from 'node:crypto'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
 import { test } from 'vite-plus/test'
-import { compareVersions, extractAssetDigest, hashFile, parseSha256, releaseTagCandidates } from '../src/main/updateIntegrity.ts'
+
+import {
+  compareVersions,
+  extractAssetDigest,
+  hashFile,
+  parseSha256,
+  releaseTagCandidates
+} from '../src/main/updateIntegrity.ts'
 
 const HEX = 'a3b5c7d9e1f2031425364758697a8b9c0d1e2f30415263748596a7b8c9d0e1f2'
-const INSTALLER_URL = 'https://github.com/Proj-Pigeon/GuEarth/releases/download/v0.1.13/guearth-0.1.13-x64-setup.exe'
+const INSTALLER_URL =
+  'https://github.com/Proj-Pigeon/GuEarth/releases/download/v0.1.13/guearth-0.1.13-x64-setup.exe'
 
 test('parseSha256 accepts bare lowercase or uppercase hex digests', () => {
   assert.equal(parseSha256(HEX), HEX)
@@ -77,7 +86,7 @@ async function withTempFile(content, run) {
 
 test('hashFile computes the SHA-256 digest of a file', async () => {
   const payload = Buffer.concat([Buffer.from('MZ'), Buffer.alloc(1024 * 1024, 7)])
-  const digest = await withTempFile(payload, (path) => hashFile(path))
+  const digest = await withTempFile(payload, path => hashFile(path))
   assert.equal(digest, createHash('sha256').update(payload).digest('hex'))
   assert.match(digest, /^[0-9a-f]{64}$/)
 })
@@ -89,9 +98,9 @@ test('hashFile rejects paths that do not exist', async () => {
 test('a cached installer matches the expected digest only when byte-identical', async () => {
   const content = Buffer.from('installer-bytes')
   const expected = createHash('sha256').update(content).digest('hex')
-  const digest = await withTempFile(content, (path) => hashFile(path))
+  const digest = await withTempFile(content, path => hashFile(path))
   assert.equal(digest, expected)
-  const tampered = await withTempFile(Buffer.from('installer-bytez'), (path) => hashFile(path))
+  const tampered = await withTempFile(Buffer.from('installer-bytez'), path => hashFile(path))
   assert.notEqual(tampered, expected)
 })
 
@@ -116,17 +125,26 @@ test('extractAssetDigest falls back to matching by installer file name', () => {
   const release = {
     assets: [{ name: 'guearth-0.1.13-x64-setup.exe', state: 'uploaded', digest: HEX }]
   }
-  assert.equal(extractAssetDigest(release, 'https://mirror.example.com/v0.1.13/guearth-0.1.13-x64-setup.exe'), HEX)
+  assert.equal(
+    extractAssetDigest(release, 'https://mirror.example.com/v0.1.13/guearth-0.1.13-x64-setup.exe'),
+    HEX
+  )
 })
 
 test('extractAssetDigest ignores non-uploaded assets, invalid digests, and foreign files', () => {
-  const starter = { assets: [{ name: 'guearth-0.1.13-x64-setup.exe', state: 'starter', digest: `sha256:${HEX}` }] }
+  const starter = {
+    assets: [{ name: 'guearth-0.1.13-x64-setup.exe', state: 'starter', digest: `sha256:${HEX}` }]
+  }
   assert.equal(extractAssetDigest(starter, INSTALLER_URL), null)
   const digestless = { assets: [{ name: 'guearth-0.1.13-x64-setup.exe', state: 'uploaded' }] }
   assert.equal(extractAssetDigest(digestless, INSTALLER_URL), null)
-  const malformed = { assets: [{ name: 'guearth-0.1.13-x64-setup.exe', state: 'uploaded', digest: 'deadbeef' }] }
+  const malformed = {
+    assets: [{ name: 'guearth-0.1.13-x64-setup.exe', state: 'uploaded', digest: 'deadbeef' }]
+  }
   assert.equal(extractAssetDigest(malformed, INSTALLER_URL), null)
-  const otherFile = { assets: [{ name: 'guearth-0.1.13.portable.exe', state: 'uploaded', digest: `sha256:${HEX}` }] }
+  const otherFile = {
+    assets: [{ name: 'guearth-0.1.13.portable.exe', state: 'uploaded', digest: `sha256:${HEX}` }]
+  }
   assert.equal(extractAssetDigest(otherFile, INSTALLER_URL), null)
 })
 

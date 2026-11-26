@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
 import { cn } from '@renderer/lib/utils'
+import type { ReactNode } from 'react'
 
 export interface AvatarProps {
   src?: string
@@ -19,8 +19,8 @@ export function Avatar({ src, alt, size = 40, fallback, className }: AvatarProps
         className
       )}
     >
-      {src && <BaseAvatar.Image src={src} alt={alt ?? ''} className="size-full object-cover" />}
-      <BaseAvatar.Fallback className="flex size-full items-center justify-center">
+      {src && <BaseAvatar.Image src={src} alt={alt ?? ''} className='size-full object-cover' />}
+      <BaseAvatar.Fallback className='flex size-full items-center justify-center'>
         {fallback}
       </BaseAvatar.Fallback>
     </BaseAvatar.Root>

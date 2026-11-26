@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
-import * as Cesium from 'cesium'
 import { huComparison } from '@renderer/thematic/populationCensus'
+import * as Cesium from 'cesium'
+import { useEffect, useRef } from 'react'
+
 import styles from './HuLineOverlay.module.css'
 
 export interface HuLineOverlayProps {
@@ -23,7 +24,9 @@ function updateCard(
   anchor: Cesium.Cartesian3,
   scratch: CardScratch
 ): void {
-  if (!element) {return}
+  if (!element) {
+    return
+  }
   let facing = true
   if (current.scene.mode === Cesium.SceneMode.SCENE3D) {
     current.scene.globe.ellipsoid.geodeticSurfaceNormal(anchor, scratch.normal)
@@ -50,8 +53,12 @@ export function HuLineOverlay({ viewer }: HuLineOverlayProps) {
   useEffect(() => {
     const activeViewer = viewer && !viewer.isDestroyed() ? viewer : undefined
     if (!activeViewer) {
-      if (eastRef.current) {eastRef.current.style.display = 'none'}
-      if (westRef.current) {westRef.current.style.display = 'none'}
+      if (eastRef.current) {
+        eastRef.current.style.display = 'none'
+      }
+      if (westRef.current) {
+        westRef.current.style.display = 'none'
+      }
       return
     }
     const eastScratch: CardScratch = {
@@ -66,7 +73,9 @@ export function HuLineOverlay({ viewer }: HuLineOverlayProps) {
     }
 
     function frame(): void {
-      if (!activeViewer || activeViewer.isDestroyed()) {return}
+      if (!activeViewer || activeViewer.isDestroyed()) {
+        return
+      }
       updateCard(activeViewer, eastRef.current, eastAnchor, eastScratch)
       updateCard(activeViewer, westRef.current, westAnchor, westScratch)
     }
@@ -80,7 +89,7 @@ export function HuLineOverlay({ viewer }: HuLineOverlayProps) {
 
   return (
     <>
-      <div ref={eastRef} className={styles.huCard} style={{ display: 'none' }} aria-hidden="true">
+      <div ref={eastRef} className={styles.huCard} style={{ display: 'none' }} aria-hidden='true'>
         <div className={styles.huCardTitle}>胡线以东</div>
         <div className={styles.huCardRow}>
           <span>面积</span>
@@ -91,7 +100,7 @@ export function HuLineOverlay({ viewer }: HuLineOverlayProps) {
           <span className={styles.huCardValueStrong}>{huComparison.eastPopPct}%</span>
         </div>
       </div>
-      <div ref={westRef} className={styles.huCard} style={{ display: 'none' }} aria-hidden="true">
+      <div ref={westRef} className={styles.huCard} style={{ display: 'none' }} aria-hidden='true'>
         <div className={styles.huCardTitle}>胡线以西</div>
         <div className={styles.huCardRow}>
           <span>面积</span>

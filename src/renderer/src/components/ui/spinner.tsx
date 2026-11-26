@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
-import { Loader2Icon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { Loader2Icon } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 export interface SpinnerProps {
   spinning?: boolean
@@ -17,11 +17,13 @@ const sizeClasses = {
 
 export function Spinner({ spinning = true, size = 'md', className, children }: SpinnerProps) {
   if (!children) {
-    if (!spinning) {return null}
+    if (!spinning) {
+      return null
+    }
     return (
       <Loader2Icon
-        role="status"
-        aria-label="加载中"
+        role='status'
+        aria-label='加载中'
         className={cn('animate-spin text-ink-secondary', sizeClasses[size], className)}
       />
     )
@@ -33,8 +35,12 @@ export function Spinner({ spinning = true, size = 'md', className, children }: S
         {children}
       </div>
       {spinning && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Loader2Icon role="status" aria-label="加载中" className={cn('animate-spin text-ink', sizeClasses[size])} />
+        <div className='absolute inset-0 flex items-center justify-center'>
+          <Loader2Icon
+            role='status'
+            aria-label='加载中'
+            className={cn('animate-spin text-ink', sizeClasses[size])}
+          />
         </div>
       )}
     </div>

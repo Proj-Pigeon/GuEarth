@@ -2,4 +2,4 @@ inheritance: true
 reviews:
   pre_merge_checks:
     docstrings:
-      mode: "off"
+      mode: 'off'

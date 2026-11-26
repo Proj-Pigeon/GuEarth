@@ -1,8 +1,9 @@
+import * as Sentry from '@sentry/electron/renderer'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import * as Sentry from '@sentry/electron/renderer'
-import { logger, stringifyLogValue } from '../../../common/logger'
+
 import { surfaceFailureAlreadyShown } from '../../../common/globeSurface'
+import { logger, stringifyLogValue } from '../../../common/logger'
 import { describeResourceFailure } from '../../../common/resourceFailure'
 import { capturePosthogException } from '../posthog'
 import { isErrorReportingEnabled } from './privacyRuntime'
@@ -36,19 +37,27 @@ let lastMessage = ''
 let lastMessageAt = 0
 
 export function describeError(error: unknown): string {
-  if (error instanceof Error) {return error.message ? `${error.name}: ${error.message}` : `${error.name}（无错误信息）`}
+  if (error instanceof Error) {
+    return error.message ? `${error.name}: ${error.message}` : `${error.name}（无错误信息）`
+  }
   const text = describeResourceFailure(error) ?? stringifyLogValue(error)
   return text || '未知错误'
 }
 
 function showModal(message: string): void {
   const now = Date.now()
-  if (message === lastMessage && now - lastMessageAt < DUPLICATE_WINDOW_MS) {return}
+  if (message === lastMessage && now - lastMessageAt < DUPLICATE_WINDOW_MS) {
+    return
+  }
   lastMessage = message
   lastMessageAt = now
   const current = useCrashDialogStore.getState()
   const sessionErrors = current.sessionErrors + 1
-  if (current.open || current.opens >= MODAL_OPEN_LIMIT || now - lastModalAt < MODAL_REOPEN_COOLDOWN_MS) {
+  if (
+    current.open ||
+    current.opens >= MODAL_OPEN_LIMIT ||
+    now - lastModalAt < MODAL_REOPEN_COOLDOWN_MS
+  ) {
     useCrashDialogStore.setState({ sessionErrors })
     return
   }
@@ -71,32 +80,48 @@ export function notifyCrashMessage(message: string): void {
 
 export function captureError(scope: string, error: unknown, extra?: Record<string, unknown>): void {
   logger.error(scope, describeError(error), error)
-  if (!surfaceFailureAlreadyShown(extra)) {notifyCrashMessage(describeError(error))}
-  if (!isErrorReportingEnabled()) {return}
+  if (!surfaceFailureAlreadyShown(extra)) {
+    notifyCrashMessage(describeError(error))
+  }
+  if (!isErrorReportingEnabled()) {
+    return
+  }
   capturePosthogException(error)
   Sentry.captureException(error, { tags: { scope }, extra })
 }
 
-export function captureWarning(scope: string, message: string, extra?: Record<string, unknown>): void {
+export function captureWarning(
+  scope: string,
+  message: string,
+  extra?: Record<string, unknown>
+): void {
   logger.warn(scope, message)
-  if (!isErrorReportingEnabled()) {return}
+  if (!isErrorReportingEnabled()) {
+    return
+  }
   Sentry.captureMessage(message, { level: 'warning', tags: { scope }, extra })
 }
 
 export function installGlobalErrorListeners(): void {
-  window.addEventListener('error', (event) => {
-    if (!event.message && !event.error) {return}
+  window.addEventListener('error', event => {
+    if (!event.message && !event.error) {
+      return
+    }
     showModal(event.message || describeError(event.error))
-    if (isErrorReportingEnabled()) {capturePosthogException(event.error ?? new Error(event.message))}
+    if (isErrorReportingEnabled()) {
+      capturePosthogException(event.error ?? new Error(event.message))
+    }
   })
-  window.addEventListener('unhandledrejection', (event) => {
+  window.addEventListener('unhandledrejection', event => {
     const resourceFailure = describeResourceFailure(event.reason)
     if (resourceFailure) {
       logger.warn('resource', resourceFailure, event.reason)
       return
     }
     showModal(describeError(event.reason))
-    if (isErrorReportingEnabled()) {capturePosthogException(event.reason)}
+    if (isErrorReportingEnabled()) {
+      capturePosthogException(event.reason)
+    }
   })
 }
 

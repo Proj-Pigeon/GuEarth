@@ -1,18 +1,28 @@
-import { useCallback, useRef, useState } from 'react'
-import { BotIcon, FlaskConicalIcon, GlobeIcon, InfoIcon, ShieldCheckIcon, SlidersHorizontalIcon, UserIcon } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { Modal } from '@renderer/components/ui'
-import { useSettingsWindowStore } from '@renderer/stores/settingsWindow';
-import type { SettingsSection } from '@renderer/stores/settingsWindow';
-import AccountSettings from './settings/AccountSettings'
-import GeneralSettings from './settings/GeneralSettings'
-import MapSettings from './settings/MapSettings'
-import AiSettingsSection from './settings/AiSettingsSection';
-import type { AiSettingsSectionHandle } from './settings/AiSettingsSection';
-import PrivacySettings from './settings/PrivacySettings'
-import LaboratorySettings from './settings/LaboratorySettings'
+import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
+import type { SettingsSection } from '@renderer/stores/settingsWindow'
+import {
+  BotIcon,
+  FlaskConicalIcon,
+  GlobeIcon,
+  InfoIcon,
+  ShieldCheckIcon,
+  SlidersHorizontalIcon,
+  UserIcon
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
+
 import AboutSettings from './settings/AboutSettings'
+import AccountSettings from './settings/AccountSettings'
+import AiSettingsSection from './settings/AiSettingsSection'
+import type { AiSettingsSectionHandle } from './settings/AiSettingsSection'
+import GeneralSettings from './settings/GeneralSettings'
+import LaboratorySettings from './settings/LaboratorySettings'
+import MapSettings from './settings/MapSettings'
+import PrivacySettings from './settings/PrivacySettings'
 import UnsavedChangesBar from './settings/UnsavedChangesBar'
+
 import styles from './SettingsModal.module.css'
 
 export interface SettingsModalProps {
@@ -57,10 +67,10 @@ function slotClass(visible: boolean): string {
 }
 
 export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
-  const isOpen = useSettingsWindowStore((state) => state.isOpen)
-  const activeSection = useSettingsWindowStore((state) => state.activeSection)
-  const setActiveSection = useSettingsWindowStore((state) => state.setActiveSection)
-  const closeWindow = useSettingsWindowStore((state) => state.close)
+  const isOpen = useSettingsWindowStore(state => state.isOpen)
+  const activeSection = useSettingsWindowStore(state => state.activeSection)
+  const setActiveSection = useSettingsWindowStore(state => state.setActiveSection)
+  const closeWindow = useSettingsWindowStore(state => state.close)
 
   const [laboratoryBusy, setLaboratoryBusy] = useState(false)
   const [aiDirty, setAiDirty] = useState(false)
@@ -75,7 +85,9 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
   const unsavedBarOpen = activeSection === 'ai' && aiDirty && !confirmOpen
 
   const handleBarSave = useCallback(async () => {
-    if (barSaving) {return}
+    if (barSaving) {
+      return
+    }
     setBarSaving(true)
     try {
       await aiSectionRef.current?.saveDrafts()
@@ -90,16 +102,23 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
 
   const runPendingAction = useCallback(
     (action: PendingAction | null) => {
-      if (!action) {return}
-      if (action.kind === 'navigate') {setActiveSection(action.section)}
-      else {closeWindow()}
+      if (!action) {
+        return
+      }
+      if (action.kind === 'navigate') {
+        setActiveSection(action.section)
+      } else {
+        closeWindow()
+      }
     },
     [closeWindow, setActiveSection]
   )
 
   const requestNavigate = useCallback(
     (section: SettingsSection) => {
-      if (!settingsInteractive || section === activeSection) {return}
+      if (!settingsInteractive || section === activeSection) {
+        return
+      }
       const dirty = aiSectionRef.current?.isDirty() ?? aiDirty
       if (activeSection === 'ai' && dirty) {
         setPendingAction({ kind: 'navigate', section })
@@ -112,7 +131,9 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
   )
 
   const requestClose = useCallback(() => {
-    if (!settingsInteractive) {return}
+    if (!settingsInteractive) {
+      return
+    }
     const dirty = aiSectionRef.current?.isDirty() ?? aiDirty
     if (dirty) {
       setPendingAction({ kind: 'close' })
@@ -123,7 +144,9 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
   }, [aiDirty, closeWindow, settingsInteractive])
 
   const handleConfirmIgnore = useCallback(() => {
-    if (confirmSaving) {return}
+    if (confirmSaving) {
+      return
+    }
     aiSectionRef.current?.discardDrafts()
     const action = pendingAction
     setPendingAction(null)
@@ -132,14 +155,18 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
   }, [confirmSaving, pendingAction, runPendingAction])
 
   const handleConfirmSave = useCallback(async () => {
-    if (confirmSaving) {return}
+    if (confirmSaving) {
+      return
+    }
     setConfirmSaving(true)
     try {
       const saved = await (aiSectionRef.current?.saveDrafts() ?? Promise.resolve(false))
       const action = pendingAction
       setPendingAction(null)
       setConfirmOpen(false)
-      if (saved) {runPendingAction(action)}
+      if (saved) {
+        runPendingAction(action)
+      }
     } finally {
       setConfirmSaving(false)
     }
@@ -149,7 +176,7 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
     <>
       <Modal
         open={isOpen}
-        title="设置"
+        title='设置'
         width={960}
         footer={null}
         closable={!laboratoryBusy}
@@ -165,23 +192,25 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
       >
         {isOpen && (
           <>
-            <nav className={styles.settingsNav} aria-label="设置分区">
-              {NAV_GROUPS.map((group) => (
+            <nav className={styles.settingsNav} aria-label='设置分区'>
+              {NAV_GROUPS.map(group => (
                 <div key={group.caption} className={styles.navGroup}>
                   <div className={styles.navCaption}>{group.caption}</div>
-                  {group.items.map((item) => {
+                  {group.items.map(item => {
                     const Icon = item.icon
                     const selected = activeSection === item.id
                     return (
                       <button
                         key={item.id}
-                        type="button"
-                        className={selected ? `${styles.navItem} ${styles.navItemSelected}` : styles.navItem}
+                        type='button'
+                        className={
+                          selected ? `${styles.navItem} ${styles.navItemSelected}` : styles.navItem
+                        }
                         aria-current={selected ? 'true' : undefined}
                         disabled={laboratoryBusy}
                         onClick={() => requestNavigate(item.id)}
                       >
-                        <Icon className={styles.navItemIcon} aria-hidden="true" />
+                        <Icon className={styles.navItemIcon} aria-hidden='true' />
                         <span>{item.label}</span>
                       </button>
                     )
@@ -238,11 +267,11 @@ export function SettingsModal({ onRestartGuide }: SettingsModalProps) {
 
       <Modal
         open={confirmOpen}
-        title="AI 设置尚未保存"
+        title='AI 设置尚未保存'
         width={420}
         zIndex={1360}
-        okText="保存设置"
-        cancelText="忽略"
+        okText='保存设置'
+        cancelText='忽略'
         confirmLoading={confirmSaving}
         closable={false}
         maskClosable={false}

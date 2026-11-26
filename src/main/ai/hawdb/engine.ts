@@ -2,13 +2,18 @@ import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { AgentMemory, StoredAiConversation, StoredAiConversationSummary } from '../../../preload'
+
+import type {
+  AgentMemory,
+  StoredAiConversation,
+  StoredAiConversationSummary
+} from '../../../preload'
 import { writeAtomic } from '../../jsonStore'
 import { storageChildPath } from '../../storagePath'
 import { conversationSummary, MAX_CONVERSATIONS, normalizeConversation } from '../chatHistoryStore'
 import type { KnowledgeEntry, KnowledgeMatch } from '../knowledge'
 import { MAX_MEMORIES, MAX_MEMORY_CONTENT_LENGTH, normalizeMemory } from '../memoryStore'
-import type { HawdbDatabase} from './ffi';
+import type { HawdbDatabase } from './ffi'
 import { HawdbError, HawdbLibrary } from './ffi'
 import {
   buildConversationSearchText,
@@ -56,14 +61,20 @@ async function readJsonSafe(path: string): Promise<unknown> {
 }
 
 async function loadLegacyMemories(path?: string): Promise<AgentMemory[]> {
-  if (!path || !existsSync(path)) {return []}
+  if (!path || !existsSync(path)) {
+    return []
+  }
   const parsed = await readJsonSafe(path)
-  if (!Array.isArray(parsed)) {return []}
+  if (!Array.isArray(parsed)) {
+    return []
+  }
   const seen = new Set<string>()
   const memories: AgentMemory[] = []
   for (const item of parsed) {
     const normalized = normalizeMemory(item)
-    if (!normalized || seen.has(normalized.id)) {continue}
+    if (!normalized || seen.has(normalized.id)) {
+      continue
+    }
     seen.add(normalized.id)
     memories.push(normalized)
   }
@@ -71,7 +82,9 @@ async function loadLegacyMemories(path?: string): Promise<AgentMemory[]> {
 }
 
 async function loadLegacyConversations(path?: string): Promise<StoredAiConversation[]> {
-  if (!path) {return []}
+  if (!path) {
+    return []
+  }
   const directory = `${path}.d`
   const byId = new Map<string, StoredAiConversation>()
   let indexValid = false
@@ -81,12 +94,16 @@ async function loadLegacyConversations(path?: string): Promise<StoredAiConversat
     if (isRecord(indexDoc) && Array.isArray(indexDoc.conversations)) {
       indexValid = true
       for (const entry of indexDoc.conversations) {
-        if (!isRecord(entry) || typeof entry.file !== 'string' || !entry.file) {continue}
+        if (!isRecord(entry) || typeof entry.file !== 'string' || !entry.file) {
+          continue
+        }
         try {
           const filePath = storageChildPath(directory, entry.file)
           const parsed = await readJsonSafe(filePath)
           const normalized = normalizeConversation(parsed)
-          if (normalized) {byId.set(normalized.id, normalized)}
+          if (normalized) {
+            byId.set(normalized.id, normalized)
+          }
         } catch {
           continue
         }
@@ -98,7 +115,9 @@ async function loadLegacyConversations(path?: string): Promise<StoredAiConversat
     if (Array.isArray(parsed)) {
       for (const item of parsed) {
         const normalized = normalizeConversation(item)
-        if (normalized) {byId.set(normalized.id, normalized)}
+        if (normalized) {
+          byId.set(normalized.id, normalized)
+        }
       }
     }
   }
@@ -108,15 +127,21 @@ async function loadLegacyConversations(path?: string): Promise<StoredAiConversat
 }
 
 async function loadSnapshot(path: string): Promise<SnapshotDocument | null> {
-  if (!existsSync(path)) {return null}
+  if (!existsSync(path)) {
+    return null
+  }
   const parsed = await readJsonSafe(path)
-  if (!isRecord(parsed)) {return null}
+  if (!isRecord(parsed)) {
+    return null
+  }
   const memories: AgentMemory[] = []
   const seenMemories = new Set<string>()
   if (Array.isArray(parsed.memories)) {
     for (const item of parsed.memories) {
       const normalized = normalizeMemory(item)
-      if (!normalized || seenMemories.has(normalized.id)) {continue}
+      if (!normalized || seenMemories.has(normalized.id)) {
+        continue
+      }
       seenMemories.add(normalized.id)
       memories.push(normalized)
     }
@@ -126,7 +151,9 @@ async function loadSnapshot(path: string): Promise<SnapshotDocument | null> {
   if (Array.isArray(parsed.conversations)) {
     for (const item of parsed.conversations) {
       const normalized = normalizeConversation(item)
-      if (!normalized || seenConversations.has(normalized.id)) {continue}
+      if (!normalized || seenConversations.has(normalized.id)) {
+        continue
+      }
       seenConversations.add(normalized.id)
       conversations.push(normalized)
     }
@@ -142,31 +169,63 @@ async function loadSnapshot(path: string): Promise<SnapshotDocument | null> {
 
 function fieldMatchCount(value: string, terms: string[]): number {
   const normalized = normalizeLookupText(value)
-  if (!normalized) {return 0}
+  if (!normalized) {
+    return 0
+  }
   return terms.reduce((score, term) => score + (normalized.includes(term) ? 1 : 0), 0)
 }
 
-function scoreEntryFields(entry: KnowledgeEntry, terms: string[], module?: string): { boost: number; matchedFields: string[] } {
+function scoreEntryFields(
+  entry: KnowledgeEntry,
+  terms: string[],
+  module?: string
+): { boost: number; matchedFields: string[] } {
   const matchedFields: string[] = []
   const nameScore = fieldMatchCount(entry.name, terms)
-  const aliasScore = entry.aliases.reduce((score, alias) => score + fieldMatchCount(alias, terms), 0)
-  const keywordScore = entry.keywords.reduce((score, keyword) => score + fieldMatchCount(keyword, terms), 0)
-  const placeContent = (entry.typicalPlaces ?? []).map((place) => `${place.name} ${place.note}`).join(' ')
-  const content = [entry.definition, ...(entry.features ?? []), ...(entry.formation ?? []), ...(entry.commonConfusions ?? []), placeContent].join(' ')
+  const aliasScore = entry.aliases.reduce(
+    (score, alias) => score + fieldMatchCount(alias, terms),
+    0
+  )
+  const keywordScore = entry.keywords.reduce(
+    (score, keyword) => score + fieldMatchCount(keyword, terms),
+    0
+  )
+  const placeContent = (entry.typicalPlaces ?? [])
+    .map(place => `${place.name} ${place.note}`)
+    .join(' ')
+  const content = [
+    entry.definition,
+    ...(entry.features ?? []),
+    ...(entry.formation ?? []),
+    ...(entry.commonConfusions ?? []),
+    placeContent
+  ].join(' ')
   const contentScore = fieldMatchCount(content, terms)
   let boost = nameScore * 100 + aliasScore * 80 + keywordScore * 45 + contentScore * 12
   if (module && normalizeLookupText(entry.module).includes(normalizeLookupText(module))) {
     boost += 25
     matchedFields.push('module')
   }
-  if (nameScore) {matchedFields.push('name')}
-  if (aliasScore) {matchedFields.push('aliases')}
-  if (keywordScore) {matchedFields.push('keywords')}
-  if (contentScore) {matchedFields.push('content')}
+  if (nameScore) {
+    matchedFields.push('name')
+  }
+  if (aliasScore) {
+    matchedFields.push('aliases')
+  }
+  if (keywordScore) {
+    matchedFields.push('keywords')
+  }
+  if (contentScore) {
+    matchedFields.push('content')
+  }
   return { boost, matchedFields }
 }
 
-function toKnowledgeMatch(entry: KnowledgeEntry, score: number, matchedFields: string[]): KnowledgeMatch {
+function toKnowledgeMatch(
+  entry: KnowledgeEntry,
+  score: number,
+  matchedFields: string[]
+): KnowledgeMatch {
   return {
     id: entry.id,
     type: entry.type,
@@ -196,7 +255,9 @@ export class EoqHawdbEngine {
   private readonly knowledgeById = new Map<string, KnowledgeEntry>()
 
   private requireDb(): HawdbDatabase {
-    if (!this.db) {throw new HawdbError('not_open', 'HawDB 引擎尚未初始化')}
+    if (!this.db) {
+      throw new HawdbError('not_open', 'HawDB 引擎尚未初始化')
+    }
     return this.db
   }
 
@@ -205,23 +266,31 @@ export class EoqHawdbEngine {
   }
 
   private readMeta(key: string): string | null {
-    const rows = this.requireDb().querySQL('SELECT value FROM eoq_meta WHERE key = $1', [key]).dicts()
+    const rows = this.requireDb()
+      .querySQL('SELECT value FROM eoq_meta WHERE key = $1', [key])
+      .dicts()
     return rows.length > 0 && typeof rows[0].value === 'string' ? rows[0].value : null
   }
 
   private writeMeta(key: string, value: string): void {
-    this.requireDb().transaction((tx) => {
+    this.requireDb().transaction(tx => {
       tx.querySQL('DELETE FROM eoq_meta WHERE key = $1', [key])
       tx.querySQL('INSERT INTO eoq_meta (key, value) VALUES ($1, $2)', [key, value])
     })
   }
 
   private insertMemories(memories: AgentMemory[]): void {
-    if (memories.length === 0) {return}
-    const existingIds = new Set(this.listMemories().map((item) => item.id))
-    const toInsert = memories.filter((item) => !existingIds.has(item.id)).slice(0, Math.max(0, MAX_MEMORIES - existingIds.size))
-    if (toInsert.length === 0) {return}
-    this.requireDb().transaction((tx) => {
+    if (memories.length === 0) {
+      return
+    }
+    const existingIds = new Set(this.listMemories().map(item => item.id))
+    const toInsert = memories
+      .filter(item => !existingIds.has(item.id))
+      .slice(0, Math.max(0, MAX_MEMORIES - existingIds.size))
+    if (toInsert.length === 0) {
+      return
+    }
+    this.requireDb().transaction(tx => {
       for (const memory of toInsert) {
         tx.querySQL(
           'INSERT INTO eoq_memories (id, content, source, created_at) VALUES ($1, $2, $3, $4)',
@@ -232,11 +301,15 @@ export class EoqHawdbEngine {
   }
 
   private insertConversations(conversations: StoredAiConversation[]): void {
-    if (conversations.length === 0) {return}
-    const existingIds = new Set(this.listConversations().map((item) => item.id))
-    const toInsert = conversations.filter((item) => !existingIds.has(item.id))
-    if (toInsert.length === 0) {return}
-    this.requireDb().transaction((tx) => {
+    if (conversations.length === 0) {
+      return
+    }
+    const existingIds = new Set(this.listConversations().map(item => item.id))
+    const toInsert = conversations.filter(item => !existingIds.has(item.id))
+    if (toInsert.length === 0) {
+      return
+    }
+    this.requireDb().transaction(tx => {
       for (const conversation of toInsert) {
         tx.querySQL(
           'INSERT INTO eoq_conversations (id, title, created_at, updated_at, payload_json, search_text) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -256,10 +329,14 @@ export class EoqHawdbEngine {
 
   private trimConversations(): void {
     const db = this.requireDb()
-    const rows = db.querySQL('SELECT id FROM eoq_conversations ORDER BY updated_at DESC, id ASC').dicts()
-    if (rows.length <= MAX_CONVERSATIONS) {return}
-    const staleIds = rows.slice(MAX_CONVERSATIONS).map((row) => String(row.id))
-    db.transaction((tx) => {
+    const rows = db
+      .querySQL('SELECT id FROM eoq_conversations ORDER BY updated_at DESC, id ASC')
+      .dicts()
+    if (rows.length <= MAX_CONVERSATIONS) {
+      return
+    }
+    const staleIds = rows.slice(MAX_CONVERSATIONS).map(row => String(row.id))
+    db.transaction(tx => {
       for (const id of staleIds) {
         tx.querySQL('DELETE FROM eoq_conversations WHERE id = $1', [id])
       }
@@ -268,14 +345,21 @@ export class EoqHawdbEngine {
 
   private readAllConversationsFull(): StoredAiConversation[] {
     const rows = this.requireDb()
-      .querySQL('SELECT payload_json FROM eoq_conversations ORDER BY updated_at DESC, id ASC LIMIT $1', [MAX_CONVERSATIONS])
+      .querySQL(
+        'SELECT payload_json FROM eoq_conversations ORDER BY updated_at DESC, id ASC LIMIT $1',
+        [MAX_CONVERSATIONS]
+      )
       .dicts()
     const list: StoredAiConversation[] = []
     for (const row of rows) {
-      if (typeof row.payload_json !== 'string') {continue}
+      if (typeof row.payload_json !== 'string') {
+        continue
+      }
       try {
         const normalized = normalizeConversation(JSON.parse(row.payload_json))
-        if (normalized) {list.push(normalized)}
+        if (normalized) {
+          list.push(normalized)
+        }
       } catch {
         continue
       }
@@ -284,7 +368,9 @@ export class EoqHawdbEngine {
   }
 
   private async persistSnapshotIfNeeded(): Promise<void> {
-    if (this.storageMode !== 'memory-snapshot') {return}
+    if (this.storageMode !== 'memory-snapshot') {
+      return
+    }
     const doc: SnapshotDocument = {
       version: 1,
       memories: this.listMemories(),
@@ -306,8 +392,11 @@ export class EoqHawdbEngine {
     }
     const db = this.requireDb()
     this.writeMeta('knowledge_hash', '')
-    const existingIds = db.querySQL('SELECT id FROM eoq_knowledge').dicts().map((row) => String(row.id))
-    db.transaction((tx) => {
+    const existingIds = db
+      .querySQL('SELECT id FROM eoq_knowledge')
+      .dicts()
+      .map(row => String(row.id))
+    db.transaction(tx => {
       for (const id of existingIds) {
         tx.querySQL('DELETE FROM eoq_knowledge WHERE id = $1', [id])
       }
@@ -328,10 +417,10 @@ export class EoqHawdbEngine {
         )
       }
     })
-    const activeEntries = entries.filter((entry) => entry.status !== 'deprecated')
+    const activeEntries = entries.filter(entry => entry.status !== 'deprecated')
     const edges = extractKnowledgeGraphEdges(activeEntries)
     db.exec('MATCH (n:KnowledgeConcept) DETACH DELETE n')
-    db.transaction((tx) => {
+    db.transaction(tx => {
       for (const entry of activeEntries) {
         tx.exec('CREATE (n:KnowledgeConcept {id: $id, name: $name, module: $module})', {
           id: entry.id,
@@ -450,9 +539,15 @@ export class EoqHawdbEngine {
 
   status(): HawdbStatusInfo {
     const db = this.requireDb()
-    const memoryCount = Number(db.querySQL('SELECT COUNT(*) AS cnt FROM eoq_memories').dicts()[0]?.cnt ?? 0)
-    const conversationCount = Number(db.querySQL('SELECT COUNT(*) AS cnt FROM eoq_conversations').dicts()[0]?.cnt ?? 0)
-    const knowledgeCount = Number(db.querySQL('SELECT COUNT(*) AS cnt FROM eoq_knowledge').dicts()[0]?.cnt ?? 0)
+    const memoryCount = Number(
+      db.querySQL('SELECT COUNT(*) AS cnt FROM eoq_memories').dicts()[0]?.cnt ?? 0
+    )
+    const conversationCount = Number(
+      db.querySQL('SELECT COUNT(*) AS cnt FROM eoq_conversations').dicts()[0]?.cnt ?? 0
+    )
+    const knowledgeCount = Number(
+      db.querySQL('SELECT COUNT(*) AS cnt FROM eoq_knowledge').dicts()[0]?.cnt ?? 0
+    )
     return {
       ready: true,
       storageMode: this.storageMode,
@@ -466,9 +561,11 @@ export class EoqHawdbEngine {
 
   listMemories(): AgentMemory[] {
     const rows = this.requireDb()
-      .querySQL('SELECT id, content, source, created_at FROM eoq_memories ORDER BY created_at ASC, id ASC')
+      .querySQL(
+        'SELECT id, content, source, created_at FROM eoq_memories ORDER BY created_at ASC, id ASC'
+      )
       .dicts()
-    return rows.map((row) => ({
+    return rows.map(row => ({
       id: String(row.id),
       content: String(row.content),
       source: row.source === 'agent' ? 'agent' : 'user',
@@ -477,11 +574,18 @@ export class EoqHawdbEngine {
   }
 
   async addMemory(content: string, source: AgentMemory['source']): Promise<AgentMemory> {
-    const trimmed = typeof content === 'string' ? content.trim().slice(0, MAX_MEMORY_CONTENT_LENGTH) : ''
-    if (!trimmed) {throw new Error('记忆内容不能为空')}
+    const trimmed =
+      typeof content === 'string' ? content.trim().slice(0, MAX_MEMORY_CONTENT_LENGTH) : ''
+    if (!trimmed) {
+      throw new Error('记忆内容不能为空')
+    }
     const db = this.requireDb()
-    const count = Number(db.querySQL('SELECT COUNT(*) AS cnt FROM eoq_memories').dicts()[0]?.cnt ?? 0)
-    if (count >= MAX_MEMORIES) {throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)}
+    const count = Number(
+      db.querySQL('SELECT COUNT(*) AS cnt FROM eoq_memories').dicts()[0]?.cnt ?? 0
+    )
+    if (count >= MAX_MEMORIES) {
+      throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)
+    }
     const memory: AgentMemory = {
       id: `m${randomUUID()}`,
       content: trimmed,
@@ -509,8 +613,12 @@ export class EoqHawdbEngine {
 
   async deleteMemory(id: string): Promise<boolean> {
     const db = this.requireDb()
-    const existing = db.querySQL('SELECT id, content, source, created_at FROM eoq_memories WHERE id = $1', [id]).dicts()
-    if (existing.length === 0) {return false}
+    const existing = db
+      .querySQL('SELECT id, content, source, created_at FROM eoq_memories WHERE id = $1', [id])
+      .dicts()
+    if (existing.length === 0) {
+      return false
+    }
     db.querySQL('DELETE FROM eoq_memories WHERE id = $1', [id])
     try {
       await this.persistSnapshotIfNeeded()
@@ -522,7 +630,12 @@ export class EoqHawdbEngine {
           if (db.querySQL('SELECT id FROM eoq_memories WHERE id = $1', [id]).dicts().length === 0) {
             db.querySQL(
               'INSERT INTO eoq_memories (id, content, source, created_at) VALUES ($1, $2, $3, $4)',
-              [id, String(row.content), row.source === 'agent' ? 'agent' : 'user', Number(row.created_at)]
+              [
+                id,
+                String(row.content),
+                row.source === 'agent' ? 'agent' : 'user',
+                Number(row.created_at)
+              ]
             )
           }
         } catch {
@@ -535,7 +648,9 @@ export class EoqHawdbEngine {
 
   recallMemories(query: string, limit = 8): MemoryRecallMatch[] {
     const cleanQuery = query.trim().slice(0, MAX_QUERY_LENGTH)
-    if (!cleanQuery) {return []}
+    if (!cleanQuery) {
+      return []
+    }
     const topK = Math.min(20, Math.max(1, Math.round(limit)))
     try {
       const rows = this.requireDb()
@@ -545,7 +660,7 @@ export class EoqHawdbEngine {
         )
         .dicts()
       if (rows.length > 0) {
-        return rows.map((row) => ({
+        return rows.map(row => ({
           id: String(row.id),
           content: String(row.content),
           source: row.source === 'agent' ? 'agent' : 'user',
@@ -558,17 +673,20 @@ export class EoqHawdbEngine {
     }
     const terms = extractQueryTerms(cleanQuery)
     return this.listMemories()
-      .map((memory) => ({ ...memory, score: fieldMatchCount(memory.content, terms) }))
-      .filter((item) => item.score > 0)
+      .map(memory => ({ ...memory, score: fieldMatchCount(memory.content, terms) }))
+      .filter(item => item.score > 0)
       .sort((left, right) => right.score - left.score || right.createdAt - left.createdAt)
       .slice(0, topK)
   }
 
   listConversations(): StoredAiConversationSummary[] {
     const rows = this.requireDb()
-      .querySQL('SELECT id, title, created_at, updated_at FROM eoq_conversations ORDER BY updated_at DESC, id ASC LIMIT $1', [MAX_CONVERSATIONS])
+      .querySQL(
+        'SELECT id, title, created_at, updated_at FROM eoq_conversations ORDER BY updated_at DESC, id ASC LIMIT $1',
+        [MAX_CONVERSATIONS]
+      )
       .dicts()
-    return rows.map((row) => ({
+    return rows.map(row => ({
       id: String(row.id),
       title: String(row.title),
       createdAt: Number(row.created_at),
@@ -580,21 +698,32 @@ export class EoqHawdbEngine {
     const rows = this.requireDb()
       .querySQL('SELECT payload_json FROM eoq_conversations WHERE id = $1', [id])
       .dicts()
-    if (rows.length === 0 || typeof rows[0].payload_json !== 'string') {return null}
+    if (rows.length === 0 || typeof rows[0].payload_json !== 'string') {
+      return null
+    }
     return normalizeConversation(JSON.parse(rows[0].payload_json))
   }
 
   async saveConversation(value: unknown): Promise<StoredAiConversationSummary[]> {
     const conversation = normalizeConversation(value)
-    if (!conversation) {throw new Error('无效的会话数据')}
+    if (!conversation) {
+      throw new Error('无效的会话数据')
+    }
     const db = this.requireDb()
     const searchText = buildConversationSearchText(conversation)
     const payloadJson = JSON.stringify(conversation)
-    db.transaction((tx) => {
+    db.transaction(tx => {
       tx.querySQL('DELETE FROM eoq_conversations WHERE id = $1', [conversation.id])
       tx.querySQL(
         'INSERT INTO eoq_conversations (id, title, created_at, updated_at, payload_json, search_text) VALUES ($1, $2, $3, $4, $5, $6)',
-        [conversation.id, conversation.title, conversation.createdAt, conversation.updatedAt, payloadJson, searchText]
+        [
+          conversation.id,
+          conversation.title,
+          conversation.createdAt,
+          conversation.updatedAt,
+          payloadJson,
+          searchText
+        ]
       )
     })
     this.trimConversations()
@@ -610,7 +739,9 @@ export class EoqHawdbEngine {
 
   searchConversations(query: string, limit = 5, excludeId?: string): ConversationSearchHit[] {
     const cleanQuery = query.trim().slice(0, MAX_QUERY_LENGTH)
-    if (!cleanQuery) {return []}
+    if (!cleanQuery) {
+      return []
+    }
     const cappedLimit = Math.min(10, Math.max(1, Math.round(limit)))
     const fetchLimit = cappedLimit + (excludeId ? 2 : 0)
     const hits: ConversationSearchHit[] = []
@@ -623,37 +754,52 @@ export class EoqHawdbEngine {
         .dicts()
       for (const row of rows) {
         const id = String(row.id)
-        if (excludeId && id === excludeId) {continue}
-        if (typeof row.payload_json !== 'string') {continue}
+        if (excludeId && id === excludeId) {
+          continue
+        }
+        if (typeof row.payload_json !== 'string') {
+          continue
+        }
         try {
           const conversation = normalizeConversation(JSON.parse(row.payload_json))
-          if (!conversation) {continue}
+          if (!conversation) {
+            continue
+          }
           hits.push({
             id: conversation.id,
             title: conversation.title,
             updatedAt: conversation.updatedAt,
             score: Number(row.score),
             snippet: buildConversationSnippet(conversation, cleanQuery),
-            ...(conversation.compression?.summary ? { compressionSummary: conversation.compression.summary } : {})
+            ...(conversation.compression?.summary
+              ? { compressionSummary: conversation.compression.summary }
+              : {})
           })
         } catch {
           continue
         }
-        if (hits.length >= cappedLimit) {break}
+        if (hits.length >= cappedLimit) {
+          break
+        }
       }
-      if (hits.length > 0) {return hits}
+      if (hits.length > 0) {
+        return hits
+      }
     } catch {
       void 0
     }
     const terms = extractQueryTerms(cleanQuery)
     return this.readAllConversationsFull()
-      .filter((conversation) => !excludeId || conversation.id !== excludeId)
-      .map((conversation) => ({
+      .filter(conversation => !excludeId || conversation.id !== excludeId)
+      .map(conversation => ({
         conversation,
         score: fieldMatchCount(buildConversationSearchText(conversation), terms)
       }))
-      .filter((item) => item.score > 0)
-      .sort((left, right) => right.score - left.score || right.conversation.updatedAt - left.conversation.updatedAt)
+      .filter(item => item.score > 0)
+      .sort(
+        (left, right) =>
+          right.score - left.score || right.conversation.updatedAt - left.conversation.updatedAt
+      )
       .slice(0, cappedLimit)
       .map(({ conversation, score }) => ({
         id: conversation.id,
@@ -661,7 +807,9 @@ export class EoqHawdbEngine {
         updatedAt: conversation.updatedAt,
         score,
         snippet: buildConversationSnippet(conversation, cleanQuery),
-        ...(conversation.compression?.summary ? { compressionSummary: conversation.compression.summary } : {})
+        ...(conversation.compression?.summary
+          ? { compressionSummary: conversation.compression.summary }
+          : {})
       }))
   }
 
@@ -677,7 +825,9 @@ export class EoqHawdbEngine {
       const related: KnowledgeRelatedConcept[] = []
       for (const row of rows) {
         const id = String(row.id ?? '')
-        if (!id || id === conceptId || seen.has(id)) {continue}
+        if (!id || id === conceptId || seen.has(id)) {
+          continue
+        }
         seen.add(id)
         related.push({
           id,
@@ -689,7 +839,9 @@ export class EoqHawdbEngine {
       }
       return related
         .sort((left, right) => {
-          if (left.relation !== right.relation) {return left.relation === 'contrasts_with' ? -1 : 1}
+          if (left.relation !== right.relation) {
+            return left.relation === 'contrasts_with' ? -1 : 1
+          }
           return left.name.localeCompare(right.name, 'zh-CN')
         })
         .slice(0, MAX_RELATED_CONCEPTS)
@@ -700,7 +852,9 @@ export class EoqHawdbEngine {
 
   retrieveKnowledge(query: string, module?: string, topK = DEFAULT_TOP_K): KnowledgeSearchResult {
     const cleanQuery = query.trim().slice(0, MAX_QUERY_LENGTH)
-    if (!cleanQuery) {return { query: '', matches: [], total: 0 }}
+    if (!cleanQuery) {
+      return { query: '', matches: [], total: 0 }
+    }
     const limit = Math.min(MAX_TOP_K, Math.max(1, Math.round(topK)))
     const terms = extractQueryTerms(cleanQuery)
     const bm25Scores = new Map<string, number>()
@@ -719,17 +873,26 @@ export class EoqHawdbEngine {
     }
     const ranked: { entry: KnowledgeEntry; score: number; matchedFields: string[] }[] = []
     for (const entry of this.knowledgeById.values()) {
-      if (entry.status === 'deprecated') {continue}
+      if (entry.status === 'deprecated') {
+        continue
+      }
       const bm25 = bm25Scores.get(entry.id) ?? 0
       const { boost, matchedFields } = scoreEntryFields(entry, terms, module)
       const combinedScore = Math.round((bm25 * 15 + boost) * 100) / 100
-      if (combinedScore <= 0) {continue}
+      if (combinedScore <= 0) {
+        continue
+      }
       const fields = [...matchedFields]
-      if (bm25 > 0 && !fields.includes('bm25')) {fields.push('bm25')}
+      if (bm25 > 0 && !fields.includes('bm25')) {
+        fields.push('bm25')
+      }
       ranked.push({ entry, score: combinedScore, matchedFields: fields })
     }
-    ranked.sort((left, right) => right.score - left.score || left.entry.name.localeCompare(right.entry.name, 'zh-CN'))
-    const topMatches: KnowledgeSearchMatch[] = ranked.slice(0, limit).map((item) => {
+    ranked.sort(
+      (left, right) =>
+        right.score - left.score || left.entry.name.localeCompare(right.entry.name, 'zh-CN')
+    )
+    const topMatches: KnowledgeSearchMatch[] = ranked.slice(0, limit).map(item => {
       const base = toKnowledgeMatch(item.entry, item.score, item.matchedFields)
       const relatedConcepts = this.queryRelatedConcepts(item.entry.id)
       return relatedConcepts.length > 0 ? { ...base, relatedConcepts } : base
@@ -742,6 +905,8 @@ export class EoqHawdbEngine {
   }
 }
 
-export function summaryOfConversation(conversation: StoredAiConversation): StoredAiConversationSummary {
+export function summaryOfConversation(
+  conversation: StoredAiConversation
+): StoredAiConversationSummary {
   return conversationSummary(conversation)
 }

@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react';
-import type { CSSProperties } from 'react';
-import { init, use as registerEcharts } from 'echarts/core';
-import type { EChartsCoreOption, EChartsType } from 'echarts/core';
+import { init, use as registerEcharts } from 'echarts/core'
+import type { EChartsCoreOption, EChartsType } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
+import { useEffect, useRef } from 'react'
+import type { CSSProperties } from 'react'
 
 registerEcharts([SVGRenderer])
 
@@ -19,7 +19,9 @@ export function EChartBase({ option, className, style, notMerge = true }: EChart
 
   useEffect(() => {
     const element = containerRef.current
-    if (!element) {return}
+    if (!element) {
+      return
+    }
     const chart = init(element, undefined, { renderer: 'svg' })
     chartRef.current = chart
     const observer = new ResizeObserver(() => {

@@ -1,8 +1,9 @@
-import { Component, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
 import { Modal } from '@renderer/components/ui'
 import { useUpdaterStore } from '@renderer/stores/updater'
 import { tryRenderMarkdown } from '@renderer/utils/markdown'
+import { Component, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
+
 import styles from './UpdateDialog.module.css'
 
 export interface UpdateDialogProps {}
@@ -16,7 +17,10 @@ interface MarkdownNotesBoundaryState {
   failed: boolean
 }
 
-class MarkdownNotesBoundary extends Component<MarkdownNotesBoundaryProps, MarkdownNotesBoundaryState> {
+class MarkdownNotesBoundary extends Component<
+  MarkdownNotesBoundaryProps,
+  MarkdownNotesBoundaryState
+> {
   state: MarkdownNotesBoundaryState = { failed: false }
 
   static getDerivedStateFromError(): MarkdownNotesBoundaryState {
@@ -28,18 +32,20 @@ class MarkdownNotesBoundary extends Component<MarkdownNotesBoundaryProps, Markdo
   }
 
   render(): ReactNode {
-    if (this.state.failed) {return null}
+    if (this.state.failed) {
+      return null
+    }
     return this.props.children
   }
 }
 
 export function UpdateDialog(_props: UpdateDialogProps) {
-  const promptVisible = useUpdaterStore((state) => state.promptVisible)
-  const currentVersion = useUpdaterStore((state) => state.currentVersion)
-  const version = useUpdaterStore((state) => state.version)
-  const notes = useUpdaterStore((state) => state.notes)
-  const startDownload = useUpdaterStore((state) => state.startDownload)
-  const remindLater = useUpdaterStore((state) => state.remindLater)
+  const promptVisible = useUpdaterStore(state => state.promptVisible)
+  const currentVersion = useUpdaterStore(state => state.currentVersion)
+  const version = useUpdaterStore(state => state.version)
+  const notes = useUpdaterStore(state => state.notes)
+  const startDownload = useUpdaterStore(state => state.startDownload)
+  const remindLater = useUpdaterStore(state => state.remindLater)
 
   const [failedNotes, setFailedNotes] = useState<string | null>(null)
   const renderFailed = failedNotes === notes
@@ -52,13 +58,13 @@ export function UpdateDialog(_props: UpdateDialogProps) {
   return (
     <Modal
       open={promptVisible}
-      title="发现可用更新"
+      title='发现可用更新'
       width={420}
       closable={false}
       maskClosable={false}
       keyboard={false}
-      okText="立即更新"
-      cancelText="下次提醒"
+      okText='立即更新'
+      cancelText='下次提醒'
       onOk={() => void startDownload()}
       onCancel={remindLater}
     >
@@ -72,7 +78,11 @@ export function UpdateDialog(_props: UpdateDialogProps) {
       </div>
       {renderedNotes ? (
         <MarkdownNotesBoundary key={notes} onError={() => setFailedNotes(notes)}>
-          <div className={`${styles.updateNotes} ${styles.updateNotesMarkdown}`} role="region" aria-label="更新日志">
+          <div
+            className={`${styles.updateNotes} ${styles.updateNotesMarkdown}`}
+            role='region'
+            aria-label='更新日志'
+          >
             {renderedNotes}
           </div>
         </MarkdownNotesBoundary>

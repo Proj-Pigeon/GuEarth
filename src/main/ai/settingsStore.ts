@@ -1,6 +1,13 @@
-import { readJson, serialQueue, writeJson } from '../jsonStore'
-import type { AiModelConfig, AiProviderConfig, AiProtocol, AiSearchProviderConfig, AiSettings, AiThinkingLevel } from '../../preload'
+import type {
+  AiModelConfig,
+  AiProviderConfig,
+  AiProtocol,
+  AiSearchProviderConfig,
+  AiSettings,
+  AiThinkingLevel
+} from '../../preload'
 import { defaultAiSettings, defaultSearchProviders } from '../../shared/aiSettings'
+import { readJson, serialQueue, writeJson } from '../jsonStore'
 
 const thinkingLevels = new Set<AiThinkingLevel>(['low', 'medium', 'high'])
 const protocols = new Set<AiProtocol>(['openai', 'anthropic'])
@@ -12,14 +19,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizeModel(value: unknown): AiModelConfig | null {
-  if (!isRecord(value)) {return null}
+  if (!isRecord(value)) {
+    return null
+  }
   const id = typeof value.id === 'string' ? value.id.trim().slice(0, 200) : ''
-  if (!id) {return null}
-  const label = typeof value.label === 'string' && value.label.trim() ? value.label.trim().slice(0, 80) : id
-  const contextWindow = typeof value.contextWindow === 'number' && Number.isFinite(value.contextWindow)
-    ? Math.min(2_000_000, Math.max(4096, Math.round(value.contextWindow)))
-    : 128_000
-  const thinkingLevel = thinkingLevels.has(value.thinkingLevel as AiThinkingLevel) ? value.thinkingLevel as AiThinkingLevel : 'medium'
+  if (!id) {
+    return null
+  }
+  const label =
+    typeof value.label === 'string' && value.label.trim() ? value.label.trim().slice(0, 80) : id
+  const contextWindow =
+    typeof value.contextWindow === 'number' && Number.isFinite(value.contextWindow)
+      ? Math.min(2_000_000, Math.max(4096, Math.round(value.contextWindow)))
+      : 128_000
+  const thinkingLevel = thinkingLevels.has(value.thinkingLevel as AiThinkingLevel)
+    ? (value.thinkingLevel as AiThinkingLevel)
+    : 'medium'
   return {
     id,
     label,
@@ -33,43 +48,75 @@ function normalizeModel(value: unknown): AiModelConfig | null {
 }
 
 function normalizeProvider(value: unknown): AiProviderConfig | null {
-  if (!isRecord(value)) {return null}
+  if (!isRecord(value)) {
+    return null
+  }
   const id = typeof value.id === 'string' && idPattern.test(value.id) ? value.id : ''
-  if (!id) {return null}
-  const name = typeof value.name === 'string' && value.name.trim() ? value.name.trim().slice(0, 80) : id
-  const protocol = protocols.has(value.protocol as AiProtocol) ? value.protocol as AiProtocol : 'openai'
+  if (!id) {
+    return null
+  }
+  const name =
+    typeof value.name === 'string' && value.name.trim() ? value.name.trim().slice(0, 80) : id
+  const protocol = protocols.has(value.protocol as AiProtocol)
+    ? (value.protocol as AiProtocol)
+    : 'openai'
   let baseUrl = typeof value.baseUrl === 'string' ? value.baseUrl.trim() : ''
-  if (!baseUrl) {baseUrl = protocol === 'anthropic' ? 'https://api.anthropic.com' : ''}
+  if (!baseUrl) {
+    baseUrl = protocol === 'anthropic' ? 'https://api.anthropic.com' : ''
+  }
   baseUrl = baseUrl.replace(/\/+$/, '').slice(0, 500)
-  const models = Array.isArray(value.models) ? value.models.map(normalizeModel).filter((model): model is AiModelConfig => model !== null).slice(0, maxModelsPerProvider) : []
+  const models = Array.isArray(value.models)
+    ? value.models
+        .map(normalizeModel)
+        .filter((model): model is AiModelConfig => model !== null)
+        .slice(0, maxModelsPerProvider)
+    : []
   return { id, name, protocol, baseUrl, models }
 }
 
 export function normalizeAiSettings(value: unknown): AiSettings {
   const source = isRecord(value) ? value : {}
   const providers = Array.isArray(source.providers)
-    ? source.providers.map(normalizeProvider).filter((provider): provider is AiProviderConfig => provider !== null).slice(0, 16)
+    ? source.providers
+        .map(normalizeProvider)
+        .filter((provider): provider is AiProviderConfig => provider !== null)
+        .slice(0, 16)
     : []
-  const activeProviderId = providers.some((provider) => provider.id === source.activeProviderId)
-    ? source.activeProviderId as string
+  const activeProviderId = providers.some(provider => provider.id === source.activeProviderId)
+    ? (source.activeProviderId as string)
     : ''
-  const activeProvider = providers.find((provider) => provider.id === activeProviderId) ?? providers[0]
-  const activeModel = activeProvider?.models.find((model) => model.id === source.activeModelId && model.enabled)
-    ?? activeProvider?.models.find((model) => model.enabled)
+  const activeProvider =
+    providers.find(provider => provider.id === activeProviderId) ?? providers[0]
+  const activeModel =
+    activeProvider?.models.find(model => model.id === source.activeModelId && model.enabled) ??
+    activeProvider?.models.find(model => model.enabled)
   const activeModelId = activeModel?.id ?? ''
   const seenSearchIds = new Set<string>()
   const searchProviders = Array.isArray(source.searchProviders)
-    ? source.searchProviders.flatMap((value): AiSearchProviderConfig[] => {
-        if (!isRecord(value) || value.kind !== 'baidu' || typeof value.id !== 'string') {return []}
-        if (!/^[a-z0-9][a-z0-9_-]{0,53}$/i.test(value.id) || seenSearchIds.has(value.id)) {return []}
-        seenSearchIds.add(value.id)
-        const name = typeof value.name === 'string' && value.name.trim() ? value.name.trim().slice(0, 80) : '百度千帆'
-        return [{ id: value.id, name, kind: 'baidu' }]
-      }).slice(0, 16)
+    ? source.searchProviders
+        .flatMap((value): AiSearchProviderConfig[] => {
+          if (!isRecord(value) || value.kind !== 'baidu' || typeof value.id !== 'string') {
+            return []
+          }
+          if (!/^[a-z0-9][a-z0-9_-]{0,53}$/i.test(value.id) || seenSearchIds.has(value.id)) {
+            return []
+          }
+          seenSearchIds.add(value.id)
+          const name =
+            typeof value.name === 'string' && value.name.trim()
+              ? value.name.trim().slice(0, 80)
+              : '百度千帆'
+          return [{ id: value.id, name, kind: 'baidu' }]
+        })
+        .slice(0, 16)
     : []
-  if (searchProviders.length === 0) {searchProviders.push(...defaultSearchProviders())}
-  const activeSearchProviderId = searchProviders.some((provider) => provider.id === source.activeSearchProviderId)
-    ? source.activeSearchProviderId as string
+  if (searchProviders.length === 0) {
+    searchProviders.push(...defaultSearchProviders())
+  }
+  const activeSearchProviderId = searchProviders.some(
+    provider => provider.id === source.activeSearchProviderId
+  )
+    ? (source.activeSearchProviderId as string)
     : searchProviders[0].id
   return {
     providers,

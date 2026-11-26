@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
-import { ToggleGroup as BaseToggleGroup } from '@base-ui/react/toggle-group'
 import { Toggle as BaseToggle } from '@base-ui/react/toggle'
+import { ToggleGroup as BaseToggleGroup } from '@base-ui/react/toggle-group'
 import { cn } from '@renderer/lib/utils'
+import type { ReactNode } from 'react'
 
 export interface SegmentedOption<T extends string | number = string> {
   label: ReactNode
@@ -22,7 +22,9 @@ export interface SegmentedProps<T extends string | number = string> {
   onChange?: (value: T) => void
 }
 
-function normalizeOption<T extends string | number>(item: SegmentedOptionInput<T>): SegmentedOption<T> {
+function normalizeOption<T extends string | number>(
+  item: SegmentedOptionInput<T>
+): SegmentedOption<T> {
   if (typeof item === 'string' || typeof item === 'number') {
     return { label: String(item), value: item }
   }
@@ -43,15 +45,19 @@ export function Segmented<T extends string | number = string>({
 
   return (
     <BaseToggleGroup
-      data-slot="segmented"
+      data-slot='segmented'
       value={[String(value)]}
       disabled={disabled}
       aria-label={ariaLabel}
-      onValueChange={(nextValues) => {
+      onValueChange={nextValues => {
         const nextKey = nextValues[0]
-        if (nextKey === undefined) {return}
-        const matched = normalized.find((option) => String(option.value) === nextKey)
-        if (matched) {onChange?.(matched.value)}
+        if (nextKey === undefined) {
+          return
+        }
+        const matched = normalized.find(option => String(option.value) === nextKey)
+        if (matched) {
+          onChange?.(matched.value)
+        }
       }}
       className={cn(
         'inline-flex items-center gap-0.5 rounded-lg bg-muted p-0.5',
@@ -59,7 +65,7 @@ export function Segmented<T extends string | number = string>({
         className
       )}
     >
-      {normalized.map((option) => (
+      {normalized.map(option => (
         <BaseToggle
           key={String(option.value)}
           value={String(option.value)}

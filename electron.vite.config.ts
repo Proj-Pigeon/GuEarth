@@ -1,9 +1,10 @@
 import { cpSync, createReadStream, existsSync, statSync } from 'node:fs'
 import { extname, join, resolve, sep } from 'node:path'
+
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
 import { defineConfig } from 'electron-vite'
 import type { Connect, Plugin } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
 const cesiumBuild = resolve('node_modules/cesium/Build/Cesium')
 const cesiumDirs = ['Workers', 'ThirdParty', 'Assets', 'Widgets']
@@ -22,9 +23,18 @@ const cesiumMimeTypes: Record<string, string> = {
 
 const serveCesiumAsset: Connect.NextHandleFunction = (req, res, next) => {
   const assetPath = resolve(cesiumBuild, `.${(req.url ?? '/').split('?')[0]}`)
-  if (!assetPath.startsWith(cesiumBuild + sep)) { next(); return;}
-  if (!existsSync(assetPath) || !statSync(assetPath).isFile()) { next(); return;}
-  res.setHeader('Content-Type', cesiumMimeTypes[extname(assetPath).toLowerCase()] ?? 'application/octet-stream')
+  if (!assetPath.startsWith(cesiumBuild + sep)) {
+    next()
+    return
+  }
+  if (!existsSync(assetPath) || !statSync(assetPath).isFile()) {
+    next()
+    return
+  }
+  res.setHeader(
+    'Content-Type',
+    cesiumMimeTypes[extname(assetPath).toLowerCase()] ?? 'application/octet-stream'
+  )
   res.setHeader('Cache-Control', 'no-cache')
   createReadStream(assetPath).pipe(res)
 }
@@ -37,7 +47,9 @@ function cesiumStaticPlugin(): Plugin {
     },
     writeBundle(options) {
       const outDir = options.dir
-      if (!outDir) {return}
+      if (!outDir) {
+        return
+      }
       for (const dir of cesiumDirs) {
         cpSync(join(cesiumBuild, dir), join(outDir, 'cesium', dir), { recursive: true })
       }

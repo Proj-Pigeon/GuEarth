@@ -46,7 +46,9 @@
   font-family: inherit;
   line-height: 22px;
   cursor: pointer;
-  transition: background-color 0.1s ease-out, color 0.1s ease-out;
+  transition:
+    background-color 0.1s ease-out,
+    color 0.1s ease-out;
 }
 
 .navItem:hover {

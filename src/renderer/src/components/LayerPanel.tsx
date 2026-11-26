@@ -1,6 +1,3 @@
-import { useMemo, useState } from 'react';
-import type { MouseEvent } from 'react';
-import { MoreHorizontalIcon, RotateCwIcon, XIcon } from 'lucide-react'
 import {
   Accordion,
   Alert,
@@ -15,8 +12,12 @@ import {
   Switch,
   Tooltip
 } from '@renderer/components/ui'
-import { basemapCategories, providerCatalog, terrainCatalog } from '@renderer/stores/globe';
-import type { LayerMeta, ProviderMeta } from '@renderer/stores/globe';
+import { basemapCategories, providerCatalog, terrainCatalog } from '@renderer/stores/globe'
+import type { LayerMeta, ProviderMeta } from '@renderer/stores/globe'
+import { MoreHorizontalIcon, RotateCwIcon, XIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import type { MouseEvent } from 'react'
+
 import styles from './LayerPanel.module.css'
 
 export interface LayerPanelProps {
@@ -48,7 +49,7 @@ interface BasemapOption {
   activeLayer?: LayerMeta
 }
 
-const terrainSelectOptions = terrainCatalog.map((option) => ({
+const terrainSelectOptions = terrainCatalog.map(option => ({
   value: option.id,
   label: option.name,
   title: option.description
@@ -78,11 +79,11 @@ export function LayerPanel({
 
   const basemapOptions = useMemo<BasemapOption[]>(
     () =>
-      basemapCategories.map((category) => {
+      basemapCategories.map(category => {
         const providers = category.providerIds
-          .map((id) => providerCatalog.find((provider) => provider.id === id))
+          .map(id => providerCatalog.find(provider => provider.id === id))
           .filter((provider): provider is ProviderMeta => Boolean(provider))
-        const activeProviderId = providers.some((provider) => provider.id === selectedLayerId)
+        const activeProviderId = providers.some(provider => provider.id === selectedLayerId)
           ? selectedLayerId
           : (providers[0]?.id ?? '')
         return {
@@ -91,17 +92,18 @@ export function LayerPanel({
           selected: category.providerIds.includes(selectedLayerId),
           providers,
           activeProviderId,
-          activeProviderName: providers.find((provider) => provider.id === activeProviderId)?.name ?? '',
-          activeLayer: layers.find((layer) => layer.id === activeProviderId)
+          activeProviderName:
+            providers.find(provider => provider.id === activeProviderId)?.name ?? '',
+          activeLayer: layers.find(layer => layer.id === activeProviderId)
         }
       }),
     [layers, selectedLayerId]
   )
 
   const activeTerrainName =
-    terrainCatalog.find((terrain) => terrain.id === activeTerrainId)?.name ?? ''
+    terrainCatalog.find(terrain => terrain.id === activeTerrainId)?.name ?? ''
   const terrainDegraded = Boolean(activeTerrainId) && activeTerrainId !== terrainProviderId
-  const settingsCategory = basemapOptions.find((option) => option.id === settingsCategoryId)
+  const settingsCategory = basemapOptions.find(option => option.id === settingsCategoryId)
   const settingsOpacity = Math.round((settingsCategory?.activeLayer?.opacity ?? 1) * 100)
 
   function openSettings(id: string, event: MouseEvent): void {
@@ -115,22 +117,24 @@ export function LayerPanel({
 
   function handleSettingsOpacity(value: number): void {
     const layer = settingsCategory?.activeLayer
-    if (layer) {onOpacity(layer.id, value / 100)}
+    if (layer) {
+      onOpacity(layer.id, value / 100)
+    }
   }
 
   return (
     <Drawer
       open={open}
-      placement="right"
+      placement='right'
       size={360}
       title={
         <div className={styles.panelTitle}>
           <h2 className={styles.panelHeading}>图层管理</h2>
           <Button
-            variant="ghost"
-            size="sm"
-            aria-label="关闭图层管理"
-            icon={<XIcon className="size-4" />}
+            variant='ghost'
+            size='sm'
+            aria-label='关闭图层管理'
+            icon={<XIcon className='size-4' />}
             onClick={onClose}
           />
         </div>
@@ -139,15 +143,15 @@ export function LayerPanel({
     >
       {error && (
         <Alert
-          type="error"
+          type='error'
           showIcon
           title={error}
           className={styles.panelAlert}
           action={
             <Button
-              variant="ghost"
-              size="sm"
-              icon={<RotateCwIcon className="size-3.5" />}
+              variant='ghost'
+              size='sm'
+              icon={<RotateCwIcon className='size-3.5' />}
               onClick={onRetry}
             >
               重试
@@ -158,7 +162,7 @@ export function LayerPanel({
       <div className={styles.layerSpin}>
         <section className={styles.panelSection}>
           <div className={styles.basemapList}>
-            {basemapOptions.map((option) => (
+            {basemapOptions.map(option => (
               <div
                 key={option.id}
                 className={
@@ -171,7 +175,7 @@ export function LayerPanel({
                 <RadioDot
                   checked={option.selected}
                   aria-label={`选择${option.name}底图`}
-                  onClick={(event) => event.stopPropagation()}
+                  onClick={event => event.stopPropagation()}
                   onChange={() => onSelect(option.activeProviderId)}
                 />
                 <div className={styles.basemapCopy}>
@@ -180,12 +184,12 @@ export function LayerPanel({
                 </div>
                 <Tooltip title={`${option.name}设置`}>
                   <Button
-                    variant="ghost"
-                    size="sm"
+                    variant='ghost'
+                    size='sm'
                     className={styles.moreButton}
                     aria-label={`${option.name}设置`}
-                    icon={<MoreHorizontalIcon className="size-4" />}
-                    onClick={(event) => openSettings(option.id, event)}
+                    icon={<MoreHorizontalIcon className='size-4' />}
+                    onClick={event => openSettings(option.id, event)}
                   />
                 </Tooltip>
               </div>
@@ -201,9 +205,11 @@ export function LayerPanel({
             value={terrainProviderId}
             className={styles.fullSelect}
             options={terrainSelectOptions}
-            aria-label="选择 3D 地形"
-            onChange={(value) => {
-              if (value) {onTerrain(value)}
+            aria-label='选择 3D 地形'
+            onChange={value => {
+              if (value) {
+                onTerrain(value)
+              }
             }}
           />
           {terrainDegraded && (
@@ -211,7 +217,7 @@ export function LayerPanel({
           )}
           <div className={styles.terrainSliderHead}>
             <span>垂直夸张</span>
-            <span className="font-mono">{terrainExaggeration}×</span>
+            <span className='font-mono'>{terrainExaggeration}×</span>
           </div>
           <Slider
             value={terrainExaggeration}
@@ -219,20 +225,20 @@ export function LayerPanel({
             max={5}
             step={0.5}
             marks={exaggerationMarks}
-            aria-label="地形垂直夸张倍数"
-            onChange={(value) => onTerrainExaggeration(value)}
+            aria-label='地形垂直夸张倍数'
+            onChange={value => onTerrainExaggeration(value)}
           />
           <div className={styles.terrainLightingRow}>
             <span>太阳光照</span>
             <Switch
-              size="sm"
+              size='sm'
               checked={terrainLighting}
-              aria-label="太阳光照"
-              onChange={(value) => onTerrainLighting(value)}
+              aria-label='太阳光照'
+              onChange={value => onTerrainLighting(value)}
             />
           </div>
           {terrainError && (
-            <Alert type="warning" title={terrainError} showIcon className={styles.terrainAlert} />
+            <Alert type='warning' title={terrainError} showIcon className={styles.terrainAlert} />
           )}
         </section>
       </div>
@@ -249,7 +255,7 @@ export function LayerPanel({
             <div className={styles.modalBlock}>
               <div className={styles.settingHead}>
                 <span>不透明度</span>
-                <span className="font-mono">{settingsOpacity}%</span>
+                <span className='font-mono'>{settingsOpacity}%</span>
               </div>
               <Slider
                 value={settingsOpacity}
@@ -273,14 +279,20 @@ export function LayerPanel({
                       <RadioGroup
                         value={settingsCategory.activeProviderId}
                         className={styles.providerGroup}
-                        aria-label="底图供应商"
-                        onChange={(value) => onSelect(value)}
+                        aria-label='底图供应商'
+                        onChange={value => onSelect(value)}
                       >
-                        {settingsCategory.providers.map((provider) => (
-                          <RadioItem key={provider.id} value={provider.id} className={styles.providerRadio}>
+                        {settingsCategory.providers.map(provider => (
+                          <RadioItem
+                            key={provider.id}
+                            value={provider.id}
+                            className={styles.providerRadio}
+                          >
                             <div className={styles.providerCopy}>
                               <div className={styles.providerName}>{provider.name}</div>
-                              <div className={styles.providerDescription}>{provider.description}</div>
+                              <div className={styles.providerDescription}>
+                                {provider.description}
+                              </div>
                             </div>
                           </RadioItem>
                         ))}

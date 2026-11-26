@@ -2,8 +2,12 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 export function hawdbBinaryFileName(platform: string = process.platform): string {
-  if (platform === 'win32') {return 'hawdb_ffi.dll'}
-  if (platform === 'darwin') {return 'libhawdb_ffi.dylib'}
+  if (platform === 'win32') {
+    return 'hawdb_ffi.dll'
+  }
+  if (platform === 'darwin') {
+    return 'libhawdb_ffi.dylib'
+  }
   return 'libhawdb_ffi.so'
 }
 
@@ -24,7 +28,9 @@ export function findHawdbBinary(
   platform: string = process.platform
 ): string | null {
   const envOverride = process.env.GUEARTH_HAWDB_LIB
-  if (envOverride && existsSync(envOverride)) {return envOverride}
+  if (envOverride && existsSync(envOverride)) {
+    return envOverride
+  }
   const binary = hawdbBinaryPathFor(appPath, resourcesPath, packaged, platform)
   return existsSync(binary) ? binary : null
 }
@@ -36,7 +42,9 @@ export function resolveHawdbBinary(
   platform: string = process.platform
 ): string {
   const binary = findHawdbBinary(appPath, resourcesPath, packaged, platform)
-  if (binary) {return binary}
+  if (binary) {
+    return binary
+  }
   const expected = hawdbBinaryPathFor(appPath, resourcesPath, packaged, platform)
   throw new Error(
     packaged

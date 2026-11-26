@@ -1,13 +1,27 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+
 import type { MirrorPolicyId } from '../../../common/mirrorPolicies'
-import { DEFAULT_MIRROR_ENDPOINT, isMirrorEndpointId, normalizeMirrorEndpointPreference, normalizeTileMirrorMode } from '../../../common/tileMirror';
-import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, TileMirrorMode } from '../../../common/tileMirror';
-import { normalizeTouchInteractionMode, resolveTouchInteractionActive } from '../../../common/touchInteraction';
-import type { TouchEnvironment, TouchInteractionMode } from '../../../common/touchInteraction';
-import { normalizeThemeMode, resolveTheme } from '../../../common/themeMode';
-import type { ResolvedTheme, ThemeMode } from '../../../common/themeMode';
 import type { TerrainProviderId } from '../../../common/terrainProviders'
+import { normalizeThemeMode, resolveTheme } from '../../../common/themeMode'
+import type { ResolvedTheme, ThemeMode } from '../../../common/themeMode'
+import {
+  DEFAULT_MIRROR_ENDPOINT,
+  isMirrorEndpointId,
+  normalizeMirrorEndpointPreference,
+  normalizeTileMirrorMode
+} from '../../../common/tileMirror'
+import type {
+  MirrorEndpointId,
+  MirrorEndpointPreference,
+  MirrorEndpointProbeResult,
+  TileMirrorMode
+} from '../../../common/tileMirror'
+import {
+  normalizeTouchInteractionMode,
+  resolveTouchInteractionActive
+} from '../../../common/touchInteraction'
+import type { TouchEnvironment, TouchInteractionMode } from '../../../common/touchInteraction'
 import type { GuEarthSettingsPatch, TileMirrorStatus } from '../../../preload'
 import { useFailureStore } from './failure'
 
@@ -56,10 +70,46 @@ export interface CameraReadout {
 export type SceneMode = '2D' | '3D'
 
 export const providerCatalog: ProviderMeta[] = [
-  { id: 'osm', name: 'OpenStreetMap', description: '道路与地名', region: 'global', coordinateSystem: 'WGS84', requiresKey: false, styles: [{ id: 'standard', name: '标准' }], defaultStyleId: 'standard' },
-  { id: 'esri-imagery', name: 'Esri', description: '卫星影像', region: 'global', coordinateSystem: 'WGS84', requiresKey: false, styles: [{ id: 'satellite', name: '卫星' }], defaultStyleId: 'satellite' },
-  { id: 'opentopomap', name: 'OpenTopoMap', description: '地形晕渲', region: 'global', coordinateSystem: 'WGS84', requiresKey: false, styles: [{ id: 'topo', name: '地形' }], defaultStyleId: 'topo' },
-  { id: 'viirs-night', name: 'NASA 夜光', description: '全球夜间灯光分布', region: 'global', coordinateSystem: 'WGS84', requiresKey: false, styles: [{ id: 'night', name: '夜光' }], defaultStyleId: 'night' }
+  {
+    id: 'osm',
+    name: 'OpenStreetMap',
+    description: '道路与地名',
+    region: 'global',
+    coordinateSystem: 'WGS84',
+    requiresKey: false,
+    styles: [{ id: 'standard', name: '标准' }],
+    defaultStyleId: 'standard'
+  },
+  {
+    id: 'esri-imagery',
+    name: 'Esri',
+    description: '卫星影像',
+    region: 'global',
+    coordinateSystem: 'WGS84',
+    requiresKey: false,
+    styles: [{ id: 'satellite', name: '卫星' }],
+    defaultStyleId: 'satellite'
+  },
+  {
+    id: 'opentopomap',
+    name: 'OpenTopoMap',
+    description: '地形晕渲',
+    region: 'global',
+    coordinateSystem: 'WGS84',
+    requiresKey: false,
+    styles: [{ id: 'topo', name: '地形' }],
+    defaultStyleId: 'topo'
+  },
+  {
+    id: 'viirs-night',
+    name: 'NASA 夜光',
+    description: '全球夜间灯光分布',
+    region: 'global',
+    coordinateSystem: 'WGS84',
+    requiresKey: false,
+    styles: [{ id: 'night', name: '夜光' }],
+    defaultStyleId: 'night'
+  }
 ]
 
 export interface BasemapCategoryMeta {
@@ -76,11 +126,39 @@ export const basemapCategories: BasemapCategoryMeta[] = [
 ]
 
 export const credentialOnlyProviders: ProviderMeta[] = [
-  { id: 'amap', name: '高德', description: '地点检索（Web 服务）', region: 'china', coordinateSystem: 'GCJ02', requiresKey: true, requiresSecurityKey: true, securityKeyOptional: true, styles: [{ id: 'road', name: '道路' }, { id: 'satellite', name: '卫星' }], defaultStyleId: 'road' },
-  { id: 'baidu', name: '百度', description: '大陆地图', region: 'china', coordinateSystem: 'BD09', requiresKey: true, requiresSk: true, skOptional: true, styles: [{ id: 'road', name: '道路' }, { id: 'satellite', name: '卫星' }], defaultStyleId: 'road' }
+  {
+    id: 'amap',
+    name: '高德',
+    description: '地点检索（Web 服务）',
+    region: 'china',
+    coordinateSystem: 'GCJ02',
+    requiresKey: true,
+    requiresSecurityKey: true,
+    securityKeyOptional: true,
+    styles: [
+      { id: 'road', name: '道路' },
+      { id: 'satellite', name: '卫星' }
+    ],
+    defaultStyleId: 'road'
+  },
+  {
+    id: 'baidu',
+    name: '百度',
+    description: '大陆地图',
+    region: 'china',
+    coordinateSystem: 'BD09',
+    requiresKey: true,
+    requiresSk: true,
+    skOptional: true,
+    styles: [
+      { id: 'road', name: '道路' },
+      { id: 'satellite', name: '卫星' }
+    ],
+    defaultStyleId: 'road'
+  }
 ]
 
-const defaultLayers: LayerMeta[] = providerCatalog.map((provider) => ({
+const defaultLayers: LayerMeta[] = providerCatalog.map(provider => ({
   id: provider.id,
   providerId: provider.id,
   name: provider.name,
@@ -101,15 +179,20 @@ export const terrainCatalog: TerrainMeta[] = [
   { id: 'ellipsoid', name: '平滑球面（无起伏）', description: '平滑球体，不显示山脉起伏' }
 ]
 
-const terrainProviderIds = new Set<string>(terrainCatalog.map((terrain) => terrain.id))
+const terrainProviderIds = new Set<string>(terrainCatalog.map(terrain => terrain.id))
 
 function providerFor(id: string): ProviderMeta | undefined {
-  return providerCatalog.find((provider) => provider.id === id) || credentialOnlyProviders.find((provider) => provider.id === id)
+  return (
+    providerCatalog.find(provider => provider.id === id) ||
+    credentialOnlyProviders.find(provider => provider.id === id)
+  )
 }
 
 export function styleFor(providerId: string, styleId: string): string {
   const provider = providerFor(providerId)
-  return provider?.styles.some((style) => style.id === styleId) ? styleId : provider?.defaultStyleId ?? 'standard'
+  return provider?.styles.some(style => style.id === styleId)
+    ? styleId
+    : (provider?.defaultStyleId ?? 'standard')
 }
 
 function apiAvailable(): boolean {
@@ -185,7 +268,10 @@ export interface GlobeActions {
   setMirrorFallenBackProviders: (providerIds: string[]) => void
   isMirrorActive: (providerId: string) => boolean
   setNetworkProxy: (value: string) => void
-  setCredentialStatus: (id: string, status: { configured: boolean; updatedAt: number | null }) => void
+  setCredentialStatus: (
+    id: string,
+    status: { configured: boolean; updatedAt: number | null }
+  ) => void
   setSceneMode: (mode: SceneMode) => void
   setLevelViewActive: (value: boolean) => void
   setTouchInteractionMode: (value: unknown) => Promise<void>
@@ -209,7 +295,9 @@ function detectSystemPrefersDark(): boolean {
 }
 
 function detectTouchEnvironment(): TouchEnvironment {
-  if (typeof window === 'undefined') {return { coarsePointer: false, maxTouchPoints: 0 }}
+  if (typeof window === 'undefined') {
+    return { coarsePointer: false, maxTouchPoints: 0 }
+  }
   const coarsePointer = Boolean(coarsePointerQuery?.matches)
   return {
     coarsePointer,
@@ -236,9 +324,11 @@ export function createInitialGlobeState(): GlobeState {
   touchEnvironment = detectTouchEnvironment()
   const initialTheme = readInitialTheme()
   return {
-    layers: defaultLayers.map((layer) => ({ ...layer })),
+    layers: defaultLayers.map(layer => ({ ...layer })),
     selectedLayerId: 'osm',
-    providerStyles: Object.fromEntries(providerCatalog.map((provider) => [provider.id, provider.defaultStyleId])),
+    providerStyles: Object.fromEntries(
+      providerCatalog.map(provider => [provider.id, provider.defaultStyleId])
+    ),
     terrainProviderId: 'arcgis-terrain',
     terrainExaggeration: 2,
     terrainLighting: false,
@@ -291,7 +381,9 @@ let touchModePersistSeq = 0
 let themeModePersistSeq = 0
 
 async function persistSettingsPatch(patch: GuEarthSettingsPatch): Promise<boolean> {
-  if (!apiAvailable()) {return true}
+  if (!apiAvailable()) {
+    return true
+  }
   try {
     await window.guEarth.settings.update(patch)
     return true
@@ -316,7 +408,10 @@ export const useGlobeStore = create<GlobeStore>()(
       })
     }
 
-    async function syncMirrorModeAfterFailure(previousMode: TileMirrorMode, seq: number): Promise<void> {
+    async function syncMirrorModeAfterFailure(
+      previousMode: TileMirrorMode,
+      seq: number
+    ): Promise<void> {
       let nextMode: TileMirrorMode = previousMode
       let nextProviders: string[] | undefined
       let nextFallenBack: string[] | undefined
@@ -328,18 +423,25 @@ export const useGlobeStore = create<GlobeStore>()(
           nextMode = status.mode === 'on' ? 'on' : 'off'
           nextProviders = [...status.mirroredProviders]
           nextFallenBack = [...(status.fallenBackProviders ?? [])]
-          if (typeof status.probingEndpoints === 'boolean') {nextProbing = status.probingEndpoints}
-          if (Array.isArray(status.endpointProbes)) {nextProbes = status.endpointProbes.map((probe) => ({ ...probe }))}
+          if (typeof status.probingEndpoints === 'boolean') {
+            nextProbing = status.probingEndpoints
+          }
+          if (Array.isArray(status.endpointProbes)) {
+            nextProbes = status.endpointProbes.map(probe => ({ ...probe }))
+          }
         } catch {
           nextMode = previousMode
         }
       }
-      if (seq !== mirrorPersistSeq) {return}
-      set((state) => ({
+      if (seq !== mirrorPersistSeq) {
+        return
+      }
+      set(state => ({
         tileMirrorMode: nextMode,
         mirroredProviders: nextProviders ?? state.mirroredProviders,
         mirrorFallenBackProviders: nextFallenBack ?? state.mirrorFallenBackProviders,
-        mirrorProbingEndpoints: nextProbing === undefined ? state.mirrorProbingEndpoints : nextProbing,
+        mirrorProbingEndpoints:
+          nextProbing === undefined ? state.mirrorProbingEndpoints : nextProbing,
         mirrorEndpointProbes: nextProbes ?? state.mirrorEndpointProbes
       }))
       useFailureStore.getState().reportDegrade('镜像服务设置保存失败，已恢复原网络设置')
@@ -352,7 +454,9 @@ export const useGlobeStore = create<GlobeStore>()(
         tileMirrorMode: state.tileMirrorMode,
         ...(mirrorConsentKnown ? { mirrorConsentPrompted: state.mirrorConsentPrompted } : {})
       })
-      if (saved || seq !== mirrorPersistSeq) {return}
+      if (saved || seq !== mirrorPersistSeq) {
+        return
+      }
       await syncMirrorModeAfterFailure(previousMode, seq)
     }
 
@@ -370,25 +474,36 @@ export const useGlobeStore = create<GlobeStore>()(
       if (apiAvailable() && typeof window.guEarth.tiles?.getMirrorStatus === 'function') {
         try {
           const status = await window.guEarth.tiles.getMirrorStatus()
-          if (status.sourcePreference) {nextSource = normalizeMirrorEndpointPreference(status.sourcePreference)}
-          if (isMirrorEndpointId(status.activeEndpoint)) {nextActive = status.activeEndpoint}
+          if (status.sourcePreference) {
+            nextSource = normalizeMirrorEndpointPreference(status.sourcePreference)
+          }
+          if (isMirrorEndpointId(status.activeEndpoint)) {
+            nextActive = status.activeEndpoint
+          }
           nextProviders = [...status.mirroredProviders]
           nextFallenBack = [...(status.fallenBackProviders ?? [])]
-          if (typeof status.probingEndpoints === 'boolean') {nextProbing = status.probingEndpoints}
-          if (Array.isArray(status.endpointProbes)) {nextProbes = status.endpointProbes.map((probe) => ({ ...probe }))}
+          if (typeof status.probingEndpoints === 'boolean') {
+            nextProbing = status.probingEndpoints
+          }
+          if (Array.isArray(status.endpointProbes)) {
+            nextProbes = status.endpointProbes.map(probe => ({ ...probe }))
+          }
         } catch {
           nextSource = previousSource
           nextActive = previousActive
         }
       }
-      if (seq !== mirrorSourcePersistSeq) {return}
+      if (seq !== mirrorSourcePersistSeq) {
+        return
+      }
       mirrorSourceSettledSeq = seq
-      set((state) => ({
+      set(state => ({
         tileMirrorSource: nextSource,
         activeMirrorEndpoint: nextActive,
         mirroredProviders: nextProviders ?? state.mirroredProviders,
         mirrorFallenBackProviders: nextFallenBack ?? state.mirrorFallenBackProviders,
-        mirrorProbingEndpoints: nextProbing === undefined ? state.mirrorProbingEndpoints : nextProbing,
+        mirrorProbingEndpoints:
+          nextProbing === undefined ? state.mirrorProbingEndpoints : nextProbing,
         mirrorEndpointProbes: nextProbes ?? state.mirrorEndpointProbes
       }))
       useFailureStore.getState().reportDegrade('镜像服务设置保存失败，已恢复原网络设置')
@@ -401,7 +516,9 @@ export const useGlobeStore = create<GlobeStore>()(
     ): Promise<void> {
       const seq = ++mirrorSourcePersistSeq
       const saved = await persistSettingsPatch({ tileMirrorSource: source })
-      if (seq !== mirrorSourcePersistSeq) {return}
+      if (seq !== mirrorSourcePersistSeq) {
+        return
+      }
       if (saved) {
         mirrorSourceSettledSeq = seq
         return
@@ -412,29 +529,53 @@ export const useGlobeStore = create<GlobeStore>()(
     return {
       ...createInitialGlobeState(),
       async hydrateSettings(): Promise<void> {
-        if (!apiAvailable()) {return}
+        if (!apiAvailable()) {
+          return
+        }
         try {
           const settings = await window.guEarth.settings.get()
           const nextTileMirrorSource = normalizeMirrorEndpointPreference(settings.tileMirrorSource)
-          const nextTouchInteractionMode = normalizeTouchInteractionMode(settings.touchInteractionMode)
+          const nextTouchInteractionMode = normalizeTouchInteractionMode(
+            settings.touchInteractionMode
+          )
           const nextThemeMode = normalizeThemeMode(settings.themeMode)
           mirrorConsentKnown = true
-          set((state) => ({
-            selectedLayerId: providerFor(settings.selectedImageryProviderId) ? settings.selectedImageryProviderId : 'osm',
-            terrainProviderId: terrainProviderIds.has(settings.selectedTerrainProviderId) ? settings.selectedTerrainProviderId : 'arcgis-terrain',
+          set(state => ({
+            selectedLayerId: providerFor(settings.selectedImageryProviderId)
+              ? settings.selectedImageryProviderId
+              : 'osm',
+            terrainProviderId: terrainProviderIds.has(settings.selectedTerrainProviderId)
+              ? settings.selectedTerrainProviderId
+              : 'arcgis-terrain',
             terrainExaggeration: Math.min(5, Math.max(1, settings.terrainExaggeration)),
             terrainLighting: settings.terrainLighting,
             tileCacheEnabled: settings.tileCacheEnabled,
             mirrorConsentPrompted: settings.mirrorConsentPrompted === true,
-            tileMirrorMode: settings.mirrorConsentPrompted === true && normalizeTileMirrorMode(settings.tileMirrorMode) === 'on' ? 'on' : 'off',
+            tileMirrorMode:
+              settings.mirrorConsentPrompted === true &&
+              normalizeTileMirrorMode(settings.tileMirrorMode) === 'on'
+                ? 'on'
+                : 'off',
             tileMirrorSource: nextTileMirrorSource,
-            activeMirrorEndpoint: nextTileMirrorSource === 'auto' ? state.activeMirrorEndpoint : nextTileMirrorSource,
+            activeMirrorEndpoint:
+              nextTileMirrorSource === 'auto' ? state.activeMirrorEndpoint : nextTileMirrorSource,
             touchInteractionMode: nextTouchInteractionMode,
-            touchInteractionActive: resolveTouchInteractionActive(nextTouchInteractionMode, touchEnvironment),
+            touchInteractionActive: resolveTouchInteractionActive(
+              nextTouchInteractionMode,
+              touchEnvironment
+            ),
             themeMode: nextThemeMode,
             resolvedTheme: resolveTheme(nextThemeMode, detectSystemPrefersDark()),
             networkProxy: settings.networkProxy ?? '',
-            providerStyles: Object.fromEntries(providerCatalog.map((provider) => [provider.id, styleFor(provider.id, settings.providerStyles?.[provider.id] ?? provider.defaultStyleId)])),
+            providerStyles: Object.fromEntries(
+              providerCatalog.map(provider => [
+                provider.id,
+                styleFor(
+                  provider.id,
+                  settings.providerStyles?.[provider.id] ?? provider.defaultStyleId
+                )
+              ])
+            ),
             providerCredentials: settings.providerCredentials,
             sceneMode: settings.sceneMode ?? '3D',
             settingsHydrated: true
@@ -443,7 +584,11 @@ export const useGlobeStore = create<GlobeStore>()(
         } catch {
           mirrorConsentKnown = false
           set({ settingsHydrated: true })
-          useFailureStore.getState().reportFailure({ scope: 'settings', message: '设置读取失败，已使用默认设置', retryable: true })
+          useFailureStore.getState().reportFailure({
+            scope: 'settings',
+            message: '设置读取失败，已使用默认设置',
+            retryable: true
+          })
         }
       },
       setLayerPanelOpen(value: boolean): void {
@@ -473,7 +618,9 @@ export const useGlobeStore = create<GlobeStore>()(
           return
         }
         set({ globeError: message })
-        useFailureStore.getState().reportFailure({ scope: 'basemap', message, detail, retryable: true })
+        useFailureStore
+          .getState()
+          .reportFailure({ scope: 'basemap', message, detail, retryable: true })
       },
       setTerrainError(message: string, detail?: string): void {
         if (!message) {
@@ -482,7 +629,9 @@ export const useGlobeStore = create<GlobeStore>()(
           return
         }
         set({ terrainError: message })
-        useFailureStore.getState().reportFailure({ scope: 'terrain', message, detail, retryable: true })
+        useFailureStore
+          .getState()
+          .reportFailure({ scope: 'terrain', message, detail, retryable: true })
       },
       setCameraReadout(value: CameraReadout): void {
         set({ camera: value })
@@ -492,20 +641,24 @@ export const useGlobeStore = create<GlobeStore>()(
         void persistSettings()
       },
       setLayerOpacity(id: string, opacity: number): void {
-        set((state) => ({
-          layers: state.layers.map((layer) => (layer.id === id ? { ...layer, opacity } : layer))
+        set(state => ({
+          layers: state.layers.map(layer => (layer.id === id ? { ...layer, opacity } : layer))
         }))
       },
       setProviderStyle(providerId: string, styleId: string): void {
         const normalized = styleFor(providerId, styleId)
-        if (!providerFor(providerId)) {return}
-        set((state) => ({
+        if (!providerFor(providerId)) {
+          return
+        }
+        set(state => ({
           providerStyles: { ...state.providerStyles, [providerId]: normalized }
         }))
         void persistSettings()
       },
       setTerrainProvider(id: string): void {
-        if (terrainProviderIds.has(id)) {set({ terrainProviderId: id })}
+        if (terrainProviderIds.has(id)) {
+          set({ terrainProviderId: id })
+        }
         void persistSettings()
       },
       setTerrainExaggeration(value: number): void {
@@ -523,14 +676,18 @@ export const useGlobeStore = create<GlobeStore>()(
       setTileMirrorMode(value: unknown): void {
         const mode = normalizeTileMirrorMode(value)
         const previousMode = get().tileMirrorMode
-        if (mode === previousMode) {return}
+        if (mode === previousMode) {
+          return
+        }
         set({ tileMirrorMode: mode })
         void persistMirrorSettings(previousMode)
       },
       setTileMirrorSource(value: unknown): void {
         const source = normalizeMirrorEndpointPreference(value)
         const state = get()
-        if (source === state.tileMirrorSource) {return}
+        if (source === state.tileMirrorSource) {
+          return
+        }
         const previousSource = state.tileMirrorSource
         const previousActive = state.activeMirrorEndpoint
         set({
@@ -541,14 +698,16 @@ export const useGlobeStore = create<GlobeStore>()(
       },
       applyTileMirrorStatus(status: TileMirrorStatus): void {
         const sourcePending = mirrorSourcePersistSeq !== mirrorSourceSettledSeq
-        set((state) => {
+        set(state => {
           const nextTileMirrorSource =
             !sourcePending && status.sourcePreference
               ? normalizeMirrorEndpointPreference(status.sourcePreference)
               : state.tileMirrorSource
           const nextActiveMirrorEndpoint =
             isMirrorEndpointId(status.activeEndpoint) &&
-            (!sourcePending || nextTileMirrorSource === 'auto' || status.activeEndpoint === nextTileMirrorSource)
+            (!sourcePending ||
+              nextTileMirrorSource === 'auto' ||
+              status.activeEndpoint === nextTileMirrorSource)
               ? status.activeEndpoint
               : state.activeMirrorEndpoint
           return {
@@ -557,9 +716,11 @@ export const useGlobeStore = create<GlobeStore>()(
             tileMirrorSource: nextTileMirrorSource,
             activeMirrorEndpoint: nextActiveMirrorEndpoint,
             mirrorProbingEndpoints:
-              typeof status.probingEndpoints === 'boolean' ? status.probingEndpoints : state.mirrorProbingEndpoints,
+              typeof status.probingEndpoints === 'boolean'
+                ? status.probingEndpoints
+                : state.mirrorProbingEndpoints,
             mirrorEndpointProbes: Array.isArray(status.endpointProbes)
-              ? status.endpointProbes.map((probe) => ({ ...probe }))
+              ? status.endpointProbes.map(probe => ({ ...probe }))
               : state.mirrorEndpointProbes
           }
         })
@@ -591,7 +752,9 @@ export const useGlobeStore = create<GlobeStore>()(
           tileMirrorMode: reason === 'settings' ? state.tileMirrorMode : 'off',
           mirrorConsentOpen: false
         })
-        if (wasUnprompted || reason !== 'settings') {void persistMirrorSettings(previousMode)}
+        if (wasUnprompted || reason !== 'settings') {
+          void persistMirrorSettings(previousMode)
+        }
       },
       openMirrorPolicy(policyId: MirrorPolicyId = 'agreement'): void {
         set({ mirrorPolicyActiveId: policyId, mirrorPolicyOpen: true })
@@ -612,8 +775,11 @@ export const useGlobeStore = create<GlobeStore>()(
         set({ networkProxy: value })
         void persistSettings()
       },
-      setCredentialStatus(id: string, status: { configured: boolean; updatedAt: number | null }): void {
-        set((state) => ({
+      setCredentialStatus(
+        id: string,
+        status: { configured: boolean; updatedAt: number | null }
+      ): void {
+        set(state => ({
           providerCredentials: { ...state.providerCredentials, [id]: status }
         }))
       },
@@ -627,14 +793,18 @@ export const useGlobeStore = create<GlobeStore>()(
       async setTouchInteractionMode(value: unknown): Promise<void> {
         const mode = normalizeTouchInteractionMode(value)
         const previousMode = get().touchInteractionMode
-        if (mode === previousMode) {return}
+        if (mode === previousMode) {
+          return
+        }
         set({
           touchInteractionMode: mode,
           touchInteractionActive: resolveTouchInteractionActive(mode, touchEnvironment)
         })
         const seq = ++touchModePersistSeq
         const saved = await persistSettingsPatch({ touchInteractionMode: mode })
-        if (saved || seq !== touchModePersistSeq) {return}
+        if (saved || seq !== touchModePersistSeq) {
+          return
+        }
         let restored: TouchInteractionMode
         try {
           const settings = await window.guEarth.settings.get()
@@ -642,7 +812,9 @@ export const useGlobeStore = create<GlobeStore>()(
         } catch {
           restored = previousMode
         }
-        if (seq !== touchModePersistSeq) {return}
+        if (seq !== touchModePersistSeq) {
+          return
+        }
         if (get().touchInteractionMode === mode) {
           set({
             touchInteractionMode: restored,
@@ -654,14 +826,18 @@ export const useGlobeStore = create<GlobeStore>()(
       async setThemeMode(value: unknown): Promise<void> {
         const mode = normalizeThemeMode(value)
         const previousMode = get().themeMode
-        if (mode === previousMode) {return}
+        if (mode === previousMode) {
+          return
+        }
         set({
           themeMode: mode,
           resolvedTheme: resolveTheme(mode, detectSystemPrefersDark())
         })
         const seq = ++themeModePersistSeq
         const saved = await persistSettingsPatch({ themeMode: mode })
-        if (saved || seq !== themeModePersistSeq) {return}
+        if (saved || seq !== themeModePersistSeq) {
+          return
+        }
         let restored: ThemeMode
         try {
           const settings = await window.guEarth.settings.get()
@@ -669,7 +845,9 @@ export const useGlobeStore = create<GlobeStore>()(
         } catch {
           restored = previousMode
         }
-        if (seq !== themeModePersistSeq) {return}
+        if (seq !== themeModePersistSeq) {
+          return
+        }
         if (get().themeMode === mode) {
           set({
             themeMode: restored,
@@ -691,16 +869,26 @@ function syncTouchInteractionActive(): void {
 }
 
 function handleEnvironmentPointer(event: PointerEvent): void {
-  if (event.pointerType !== 'touch') {return}
+  if (event.pointerType !== 'touch') {
+    return
+  }
   if (touchEnvironment.maxTouchPoints === 0) {
-    touchEnvironment = { ...touchEnvironment, maxTouchPoints: Math.max(navigator.maxTouchPoints, 1) }
+    touchEnvironment = {
+      ...touchEnvironment,
+      maxTouchPoints: Math.max(navigator.maxTouchPoints, 1)
+    }
     syncTouchInteractionActive()
   }
 }
 
 function refreshTouchEnvironment(): void {
   const next = detectTouchEnvironment()
-  if (next.coarsePointer === touchEnvironment.coarsePointer && next.maxTouchPoints === touchEnvironment.maxTouchPoints) {return}
+  if (
+    next.coarsePointer === touchEnvironment.coarsePointer &&
+    next.maxTouchPoints === touchEnvironment.maxTouchPoints
+  ) {
+    return
+  }
   touchEnvironment = next
   syncTouchInteractionActive()
 }
@@ -720,7 +908,7 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
 }
 
 if (typeof useFailureStore.subscribe === 'function') {
-  useFailureStore.subscribe((state) => {
+  useFailureStore.subscribe(state => {
     const globeError = state.notices.basemap?.message ?? ''
     const terrainError = state.notices.terrain?.message ?? ''
     const current = useGlobeStore.getState()

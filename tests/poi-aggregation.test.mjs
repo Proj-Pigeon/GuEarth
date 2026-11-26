@@ -1,22 +1,24 @@
 import assert from 'node:assert/strict'
-import { test } from 'vite-plus/test'
 import { registerHooks } from 'node:module'
+
+import { test } from 'vite-plus/test'
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {
+        return nextResolve(`${specifier}.ts`, context)
+      }
       throw error
     }
   }
 })
 
 const { POI_CATEGORY_LABELS } = await import('../src/main/ai/poiCategories.ts')
-const { aggregatePois, createPoiAggregation, poiCategoryRows, poiPageCount, poiTruncated } = await import(
-  '../src/main/ai/poiAggregation.ts'
-)
+const { aggregatePois, createPoiAggregation, poiCategoryRows, poiPageCount, poiTruncated } =
+  await import('../src/main/ai/poiAggregation.ts')
 
 function pageOf(typecodes, start) {
   return typecodes.map((code, index) => ({ name: `poi-${start + index}`, typecode: code }))
@@ -35,7 +37,13 @@ test('aggregatePois counts every fetched poi but classifies only valid typecodes
   ])
   assert.equal(aggregation.fetched, 7)
   assert.equal(aggregation.sampled, 3)
-  assert.deepEqual([...aggregation.counts.entries()].sort(([a], [b]) => a.localeCompare(b)), [['05', 2], ['06', 1]])
+  assert.deepEqual(
+    [...aggregation.counts.entries()].sort(([a], [b]) => a.localeCompare(b)),
+    [
+      ['05', 2],
+      ['06', 1]
+    ]
+  )
 })
 
 test('aggregatePois accumulates across paginated responses', () => {
@@ -75,11 +83,17 @@ test('poiCategoryRows sorts by count descending and resolves label table entries
     { typecode: '050200' }
   ])
   const rows = poiCategoryRows(aggregation.counts)
-  assert.deepEqual(rows.map((row) => row.code), ['05', '14'])
-  assert.deepEqual(rows.map((row) => row.count), [3, 1])
+  assert.deepEqual(
+    rows.map(row => row.code),
+    ['05', '14']
+  )
+  assert.deepEqual(
+    rows.map(row => row.count),
+    [3, 1]
+  )
   assert.equal(rows[0].label, POI_CATEGORY_LABELS['05'])
   assert.equal(rows[1].label, POI_CATEGORY_LABELS['14'])
-  assert.ok(rows.every((row) => row.label.length > 0))
+  assert.ok(rows.every(row => row.label.length > 0))
 })
 
 test('poiCategoryRows keeps unknown codes as their raw value', () => {

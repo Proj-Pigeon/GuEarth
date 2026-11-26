@@ -1,5 +1,19 @@
-import { useMemo, useRef, useState } from 'react';
-import type { DragEvent, KeyboardEvent, ReactNode } from 'react';
+import {
+  Alert,
+  Button,
+  Drawer,
+  Empty,
+  Input,
+  Modal,
+  Tag,
+  Tooltip,
+  useConfirm,
+  useToast
+} from '@renderer/components/ui'
+import { flattenVisibleTree, resolveTreeKeyAction } from '@renderer/lib/treeNavigation'
+import type { TreeNavNode } from '@renderer/lib/treeNavigation'
+import { useDrawingStore } from '@renderer/stores/drawing'
+import type { DrawnShape } from '@renderer/stores/drawing'
 import {
   ChevronRightIcon,
   FolderIcon,
@@ -13,23 +27,11 @@ import {
   WaypointsIcon,
   XIcon
 } from 'lucide-react'
-import {
-  Alert,
-  Button,
-  Drawer,
-  Empty,
-  Input,
-  Modal,
-  Tag,
-  Tooltip,
-  useConfirm,
-  useToast
-} from '@renderer/components/ui'
-import { flattenVisibleTree, resolveTreeKeyAction } from '@renderer/lib/treeNavigation';
-import type { TreeNavNode } from '@renderer/lib/treeNavigation';
+import { useMemo, useRef, useState } from 'react'
+import type { DragEvent, KeyboardEvent, ReactNode } from 'react'
+
 import type { AnnotationEntry } from '../../../preload'
-import { useDrawingStore } from '@renderer/stores/drawing';
-import type { DrawnShape } from '@renderer/stores/drawing';
+
 import styles from './AnnotationPanel.module.css'
 
 export interface AnnotationPanelProps {
@@ -64,10 +66,18 @@ const kindLabels: Record<DrawnShape['kind'], string> = {
 }
 
 function renderKindIcon(kind: DrawnShape['kind']): ReactNode {
-  if (kind === 'point') {return <MapPinIcon className={styles.rowIcon} />}
-  if (kind === 'polyline') {return <WaypointsIcon className={styles.rowIcon} />}
-  if (kind === 'polygon') {return <PentagonIcon className={styles.rowIcon} />}
-  if (kind === 'arrow') {return <MoveUpRightIcon className={styles.rowIcon} />}
+  if (kind === 'point') {
+    return <MapPinIcon className={styles.rowIcon} />
+  }
+  if (kind === 'polyline') {
+    return <WaypointsIcon className={styles.rowIcon} />
+  }
+  if (kind === 'polygon') {
+    return <PentagonIcon className={styles.rowIcon} />
+  }
+  if (kind === 'arrow') {
+    return <MoveUpRightIcon className={styles.rowIcon} />
+  }
   return <TypeIcon className={styles.rowIcon} />
 }
 
@@ -84,10 +94,10 @@ export function AnnotationPanel({
 }: AnnotationPanelProps) {
   const toast = useToast()
   const confirm = useConfirm()
-  const addFolder = useDrawingStore((state) => state.addFolder)
-  const renameFolder = useDrawingStore((state) => state.renameFolder)
-  const removeFolder = useDrawingStore((state) => state.removeFolder)
-  const moveEntry = useDrawingStore((state) => state.moveEntry)
+  const addFolder = useDrawingStore(state => state.addFolder)
+  const renameFolder = useDrawingStore(state => state.renameFolder)
+  const removeFolder = useDrawingStore(state => state.removeFolder)
+  const moveEntry = useDrawingStore(state => state.moveEntry)
 
   const [folderDialogOpen, setFolderDialogOpen] = useState(false)
   const [folderDialogMode, setFolderDialogMode] = useState<'create' | 'rename'>('create')
@@ -137,7 +147,7 @@ export function AnnotationPanel({
     return flattenVisibleTree(treeData.map(toNavNode), expandedSet)
   }, [treeData, expandedSet])
 
-  const visibleKeySet = useMemo(() => new Set(visibleItems.map((item) => item.key)), [visibleItems])
+  const visibleKeySet = useMemo(() => new Set(visibleItems.map(item => item.key)), [visibleItems])
   const rovingKey =
     (focusedKey && visibleKeySet.has(focusedKey) ? focusedKey : null) ??
     (activeKey && visibleKeySet.has(activeKey) ? activeKey : null) ??
@@ -150,16 +160,16 @@ export function AnnotationPanel({
   }
 
   function expandKey(key: string): void {
-    setExpandedKeys((previous) => (previous.includes(key) ? previous : [...previous, key]))
+    setExpandedKeys(previous => (previous.includes(key) ? previous : [...previous, key]))
   }
 
   function collapseKey(key: string): void {
-    setExpandedKeys((previous) => previous.filter((item) => item !== key))
+    setExpandedKeys(previous => previous.filter(item => item !== key))
   }
 
   function toggleExpand(key: string): void {
-    setExpandedKeys((previous) =>
-      previous.includes(key) ? previous.filter((item) => item !== key) : [...previous, key]
+    setExpandedKeys(previous =>
+      previous.includes(key) ? previous.filter(item => item !== key) : [...previous, key]
     )
   }
 
@@ -179,14 +189,16 @@ export function AnnotationPanel({
 
   function saveFolder(): void {
     const name = folderName.trim()
-    if (!name) {return}
+    if (!name) {
+      return
+    }
     if (folderDialogMode === 'create') {
       const id = addFolder(name, folderTargetId)
       if (!id) {
         toast.warning('文件夹最多嵌套 5 层')
         return
       }
-      setExpandedKeys((previous) => [
+      setExpandedKeys(previous => [
         ...new Set([
           ...previous,
           ...(folderTargetId ? [`folder:${folderTargetId}`] : []),
@@ -208,7 +220,7 @@ export function AnnotationPanel({
       cancelText: '取消',
       onOk: () => {
         removeFolder(id)
-        setSelectedEntryKey((current) => (current === `folder:${id}` ? null : current))
+        setSelectedEntryKey(current => (current === `folder:${id}` ? null : current))
       }
     })
   }
@@ -221,17 +233,24 @@ export function AnnotationPanel({
       cancelText: '取消',
       onOk: () => {
         onRemove(id)
-        setSelectedEntryKey((current) => (current === `shape:${id}` ? null : current))
+        setSelectedEntryKey(current => (current === `shape:${id}` ? null : current))
       }
     })
   }
 
-  function resolvePlacement(event: DragEvent<HTMLDivElement>, node: AnnotationTreeNode): DropPlacement {
+  function resolvePlacement(
+    event: DragEvent<HTMLDivElement>,
+    node: AnnotationTreeNode
+  ): DropPlacement {
     const rect = event.currentTarget.getBoundingClientRect()
     const ratio = (event.clientY - rect.top) / Math.max(1, rect.height)
     if (node.nodeType === 'folder') {
-      if (ratio < 0.28) {return 'before'}
-      if (ratio > 0.72) {return 'after'}
+      if (ratio < 0.28) {
+        return 'before'
+      }
+      if (ratio > 0.72) {
+        return 'after'
+      }
       return 'inside'
     }
     return ratio < 0.5 ? 'before' : 'after'
@@ -244,18 +263,22 @@ export function AnnotationPanel({
     const placement = resolvePlacement(event, node)
     setDraggingId(null)
     setDropHint(null)
-    if (!sourceId || sourceId === node.entryId) {return}
+    if (!sourceId || sourceId === node.entryId) {
+      return
+    }
     if (!moveEntry(sourceId, node.entryId, placement)) {
       toast.warning('无法移动到这里，文件夹最多嵌套 5 层')
       return
     }
     if (placement === 'inside') {
-      setExpandedKeys((previous) => [...new Set([...previous, node.key])])
+      setExpandedKeys(previous => [...new Set([...previous, node.key])])
     }
   }
 
   function dropAtTopLevel(): void {
-    if (draggingId) {moveEntry(draggingId, null, 'inside')}
+    if (draggingId) {
+      moveEntry(draggingId, null, 'inside')
+    }
     setDraggingId(null)
     setDropHint(null)
   }
@@ -263,12 +286,17 @@ export function AnnotationPanel({
   function selectNode(node: AnnotationTreeNode): void {
     setSelectedEntryKey(node.key)
     setFocusedKey(node.key)
-    if (node.nodeType === 'shape') {onFly(node.entryId)}
-    else {toggleExpand(node.key)}
+    if (node.nodeType === 'shape') {
+      onFly(node.entryId)
+    } else {
+      toggleExpand(node.key)
+    }
   }
 
   function handleTreeKeyDown(event: KeyboardEvent<HTMLDivElement>, node: AnnotationTreeNode): void {
-    if (event.target !== event.currentTarget) {return}
+    if (event.target !== event.currentTarget) {
+      return
+    }
     const action = resolveTreeKeyAction(event.key, node.key, visibleItems, expandedSet)
     if (
       action ||
@@ -281,7 +309,9 @@ export function AnnotationPanel({
     ) {
       event.preventDefault()
     }
-    if (!action) {return}
+    if (!action) {
+      return
+    }
     if (action.type === 'focus') {
       focusTreeItem(action.key)
     } else if (action.type === 'expand') {
@@ -305,11 +335,14 @@ export function AnnotationPanel({
       return (
         <div
           key={node.key}
-          ref={(element) => {
-            if (element) {treeItemRefs.current.set(node.key, element)}
-            else {treeItemRefs.current.delete(node.key)}
+          ref={element => {
+            if (element) {
+              treeItemRefs.current.set(node.key, element)
+            } else {
+              treeItemRefs.current.delete(node.key)
+            }
           }}
-          role="treeitem"
+          role='treeitem'
           aria-level={depth + 1}
           aria-setsize={nodes.length}
           aria-posinset={index + 1}
@@ -318,10 +351,12 @@ export function AnnotationPanel({
           aria-label={node.title}
           tabIndex={node.key === rovingKey ? 0 : -1}
           className={styles.treeNodeWrap}
-          onFocus={(event) => {
-            if (event.target === event.currentTarget) {setFocusedKey(node.key)}
+          onFocus={event => {
+            if (event.target === event.currentTarget) {
+              setFocusedKey(node.key)
+            }
           }}
-          onKeyDown={(event) => handleTreeKeyDown(event, node)}
+          onKeyDown={event => handleTreeKeyDown(event, node)}
         >
           <div
             draggable
@@ -336,7 +371,7 @@ export function AnnotationPanel({
               .filter(Boolean)
               .join(' ')}
             onClick={() => selectNode(node)}
-            onDragStart={(event) => {
+            onDragStart={event => {
               event.stopPropagation()
               event.dataTransfer.effectAllowed = 'move'
               setDraggingId(node.entryId)
@@ -345,34 +380,40 @@ export function AnnotationPanel({
               setDraggingId(null)
               setDropHint(null)
             }}
-            onDragOver={(event) => {
-              if (!draggingId || draggingId === node.entryId) {return}
+            onDragOver={event => {
+              if (!draggingId || draggingId === node.entryId) {
+                return
+              }
               event.preventDefault()
               event.stopPropagation()
               setDropHint({ key: node.key, placement: resolvePlacement(event, node) })
             }}
             onDragLeave={() => {
-              setDropHint((current) => (current?.key === node.key ? null : current))
+              setDropHint(current => (current?.key === node.key ? null : current))
             }}
-            onDrop={(event) => handleNodeDrop(event, node)}
+            onDrop={event => handleNodeDrop(event, node)}
           >
             {node.nodeType === 'folder' ? (
               <button
-                type="button"
+                type='button'
                 tabIndex={-1}
                 aria-label={expanded ? '收起文件夹' : '展开文件夹'}
                 className={styles.expandToggle}
-                onClick={(event) => {
+                onClick={event => {
                   event.stopPropagation()
                   toggleExpand(node.key)
                 }}
               >
                 <ChevronRightIcon
-                  className={expanded ? `${styles.expandChevron} ${styles.expandChevronOpen}` : styles.expandChevron}
+                  className={
+                    expanded
+                      ? `${styles.expandChevron} ${styles.expandChevronOpen}`
+                      : styles.expandChevron
+                  }
                 />
               </button>
             ) : (
-              <span className={styles.expandSpacer} aria-hidden="true" />
+              <span className={styles.expandSpacer} aria-hidden='true' />
             )}
 
             {node.nodeType === 'folder' ? (
@@ -382,41 +423,41 @@ export function AnnotationPanel({
                   {node.title}
                 </span>
                 <span className={actionsClass}>
-                  <Tooltip title="新建子文件夹">
+                  <Tooltip title='新建子文件夹'>
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant='ghost'
+                      size='sm'
                       className={styles.rowAction}
                       aria-label={`在 ${node.title} 中新建文件夹`}
-                      icon={<FolderPlusIcon className="size-3.5" />}
-                      onClick={(event) => {
+                      icon={<FolderPlusIcon className='size-3.5' />}
+                      onClick={event => {
                         event.stopPropagation()
                         openCreate(node.entryId)
                       }}
                     />
                   </Tooltip>
-                  <Tooltip title="重命名文件夹">
+                  <Tooltip title='重命名文件夹'>
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant='ghost'
+                      size='sm'
                       className={styles.rowAction}
                       aria-label={`重命名 ${node.title}`}
-                      icon={<PencilIcon className="size-3.5" />}
-                      onClick={(event) => {
+                      icon={<PencilIcon className='size-3.5' />}
+                      onClick={event => {
                         event.stopPropagation()
                         openRename(node.entryId, node.title)
                       }}
                     />
                   </Tooltip>
-                  <Tooltip title="删除文件夹">
+                  <Tooltip title='删除文件夹'>
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant='ghost'
+                      size='sm'
                       danger
                       className={styles.rowAction}
                       aria-label={`删除 ${node.title}`}
-                      icon={<Trash2Icon className="size-3.5" />}
-                      onClick={(event) => {
+                      icon={<Trash2Icon className='size-3.5' />}
+                      onClick={event => {
                         event.stopPropagation()
                         confirmRemoveFolder(node.entryId, node.title)
                       }}
@@ -432,28 +473,28 @@ export function AnnotationPanel({
                 </span>
                 <Tag className={styles.shapeTag}>{kindLabels[node.shapeKind ?? 'point']}</Tag>
                 <span className={actionsClass}>
-                  <Tooltip title="编辑标注">
+                  <Tooltip title='编辑标注'>
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant='ghost'
+                      size='sm'
                       className={styles.rowAction}
                       aria-label={`编辑 ${node.title}`}
-                      icon={<PencilIcon className="size-3.5" />}
-                      onClick={(event) => {
+                      icon={<PencilIcon className='size-3.5' />}
+                      onClick={event => {
                         event.stopPropagation()
                         onEdit(node.entryId)
                       }}
                     />
                   </Tooltip>
-                  <Tooltip title="删除标注">
+                  <Tooltip title='删除标注'>
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant='ghost'
+                      size='sm'
                       danger
                       className={styles.rowAction}
                       aria-label={`删除 ${node.title}`}
-                      icon={<Trash2Icon className="size-3.5" />}
-                      onClick={(event) => {
+                      icon={<Trash2Icon className='size-3.5' />}
+                      onClick={event => {
                         event.stopPropagation()
                         confirmRemoveShape(node.entryId, node.title)
                       }}
@@ -464,7 +505,7 @@ export function AnnotationPanel({
             )}
           </div>
           {expanded && node.children && node.children.length > 0 && (
-            <div role="group">{renderNodes(node.children, depth + 1)}</div>
+            <div role='group'>{renderNodes(node.children, depth + 1)}</div>
           )}
         </div>
       )
@@ -475,7 +516,7 @@ export function AnnotationPanel({
     <>
       <Drawer
         open={open}
-        placement="left"
+        placement='left'
         size={380}
         bodyStyle={{ position: 'relative' }}
         title={
@@ -485,10 +526,10 @@ export function AnnotationPanel({
               <h2 className={styles.panelHeading}>标注</h2>
             </div>
             <Button
-              variant="ghost"
-              size="sm"
-              aria-label="关闭标注面板"
-              icon={<XIcon className="size-4" />}
+              variant='ghost'
+              size='sm'
+              aria-label='关闭标注面板'
+              icon={<XIcon className='size-4' />}
               onClick={onClose}
             />
           </div>
@@ -496,17 +537,19 @@ export function AnnotationPanel({
         onClose={onClose}
       >
         <div className={styles.panelActions}>
-          <Button icon={<FolderPlusIcon className="size-4" />} onClick={() => openCreate(null)}>
+          <Button icon={<FolderPlusIcon className='size-4' />} onClick={() => openCreate(null)}>
             新建文件夹
           </Button>
           <span className={styles.shapeCount}>{shapes.length} 个标注</span>
         </div>
-        {saveError && <Alert type="error" title={saveError} showIcon className={styles.saveError} />}
+        {saveError && (
+          <Alert type='error' title={saveError} showIcon className={styles.saveError} />
+        )}
         {draggingId && (
           <div
             className={styles.topLevelDrop}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
+            onDragOver={event => event.preventDefault()}
+            onDrop={event => {
               event.preventDefault()
               dropAtTopLevel()
             }}
@@ -515,19 +558,19 @@ export function AnnotationPanel({
           </div>
         )}
         {entries.length > 0 ? (
-          <div className={styles.treeWrap} role="tree" aria-label="标注列表">
+          <div className={styles.treeWrap} role='tree' aria-label='标注列表'>
             {renderNodes(treeData, 0)}
           </div>
         ) : (
-          <Empty description="暂无标注" />
+          <Empty description='暂无标注' />
         )}
       </Drawer>
       <Modal
         open={folderDialogOpen}
         title={folderDialogMode === 'create' ? '新建文件夹' : '重命名文件夹'}
         width={360}
-        okText="保存"
-        cancelText="取消"
+        okText='保存'
+        cancelText='取消'
         okDisabled={!folderName.trim()}
         onOk={saveFolder}
         onCancel={() => setFolderDialogOpen(false)}
@@ -535,8 +578,8 @@ export function AnnotationPanel({
         <Input
           value={folderName}
           maxLength={80}
-          placeholder="文件夹名称"
-          onChange={(event) => setFolderName(event.target.value)}
+          placeholder='文件夹名称'
+          onChange={event => setFolderName(event.target.value)}
           onPressEnter={saveFolder}
         />
       </Modal>

@@ -1,9 +1,15 @@
-import { useMemo, useRef } from 'react';
-import type { ReactNode } from 'react';
-import { AssistantRuntimeProvider, useExternalStoreRuntime } from '@assistant-ui/react';
-import type { AppendMessage, ExternalStoreAdapter, MessageStatus, ThreadMessageLike, ToolCallMessagePart } from '@assistant-ui/react';
-import { useAiStore } from '@renderer/stores/ai';
-import type { ChatMessage } from '@renderer/stores/ai';
+import { AssistantRuntimeProvider, useExternalStoreRuntime } from '@assistant-ui/react'
+import type {
+  AppendMessage,
+  ExternalStoreAdapter,
+  MessageStatus,
+  ThreadMessageLike,
+  ToolCallMessagePart
+} from '@assistant-ui/react'
+import { useAiStore } from '@renderer/stores/ai'
+import type { ChatMessage } from '@renderer/stores/ai'
+import { useMemo, useRef } from 'react'
+import type { ReactNode } from 'react'
 
 export interface EoqRuntimeProviderProps {
   children: ReactNode
@@ -29,7 +35,9 @@ function toToolArgs(args: Record<string, unknown>): ToolCallArgs {
 }
 
 function parseToolResult(result: string): unknown {
-  if (!result) {return ''}
+  if (!result) {
+    return ''
+  }
   try {
     return JSON.parse(result)
   } catch {
@@ -39,14 +47,19 @@ function parseToolResult(result: string): unknown {
 
 function extractAppendText(message: AppendMessage): string {
   return message.content
-    .filter((part): part is Extract<(typeof message.content)[number], { type: 'text' }> => part.type === 'text')
-    .map((part) => part.text)
+    .filter(
+      (part): part is Extract<(typeof message.content)[number], { type: 'text' }> =>
+        part.type === 'text'
+    )
+    .map(part => part.text)
     .join('\n')
     .trim()
 }
 
 function toMessageStatus(message: ChatMessage): MessageStatus {
-  if (message.status === 'streaming') {return { type: 'running' }}
+  if (message.status === 'streaming') {
+    return { type: 'running' }
+  }
   if (message.status === 'error') {
     return {
       type: 'incomplete',
@@ -131,8 +144,8 @@ export function convertChatMessage(message: ChatMessage): ThreadMessageLike {
 }
 
 export function EoqRuntimeProvider({ children, onInterceptSend }: EoqRuntimeProviderProps) {
-  const messages = useAiStore((state) => state.messages)
-  const isStreaming = useAiStore((state) => state.isStreaming)
+  const messages = useAiStore(state => state.messages)
+  const isStreaming = useAiStore(state => state.isStreaming)
   const onInterceptSendRef = useRef(onInterceptSend)
   onInterceptSendRef.current = onInterceptSend
 
@@ -143,19 +156,26 @@ export function EoqRuntimeProvider({ children, onInterceptSend }: EoqRuntimeProv
       convertMessage: convertChatMessage,
       async onNew(message: AppendMessage): Promise<void> {
         const text = extractAppendText(message)
-        if (!text) {return}
-        if (onInterceptSendRef.current?.(text)) {return}
+        if (!text) {
+          return
+        }
+        if (onInterceptSendRef.current?.(text)) {
+          return
+        }
         await useAiStore.getState().send(text)
       },
       async onEdit(message: AppendMessage): Promise<void> {
         const text = extractAppendText(message)
-        if (!text) {return}
+        if (!text) {
+          return
+        }
         const state = useAiStore.getState()
         const targetId =
           message.sourceId ??
           (message.parentId === null
             ? state.messages[0]?.id
-            : state.messages[state.messages.findIndex((item) => item.id === message.parentId) + 1]?.id)
+            : state.messages[state.messages.findIndex(item => item.id === message.parentId) + 1]
+                ?.id)
         if (targetId) {
           await state.resendFrom(targetId, text)
         } else {
@@ -165,7 +185,7 @@ export function EoqRuntimeProvider({ children, onInterceptSend }: EoqRuntimeProv
       async onReload(parentId: string | null): Promise<void> {
         const state = useAiStore.getState()
         if (parentId === null) {
-          const firstAssistant = state.messages.find((item) => item.role === 'assistant')
+          const firstAssistant = state.messages.find(item => item.role === 'assistant')
           if (firstAssistant) {
             await state.regenerate(firstAssistant.id)
           } else {
@@ -173,8 +193,10 @@ export function EoqRuntimeProvider({ children, onInterceptSend }: EoqRuntimeProv
           }
           return
         }
-        const parentIndex = state.messages.findIndex((item) => item.id === parentId)
-        if (parentIndex === -1) {return}
+        const parentIndex = state.messages.findIndex(item => item.id === parentId)
+        if (parentIndex === -1) {
+          return
+        }
         const nextMessage = state.messages[parentIndex + 1]
         if (nextMessage?.role === 'assistant') {
           await state.regenerate(nextMessage.id)

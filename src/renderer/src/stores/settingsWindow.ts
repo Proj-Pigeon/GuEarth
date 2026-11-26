@@ -1,7 +1,14 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 
-export type SettingsSection = 'account' | 'general' | 'map' | 'ai' | 'privacy' | 'laboratory' | 'about'
+export type SettingsSection =
+  | 'account'
+  | 'general'
+  | 'map'
+  | 'ai'
+  | 'privacy'
+  | 'laboratory'
+  | 'about'
 
 export interface SettingsWindowState {
   isOpen: boolean
@@ -24,10 +31,10 @@ export function createInitialSettingsWindowState(): SettingsWindowState {
 }
 
 export const useSettingsWindowStore = create<SettingsWindowStore>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector(set => ({
     ...createInitialSettingsWindowState(),
     open(section?: SettingsSection): void {
-      set((state) => ({
+      set(state => ({
         isOpen: true,
         activeSection: section ?? state.activeSection
       }))

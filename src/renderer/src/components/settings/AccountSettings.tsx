@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { CheckCircle2Icon, CopyIcon, ExternalLinkIcon, LogInIcon, LogOutIcon } from 'lucide-react'
 import { Alert, Avatar, Button, Tag, useConfirm, useToast } from '@renderer/components/ui'
 import { useAccountStore } from '@renderer/stores/account'
+import { CheckCircle2Icon, CopyIcon, ExternalLinkIcon, LogInIcon, LogOutIcon } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+
 import styles from './AccountSettings.module.css'
 
 export interface AccountSettingsProps {}
@@ -9,24 +10,24 @@ export interface AccountSettingsProps {}
 export function AccountSettings(_props: AccountSettingsProps) {
   const toast = useToast()
   const confirm = useConfirm()
-  const phase = useAccountStore((state) => state.phase)
-  const profile = useAccountStore((state) => state.profile)
-  const userCode = useAccountStore((state) => state.userCode)
-  const verificationUri = useAccountStore((state) => state.verificationUri)
-  const challengeExpiresAt = useAccountStore((state) => state.challengeExpiresAt)
-  const error = useAccountStore((state) => state.error)
-  const pendingRemoteRevocation = useAccountStore((state) => state.pendingRemoteRevocation)
-  const busy = useAccountStore((state) => state.busy)
-  const canceling = useAccountStore((state) => state.canceling)
-  const signedIn = useAccountStore((state) => state.signedIn)
-  const storeDisplayName = useAccountStore((state) => state.displayName)
-  const login = useAccountStore((state) => state.login)
-  const cancelLogin = useAccountStore((state) => state.cancelLogin)
-  const signOut = useAccountStore((state) => state.signOut)
-  const dismissRevocationWarning = useAccountStore((state) => state.dismissRevocationWarning)
-  const openDeviceList = useAccountStore((state) => state.openDeviceList)
-  const openVerification = useAccountStore((state) => state.openVerification)
-  const clearError = useAccountStore((state) => state.clearError)
+  const phase = useAccountStore(state => state.phase)
+  const profile = useAccountStore(state => state.profile)
+  const userCode = useAccountStore(state => state.userCode)
+  const verificationUri = useAccountStore(state => state.verificationUri)
+  const challengeExpiresAt = useAccountStore(state => state.challengeExpiresAt)
+  const error = useAccountStore(state => state.error)
+  const pendingRemoteRevocation = useAccountStore(state => state.pendingRemoteRevocation)
+  const busy = useAccountStore(state => state.busy)
+  const canceling = useAccountStore(state => state.canceling)
+  const signedIn = useAccountStore(state => state.signedIn)
+  const storeDisplayName = useAccountStore(state => state.displayName)
+  const login = useAccountStore(state => state.login)
+  const cancelLogin = useAccountStore(state => state.cancelLogin)
+  const signOut = useAccountStore(state => state.signOut)
+  const dismissRevocationWarning = useAccountStore(state => state.dismissRevocationWarning)
+  const openDeviceList = useAccountStore(state => state.openDeviceList)
+  const openVerification = useAccountStore(state => state.openVerification)
+  const clearError = useAccountStore(state => state.clearError)
 
   const [now, setNow] = useState(() => Date.now())
   const [copied, setCopied] = useState(false)
@@ -35,7 +36,9 @@ export function AccountSettings(_props: AccountSettingsProps) {
   const awaitingApproval = phase === 'awaiting-approval' || phase === 'finalizing'
 
   useEffect(() => {
-    if (!awaitingApproval) {return}
+    if (!awaitingApproval) {
+      return
+    }
     setNow(Date.now())
     const ticker = setInterval(() => {
       setNow(Date.now())
@@ -43,13 +46,18 @@ export function AccountSettings(_props: AccountSettingsProps) {
     return () => clearInterval(ticker)
   }, [awaitingApproval])
 
-  useEffect(() => 
-    () => {
-      if (copiedTimerRef.current !== undefined) {clearTimeout(copiedTimerRef.current)}
-    }
-  , [])
+  useEffect(
+    () => () => {
+      if (copiedTimerRef.current !== undefined) {
+        clearTimeout(copiedTimerRef.current)
+      }
+    },
+    []
+  )
 
-  const remainingSeconds = challengeExpiresAt ? Math.max(0, Math.ceil((challengeExpiresAt - now) / 1000)) : 0
+  const remainingSeconds = challengeExpiresAt
+    ? Math.max(0, Math.ceil((challengeExpiresAt - now) / 1000))
+    : 0
   const remainingText = `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, '0')}`
   const challengeExpired = phase === 'awaiting-approval' && remainingSeconds <= 0
 
@@ -60,7 +68,9 @@ export function AccountSettings(_props: AccountSettingsProps) {
   const loginLoading = phase === 'creating' || phase === 'restoring'
 
   async function copyUserCode(): Promise<void> {
-    if (!userCode) {return}
+    if (!userCode) {
+      return
+    }
     try {
       await navigator.clipboard.writeText(userCode)
     } catch {
@@ -68,7 +78,9 @@ export function AccountSettings(_props: AccountSettingsProps) {
       return
     }
     setCopied(true)
-    if (copiedTimerRef.current !== undefined) {clearTimeout(copiedTimerRef.current)}
+    if (copiedTimerRef.current !== undefined) {
+      clearTimeout(copiedTimerRef.current)
+    }
     copiedTimerRef.current = setTimeout(() => {
       setCopied(false)
       copiedTimerRef.current = undefined
@@ -87,13 +99,13 @@ export function AccountSettings(_props: AccountSettingsProps) {
   }
 
   return (
-    <section className={styles.settingsSection} data-settings-section="" aria-label="账户">
+    <section className={styles.settingsSection} data-settings-section='' aria-label='账户'>
       <h3 className={styles.sectionTitle}>账户</h3>
 
       {error && (
         <Alert
           className={styles.accountAlert}
-          type="error"
+          type='error'
           showIcon
           title={error}
           onClose={() => clearError()}
@@ -103,15 +115,19 @@ export function AccountSettings(_props: AccountSettingsProps) {
       {pendingRemoteRevocation && (
         <Alert
           className={styles.accountAlert}
-          type="warning"
+          type='warning'
           showIcon
-          title="本机已退出，请到账号中心手动移除此设备"
+          title='本机已退出，请到账号中心手动移除此设备'
           action={
-            <div className="flex flex-col gap-1">
-              <Button size="sm" icon={<ExternalLinkIcon className="size-3.5" />} onClick={() => void openDeviceList()}>
+            <div className='flex flex-col gap-1'>
+              <Button
+                size='sm'
+                icon={<ExternalLinkIcon className='size-3.5' />}
+                onClick={() => void openDeviceList()}
+              >
                 打开设备列表
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => void dismissRevocationWarning()}>
+              <Button size='sm' variant='ghost' onClick={() => void dismissRevocationWarning()}>
                 我知道了
               </Button>
             </div>
@@ -133,7 +149,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
               danger
               loading={phase === 'signing-out'}
               disabled={busy}
-              icon={<LogOutIcon className="size-4" />}
+              icon={<LogOutIcon className='size-4' />}
               onClick={confirmSignOut}
             >
               退出登录
@@ -152,7 +168,9 @@ export function AccountSettings(_props: AccountSettingsProps) {
                   </Tag>
                 </div>
                 <p className={styles.settingDesc}>
-                  {challengeExpired ? '登录已超时，请取消后重试' : '请在浏览器中确认登录，并核对下方验证码'}
+                  {challengeExpired
+                    ? '登录已超时，请取消后重试'
+                    : '请在浏览器中确认登录，并核对下方验证码'}
                 </p>
               </div>
               <Button loading={canceling} onClick={() => void cancelLogin()}>
@@ -162,21 +180,27 @@ export function AccountSettings(_props: AccountSettingsProps) {
 
             {userCode && (
               <div className={styles.challengeBar}>
-                <div className={styles.challengeCode} aria-label="登录验证码">
+                <div className={styles.challengeCode} aria-label='登录验证码'>
                   {userCode}
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className='flex flex-wrap items-center gap-2'>
                   <Button
-                    size="sm"
-                    icon={copied ? <CheckCircle2Icon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+                    size='sm'
+                    icon={
+                      copied ? (
+                        <CheckCircle2Icon className='size-3.5' />
+                      ) : (
+                        <CopyIcon className='size-3.5' />
+                      )
+                    }
                     onClick={() => void copyUserCode()}
                   >
                     {copied ? '已复制' : '复制验证码'}
                   </Button>
                   <Button
-                    size="sm"
+                    size='sm'
                     disabled={!verificationUri}
-                    icon={<ExternalLinkIcon className="size-3.5" />}
+                    icon={<ExternalLinkIcon className='size-3.5' />}
                     onClick={() => void openVerification()}
                   >
                     打开确认页
@@ -191,10 +215,10 @@ export function AccountSettings(_props: AccountSettingsProps) {
               <div className={styles.settingTitle}>鸽巢通行证</div>
             </div>
             <Button
-              variant="primary"
+              variant='primary'
               loading={loginLoading}
               disabled={busy || phase === 'restoring'}
-              icon={<LogInIcon className="size-4" />}
+              icon={<LogInIcon className='size-4' />}
               onClick={() => void login()}
             >
               登录

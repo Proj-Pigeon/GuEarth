@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { Button } from '@renderer/components/ui'
 import * as Cesium from 'cesium'
 import { XIcon } from 'lucide-react'
-import { Button } from '@renderer/components/ui'
+import { useEffect, useRef, useState } from 'react'
+
 import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
+
 import styles from './WaterCyclePanel.module.css'
 
 export interface WaterCyclePanelProps {
@@ -26,9 +28,11 @@ export function WaterCyclePanel({ viewer, onClose }: WaterCyclePanelProps) {
   playingRef.current = playing
 
   useEffect(() => {
-    if (!playing) {return}
+    if (!playing) {
+      return
+    }
     const timer = setInterval(() => {
-      setAnimationStep((prev) => (prev + 1) % (STEPS.length + 1))
+      setAnimationStep(prev => (prev + 1) % (STEPS.length + 1))
     }, 1600)
     return () => {
       clearInterval(timer)
@@ -36,126 +40,164 @@ export function WaterCyclePanel({ viewer, onClose }: WaterCyclePanelProps) {
   }, [playing])
 
   useEffect(() => {
-    if (!playingRef.current) {return}
+    if (!playingRef.current) {
+      return
+    }
     if (viewer && !viewer.isDestroyed()) {
-      viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(128, 22, 7_200_000), duration: 1.2 })
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(128, 22, 7_200_000),
+        duration: 1.2
+      })
     }
   }, [viewer])
 
   function stepActive(step: number): boolean {
-    if (animationStep === 0) {return false}
-    if (animationStep === 4) {return true}
+    if (animationStep === 0) {
+      return false
+    }
+    if (animationStep === 4) {
+      return true
+    }
     return animationStep >= step
   }
 
   return (
-    <div className={styles.waterCyclePanel} role="group" aria-label="水循环演示">
+    <div className={styles.waterCyclePanel} role='group' aria-label='水循环演示'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>水循环（海陆间循环）</span>
-        <Button size="sm" onClick={() => setPlaying((prev) => !prev)}>
+        <Button size='sm' onClick={() => setPlaying(prev => !prev)}>
           {playing ? '暂停' : '播放'}
         </Button>
-        <Button variant="ghost" size="sm" aria-label="关闭水循环演示" icon={<XIcon className="size-3.5" />} onClick={onClose} />
+        <Button
+          variant='ghost'
+          size='sm'
+          aria-label='关闭水循环演示'
+          icon={<XIcon className='size-3.5' />}
+          onClick={onClose}
+        />
       </div>
-      <svg viewBox="0 0 340 200" className={styles.cycleSvg} role="img" aria-label="海陆间水循环环节示意图">
+      <svg
+        viewBox='0 0 340 200'
+        className={styles.cycleSvg}
+        role='img'
+        aria-label='海陆间水循环环节示意图'
+      >
         <defs>
-          <linearGradient id="wc-sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#e6f4ff" />
-            <stop offset="100%" stopColor="#ffffff" />
+          <linearGradient id='wc-sky' x1='0' y1='0' x2='0' y2='1'>
+            <stop offset='0%' stopColor='#e6f4ff' />
+            <stop offset='100%' stopColor='#ffffff' />
           </linearGradient>
-          <linearGradient id="wc-ocean" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={dc.oceanShallow} />
-            <stop offset="100%" stopColor={dc.oceanDeep} />
+          <linearGradient id='wc-ocean' x1='0' y1='0' x2='0' y2='1'>
+            <stop offset='0%' stopColor={dc.oceanShallow} />
+            <stop offset='100%' stopColor={dc.oceanDeep} />
           </linearGradient>
-          <linearGradient id="wc-land" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={dc.landHigh} />
-            <stop offset="100%" stopColor="#d9f7be" />
+          <linearGradient id='wc-land' x1='0' y1='0' x2='0' y2='1'>
+            <stop offset='0%' stopColor={dc.landHigh} />
+            <stop offset='100%' stopColor='#d9f7be' />
           </linearGradient>
-          <marker id="cycle-head" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 Z" fill={dc.neutralArrow} />
+          <marker
+            id='cycle-head'
+            markerWidth='7'
+            markerHeight='7'
+            refX='5.5'
+            refY='3.5'
+            orient='auto'
+          >
+            <path d='M0,0 L7,3.5 L0,7 Z' fill={dc.neutralArrow} />
           </marker>
         </defs>
-        <rect x="0" y="0" width="340" height="200" rx="8" fill="url(#wc-sky)" />
-        <path d="M0 158 L150 158 L150 200 L0 200 Z" fill="url(#wc-ocean)" />
-        <path d="M150 158 L206 158 L256 108 L340 66 L340 200 L150 200 Z" fill="url(#wc-land)" />
-        <path d="M150 158 L206 158 L256 108 L340 66" fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="1.2" />
+        <rect x='0' y='0' width='340' height='200' rx='8' fill='url(#wc-sky)' />
+        <path d='M0 158 L150 158 L150 200 L0 200 Z' fill='url(#wc-ocean)' />
+        <path d='M150 158 L206 158 L256 108 L340 66 L340 200 L150 200 Z' fill='url(#wc-land)' />
+        <path
+          d='M150 158 L206 158 L256 108 L340 66'
+          fill='none'
+          stroke='rgba(0,0,0,0.12)'
+          strokeWidth='1.2'
+        />
         <g className={stepActive(1) ? `${styles.stage} ${styles.stageOn}` : styles.stage}>
           <path
-            d="M 66 148 C 62 122 70 102 82 90"
-            fill="none"
+            d='M 66 148 C 62 122 70 102 82 90'
+            fill='none'
             stroke={dc.rain}
-            strokeWidth="2.5"
-            markerEnd="url(#cycle-head)"
+            strokeWidth='2.5'
+            markerEnd='url(#cycle-head)'
             className={styles.cycleArrow}
           />
           <path
-            d="M 88 150 C 86 128 92 112 100 102"
-            fill="none"
+            d='M 88 150 C 86 128 92 112 100 102'
+            fill='none'
             stroke={dc.rain}
-            strokeWidth="1.6"
-            markerEnd="url(#cycle-head)"
+            strokeWidth='1.6'
+            markerEnd='url(#cycle-head)'
             className={styles.cycleArrow}
-            opacity="0.7"
+            opacity='0.7'
           />
-          <text x="52" y="106" className={styles.stageLabel} fill={dc.rain} textAnchor="middle">
+          <text x='52' y='106' className={styles.stageLabel} fill={dc.rain} textAnchor='middle'>
             蒸发
           </text>
         </g>
         <g className={stepActive(2) ? `${styles.stage} ${styles.stageOn}` : styles.stage}>
           <path
-            d="M 104 82 Q 172 40 244 60"
-            fill="none"
+            d='M 104 82 Q 172 40 244 60'
+            fill='none'
             stroke={dc.vaporFlow}
-            strokeWidth="2.5"
-            markerEnd="url(#cycle-head)"
+            strokeWidth='2.5'
+            markerEnd='url(#cycle-head)'
             className={styles.cycleArrow}
           />
-          <text x="172" y="40" className={styles.stageLabel} fill={dc.vaporFlow} textAnchor="middle">
+          <text
+            x='172'
+            y='40'
+            className={styles.stageLabel}
+            fill={dc.vaporFlow}
+            textAnchor='middle'
+          >
             水汽输送
           </text>
         </g>
         <g className={stepActive(3) ? `${styles.stage} ${styles.stageOn}` : styles.stage}>
           <path
-            d="M 242 68 L 236 92 M 258 64 L 252 90 M 274 60 L 268 86"
+            d='M 242 68 L 236 92 M 258 64 L 252 90 M 274 60 L 268 86'
             stroke={dc.rain}
-            strokeWidth="2"
-            strokeLinecap="round"
+            strokeWidth='2'
+            strokeLinecap='round'
             className={styles.rainStreak}
           />
-          <text x="290" y="70" className={styles.stageLabel} fill={dc.rain}>
+          <text x='290' y='70' className={styles.stageLabel} fill={dc.rain}>
             降水
           </text>
         </g>
         <g className={stepActive(4) ? `${styles.stage} ${styles.stageOn}` : styles.stage}>
           <path
-            d="M 262 116 C 230 134 196 144 162 150"
-            fill="none"
+            d='M 262 116 C 230 134 196 144 162 150'
+            fill='none'
             stroke={dc.waterFlow}
-            strokeWidth="2.5"
-            markerEnd="url(#cycle-head)"
+            strokeWidth='2.5'
+            markerEnd='url(#cycle-head)'
             className={styles.cycleArrow}
           />
-          <text x="268" y="112" className={styles.stageLabel} fill={dc.waterFlow}>
+          <text x='268' y='112' className={styles.stageLabel} fill={dc.waterFlow}>
             地表径流
           </text>
           <path
-            d="M 268 136 C 258 156 220 170 184 174"
-            fill="none"
+            d='M 268 136 C 258 156 220 170 184 174'
+            fill='none'
             stroke={dc.waterFlow}
-            strokeWidth="1.6"
-            strokeDasharray="4 4"
-            markerEnd="url(#cycle-head)"
+            strokeWidth='1.6'
+            strokeDasharray='4 4'
+            markerEnd='url(#cycle-head)'
             className={styles.cycleArrow}
           />
-          <text x="246" y="166" className={styles.stageLabel} fill={dc.waterFlow}>
+          <text x='246' y='166' className={styles.stageLabel} fill={dc.waterFlow}>
             下渗·地下径流
           </text>
         </g>
-        <g fontSize="11" fontFamily={diagramFont}>
-          <text x="70" y="184" fill="rgba(255,255,255,0.95)" textAnchor="middle" fontWeight="600">
+        <g fontSize='11' fontFamily={diagramFont}>
+          <text x='70' y='184' fill='rgba(255,255,255,0.95)' textAnchor='middle' fontWeight='600'>
             海洋
           </text>
-          <text x="304" y="150" fill={dc.inkSecondary} textAnchor="middle">
+          <text x='304' y='150' fill={dc.inkSecondary} textAnchor='middle'>
             陆地（山地）
           </text>
         </g>
@@ -164,14 +206,18 @@ export function WaterCyclePanel({ viewer, onClose }: WaterCyclePanelProps) {
         {notes.map((note, index) => (
           <span
             key={note}
-            className={animationStep === 0 || animationStep === index + 1 ? `${styles.note} ${styles.noteOn}` : styles.note}
+            className={
+              animationStep === 0 || animationStep === index + 1
+                ? `${styles.note} ${styles.noteOn}`
+                : styles.note
+            }
           >
             {note}
           </span>
         ))}
       </div>
       <div className={styles.chips}>
-        {highlights.map((item) => (
+        {highlights.map(item => (
           <span key={item} className={styles.chip}>
             {item}
           </span>

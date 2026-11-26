@@ -1,8 +1,8 @@
 import { liangmi } from '@liangmi/vp-config'
 
 export default liangmi({
-  // Formatting is enabled in a follow-up. Until then, `vp check` skips it.
-  check: { fmt: false },
+  // GeoJSON data and third-party license texts keep their upstream layout.
+  fmt: { ignorePatterns: ['resources/**'] },
   lint: [
     {
       name: 'guearth/conventions',
@@ -56,6 +56,8 @@ export default liangmi({
         'promise/prefer-await-to-callbacks': 'off',
         'typescript/method-signature-style': 'off',
         'unicorn/prefer-ternary': 'off',
+        // The formatter writes hexadecimal digits in lowercase.
+        'unicorn/number-literal-case': 'off',
         'unicorn/prefer-export-from': 'off',
         'oxc/no-map-spread': 'off',
         // CSS, locale and Sentry preload modules are imported for their side effects.

@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
-import { XIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui'
 import type { TimezoneComparison } from '@renderer/composables/useTimezoneCompare'
 import { useSolarStore } from '@renderer/stores/solar'
 import { formatClock, localSolarTime } from '@renderer/thematic/solarMath'
+import { XIcon } from 'lucide-react'
+import { useMemo } from 'react'
+
 import styles from './TimezonePanel.module.css'
 
 export interface TimezonePanelProps {
@@ -16,21 +17,27 @@ function longitudeText(longitude: number): string {
 }
 
 export function TimezonePanel({ comparison, onClear }: TimezonePanelProps) {
-  const solarActive = useSolarStore((state) => state.active)
-  const solarUtcHour = useSolarStore((state) => state.utcHour)
-  const beijingClock = useSolarStore((state) => state.beijingClock)
+  const solarActive = useSolarStore(state => state.active)
+  const solarUtcHour = useSolarStore(state => state.utcHour)
+  const beijingClock = useSolarStore(state => state.beijingClock)
 
   const utcHours = useMemo(() => {
-    if (solarActive) {return solarUtcHour}
+    if (solarActive) {
+      return solarUtcHour
+    }
     const now = new Date()
     return now.getUTCHours() + now.getUTCMinutes() / 60
   }, [solarActive, solarUtcHour])
 
-  const timeSourceText = solarActive ? `按模拟时刻计算（北京 ${beijingClock}）` : '按当前真实时刻计算'
+  const timeSourceText = solarActive
+    ? `按模拟时刻计算（北京 ${beijingClock}）`
+    : '按当前真实时刻计算'
 
   const differenceText = useMemo(() => {
     const difference = comparison.differenceHours
-    if (Math.abs(difference) < 1 / 60) {return '两地经度相近，地方时基本相同'}
+    if (Math.abs(difference) < 1 / 60) {
+      return '两地经度相近，地方时基本相同'
+    }
     const abs = Math.abs(difference)
     const hours = Math.floor(abs)
     const minutes = Math.round((abs - hours) * 60)
@@ -43,10 +50,16 @@ export function TimezonePanel({ comparison, onClear }: TimezonePanelProps) {
   }
 
   return (
-    <div className={styles.timezonePanel} aria-label="时区对比">
+    <div className={styles.timezonePanel} aria-label='时区对比'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>地方时对比</span>
-        <Button variant="ghost" size="sm" aria-label="关闭时区对比" icon={<XIcon className="size-3.5" />} onClick={onClear} />
+        <Button
+          variant='ghost'
+          size='sm'
+          aria-label='关闭时区对比'
+          icon={<XIcon className='size-3.5' />}
+          onClick={onClear}
+        />
       </div>
       <div className={styles.pickRow}>
         <span className={`${styles.pickDot} ${styles.pickA}`} />
@@ -63,9 +76,12 @@ export function TimezonePanel({ comparison, onClear }: TimezonePanelProps) {
       <div className={styles.difference}>{differenceText}</div>
       <div className={styles.hint}>{timeSourceText}</div>
       <div className={styles.divider} />
-      <p className={styles.note}>地球自西向东自转，同纬度偏东地点先见日出，地方时更早。地方时 = UTC + 经度 ÷ 15。</p>
       <p className={styles.note}>
-        日界线有两条：180° 经线为人为日界线（自西向东越过日期减一天）；地方时 0 时所在经线为自然日界线（自西向东越过日期加一天）。
+        地球自西向东自转，同纬度偏东地点先见日出，地方时更早。地方时 = UTC + 经度 ÷ 15。
+      </p>
+      <p className={styles.note}>
+        日界线有两条：180° 经线为人为日界线（自西向东越过日期减一天）；地方时 0
+        时所在经线为自然日界线（自西向东越过日期加一天）。
       </p>
     </div>
   )

@@ -1,6 +1,7 @@
-import { memo } from 'react';
-import type { FC } from 'react';
 import { useMessagePartText } from '@assistant-ui/react'
+import { memo } from 'react'
+import type { FC } from 'react'
+
 import StreamingMarkdown from '../StreamingMarkdown'
 
 const EoqMarkdownTextImpl: FC = () => {

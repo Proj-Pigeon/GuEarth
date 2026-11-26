@@ -1,9 +1,11 @@
-import { rmSync } from 'node:fs'
-import { mkdtemp, open, rename as renameFile, rm, stat, writeFile } from 'node:fs/promises';
-import type { FileHandle } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto'
+import { rmSync } from 'node:fs'
+import { mkdtemp, open, rename as renameFile, rm, stat, writeFile } from 'node:fs/promises'
+import type { FileHandle } from 'node:fs/promises'
 import { format, join } from 'node:path'
+
 import { BrowserWindow, shell } from 'electron'
+
 import { logger } from '../common/logger'
 import type { OffscreenRecordingScript, RecordingSaveResult } from '../preload'
 import { offscreenFrameRate, offscreenScriptDurationMs } from './offscreenTiming'
@@ -47,15 +49,24 @@ let activeMacSession: OffscreenMacIpcSession | null = null
 
 export function noteMacOffscreenFrameAck(count: unknown): void {
   const session = activeMacSession
-  if (!session || typeof count !== 'number' || !Number.isFinite(count) || count <= 0) {return}
+  if (!session || typeof count !== 'number' || !Number.isFinite(count) || count <= 0) {
+    return
+  }
   session.noteFrameAck(Math.min(1024, Math.round(count)))
 }
 
 export function deliverMacOffscreenVideo(value: unknown, position: unknown): void {
   const session = activeMacSession
-  if (!session || !ArrayBuffer.isView(value)) {return}
-  if (typeof position !== 'number' || !Number.isSafeInteger(position) || position < 0) {return}
-  session.appendVideoChunk(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), position)
+  if (!session || !ArrayBuffer.isView(value)) {
+    return
+  }
+  if (typeof position !== 'number' || !Number.isSafeInteger(position) || position < 0) {
+    return
+  }
+  session.appendVideoChunk(
+    new Uint8Array(value.buffer, value.byteOffset, value.byteLength),
+    position
+  )
 }
 
 export function deliverMacOffscreenVideoComplete(): void {
@@ -76,7 +87,10 @@ function withOffscreenTimeout<T>(task: Promise<T>, timeoutMs: number, message: s
   ])
 }
 
-export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, host: OffscreenMacSessionHost): Promise<RecordingSaveResult> {
+export function encodeMacOffscreenRecording(
+  script: OffscreenRecordingScript,
+  host: OffscreenMacSessionHost
+): Promise<RecordingSaveResult> {
   return new Promise((resolve, reject) => {
     let settled = false
     let tempDir: string | null = null
@@ -92,8 +106,12 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       host.clearTeardownHook(teardown)
       activeMacSession = null
       host.dropWindow()
-      if (videoFile) {void videoFile.close().catch(() => {})}
-      if (tempDir) {void rm(tempDir, { recursive: true, force: true }).catch(() => {})}
+      if (videoFile) {
+        void videoFile.close().catch(() => {})
+      }
+      if (tempDir) {
+        void rm(tempDir, { recursive: true, force: true }).catch(() => {})
+      }
     }
     const teardown = (): void => {
       const pending = !settled
@@ -102,22 +120,35 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       host.clearTeardownHook(teardown)
       activeMacSession = null
       host.dropWindow()
-      if (videoFile) {void videoFile.close().catch(() => {})}
+      if (videoFile) {
+        void videoFile.close().catch(() => {})
+      }
       const directory = tempDir
       tempDir = null
-      if (directory) {rmSync(directory, { recursive: true, force: true })}
-      logger.info('recording', pending ? '应用退出，已中止离屏录制并清理临时文件' : '应用退出，已清理离屏录制临时文件')
-      if (pending) {resolve({ path: '', bytes: 0, cancelled: true })}
+      if (directory) {
+        rmSync(directory, { recursive: true, force: true })
+      }
+      logger.info(
+        'recording',
+        pending ? '应用退出，已中止离屏录制并清理临时文件' : '应用退出，已清理离屏录制临时文件'
+      )
+      if (pending) {
+        resolve({ path: '', bytes: 0, cancelled: true })
+      }
     }
     host.setTeardownHook(teardown)
     const fail = (error: unknown): void => {
-      if (settled) {return}
+      if (settled) {
+        return
+      }
       settled = true
       release()
       reject(error instanceof Error ? error : new Error(String(error)))
     }
     const cancel = (): void => {
-      if (settled) {return}
+      if (settled) {
+        return
+      }
       settled = true
       release()
       logger.info('recording', '离屏录制已取消，未生成视频文件')
@@ -126,25 +157,40 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
     host.resetPrewarnWarned()
     host.setCancelHook(cancel)
     activeMacSession = {
-      noteFrameAck: (count) => {
+      noteFrameAck: count => {
         pendingFrames = Math.max(0, pendingFrames - count)
-        if (pendingFrames === 0) {frameDrainResolve?.()}
+        if (pendingFrames === 0) {
+          frameDrainResolve?.()
+        }
       },
       appendVideoChunk: (bytes, position) => {
-        if (!videoFile) {return}
+        if (!videoFile) {
+          return
+        }
         const copy = new Uint8Array(bytes)
-        videoWrite = videoWrite.then(() => videoFile!.write(copy, 0, copy.byteLength, position)).then(() => {})
+        videoWrite = videoWrite
+          .then(() => videoFile!.write(copy, 0, copy.byteLength, position))
+          .then(() => {})
       },
       completeVideo: () => {
-        void videoWrite.then(() => videoCompleteResolve?.(), (error) => videoCompleteReject?.(error))
+        void videoWrite.then(
+          () => videoCompleteResolve?.(),
+          error => videoCompleteReject?.(error)
+        )
       }
     }
     void (async () => {
       const directory = await host.usableDirectory()
-      if (settled) {return}
-      if (!directory) {throw new Error('请先选择可用的视频保存文件夹')}
+      if (settled) {
+        return
+      }
+      if (!directory) {
+        throw new Error('请先选择可用的视频保存文件夹')
+      }
       await host.sweepStaleDirectories(directory)
-      if (settled) {return}
+      if (settled) {
+        return
+      }
       const createdTempDir = await mkdtemp(recordingPath(directory, OFFSCREEN_TEMP_PREFIX))
       if (settled) {
         void rm(createdTempDir, { recursive: true, force: true }).catch(() => {})
@@ -152,13 +198,18 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       }
       tempDir = createdTempDir
       await writeFile(recordingPath(tempDir, OFFSCREEN_OWNER_FILE), String(process.pid), 'utf8')
-      if (settled) {return}
+      if (settled) {
+        return
+      }
       const temporaryPath = recordingPath(tempDir, 'recording.mp4.part')
       videoFile = await open(temporaryPath, 'w')
       const now = new Date()
       const pad = (value: number): string => String(value).padStart(2, '0')
       const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-      const outputPath = recordingPath(directory, `GuEarth-${stamp}-${randomUUID().slice(0, 8)}.mp4`)
+      const outputPath = recordingPath(
+        directory,
+        `GuEarth-${stamp}-${randomUUID().slice(0, 8)}.mp4`
+      )
       const targetFps = script.fps
       recorderWindow = new BrowserWindow({
         show: false,
@@ -188,15 +239,30 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       let frameIndex = 0
       window.webContents.on('paint', (_event, _dirty, image) => {
         host.notePaintFrame()
-        if (settled || !capturing || image.isEmpty() || pendingFrames >= OFFSCREEN_MAX_PENDING_FRAMES) {return}
+        if (
+          settled ||
+          !capturing ||
+          image.isEmpty() ||
+          pendingFrames >= OFFSCREEN_MAX_PENDING_FRAMES
+        ) {
+          return
+        }
         const size = image.getSize()
         if (!captureLogged) {
           captureLogged = true
-          logger.info('recording', `离屏采集 ${size.width}x${size.height}，输出 ${script.width}x${script.height}`, `窗口 ${script.width}x${script.height}（未按工作区缩放）`)
-          if (Math.abs(size.width / size.height - script.width / script.height) > 0.02) {logger.warn('recording', '离屏采集比例与输出比例不一致，将以补边方式适配')}
+          logger.info(
+            'recording',
+            `离屏采集 ${size.width}x${size.height}，输出 ${script.width}x${script.height}`,
+            `窗口 ${script.width}x${script.height}（未按工作区缩放）`
+          )
+          if (Math.abs(size.width / size.height - script.width / script.height) > 0.02) {
+            logger.warn('recording', '离屏采集比例与输出比例不一致，将以补边方式适配')
+          }
         }
         const frame = image.toJPEG(95)
-        if (frame.length === 0) {return}
+        if (frame.length === 0) {
+          return
+        }
         const captureTimeMs = Date.now() - recordingStartedAt
         pendingFrames += 1
         window.webContents.send('recordings:offscreen-frame', frameIndex, captureTimeMs, frame)
@@ -204,33 +270,54 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       })
       const ready = new Promise<void>((resolveReady, rejectReady) => {
         window.webContents.once('did-finish-load', () => resolveReady())
-        window.webContents.once('did-fail-load', (_event, code, description) => rejectReady(new Error(`${code}: ${description}`)))
+        window.webContents.once('did-fail-load', (_event, code, description) =>
+          rejectReady(new Error(`${code}: ${description}`))
+        )
       })
       const loading = process.env.ELECTRON_RENDERER_URL
         ? window.loadURL(`${process.env.ELECTRON_RENDERER_URL}/offscreen.html`)
         : window.loadFile(join(__dirname, '../renderer/offscreen.html'))
       await Promise.all([loading, ready])
-      if (settled) {return}
+      if (settled) {
+        return
+      }
       window.webContents.setFrameRate(targetFps)
       const serialized = JSON.stringify(script).replaceAll('<', String.raw`\u003c`)
-      const encoderConfig = JSON.stringify({ width: script.width, height: script.height, framerate: targetFps, bitrate: OFFSCREEN_MAC_BITRATE })
+      const encoderConfig = JSON.stringify({
+        width: script.width,
+        height: script.height,
+        framerate: targetFps,
+        bitrate: OFFSCREEN_MAC_BITRATE
+      })
       host.resetPaintStats()
       window.webContents.startPainting()
       await withOffscreenTimeout(
-        window.webContents.executeJavaScript(`window.guEarthOffscreenMacEncoder.begin(${encoderConfig})`),
+        window.webContents.executeJavaScript(
+          `window.guEarthOffscreenMacEncoder.begin(${encoderConfig})`
+        ),
         OFFSCREEN_PREPARE_TIMEOUT_MS,
         '离屏视频编码器初始化超时，已中止录制'
       )
-      if (settled) {return}
+      if (settled) {
+        return
+      }
       const prepareStartedAt = Date.now()
       await withOffscreenTimeout(
-        window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.prepare(${serialized})`),
+        window.webContents.executeJavaScript(
+          `window.guEarthOffscreenRecorder.prepare(${serialized})`
+        ),
         OFFSCREEN_PREPARE_TIMEOUT_MS,
         '离屏渲染初始化超时，已中止录制'
       )
-      logger.info('recording', `离屏渲染准备完成，耗时 ${((Date.now() - prepareStartedAt) / 1000).toFixed(1)} 秒`)
-      if (settled) {return}
-      const captureBudgetMs = offscreenScriptDurationMs(script.scenes) + OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS
+      logger.info(
+        'recording',
+        `离屏渲染准备完成，耗时 ${((Date.now() - prepareStartedAt) / 1000).toFixed(1)} 秒`
+      )
+      if (settled) {
+        return
+      }
+      const captureBudgetMs =
+        offscreenScriptDurationMs(script.scenes) + OFFSCREEN_PLAY_TIMEOUT_MARGIN_MS
       host.resetPaintStats()
       recordingStartedAt = Date.now()
       capturing = true
@@ -241,16 +328,20 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       )
       const recordingElapsedMs = Math.max(1, Date.now() - recordingStartedAt)
       capturing = false
-      if (settled) {return}
+      if (settled) {
+        return
+      }
       window.webContents.stopPainting()
-      await new Promise<void>((resolveDrain) => {
+      await new Promise<void>(resolveDrain => {
         if (pendingFrames === 0) {
           resolveDrain()
           return
         }
         const timer = setTimeout(() => {
           frameDrainResolve = null
-          if (!settled) {logger.warn('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码')}
+          if (!settled) {
+            logger.warn('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码')
+          }
           resolveDrain()
         }, OFFSCREEN_ACK_DRAIN_TIMEOUT_MS)
         timer.unref?.()
@@ -260,19 +351,32 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
           resolveDrain()
         }
       })
-      if (settled) {return}
+      if (settled) {
+        return
+      }
       if (frameIndex === 0) {
         fail(new Error('离屏渲染未产生有效视频帧'))
         return
       }
       const measuredFps = offscreenFrameRate(frameIndex, recordingElapsedMs)
-      logger.info('recording', `离屏录制 ${frameIndex} 帧 / ${(recordingElapsedMs / 1000).toFixed(1)} 秒，实测约 ${measuredFps.toFixed(1)} FPS`)
-      if (measuredFps < OFFSCREEN_MIN_FLUENT_FPS) {logger.warn('recording', `离屏采集帧率偏低（${measuredFps.toFixed(1)} FPS），画面可能不够流畅`)}
+      logger.info(
+        'recording',
+        `离屏录制 ${frameIndex} 帧 / ${(recordingElapsedMs / 1000).toFixed(1)} 秒，实测约 ${measuredFps.toFixed(1)} FPS`
+      )
+      if (measuredFps < OFFSCREEN_MIN_FLUENT_FPS) {
+        logger.warn(
+          'recording',
+          `离屏采集帧率偏低（${measuredFps.toFixed(1)} FPS），画面可能不够流畅`
+        )
+      }
       const videoReady = new Promise<void>((resolveVideo, rejectVideo) => {
         videoCompleteResolve = resolveVideo
         videoCompleteReject = rejectVideo
       })
-      const encodeBudgetMs = Math.max(OFFSCREEN_ENCODE_TIMEOUT_MS, frameIndex * OFFSCREEN_ENCODE_MS_PER_FRAME)
+      const encodeBudgetMs = Math.max(
+        OFFSCREEN_ENCODE_TIMEOUT_MS,
+        frameIndex * OFFSCREEN_ENCODE_MS_PER_FRAME
+      )
       await Promise.all([
         withOffscreenTimeout(
           window.webContents.executeJavaScript('window.guEarthOffscreenMacEncoder.finish()'),
@@ -281,12 +385,16 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
         ),
         withOffscreenTimeout(videoReady, encodeBudgetMs, '离屏视频编码超时，已中止录制')
       ])
-      if (settled) {return}
+      if (settled) {
+        return
+      }
       await videoWrite
       await videoFile?.close()
       videoFile = null
       const bytes = await readFileSize(temporaryPath)
-      if (settled) {return}
+      if (settled) {
+        return
+      }
       await renameFile(temporaryPath, outputPath)
       if (settled) {
         await rm(outputPath, { force: true }).catch(() => {})
@@ -303,9 +411,13 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       activeMacSession = null
       tempDir = null
       host.dropWindow()
-      logger.info('recording', `离屏录制完成：${outputPath}`, `${(bytes / 1024 / 1024).toFixed(1)} MB`)
+      logger.info(
+        'recording',
+        `离屏录制完成：${outputPath}`,
+        `${(bytes / 1024 / 1024).toFixed(1)} MB`
+      )
       shell.showItemInFolder(outputPath)
       resolve({ path: outputPath, bytes, fps: measuredFps })
-    })().catch((error) => fail(error))
+    })().catch(error => fail(error))
   })
 }

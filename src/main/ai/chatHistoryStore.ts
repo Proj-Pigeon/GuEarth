@@ -1,8 +1,17 @@
-import { copyFile, mkdir, unlink } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
-import { storageChildPath } from '../storagePath'
+import { copyFile, mkdir, unlink } from 'node:fs/promises'
+
+import type {
+  AiSearchReference,
+  StoredAiCompression,
+  StoredAiConversation,
+  StoredAiConversationSummary,
+  StoredAiMessage,
+  StoredAiPart,
+  StoredAiToolStep
+} from '../../preload'
 import { readJson, serialQueue, writeJson } from '../jsonStore'
-import type { AiSearchReference, StoredAiCompression, StoredAiConversation, StoredAiConversationSummary, StoredAiMessage, StoredAiPart, StoredAiToolStep } from '../../preload'
+import { storageChildPath } from '../storagePath'
 import type { EoqHawdbClient } from './hawdb/client'
 import type { ConversationSearchHit } from './hawdb/protocol'
 
@@ -23,27 +32,41 @@ function clampTimestamp(value: unknown, fallback: number): number {
 }
 
 function normalizeReferences(value: unknown): AiSearchReference[] {
-  if (!Array.isArray(value)) {return []}
-  return value.flatMap((item): AiSearchReference[] => {
-    if (!isRecord(item)) {return []}
-    const title = clampString(item.title, 300)
-    const url = clampString(item.url, 2000)
-    if (!title && !url) {return []}
-    return [{
-      title,
-      url,
-      content: clampString(item.content, 1000),
-      website: clampString(item.website, 200),
-      date: clampString(item.date, 40)
-    }]
-  }).slice(0, 16)
+  if (!Array.isArray(value)) {
+    return []
+  }
+  return value
+    .flatMap((item): AiSearchReference[] => {
+      if (!isRecord(item)) {
+        return []
+      }
+      const title = clampString(item.title, 300)
+      const url = clampString(item.url, 2000)
+      if (!title && !url) {
+        return []
+      }
+      return [
+        {
+          title,
+          url,
+          content: clampString(item.content, 1000),
+          website: clampString(item.website, 200),
+          date: clampString(item.date, 40)
+        }
+      ]
+    })
+    .slice(0, 16)
 }
 
 function normalizeToolStep(value: unknown): StoredAiToolStep | null {
-  if (!isRecord(value)) {return null}
+  if (!isRecord(value)) {
+    return null
+  }
   const callId = clampString(value.callId, 128)
   const name = clampString(value.name, 64)
-  if (!callId || !name) {return null}
+  if (!callId || !name) {
+    return null
+  }
   const status: StoredAiToolStep['status'] = value.status === 'error' ? 'error' : 'ok'
   return {
     callId,
@@ -57,13 +80,25 @@ function normalizeToolStep(value: unknown): StoredAiToolStep | null {
 }
 
 function normalizePart(value: unknown): StoredAiPart | null {
-  if (!isRecord(value)) {return null}
+  if (!isRecord(value)) {
+    return null
+  }
   if (value.kind === 'reasoning') {
     const id = clampString(value.id, 128)
-    if (!id) {return null}
-    return { kind: 'reasoning', id, text: clampString(value.text, 100_000), ms: clampTimestamp(value.ms, 0), startedAt: clampTimestamp(value.startedAt, 0) }
+    if (!id) {
+      return null
+    }
+    return {
+      kind: 'reasoning',
+      id,
+      text: clampString(value.text, 100_000),
+      ms: clampTimestamp(value.ms, 0),
+      startedAt: clampTimestamp(value.startedAt, 0)
+    }
   }
-  if (value.kind === 'text') {return { kind: 'text', text: clampString(value.text, 100_000) }}
+  if (value.kind === 'text') {
+    return { kind: 'text', text: clampString(value.text, 100_000) }
+  }
   if (value.kind === 'tool') {
     const step = normalizeToolStep(value.step)
     return step ? { kind: 'tool', step } : null
@@ -72,13 +107,22 @@ function normalizePart(value: unknown): StoredAiPart | null {
 }
 
 function normalizeMessage(value: unknown): StoredAiMessage | null {
-  if (!isRecord(value)) {return null}
+  if (!isRecord(value)) {
+    return null
+  }
   const id = clampString(value.id, 128)
-  if (!id) {return null}
+  if (!id) {
+    return null
+  }
   const role = value.role === 'user' ? 'user' : value.role === 'assistant' ? 'assistant' : null
-  if (!role) {return null}
+  if (!role) {
+    return null
+  }
   const parts = Array.isArray(value.parts)
-    ? value.parts.map(normalizePart).filter((part): part is StoredAiPart => part !== null).slice(0, 200)
+    ? value.parts
+        .map(normalizePart)
+        .filter((part): part is StoredAiPart => part !== null)
+        .slice(0, 200)
     : []
   return {
     id,
@@ -91,23 +135,39 @@ function normalizeMessage(value: unknown): StoredAiMessage | null {
 }
 
 function normalizeCompression(value: unknown): StoredAiCompression | undefined {
-  if (!isRecord(value)) {return undefined}
+  if (!isRecord(value)) {
+    return undefined
+  }
   const summary = clampString(value.summary, 100_000)
   const coveredMessageIds = Array.isArray(value.coveredMessageIds)
-    ? value.coveredMessageIds.filter((id): id is string => typeof id === 'string' && id.length > 0).map((id) => id.slice(0, 128)).slice(0, MAX_MESSAGES)
+    ? value.coveredMessageIds
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        .map(id => id.slice(0, 128))
+        .slice(0, MAX_MESSAGES)
     : []
-  if (!summary || coveredMessageIds.length === 0) {return undefined}
+  if (!summary || coveredMessageIds.length === 0) {
+    return undefined
+  }
   return { summary, coveredMessageIds }
 }
 
 export function normalizeConversation(value: unknown): StoredAiConversation | null {
-  if (!isRecord(value)) {return null}
+  if (!isRecord(value)) {
+    return null
+  }
   const id = clampString(value.id, 64)
-  if (!ID_PATTERN.test(id)) {return null}
+  if (!ID_PATTERN.test(id)) {
+    return null
+  }
   const messages = Array.isArray(value.messages)
-    ? value.messages.map(normalizeMessage).filter((message): message is StoredAiMessage => message !== null).slice(-MAX_MESSAGES)
+    ? value.messages
+        .map(normalizeMessage)
+        .filter((message): message is StoredAiMessage => message !== null)
+        .slice(-MAX_MESSAGES)
     : []
-  if (!messages.some((message) => message.role === 'user')) {return null}
+  if (!messages.some(message => message.role === 'user')) {
+    return null
+  }
   const updatedAt = clampTimestamp(value.updatedAt, Date.now())
   const compression = normalizeCompression(value.compression)
   return {
@@ -120,7 +180,9 @@ export function normalizeConversation(value: unknown): StoredAiConversation | nu
   }
 }
 
-export function conversationSummary(conversation: StoredAiConversationSummary): StoredAiConversationSummary {
+export function conversationSummary(
+  conversation: StoredAiConversationSummary
+): StoredAiConversationSummary {
   const { id, title, createdAt, updatedAt } = conversation
   return { id, title, createdAt, updatedAt }
 }
@@ -140,24 +202,51 @@ interface RecoveryManifest {
 
 function sortedEntries(list: HistoryEntry[]): HistoryEntry[] {
   const unique = new Map<string, HistoryEntry>()
-  for (const item of list) {if (!unique.has(item.id)) {unique.set(item.id, item)}}
+  for (const item of list) {
+    if (!unique.has(item.id)) {
+      unique.set(item.id, item)
+    }
+  }
   return [...unique.values()].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_CONVERSATIONS)
 }
 
 function normalizeEntries(value: unknown): HistoryEntry[] {
-  if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.conversations)) {throw new Error('无效的会话索引')}
-  return sortedEntries(value.conversations.flatMap((item): HistoryEntry[] => {
-    if (!isRecord(item) || typeof item.id !== 'string' || !ID_PATTERN.test(item.id)) {return []}
-    const updatedAt = clampTimestamp(item.updatedAt, Date.now())
-    const file = typeof item.file === 'string' ? item.file : `${item.id}.json`
-    if (file === 'index.json' || file === 'recovery.json' || !/^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)?\.json$/.test(file)) {return []}
-    return [{ id: item.id, title: clampString(item.title, 80), createdAt: clampTimestamp(item.createdAt, updatedAt), updatedAt, file }]
-  }))
+  if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.conversations)) {
+    throw new Error('无效的会话索引')
+  }
+  return sortedEntries(
+    value.conversations.flatMap((item): HistoryEntry[] => {
+      if (!isRecord(item) || typeof item.id !== 'string' || !ID_PATTERN.test(item.id)) {
+        return []
+      }
+      const updatedAt = clampTimestamp(item.updatedAt, Date.now())
+      const file = typeof item.file === 'string' ? item.file : `${item.id}.json`
+      if (
+        file === 'index.json' ||
+        file === 'recovery.json' ||
+        !/^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)?\.json$/.test(file)
+      ) {
+        return []
+      }
+      return [
+        {
+          id: item.id,
+          title: clampString(item.title, 80),
+          createdAt: clampTimestamp(item.createdAt, updatedAt),
+          updatedAt,
+          file
+        }
+      ]
+    })
+  )
 }
 
 function normalizeRecoveryManifest(value: unknown): RecoveryManifest {
-  if (!isRecord(value)) {throw new Error('无效的会话恢复名单')}
-  const migration = value.migration === 'pending' || value.migration === 'complete' ? value.migration : null
+  if (!isRecord(value)) {
+    throw new Error('无效的会话恢复名单')
+  }
+  const migration =
+    value.migration === 'pending' || value.migration === 'complete' ? value.migration : null
   return { entries: normalizeEntries(value), migration }
 }
 
@@ -220,13 +309,23 @@ export class AiChatHistoryStore {
     try {
       legacy = await readJson(path)
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {console.warn('[ai] 会话历史读取失败', error)}
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        console.warn('[ai] 会话历史读取失败', error)
+      }
     }
-    const normalized = Array.isArray(legacy) ? legacy.map(normalizeConversation).filter((item): item is StoredAiConversation => item !== null) : []
-    const migrated = sortedEntries(normalized.map((item) => ({ ...summary(item), file: `${item.id}.${randomUUID()}.json` })))
+    const normalized = Array.isArray(legacy)
+      ? legacy
+          .map(normalizeConversation)
+          .filter((item): item is StoredAiConversation => item !== null)
+      : []
+    const migrated = sortedEntries(
+      normalized.map(item => ({ ...summary(item), file: `${item.id}.${randomUUID()}.json` }))
+    )
     for (const item of migrated) {
-      const conversation = normalized.find((entry) => entry.id === item.id)
-      if (conversation) {await writeJson(this.conversationPath(item.file), conversation)}
+      const conversation = normalized.find(entry => entry.id === item.id)
+      if (conversation) {
+        await writeJson(this.conversationPath(item.file), conversation)
+      }
     }
     await this.persistIndex(migrated)
     this.migration = 'complete'
@@ -250,7 +349,9 @@ export class AiChatHistoryStore {
     for (const entry of entries) {
       try {
         const item = normalizeConversation(await readJson(this.conversationPath(entry.file)))
-        if (item?.id === entry.id) {recovered.push({ ...summary(item), file: entry.file })}
+        if (item?.id === entry.id) {
+          recovered.push({ ...summary(item), file: entry.file })
+        }
       } catch {
         continue
       }
@@ -264,11 +365,15 @@ export class AiChatHistoryStore {
 
   private async persistIndex(list: HistoryEntry[]): Promise<void> {
     const previous = this.conversations
-    await this.persistRecovery(previous.filter((item) => list.some((retained) => retained.file === item.file)))
+    await this.persistRecovery(
+      previous.filter(item => list.some(retained => retained.file === item.file))
+    )
     try {
       await writeJson(this.indexPath(), { version: 1, conversations: list })
     } catch (error) {
-      await this.persistRecovery(previous).catch((recoveryError) => console.warn('[ai] 会话恢复名单回滚失败', recoveryError))
+      await this.persistRecovery(previous).catch(recoveryError =>
+        console.warn('[ai] 会话恢复名单回滚失败', recoveryError)
+      )
       throw error
     }
     try {
@@ -297,7 +402,9 @@ export class AiChatHistoryStore {
 
   private assertBackend(): 'hawdb' | 'json' {
     if (this.hawdb) {
-      if (!this.hawdb.isReady()) {throw new Error('EOQ HawDB 后端不可用，请重启应用后重试')}
+      if (!this.hawdb.isReady()) {
+        throw new Error('EOQ HawDB 后端不可用，请重启应用后重试')
+      }
       return 'hawdb'
     }
     return 'json'
@@ -308,23 +415,32 @@ export class AiChatHistoryStore {
       if (this.assertBackend() === 'hawdb') {
         return this.hawdb!.getConversation(id)
       }
-      const entry = this.conversations.find((item) => item.id === id)
-      if (!entry) {return null}
+      const entry = this.conversations.find(item => item.id === id)
+      if (!entry) {
+        return null
+      }
       return normalizeConversation(await readJson(this.conversationPath(entry.file)))
     })
   }
 
   save(value: unknown): Promise<StoredAiConversationSummary[]> {
     const conversation = normalizeConversation(value)
-    if (!conversation) {return Promise.reject(new Error('无效的会话数据'))}
+    if (!conversation) {
+      return Promise.reject(new Error('无效的会话数据'))
+    }
     return this.enqueue(async () => {
       if (this.assertBackend() === 'hawdb') {
         this.hawdbSummaries = (await this.hawdb!.saveConversation(conversation)).map(summary)
         return this.list()
       }
       const entry = { ...summary(conversation), file: `${conversation.id}.${randomUUID()}.json` }
-      const next = sortedEntries([entry, ...this.conversations.filter((item) => item.id !== conversation.id)])
-      const removed = this.conversations.filter((item) => !next.some((retained) => retained.file === item.file))
+      const next = sortedEntries([
+        entry,
+        ...this.conversations.filter(item => item.id !== conversation.id)
+      ])
+      const removed = this.conversations.filter(
+        item => !next.some(retained => retained.file === item.file)
+      )
       await writeJson(this.conversationPath(entry.file), conversation)
       try {
         await this.persistIndex(next)
@@ -332,8 +448,12 @@ export class AiChatHistoryStore {
         await unlink(this.conversationPath(entry.file)).catch(() => {})
         throw error
       }
-      await Promise.all(removed.map((item) => unlink(this.conversationPath(item.file)).catch(() => {})))
-      if (!next.some((item) => item.file === entry.file)) {await unlink(this.conversationPath(entry.file)).catch(() => {})}
+      await Promise.all(
+        removed.map(item => unlink(this.conversationPath(item.file)).catch(() => {}))
+      )
+      if (!next.some(item => item.file === entry.file)) {
+        await unlink(this.conversationPath(entry.file)).catch(() => {})
+      }
       return this.list()
     })
   }
@@ -344,17 +464,21 @@ export class AiChatHistoryStore {
         this.hawdbSummaries = (await this.hawdb!.deleteConversation(id)).map(summary)
         return this.list()
       }
-      const removed = this.conversations.find((item) => item.id === id)
-      const next = this.conversations.filter((item) => item.id !== id)
+      const removed = this.conversations.find(item => item.id === id)
+      const next = this.conversations.filter(item => item.id !== id)
       await this.persistIndex(next)
-      if (removed) {await unlink(this.conversationPath(removed.file)).catch(() => {})}
+      if (removed) {
+        await unlink(this.conversationPath(removed.file)).catch(() => {})
+      }
       return this.list()
     })
   }
 
   async search(query: string, limit = 5, excludeId?: string): Promise<ConversationSearchHit[]> {
     const clean = typeof query === 'string' ? query.trim() : ''
-    if (!clean) {return []}
+    if (!clean) {
+      return []
+    }
     if (this.assertBackend() === 'hawdb') {
       return this.hawdb!.searchConversations(clean, limit, excludeId)
     }

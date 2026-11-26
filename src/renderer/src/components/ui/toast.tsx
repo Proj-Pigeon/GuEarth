@@ -1,13 +1,7 @@
-import type { ReactNode } from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
-import {
-  AlertTriangleIcon,
-  CheckCircle2Icon,
-  InfoIcon,
-  XCircleIcon,
-  XIcon
-} from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { AlertTriangleIcon, CheckCircle2Icon, InfoIcon, XCircleIcon, XIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 export type ToastTone = 'info' | 'success' | 'warning' | 'error'
 
@@ -38,18 +32,25 @@ export function useToast() {
 }
 
 function ToastToneIcon({ tone }: { tone: ToastTone }) {
-  if (tone === 'success') {return <CheckCircle2Icon className="size-4 shrink-0 text-success" aria-hidden="true" />}
-  if (tone === 'warning') {return <AlertTriangleIcon className="size-4 shrink-0 text-warning" aria-hidden="true" />}
-  if (tone === 'error') {return <XCircleIcon className="size-4 shrink-0 text-destructive" aria-hidden="true" />}
-  return <InfoIcon className="size-4 shrink-0 text-info" aria-hidden="true" />
+  if (tone === 'success') {
+    return <CheckCircle2Icon className='text-success size-4 shrink-0' aria-hidden='true' />
+  }
+  if (tone === 'warning') {
+    return <AlertTriangleIcon className='text-warning size-4 shrink-0' aria-hidden='true' />
+  }
+  if (tone === 'error') {
+    return <XCircleIcon className='text-destructive size-4 shrink-0' aria-hidden='true' />
+  }
+  return <InfoIcon className='text-info size-4 shrink-0' aria-hidden='true' />
 }
 
 function ToastList() {
   const { toasts } = BaseToast.useToastManager()
   return (
     <>
-      {toasts.map((toast) => {
-        const tone = ((toast.data as ToastData | undefined)?.tone ?? (toast.type as ToastTone) ?? 'info')
+      {toasts.map(toast => {
+        const tone =
+          (toast.data as ToastData | undefined)?.tone ?? (toast.type as ToastTone) ?? 'info'
         return (
           <BaseToast.Root
             key={toast.id}
@@ -59,14 +60,14 @@ function ToastList() {
             )}
           >
             <ToastToneIcon tone={tone} />
-            <BaseToast.Content className="min-w-0 flex-1">
-              <BaseToast.Title className="break-words font-normal text-ink" />
+            <BaseToast.Content className='min-w-0 flex-1'>
+              <BaseToast.Title className='text-ink font-normal break-words' />
             </BaseToast.Content>
             <BaseToast.Close
-              aria-label="关闭通知"
-              className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-ink-tertiary transition-colors hover:bg-muted hover:text-ink"
+              aria-label='关闭通知'
+              className='text-ink-tertiary hover:bg-muted hover:text-ink inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent transition-colors'
             >
-              <XIcon className="size-3.5" />
+              <XIcon className='size-3.5' />
             </BaseToast.Close>
           </BaseToast.Root>
         )
@@ -80,7 +81,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <BaseToast.Provider toastManager={toastManager} limit={4}>
       {children}
       <BaseToast.Portal>
-        <BaseToast.Viewport className="pointer-events-none fixed top-4 left-1/2 z-[1600] flex -translate-x-1/2 flex-col items-center gap-2 outline-none">
+        <BaseToast.Viewport className='pointer-events-none fixed top-4 left-1/2 z-[1600] flex -translate-x-1/2 flex-col items-center gap-2 outline-none'>
           <ToastList />
         </BaseToast.Viewport>
       </BaseToast.Portal>

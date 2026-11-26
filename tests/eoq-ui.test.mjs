@@ -2,12 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
-import { test } from 'vite-plus/test'
 import { pathToFileURL } from 'node:url'
+
+import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
 import { JSDOM } from 'jsdom'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
+import { test } from 'vite-plus/test'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -18,20 +19,26 @@ function installDomGlobals() {
   globalThis.document = dom.window.document
   globalThis.HTMLElement = dom.window.HTMLElement
   globalThis.Node = dom.window.Node
-  globalThis.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 0)
-  globalThis.cancelAnimationFrame = (id) => clearTimeout(id)
+  globalThis.requestAnimationFrame = cb => setTimeout(() => cb(Date.now()), 0)
+  globalThis.cancelAnimationFrame = id => clearTimeout(id)
 }
 
 installDomGlobals()
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier === '../posthog' || specifier.endsWith('/posthog') || specifier === '@renderer/posthog') {
+    if (
+      specifier === '../posthog' ||
+      specifier.endsWith('/posthog') ||
+      specifier === '@renderer/posthog'
+    ) {
       return { url: 'stub://renderer-posthog', shortCircuit: true }
     }
     if (specifier.startsWith('@renderer/')) {
       const target = resolve('src/renderer/src', specifier.slice(10))
-      if (/\.[a-z]+$/i.test(target)) {return nextResolve(pathToFileURL(target).href, context)}
+      if (/\.[a-z]+$/i.test(target)) {
+        return nextResolve(pathToFileURL(target).href, context)
+      }
       try {
         return nextResolve(pathToFileURL(`${target}.ts`).href, context)
       } catch {
@@ -55,7 +62,8 @@ registerHooks({
     if (url === 'stub://renderer-posthog') {
       return {
         format: 'module',
-        source: 'export function captureAiUsageEvent() {} export function captureTelemetryEvent() {} export function syncPosthogPrivacy() {} export function capturePosthogException() {} export function identifyTelemetryUser() {} export function isTelemetryUserIdentified() { return false } export function resetTelemetryIdentity() {}',
+        source:
+          'export function captureAiUsageEvent() {} export function captureTelemetryEvent() {} export function syncPosthogPrivacy() {} export function capturePosthogException() {} export function identifyTelemetryUser() {} export function isTelemetryUserIdentified() { return false } export function resetTelemetryIdentity() {}',
         shortCircuit: true
       }
     }
@@ -80,8 +88,10 @@ registerHooks({
   }
 })
 
-const { convertChatMessage } = await import('../src/renderer/src/components/eoq/EoqRuntimeProvider.tsx')
-const { default: EoqWebSearch } = await import('../src/renderer/src/components/eoq/EoqWebSearch.tsx')
+const { convertChatMessage } =
+  await import('../src/renderer/src/components/eoq/EoqRuntimeProvider.tsx')
+const { default: EoqWebSearch } =
+  await import('../src/renderer/src/components/eoq/EoqWebSearch.tsx')
 const { default: EoqWelcome } = await import('../src/renderer/src/components/eoq/EoqWelcome.tsx')
 
 test('convertChatMessage preserves reasoning and tool timing plus error states', () => {
@@ -135,7 +145,10 @@ test('convertChatMessage preserves reasoning and tool timing plus error states',
 })
 
 test('EoqComposer uses native assistant-ui ComposerPrimitive without nested Ant Input or danger stop button', () => {
-  const composerSource = readFileSync(resolve('src/renderer/src/components/eoq/EoqComposer.tsx'), 'utf8')
+  const composerSource = readFileSync(
+    resolve('src/renderer/src/components/eoq/EoqComposer.tsx'),
+    'utf8'
+  )
   assert.match(composerSource, /ComposerPrimitive\.Root/)
   assert.match(composerSource, /ComposerPrimitive\.Input/)
   assert.match(composerSource, /ComposerPrimitive\.Send/)
@@ -149,13 +162,16 @@ test('EoqComposer uses native assistant-ui ComposerPrimitive without nested Ant 
   assert.match(mainCss, /@import 'tw-shimmer';/)
   assert.match(mainCss, /@theme inline/)
 
-  const markdownSource = readFileSync(resolve('src/renderer/src/components/eoq/EoqMarkdownText.tsx'), 'utf8')
+  const markdownSource = readFileSync(
+    resolve('src/renderer/src/components/eoq/EoqMarkdownText.tsx'),
+    'utf8'
+  )
   assert.match(markdownSource, /useMessagePartText/)
   assert.match(markdownSource, /StreamingMarkdown/)
   assert.match(markdownSource, /status\.type === 'running'/)
 })
 
-test('EoqWebSearch filters unsafe links, toggles extra sources, and exposes retry on error', (t) => {
+test('EoqWebSearch filters unsafe links, toggles extra sources, and exposes retry on error', t => {
   installDomGlobals()
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
@@ -191,7 +207,7 @@ test('EoqWebSearch filters unsafe links, toggles extra sources, and exposes retr
 
   assert.equal(container.querySelectorAll('a').length, 2)
   assert.match(container.textContent ?? '', /已阅读 4 个来源/)
-  const expandButton = [...container.querySelectorAll('button')].find((el) =>
+  const expandButton = [...container.querySelectorAll('button')].find(el =>
     (el.textContent ?? '').includes('展开其余 1 个来源')
   )
   assert.ok(expandButton)
@@ -205,7 +221,7 @@ test('EoqWebSearch filters unsafe links, toggles extra sources, and exposes retr
     root.render(
       createElement(EoqWebSearch, {
         busy: false,
-        onRetry: (query) => {
+        onRetry: query => {
           retried = query
         },
         step: {
@@ -229,7 +245,7 @@ test('EoqWebSearch filters unsafe links, toggles extra sources, and exposes retr
   assert.equal(retried, '黄土高原')
 })
 
-test('EoqWelcome renders suggestions, cycles on refresh, and submits clicked prompt', (t) => {
+test('EoqWelcome renders suggestions, cycles on refresh, and submits clicked prompt', t => {
   installDomGlobals()
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
@@ -243,7 +259,7 @@ test('EoqWelcome renders suggestions, cycles on refresh, and submits clicked pro
   act(() => {
     root.render(
       createElement(EoqWelcome, {
-        onSelectPrompt: (prompt) => {
+        onSelectPrompt: prompt => {
           submitted = prompt
         }
       })
