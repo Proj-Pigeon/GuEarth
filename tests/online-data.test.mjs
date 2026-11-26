@@ -13,7 +13,7 @@ function load(path, dependencies, globals = {}) {
   const { outputText } = transpileModule(source, { compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 } })
   const exports = {}
   compileFunction(outputText, ['require', 'exports', ...Object.keys(globals)])((id) => {
-    if (id in dependencies) return dependencies[id]
+    if (id in dependencies) {return dependencies[id]}
     throw new Error(`Unexpected dependency: ${id}`)
   }, exports, ...Object.values(globals))
   return exports
@@ -41,7 +41,7 @@ test('QWeather hosts accept official domains and nested subdomains without paths
   assert.equal(shared.normalizeQWeatherHost(' HTTPS://Test.Yun.qweatherapi.com/ '), 'test.yun.qweatherapi.com')
   assert.equal(shared.normalizeQWeatherHost('a.b.qweatherapi.com'), 'a.b.qweatherapi.com')
   assert.equal(shared.normalizeQWeatherHost('qweatherapi.com'), 'qweatherapi.com')
-  for (const value of ['http://test.qweatherapi.com', 'test.qweatherapi.com.evil.test', 'evilqweatherapi.com', '127.0.0.1', 'user@test.qweatherapi.com', 'test.qweatherapi.com:443', 'test.qweatherapi.com/v7', 'test.qweatherapi.com?key=abc', 'test.qweatherapi.com#fragment', 'test.qweatherapi.com\\evil', 'test..qweatherapi.com', '-test.qweatherapi.com', 'test-.qweatherapi.com', `${'a'.repeat(64)}.qweatherapi.com`, `${'a.'.repeat(120)}qweatherapi.com`, null]) {
+  for (const value of ['http://test.qweatherapi.com', 'test.qweatherapi.com.evil.test', 'evilqweatherapi.com', '127.0.0.1', 'user@test.qweatherapi.com', 'test.qweatherapi.com:443', 'test.qweatherapi.com/v7', 'test.qweatherapi.com?key=abc', 'test.qweatherapi.com#fragment', String.raw`test.qweatherapi.com\evil`, 'test..qweatherapi.com', '-test.qweatherapi.com', 'test-.qweatherapi.com', `${'a'.repeat(64)}.qweatherapi.com`, `${'a.'.repeat(120)}qweatherapi.com`, null]) {
     assert.throws(() => shared.normalizeQWeatherHost(value))
   }
 })
@@ -75,8 +75,8 @@ test('provider settings use the vault, never return keys, retain blank edits, an
 
 test('typhoon startup queries both years, deduplicates active storms, uses header auth and filters old forecasts', async () => {
   const api = weather((url) => {
-    if (url.pathname.endsWith('storm-list')) return ok({ storm: [storm, { ...storm, id: 'ended', isActive: '0' }] })
-    if (url.pathname.endsWith('storm-track')) return ok({ ...track, refer: { sources: ['test source'], license: ['test license'] } })
+    if (url.pathname.endsWith('storm-list')) {return ok({ storm: [storm, { ...storm, id: 'ended', isActive: '0' }] })}
+    if (url.pathname.endsWith('storm-track')) {return ok({ ...track, refer: { sources: ['test source'], license: ['test license'] } })}
     return ok({ forecast: [
       { ...point(undefined), fxTime: now.pubTime },
       { ...point(undefined), fxTime: '2026-10-30T20:00+08:00' }
@@ -111,8 +111,8 @@ test('no active storms and no-data codes produce a fresh empty feed without trac
 test('forecast failure preserves current observations and ended storms do not request a forecast', async () => {
   for (const active of ['0', '1']) {
     const api = weather((url) => {
-      if (url.pathname.endsWith('storm-list')) return ok({ storm: [storm] })
-      if (url.pathname.endsWith('storm-track')) return ok({ ...track, isActive: active, now: active === '0' ? null : now })
+      if (url.pathname.endsWith('storm-list')) {return ok({ storm: [storm] })}
+      if (url.pathname.endsWith('storm-track')) {return ok({ ...track, isActive: active, now: active === '0' ? null : now })}
       return Response.json({ code: '403' })
     })
     const feed = await api.fetchTyphoonFeed(credentials)
@@ -148,7 +148,7 @@ for (const endpoint of ['storm-list', 'storm-track']) {
     const controller = new AbortController()
     const started = deferred()
     const api = weather((url, { signal }) => {
-      if (!url.pathname.endsWith(endpoint)) return ok({ storm: [storm] })
+      if (!url.pathname.endsWith(endpoint)) {return ok({ storm: [storm] })}
       return new Promise((_resolve, reject) => {
         signal.addEventListener('abort', () => reject(signal.reason), { once: true })
         started.resolve()
@@ -185,7 +185,7 @@ test('one overall deadline bounds startup instead of multiplying timeout per sto
   const rejected = assert.rejects(fetching, /超时/)
   controller.abort()
   await rejected
-  assert.deepEqual(durations, [20000])
+  assert.deepEqual(durations, [20_000])
 })
 
 function deferred() {
@@ -218,10 +218,10 @@ function startupFixture({ configured = true, quakeFails = false, weatherFails = 
   const writes = []
   const feed = typhoonFeed()
   const api = load('../src/main/onlineData.ts', {
-    crypto: require('node:crypto'), path: require('node:path'),
+    'node:crypto': require('node:crypto'), 'node:path': require('node:path'),
     './datasets': { loadEarthquakeFeed: async () => {
       earthquakes++
-      if (failQuake) throw new Error('offline')
+      if (failQuake) {throw new Error('offline')}
       return earthquakeResponse ?? { fetchedAt: 100, events: [] }
     } },
     './laboratory': { getQWeatherCredentials: () => currentCredentials },
@@ -230,8 +230,8 @@ function startupFixture({ configured = true, quakeFails = false, weatherFails = 
         const request = { credentials: { ...value }, signal, ...(deferWeather ? deferred() : {}) }
         requests.push(request)
         requestWaiters[requests.length - 1]?.resolve(request)
-        if (deferWeather) return request.promise
-        if (weatherFails) throw new Error('offline')
+        if (deferWeather) {return request.promise}
+        if (weatherFails) {throw new Error('offline')}
         return feed
       },
       parseCachedTyphoons: (value) => value
@@ -417,8 +417,8 @@ for (const weatherFails of [false, true]) {
     const initial = await api.startOnlineData('/test', (snapshot) => notifications.push(snapshot))
     assert.ok(initial.typhoons)
     assert.equal(initial.typhoonStatus, weatherFails ? 'error' : 'ready')
-    const writes = fixture.writes.slice()
-    const reads = fixture.reads.slice()
+    const writes = [...fixture.writes]
+    const reads = [...fixture.reads]
     const previousNotifications = notifications.length
     fixture.setCredentials(null)
     api.invalidateTyphoons(false)
@@ -467,7 +467,7 @@ for (const outcome of ['resolve', 'reject']) {
       }
       const beforeStaleResult = await api.getOnlineData()
       const previousNotifications = notifications.length
-      const previousWrites = fixture.writes.slice()
+      const previousWrites = [...fixture.writes]
       oldRequest[outcome](outcome === 'resolve' ? typhoonFeed(200, 'NP_2602') : new Error('late failure from old provider'))
       assert.equal(await oldFetching, beforeStaleResult)
       assert.equal(await api.getOnlineData(), beforeStaleResult)
@@ -682,8 +682,8 @@ test('earthquakes always refresh at startup even when cache is younger than six 
   const urls = []
   const cached = { fetchedAt: Date.now(), events: [] }
   const api = load('../src/main/datasets.ts', {
-    fs: { existsSync: () => true, readFileSync: () => JSON.stringify(cached) }, path: require('node:path'),
-    electron: { net: { fetch: async (url) => { urls.push(url); requests++; if (offline) throw new Error('offline'); return ok({ features: [] }) } } },
+    'node:fs': { existsSync: () => true, readFileSync: () => JSON.stringify(cached) }, 'node:path': require('node:path'),
+    electron: { net: { fetch: async (url) => { urls.push(url); requests++; if (offline) {throw new Error('offline');} return ok({ features: [] }) } } },
     '../common/tileMirror': tileMirror,
     './geo/gcj02': {}, './jsonStore': { writeJson: async () => {} },
     '../../resources/geo/china-provinces.geojson?asset': ''

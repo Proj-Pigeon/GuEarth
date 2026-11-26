@@ -58,7 +58,7 @@ registerHooks({
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
       throw error
     }
   }
@@ -203,7 +203,7 @@ test('mirror satellite detail bounds exclude overseas cities so zoom gets clampe
 
 test('mirror mode accepts the three selections, defaults to auto, and migrates the legacy switch', () => {
   assert.deepEqual([...tileMirrorModes], ['auto', 'on', 'off'])
-  for (const mode of tileMirrorModes) assert.equal(normalizeTileMirrorMode(mode), mode)
+  for (const mode of tileMirrorModes) {assert.equal(normalizeTileMirrorMode(mode), mode)}
   assert.equal(normalizeTileMirrorMode(undefined), 'auto')
   assert.equal(normalizeTileMirrorMode(''), 'auto')
   assert.equal(normalizeTileMirrorMode(true), 'auto')
@@ -223,7 +223,7 @@ test('mirror tiles are cached in their own namespace so a source switch never re
 })
 
 test('origin probe treats an answered request as reachable and a policy block as unreachable', () => {
-  for (const status of [200, 204, 301, 404, 429, 500, 503]) assert.equal(originProbeReachable(status), true, `${status} is an answered request`)
+  for (const status of [200, 204, 301, 404, 429, 500, 503]) {assert.equal(originProbeReachable(status), true, `${status} is an answered request`)}
   assert.equal(originProbeReachable(403), false)
   assert.equal(originProbeReachable(451), false)
 })
@@ -241,7 +241,7 @@ test('auto mode keeps the origin until consecutive failures prove the environmen
   router.setMode('auto')
   assert.equal(router.reachabilityFor('osm'), 'unknown')
   assert.equal(router.sourceFor('osm'), 'origin')
-  for (let attempt = 1; attempt < ORIGIN_FAILURES_BEFORE_MIRROR; attempt += 1) assert.equal(router.noteOriginFailure('osm'), false)
+  for (let attempt = 1; attempt < ORIGIN_FAILURES_BEFORE_MIRROR; attempt += 1) {assert.equal(router.noteOriginFailure('osm'), false)}
   assert.equal(router.sourceFor('osm'), 'origin')
   assert.equal(router.noteOriginFailure('osm'), true)
   assert.equal(router.sourceFor('osm'), 'mirror')
@@ -285,14 +285,14 @@ test('auto mode recovers to the origin only after consecutive mirror failures re
 test('auto mode restarts the origin failure streak after the mirror itself fails', () => {
   const router = new TileMirrorRouter()
   router.setMode('auto')
-  for (let attempt = 0; attempt < ORIGIN_FAILURES_BEFORE_MIRROR; attempt += 1) router.noteOriginFailure('osm')
+  for (let attempt = 0; attempt < ORIGIN_FAILURES_BEFORE_MIRROR; attempt += 1) {router.noteOriginFailure('osm')}
   assert.equal(router.sourceFor('osm'), 'mirror')
   for (let attempt = 1; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {
     assert.equal(router.noteMirrorFailure('osm'), false)
   }
   assert.equal(router.noteMirrorFailure('osm'), true)
   assert.equal(router.sourceFor('osm'), 'origin')
-  for (let attempt = 1; attempt < ORIGIN_FAILURES_BEFORE_MIRROR; attempt += 1) assert.equal(router.noteOriginFailure('osm'), false)
+  for (let attempt = 1; attempt < ORIGIN_FAILURES_BEFORE_MIRROR; attempt += 1) {assert.equal(router.noteOriginFailure('osm'), false)}
   assert.equal(router.sourceFor('osm'), 'origin')
 })
 
@@ -313,7 +313,7 @@ test('on mode trips fallback after consecutive failures, recovers after cooldown
   let clock = 10_000
   const router = new TileMirrorRouter(() => clock)
   router.setMode('on')
-  for (const providerId of Object.keys(mirrorEligibleProviders)) assert.equal(router.sourceFor(providerId), 'mirror')
+  for (const providerId of Object.keys(mirrorEligibleProviders)) {assert.equal(router.sourceFor(providerId), 'mirror')}
   for (let attempt = 1; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {
     assert.equal(router.noteMirrorFailure('osm'), false)
   }
@@ -329,7 +329,7 @@ test('on mode trips fallback after consecutive failures, recovers after cooldown
   assert.equal(router.sourceFor('osm'), 'mirror')
   assert.deepEqual(router.fallenBackProviders(['osm', 'esri-imagery']), [])
 
-  for (let attempt = 0; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) router.noteMirrorFailure('esri-imagery')
+  for (let attempt = 0; attempt < MIRROR_FAILURES_BEFORE_FALLBACK; attempt += 1) {router.noteMirrorFailure('esri-imagery')}
   assert.equal(router.sourceFor('esri-imagery'), 'origin')
   assert.equal(router.resetMirrorFallback('esri-imagery'), true)
   assert.equal(router.sourceFor('esri-imagery'), 'mirror')
@@ -451,7 +451,7 @@ test('globeStore does not persist mirrorConsentPrompted after settings.get failu
 
   store().setTileCacheEnabled(false)
   assert.equal(updates.length, 1)
-  assert.equal(Object.prototype.hasOwnProperty.call(updates[0], 'mirrorConsentPrompted'), false)
+  assert.equal(Object.hasOwn(updates[0], 'mirrorConsentPrompted'), false)
 
   store().acceptMirrorConsent()
   assert.equal(updates.length, 2)
@@ -467,7 +467,7 @@ test('attachOriginTerrainFallback falls back on runtime tile failure and switche
   const mirrorProvider = {
     requestTileGeometry: () => {
       mirrorCalls += 1
-      if (failMirror) return Promise.reject(new Error('503 Service Unavailable'))
+      if (failMirror) {return Promise.reject(new Error('503 Service Unavailable'))}
       return Promise.resolve('mirror-tile')
     },
     getTileDataAvailable: () => true
@@ -598,7 +598,7 @@ test('fetchTilePayloadWithRetry retries 5xx, 429, network errors, and mid-body s
   const okResult = await fetchTilePayloadWithRetry(
     async () => {
       calls += 1
-      if (calls === 1) return new Response('bad gateway', { status: 502 })
+      if (calls === 1) {return new Response('bad gateway', { status: 502 })}
       if (calls === 2) {
         return {
           ok: true,
@@ -625,7 +625,7 @@ test('fetchTilePayloadWithRetry retries 5xx, 429, network errors, and mid-body s
       nonRetryCalls += 1
       return new Response('not found', { status: 404 })
     },
-    { attempts: 3, sleep: async () => undefined }
+    { attempts: 3, sleep: async () => {} }
   )
   assert.equal(notFound.ok, false)
   assert.equal(notFound.status, 404)
@@ -759,7 +759,7 @@ test('globeStore hydrates, persists, and rolls back tileMirrorSource and applies
           setupGuideDismissed: null
         }),
         update: async (patch) => {
-          if (failUpdates) throw new Error('disk full')
+          if (failUpdates) {throw new Error('disk full')}
           updates.push(patch)
           return patch
         }
@@ -822,7 +822,7 @@ test('fetchTilePayloadWithRetry recovers after a rejected fetcher call with a si
   const result = await fetchTilePayloadWithRetry(
     async () => {
       calls += 1
-      if (calls === 1) throw new Error('ECONNRESET')
+      if (calls === 1) {throw new Error('ECONNRESET')}
       return new Response(new Uint8Array([9, 8, 7, 6]), { status: 200, headers: { 'content-type': 'image/png' } })
     },
     { attempts: 3, baseDelayMs: 120, sleep: async (ms) => { delays.push(ms) } }
@@ -842,7 +842,7 @@ test('fetchTilePayloadWithRetry normalizes non-integer and non-finite attempts a
         calls += 1
         return new Response('unavailable', { status: 503 })
       },
-      { attempts, baseDelayMs: 10, sleep: async () => undefined }
+      { attempts, baseDelayMs: 10, sleep: async () => {} }
     )
     assert.equal(result.ok, false)
     assert.equal(result.status, 503)
@@ -906,7 +906,7 @@ test('MirrorEndpointManager does not let an earlier probe undo a subsequent fail
   assert.equal(manager.tryFailover('edgeone'), 'cloudflare')
   assert.equal(manager.getActive(), 'cloudflare')
 
-  clock += 1_500
+  clock += 1500
   const cloudflareFailedProbe = { endpoint: 'cloudflare', ok: false, latencyMs: null, error: 'timeout', checkedAt: roundStartedAt }
   roundProbes.push(cloudflareFailedProbe)
   assert.deepEqual(manager.applyProbeResult(cloudflareFailedProbe, roundProbes), { changed: false, active: 'cloudflare' })
@@ -1001,7 +1001,7 @@ test('globeStore preserves pending tileMirrorSource across stale broadcasts and 
   assert.deepEqual(store().mirrorFallenBackProviders, ['esri-imagery'])
 
   store().setTerrainProvider('cesium-world-terrain')
-  assert.equal(Object.prototype.hasOwnProperty.call(updates[1], 'tileMirrorSource'), false)
+  assert.equal(Object.hasOwn(updates[1], 'tileMirrorSource'), false)
   assert.equal(updates[1].selectedTerrainProviderId, 'cesium-world-terrain')
 
   resolveSourceSave()

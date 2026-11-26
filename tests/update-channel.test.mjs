@@ -290,13 +290,13 @@ test('deb tools resolve only from trusted directories', () => {
       assert.equal(resolvedDpkg === null || !resolvedDpkg.startsWith(planted), true)
       assert.equal(resolvedPkexec === null || !resolvedPkexec.startsWith(planted), true)
     } finally {
-      if (previousPath === undefined) delete process.env.PATH
-      else process.env.PATH = previousPath
+      if (previousPath === undefined) {delete process.env.PATH}
+      else {process.env.PATH = previousPath}
     }
     try {
       symlinkSync(evil, join(trusted, 'pkexec'))
     } catch (error) {
-      if (process.platform === 'win32') return
+      if (process.platform === 'win32') {return}
       throw error
     }
     assert.equal(findTrustedExecutable('pkexec', [trusted]), null)

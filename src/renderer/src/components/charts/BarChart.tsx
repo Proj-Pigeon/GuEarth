@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { use, type EChartsCoreOption } from 'echarts/core'
+import { use } from 'echarts/core';
+import type { EChartsCoreOption } from 'echarts/core';
 import { BarChart as EChartsBarChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
@@ -116,7 +117,7 @@ export function BarChart({
         textStyle: { color: '#ffffff', fontSize: 12, lineHeight: 20 },
         formatter: (params: unknown) => {
           const list = Array.isArray(params) ? (params as TooltipParam[]) : [params as TooltipParam]
-          if (!list.length) return ''
+          if (list.length === 0) {return ''}
           const rows = list
             .filter((item) => item && item.seriesName)
             .map(

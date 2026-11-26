@@ -1,11 +1,12 @@
 import { Collapsible } from '@base-ui/react/collapsible'
-import { forwardRef, type ComponentPropsWithoutRef, type ComponentRef } from 'react'
+import { forwardRef } from 'react';
+import type { ComponentPropsWithoutRef, ComponentRef } from 'react';
 import { cn } from '@renderer/lib/utils'
 
 export const CollapsibleRoot = forwardRef<
   ComponentRef<typeof Collapsible.Root>,
   ComponentPropsWithoutRef<typeof Collapsible.Root>
->(function CollapsibleRoot(props, ref) {
+>((props, ref) => {
   return <Collapsible.Root ref={ref} data-slot="collapsible" {...props} />
 })
 

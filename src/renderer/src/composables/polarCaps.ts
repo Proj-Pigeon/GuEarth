@@ -9,7 +9,7 @@ export function createPolarCaps(terrain: Cesium.TerrainProvider): Cesium.Primiti
   if (rectangle.south > -Cesium.Math.PI_OVER_TWO) {
     caps.push(new Cesium.Rectangle(-Math.PI, -Cesium.Math.PI_OVER_TWO, Math.PI, rectangle.south))
   }
-  if (!caps.length) return undefined
+  if (caps.length === 0) {return undefined}
 
   return new Cesium.Primitive({
     geometryInstances: caps.flatMap((cap) => [-Math.PI, -Cesium.Math.PI_OVER_TWO, 0, Cesium.Math.PI_OVER_TWO].map((west) => new Cesium.GeometryInstance({

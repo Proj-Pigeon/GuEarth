@@ -1,20 +1,14 @@
 import { useRef } from 'react'
-import * as Cesium from 'cesium'
+import type * as Cesium from 'cesium'
 import { MapPinIcon, XIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
 import { useTransportStore } from '@renderer/stores/transport'
-import {
-  HSR_END_YEAR,
-  hsrFacts,
-  hsrGrowthSeries,
-  hsrLines,
-  hsrLinesUpTo,
-  hsrMileageAt,
-  type HsrLine
-} from '@renderer/thematic/hsrLines'
+import { HSR_END_YEAR, hsrFacts, hsrGrowthSeries, hsrLines, hsrLinesUpTo, hsrMileageAt } from '@renderer/thematic/hsrLines';
+import type { HsrLine } from '@renderer/thematic/hsrLines';
 import { resolveFlightDestination } from '@renderer/composables/terrainFlight'
-import LineChart, { type ChartSeries } from './charts/LineChart'
+import LineChart from './charts/LineChart';
+import type { ChartSeries } from './charts/LineChart';
 import YearTimeline from './YearTimeline'
 import styles from './TransportPanel.module.css'
 
@@ -43,18 +37,18 @@ export function TransportPanel({ viewer, onClose }: TransportPanelProps) {
   const flyingRef = useRef(false)
 
   const displayYear = Math.floor(year)
-  const mileageWan = (hsrMileageAt(displayYear) / 10000).toFixed(2)
+  const mileageWan = (hsrMileageAt(displayYear) / 10_000).toFixed(2)
   const openedCount = hsrLinesUpTo(displayYear).length
 
   async function flyToLine(line: HsrLine): Promise<void> {
-    if (flyingRef.current) return
-    if (!viewer || viewer.isDestroyed()) return
+    if (flyingRef.current) {return}
+    if (!viewer || viewer.isDestroyed()) {return}
     flyingRef.current = true
     try {
       const mid = line.path[Math.floor(line.path.length / 2)]
-      const span = Math.min(1200000, Math.max(250000, line.lengthKm * 420))
+      const span = Math.min(1_200_000, Math.max(250_000, line.lengthKm * 420))
       const destination = await resolveFlightDestination(viewer.scene, mid[0], mid[1], span)
-      if (!destination || viewer.isDestroyed()) return
+      if (!destination || viewer.isDestroyed()) {return}
       viewer.camera.flyTo({ destination, duration: 1.6 })
     } finally {
       flyingRef.current = false

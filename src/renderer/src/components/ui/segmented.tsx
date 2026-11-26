@@ -49,9 +49,9 @@ export function Segmented<T extends string | number = string>({
       aria-label={ariaLabel}
       onValueChange={(nextValues) => {
         const nextKey = nextValues[0]
-        if (nextKey === undefined) return
+        if (nextKey === undefined) {return}
         const matched = normalized.find((option) => String(option.value) === nextKey)
-        if (matched) onChange?.(matched.value)
+        if (matched) {onChange?.(matched.value)}
       }}
       className={cn(
         'inline-flex items-center gap-0.5 rounded-lg bg-muted p-0.5',

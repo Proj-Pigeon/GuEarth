@@ -8,8 +8,8 @@ export function offscreenScriptDurationMs(scenes: OffscreenSceneTiming[]): numbe
 }
 
 export function offscreenFrameRate(frameCount: number, elapsedMs: number): number {
-  if (!Number.isFinite(frameCount) || frameCount <= 0) return 1
-  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 1
+  if (!Number.isFinite(frameCount) || frameCount <= 0) {return 1}
+  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) {return 1}
   return Math.max(1, frameCount * 1000 / elapsedMs)
 }
 
@@ -49,7 +49,7 @@ export function offscreenConcatPlaylist(frameNames: string[], durations: number[
     lines.push(`option framerate ${concatFileFramerate}`)
     lines.push(`duration ${(durations[index] ?? 1 / 30).toFixed(6)}`)
   })
-  if (frameNames.length) {
+  if (frameNames.length > 0) {
     lines.push(`file '${frameNames[frameNames.length - 1]}'`)
     lines.push(`option framerate ${concatFileFramerate}`)
   }

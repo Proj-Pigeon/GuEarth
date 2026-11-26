@@ -2,7 +2,7 @@ export interface KoppenZone {
   name: string
   color: string
   borderColor?: string
-  boxes: Array<[west: number, east: number, south: number, north: number]>
+  boxes: [west: number, east: number, south: number, north: number][]
   labelAt: [number, number]
   summary: string
 }

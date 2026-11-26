@@ -1,5 +1,5 @@
-import { readFile, rename, unlink, writeFile } from 'fs/promises'
-import { randomUUID } from 'crypto'
+import { readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 
 const pending = new Set<Promise<unknown>>()
 
@@ -7,7 +7,7 @@ export function serialQueue() {
   let tail: Promise<unknown> = Promise.resolve()
   return function enqueue<T>(operation: () => Promise<T>): Promise<T> {
     const result = tail.then(operation)
-    tail = result.catch(() => undefined)
+    tail = result.catch(() => {})
     pending.add(result)
     void result.then(() => pending.delete(result), () => pending.delete(result))
     return result
@@ -32,15 +32,15 @@ export async function writeAtomic(path: string, data: string | Buffer): Promise<
         break
       } catch (error) {
         const code = (error as NodeJS.ErrnoException).code
-        if (attempt >= 4 || !['EACCES', 'EBUSY', 'EEXIST', 'EPERM'].includes(code ?? '')) throw error
+        if (attempt >= 4 || !['EACCES', 'EBUSY', 'EEXIST', 'EPERM'].includes(code ?? '')) {throw error}
         await new Promise((resolve) => setTimeout(resolve, 20 * (attempt + 1)))
       }
     }
   } finally {
-    await unlink(temporaryPath).catch(() => undefined)
+    await unlink(temporaryPath).catch(() => {})
   }
 }
 
 export async function flushJsonWrites(): Promise<void> {
-  while (pending.size) await Promise.allSettled([...pending])
+  while (pending.size > 0) {await Promise.allSettled([...pending])}
 }

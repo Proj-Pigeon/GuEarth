@@ -25,7 +25,7 @@ interface OffscreenMacEncoderSession {
   context: CanvasRenderingContext2D
   encoder: VideoEncoder
   muxer: Muxer<StreamTarget>
-  drainWaiters: Array<() => void>
+  drainWaiters: (() => void)[]
   pumping: boolean
   received: number
   encoded: number
@@ -42,8 +42,8 @@ const OFFSCREEN_MAC_MAX_ENCODE_QUEUE = 8
 let session: OffscreenMacEncoderSession | null = null
 
 async function begin(config: OffscreenMacEncoderConfig): Promise<void> {
-  if (session) throw new Error('macOS 编码会话已在进行')
-  if (typeof VideoEncoder === 'undefined') throw new Error('当前系统缺少 H.264 视频编码器（VideoEncoder 不可用），无法录制视频')
+  if (session) {throw new Error('macOS 编码会话已在进行')}
+  if (typeof VideoEncoder === 'undefined') {throw new Error('当前系统缺少 H.264 视频编码器（VideoEncoder 不可用），无法录制视频')}
   const support = await VideoEncoder.isConfigSupported({
     codec: OFFSCREEN_MAC_CODEC,
     width: config.width,
@@ -52,12 +52,12 @@ async function begin(config: OffscreenMacEncoderConfig): Promise<void> {
     framerate: config.framerate,
     avc: { format: 'avc' }
   })
-  if (!support.supported) throw new Error(`当前系统缺少 H.264 视频编码器（${OFFSCREEN_MAC_CODEC} 不可用），无法录制视频`)
+  if (!support.supported) {throw new Error(`当前系统缺少 H.264 视频编码器（${OFFSCREEN_MAC_CODEC} 不可用），无法录制视频`)}
   const canvas = document.createElement('canvas')
   canvas.width = config.width
   canvas.height = config.height
   const context = canvas.getContext('2d')
-  if (!context) throw new Error('无法创建 macOS 编码合成画布')
+  if (!context) {throw new Error('无法创建 macOS 编码合成画布')}
   const { Muxer: MuxerCtor, StreamTarget: StreamTargetCtor } = await import('mp4-muxer')
   const muxer = new MuxerCtor({
     target: new StreamTargetCtor({
@@ -71,8 +71,8 @@ async function begin(config: OffscreenMacEncoderConfig): Promise<void> {
   const encoder = new VideoEncoder({
     output: (chunk, metadata) => muxer.addVideoChunk(chunk, metadata),
     error: (error) => {
-      if (session?.failure) return
-      if (session) session.failure = `离屏视频编码失败（${error.message}）`
+      if (session?.failure) {return}
+      if (session) {session.failure = `离屏视频编码失败（${error.message}）`}
     }
   })
   encoder.configure({
@@ -108,7 +108,7 @@ async function decodeJpegFrame(jpeg: Uint8Array): Promise<VideoFrame> {
 }
 
 function drainEncodeQueue(encoder: VideoEncoder, maxQueue: number): Promise<void> {
-  if (encoder.encodeQueueSize <= maxQueue) return Promise.resolve()
+  if (encoder.encodeQueueSize <= maxQueue) {return Promise.resolve()}
   return new Promise((resolve) => {
     const check = (): void => {
       if (encoder.encodeQueueSize <= maxQueue) {
@@ -121,35 +121,35 @@ function drainEncodeQueue(encoder: VideoEncoder, maxQueue: number): Promise<void
 }
 
 function settleDrainWaiters(active: OffscreenMacEncoderSession): void {
-  if (active.drainWaiters.length === 0) return
+  if (active.drainWaiters.length === 0) {return}
   const waiters = active.drainWaiters
   active.drainWaiters = []
-  for (const waiter of waiters) waiter()
+  for (const waiter of waiters) {waiter()}
 }
 
 function pump(active: OffscreenMacEncoderSession): void {
-  if (active.pumping) return
+  if (active.pumping) {return}
   active.pumping = true
   void (async () => {
     try {
       while (active.queue.length > 0 && !active.failure) {
         const entry = active.queue.shift()
-        if (!entry) break
+        if (!entry) {break}
         await encodeFrame(active, entry)
         active.encoded += 1
         window.guEarth?.recordings?.sendOffscreenFrameAck(1)
       }
     } catch (error) {
-      if (!active.failure) active.failure = error instanceof Error ? error.message : String(error)
+      if (!active.failure) {active.failure = error instanceof Error ? error.message : String(error)}
     } finally {
       active.pumping = false
-      if (active.queue.length === 0 || active.failure) settleDrainWaiters(active)
+      if (active.queue.length === 0 || active.failure) {settleDrainWaiters(active)}
     }
   })()
 }
 
 async function encodeFrame(active: OffscreenMacEncoderSession, entry: OffscreenMacFrameEntry): Promise<void> {
-  if (active.failure) throw new Error(active.failure)
+  if (active.failure) {throw new Error(active.failure)}
   const { config, canvas, context, encoder } = active
   const image = await decodeJpegFrame(entry.jpeg)
   context.fillStyle = '#000'
@@ -169,7 +169,7 @@ async function encodeFrame(active: OffscreenMacEncoderSession, entry: OffscreenM
 }
 
 function whenDrained(active: OffscreenMacEncoderSession): Promise<void> {
-  if (!active.pumping && (active.queue.length === 0 || active.failure)) return Promise.resolve()
+  if (!active.pumping && (active.queue.length === 0 || active.failure)) {return Promise.resolve()}
   return new Promise((resolve) => {
     active.drainWaiters.push(resolve)
   })
@@ -177,11 +177,11 @@ function whenDrained(active: OffscreenMacEncoderSession): Promise<void> {
 
 async function finish(): Promise<{ frames: number }> {
   const active = session
-  if (!active) throw new Error('macOS 编码会话尚未开始')
-  if (active.finished) throw new Error('macOS 编码会话已结束')
+  if (!active) {throw new Error('macOS 编码会话尚未开始')}
+  if (active.finished) {throw new Error('macOS 编码会话已结束')}
   active.finished = true
   await whenDrained(active)
-  if (active.failure) throw new Error(active.failure)
+  if (active.failure) {throw new Error(active.failure)}
   const { encoder, muxer } = active
   await encoder.flush()
   encoder.close()
@@ -200,7 +200,7 @@ function stats(): OffscreenMacEncoderStats {
 
 window.guEarth?.recordings?.onOffscreenFrame((_index, captureTimeMs, jpeg) => {
   const active = session
-  if (!active || active.finished) return
+  if (!active || active.finished) {return}
   active.received += 1
   active.queue.push({ captureTimeMs, jpeg })
   pump(active)

@@ -31,7 +31,7 @@ Sentry.init({
       const exception = event.exception?.values?.at(-1)
       notifyCrashMessage([exception?.type, exception?.value ?? event.message].filter(Boolean).join(': '))
     }
-    if (!isErrorReportingEnabled()) return null
+    if (!isErrorReportingEnabled()) {return null}
     event.extra = { ...event.extra, rendererLogs: logger.dump(80) }
     return event
   }
@@ -39,7 +39,7 @@ Sentry.init({
 
 onPrivacySettingsChange((next) => {
   const client = Sentry.getClient()
-  if (client) client.getOptions().enabled = next.errorReportingEnabled
+  if (client) {client.getOptions().enabled = next.errorReportingEnabled}
   syncPosthogPrivacy(next)
 })
 

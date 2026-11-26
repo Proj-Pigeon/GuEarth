@@ -1,5 +1,7 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react'
-import { useScrollLock, type MessagePrimitive } from '@assistant-ui/react'
+import { useCallback, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useScrollLock } from '@assistant-ui/react';
+import type { MessagePrimitive } from '@assistant-ui/react';
 import { CheckIcon, ChevronRightIcon, Loader2Icon, XCircleIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from './collapsible'

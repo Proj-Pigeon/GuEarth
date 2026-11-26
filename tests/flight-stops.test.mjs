@@ -7,7 +7,7 @@ registerHooks({
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
       throw error
     }
   }
@@ -36,9 +36,9 @@ test('parseFlyToArgs validates single and batch locations with deduplication and
 
   const batch = parseFlyToArgs({
     locations: [
-      { name: '张掖丹霞', longitude: 100.06, latitude: 38.92, height: 18000, note: '彩丘与单斜山' },
-      { name: '张掖重复点', longitude: 100.06001, latitude: 38.92001, height: 18000 },
-      { name: '广东丹霞山', longitude: 113.75, latitude: 25.03, height: 15000 }
+      { name: '张掖丹霞', longitude: 100.06, latitude: 38.92, height: 18_000, note: '彩丘与单斜山' },
+      { name: '张掖重复点', longitude: 100.06001, latitude: 38.92001, height: 18_000 },
+      { name: '广东丹霞山', longitude: 113.75, latitude: 25.03, height: 15_000 }
     ]
   })
   assert.equal(batch.isBatch, true)
@@ -73,15 +73,15 @@ test('useFlightStopsStore starts at first stop, queues same-turn additions, and 
   assert.equal(store().visible, false)
 
   const batchFirst = store().beginTurnStops('turn-2', [
-    { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12000 },
-    { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15000 }
+    { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12_000 },
+    { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15_000 }
   ])
   assert.equal(batchFirst?.name, '路南石林')
   assert.equal(store().activeIndex, 0)
   assert.equal(store().visible, true)
 
   const queued = store().appendTurnStops('turn-2', [
-    { id: '2', name: '兴文石海', longitude: 105.08, latitude: 28.18, height: 14000 }
+    { id: '2', name: '兴文石海', longitude: 105.08, latitude: 28.18, height: 14_000 }
   ])
   assert.equal(queued.total, 3)
   assert.equal(store().activeIndex, 0)
@@ -97,7 +97,7 @@ test('useFlightStopsStore starts at first stop, queues same-turn additions, and 
   assert.equal(nextOutcome.stop?.name, '桂林峰林')
   assert.equal(store().activeIndex, 1)
   assert.equal(flights.length, 1)
-  assert.deepEqual(flights[0], { longitude: 110.29, latitude: 25.27, height: 15000 })
+  assert.deepEqual(flights[0], { longitude: 110.29, latitude: 25.27, height: 15_000 })
 
   const byName = await store().switchByRequest({ action: 'goto', name: '兴文' }, flyFn)
   assert.equal(byName.index, 2)
@@ -116,8 +116,8 @@ test('useFlightStopsStore starts at first stop, queues same-turn additions, and 
 
 test('resolveStopTarget handles invalid indexes and missing names cleanly', () => {
   const stops = [
-    { id: '0', name: '博格达峰', longitude: 88.33, latitude: 43.8, height: 20000 },
-    { id: '1', name: '慕士塔格峰', longitude: 75.12, latitude: 38.28, height: 22000 }
+    { id: '0', name: '博格达峰', longitude: 88.33, latitude: 43.8, height: 20_000 },
+    { id: '1', name: '慕士塔格峰', longitude: 75.12, latitude: 38.28, height: 22_000 }
   ]
   assert.match(resolveStopTarget(stops, 1, { action: 'next' }).error ?? '', /最后一个/)
   assert.match(resolveStopTarget(stops, 0, { action: 'goto', index: 5 }).error ?? '', /超出范围|无效/)
@@ -207,7 +207,7 @@ test('parseFlyToArgs rejects non-coordinate values instead of coercing them', ()
   assert.equal(numericStrings.error, undefined)
   assert.equal(numericStrings.stops[0].longitude, 110.29)
   assert.equal(numericStrings.stops[0].latitude, 25.27)
-  assert.equal(numericStrings.stops[0].height, 15000)
+  assert.equal(numericStrings.stops[0].height, 15_000)
 
   assert.match(parseFlyToArgs({ longitude: 110.29, latitude: 25.27, height: true }).error ?? '', /高度无效/)
   assert.match(parseFlyToArgs({ locations: [{ name: '坏点', longitude: null, latitude: null }] }).error ?? '', /坐标无效/)
@@ -217,12 +217,12 @@ test('dismissing the switcher keeps the camera anchor and same-turn queue append
   resetFlightStopsStore()
   const store = () => useFlightStopsStore.getState()
   store().beginTurnStops('turn-d', [
-    { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12000 },
-    { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15000 }
+    { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12_000 },
+    { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15_000 }
   ])
   useFlightStopsStore.setState({
     activeIndex: 1,
-    currentStop: { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15000 },
+    currentStop: { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15_000 },
     canPrev: true,
     canNext: false
   })
@@ -233,7 +233,7 @@ test('dismissing the switcher keeps the camera anchor and same-turn queue append
   assert.equal(store().currentStop?.name, '桂林峰林')
 
   const queued = store().appendTurnStops('turn-d', [
-    { id: '2', name: '兴文石海', longitude: 105.08, latitude: 28.18, height: 14000 }
+    { id: '2', name: '兴文石海', longitude: 105.08, latitude: 28.18, height: 14_000 }
   ])
   assert.equal(queued.added.length, 1)
   assert.equal(queued.added[0].name, '兴文石海')
@@ -243,7 +243,7 @@ test('dismissing the switcher keeps the camera anchor and same-turn queue append
   assert.equal(store().visible, true)
 
   const duplicate = store().appendTurnStops('turn-d', [
-    { id: '3', name: '重复点', longitude: 110.29001, latitude: 25.27001, height: 15000 }
+    { id: '3', name: '重复点', longitude: 110.29001, latitude: 25.27001, height: 15_000 }
   ])
   assert.equal(duplicate.added.length, 0)
   assert.equal(duplicate.total, 2)
@@ -257,11 +257,11 @@ test('goTo restores the previous index on cancelled flights but not on supersede
   resetFlightStopsStore()
   const store = () => useFlightStopsStore.getState()
   store().beginTurnStops('turn-f', [
-    { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12000 },
-    { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15000 }
+    { id: '0', name: '路南石林', longitude: 103.32, latitude: 24.81, height: 12_000 },
+    { id: '1', name: '桂林峰林', longitude: 110.29, latitude: 25.27, height: 15_000 }
   ])
 
-  const cancelled = await store().next(async () => undefined)
+  const cancelled = await store().next(async () => {})
   assert.match(cancelled.error ?? '', /飞行已取消/)
   assert.equal(store().activeIndex, 0)
   assert.equal(store().isNavigating, false)

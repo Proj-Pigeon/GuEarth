@@ -18,7 +18,7 @@ export function AboutSettings(_props: AboutSettingsProps) {
   const versionText = currentVersion ? `v${currentVersion}` : '未知'
 
   async function copyDiagnostics(): Promise<void> {
-    if (copying) return
+    if (copying) {return}
     setCopying(true)
     try {
       await window.guEarth.logs.copy(logger.dump())

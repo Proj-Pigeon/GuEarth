@@ -27,7 +27,7 @@ registerHooks({
   resolve(specifier, context, nextResolve) {
     if (specifier.startsWith('@renderer/')) {
       const target = resolve('src/renderer/src', specifier.slice(10))
-      if (/\.[a-z]+$/i.test(target)) return nextResolve(pathToFileURL(target).href, context)
+      if (/\.[a-z]+$/i.test(target)) {return nextResolve(pathToFileURL(target).href, context)}
       try {
         return nextResolve(pathToFileURL(`${target}.ts`).href, context)
       } catch {

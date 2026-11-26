@@ -2,8 +2,8 @@ export interface CoriolisDemo {
   id: 'north' | 'south'
   label: string
   start: [number, number]
-  inertial: Array<[number, number]>
-  deflected: Array<[number, number]>
+  inertial: [number, number][]
+  deflected: [number, number][]
 }
 
 const DEG = Math.PI / 180
@@ -24,13 +24,13 @@ function destinationPoint(latDeg: number, lonDeg: number, bearingDeg: number, di
   return [((nextLon / DEG + 540) % 360) - 180, nextLat / DEG]
 }
 
-function integrateTrack(start: [number, number], bearingDeg: number, coriolis: boolean): Array<[number, number]> {
+function integrateTrack(start: [number, number], bearingDeg: number, coriolis: boolean): [number, number][] {
   const stepSeconds = 120
   const steps = Math.round((DEMO_HOURS * 3600) / stepSeconds)
   let lat = start[1]
   let lon = start[0]
   let bearing = bearingDeg
-  const points: Array<[number, number]> = [[lon, lat]]
+  const points: [number, number][] = [[lon, lat]]
   for (let step = 0; step < steps; step += 1) {
     const distance = (DEMO_SPEED_KM_PER_HOUR * stepSeconds) / 3600
     const [nextLon, nextLat] = destinationPoint(lat, lon, bearing, distance)
@@ -62,8 +62,8 @@ export const coriolisDemos: CoriolisDemo[] = [
   }
 ]
 
-export function sampleTrack(points: Array<[number, number]>, fraction: number): [number, number] {
-  if (points.length === 0) return [0, 0]
+export function sampleTrack(points: [number, number][], fraction: number): [number, number] {
+  if (points.length === 0) {return [0, 0]}
   const scaled = Math.min(1, Math.max(0, fraction)) * (points.length - 1)
   const index = Math.floor(scaled)
   const ratio = scaled - index

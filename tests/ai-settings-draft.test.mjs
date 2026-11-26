@@ -7,7 +7,7 @@ registerHooks({
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
       throw error
     }
   }
@@ -19,7 +19,7 @@ function model(id, overrides = {}) {
   return {
     id,
     label: id,
-    contextWindow: 128000,
+    contextWindow: 128_000,
     streaming: true,
     vision: false,
     thinking: false,
@@ -82,7 +82,7 @@ test('model edits and list changes mark the draft dirty', () => {
   assert.equal(isAiDraftDirty(flagged, persisted), true)
 
   const resized = draft()
-  resized.providers[0].models[0].contextWindow = 200000
+  resized.providers[0].models[0].contextWindow = 200_000
   assert.equal(isAiDraftDirty(resized, persisted), true)
 
   const added = draft()

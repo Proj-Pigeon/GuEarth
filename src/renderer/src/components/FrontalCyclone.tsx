@@ -13,7 +13,7 @@ interface Dot {
 }
 
 const ANCHOR = Cesium.Cartesian3.fromDegrees(125, 34)
-const ANCHOR_VIEW_HEIGHT = 4800000
+const ANCHOR_VIEW_HEIGHT = 4_800_000
 
 const warmRainDots: Dot[] = []
 for (let row = 0; row < 3; row += 1) {
@@ -35,13 +35,13 @@ for (let row = 0; row < 2; row += 1) {
   }
 }
 
-const coldFrontBarbs: Array<{ x: number; y: number; angle: number }> = [
+const coldFrontBarbs: { x: number; y: number; angle: number }[] = [
   { x: 156, y: 213, angle: 35 },
   { x: 136, y: 241, angle: 40 },
   { x: 116, y: 271, angle: 48 }
 ]
 
-const warmFrontBarbs: Array<{ x: number; y: number; angle: number }> = [
+const warmFrontBarbs: { x: number; y: number; angle: number }[] = [
   { x: 221, y: 199, angle: -60 },
   { x: 252, y: 217, angle: -55 },
   { x: 282, y: 238, angle: -55 }
@@ -53,7 +53,7 @@ export function FrontalCyclone({ viewer }: FrontalCycloneProps) {
   useEffect(() => {
     const activeViewer = viewer && !viewer.isDestroyed() ? viewer : undefined
     if (!activeViewer) {
-      if (overlayRef.current) overlayRef.current.style.display = 'none'
+      if (overlayRef.current) {overlayRef.current.style.display = 'none'}
       return
     }
     const scratch = new Cesium.Cartesian2()
@@ -62,7 +62,7 @@ export function FrontalCyclone({ viewer }: FrontalCycloneProps) {
 
     function frame(): void {
       const element = overlayRef.current
-      if (!activeViewer || activeViewer.isDestroyed() || !element) return
+      if (!activeViewer || activeViewer.isDestroyed() || !element) {return}
       let facing = true
       if (activeViewer.scene.mode === Cesium.SceneMode.SCENE3D) {
         activeViewer.scene.globe.ellipsoid.geodeticSurfaceNormal(ANCHOR, scratchNormal)

@@ -21,7 +21,7 @@ export function TimezonePanel({ comparison, onClear }: TimezonePanelProps) {
   const beijingClock = useSolarStore((state) => state.beijingClock)
 
   const utcHours = useMemo(() => {
-    if (solarActive) return solarUtcHour
+    if (solarActive) {return solarUtcHour}
     const now = new Date()
     return now.getUTCHours() + now.getUTCMinutes() / 60
   }, [solarActive, solarUtcHour])
@@ -30,7 +30,7 @@ export function TimezonePanel({ comparison, onClear }: TimezonePanelProps) {
 
   const differenceText = useMemo(() => {
     const difference = comparison.differenceHours
-    if (Math.abs(difference) < 1 / 60) return '两地经度相近，地方时基本相同'
+    if (Math.abs(difference) < 1 / 60) {return '两地经度相近，地方时基本相同'}
     const abs = Math.abs(difference)
     const hours = Math.floor(abs)
     const minutes = Math.round((abs - hours) * 60)

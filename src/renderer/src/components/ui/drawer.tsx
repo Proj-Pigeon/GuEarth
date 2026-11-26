@@ -37,7 +37,7 @@ export function Drawer({
       modal={false}
       disablePointerDismissal
       onOpenChange={(nextOpen) => {
-        if (!nextOpen) onClose?.()
+        if (!nextOpen) {onClose?.()}
       }}
     >
       <BaseDialog.Portal>

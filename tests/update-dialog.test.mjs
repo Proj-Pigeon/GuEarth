@@ -44,7 +44,7 @@ registerHooks({
     }
     if (specifier.startsWith('@renderer/')) {
       const target = resolve('src/renderer/src', specifier.slice(10))
-      if (/\.[a-z]+$/i.test(target)) return nextResolve(pathToFileURL(target).href, context)
+      if (/\.[a-z]+$/i.test(target)) {return nextResolve(pathToFileURL(target).href, context)}
       try {
         return nextResolve(pathToFileURL(`${target}.ts`).href, context)
       } catch {
@@ -83,7 +83,7 @@ registerHooks({
         shortCircuit: true
       }
     }
-    if (!url.endsWith('/UpdateDialog.tsx')) return nextLoad(url, context)
+    if (!url.endsWith('/UpdateDialog.tsx')) {return nextLoad(url, context)}
     const source = transpileModule(readFileSync(new URL(url), 'utf8'), {
       compilerOptions: {
         jsx: JsxEmit.ReactJSX,
@@ -96,7 +96,7 @@ registerHooks({
 })
 
 globalThis.__testTryRenderMarkdown = (text, realTryRenderMarkdown, h) => {
-  if (forceMarkdownMode === 'null') return null
+  if (forceMarkdownMode === 'null') {return null}
   if (forceMarkdownMode === 'throw-in-vnode') {
     function BadChild() {
       throw new Error('render boom')

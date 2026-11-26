@@ -31,7 +31,7 @@ registerHooks({
     }
     if (specifier.startsWith('@renderer/')) {
       const target = resolve('src/renderer/src', specifier.slice(10))
-      if (/\.[a-z]+$/i.test(target)) return nextResolve(pathToFileURL(target).href, context)
+      if (/\.[a-z]+$/i.test(target)) {return nextResolve(pathToFileURL(target).href, context)}
       try {
         return nextResolve(pathToFileURL(`${target}.ts`).href, context)
       } catch {
@@ -191,7 +191,7 @@ test('EoqWebSearch filters unsafe links, toggles extra sources, and exposes retr
 
   assert.equal(container.querySelectorAll('a').length, 2)
   assert.match(container.textContent ?? '', /已阅读 4 个来源/)
-  const expandButton = Array.from(container.querySelectorAll('button')).find((el) =>
+  const expandButton = [...container.querySelectorAll('button')].find((el) =>
     (el.textContent ?? '').includes('展开其余 1 个来源')
   )
   assert.ok(expandButton)
@@ -250,7 +250,7 @@ test('EoqWelcome renders suggestions, cycles on refresh, and submits clicked pro
     )
   })
 
-  const initialButtons = Array.from(container.querySelectorAll('button'))
+  const initialButtons = [...container.querySelectorAll('button')]
   assert.equal(initialButtons.length, 4)
   const firstLabel = initialButtons[0].textContent ?? ''
   act(() => {

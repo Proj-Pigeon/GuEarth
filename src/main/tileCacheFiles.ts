@@ -1,5 +1,5 @@
-import { readdir, stat, unlink } from 'fs/promises'
-import { sep } from 'path'
+import { readdir, stat, unlink } from 'node:fs/promises'
+import { sep } from 'node:path'
 
 interface TileFile {
   path: string
@@ -10,7 +10,7 @@ interface TileFile {
 export async function listTileFiles(directory: string): Promise<TileFile[]> {
   const files: TileFile[] = []
   const pending = [directory]
-  while (pending.length) {
+  while (pending.length > 0) {
     const current = pending.pop()!
     let entries
     try {
@@ -19,7 +19,7 @@ export async function listTileFiles(directory: string): Promise<TileFile[]> {
       continue
     }
     for (const entry of entries) {
-      if (entry.name === '.' || entry.name === '..' || entry.name.includes('/') || entry.name.includes('\\')) continue
+      if (entry.name === '.' || entry.name === '..' || entry.name.includes('/') || entry.name.includes('\\')) {continue}
       const path = `${current}${sep}${entry.name}`
       if (entry.isDirectory()) {
         pending.push(path)
@@ -48,13 +48,13 @@ export async function pruneTileFiles(directory: string, maxBytes: number): Promi
   }
   const oldestFirst = [...tiles.values()].sort((a, b) => Math.max(...a.map((file) => file.mtimeMs)) - Math.max(...b.map((file) => file.mtimeMs)))
   for (const pair of oldestFirst) {
-    if (total <= maxBytes) break
+    if (total <= maxBytes) {break}
     for (const file of pair) {
       try {
         await unlink(file.path)
         total -= file.size
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') total -= file.size
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {total -= file.size}
       }
     }
   }

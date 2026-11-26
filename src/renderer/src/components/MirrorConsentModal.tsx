@@ -1,4 +1,5 @@
-import { useEffect, useState, type MouseEvent } from 'react'
+import { useEffect, useState } from 'react';
+import type { MouseEvent } from 'react';
 import { Button, Checkbox, Modal } from '@renderer/components/ui'
 import type { MirrorPolicyId } from '../../../common/mirrorPolicies'
 import { useGlobeStore } from '@renderer/stores/globe'
@@ -16,7 +17,7 @@ export function MirrorConsentModal(_props: MirrorConsentModalProps) {
   const [agreed, setAgreed] = useState(false)
 
   useEffect(() => {
-    if (mirrorConsentOpen) setAgreed(false)
+    if (mirrorConsentOpen) {setAgreed(false)}
   }, [mirrorConsentOpen])
 
   const detectionNotice =
@@ -41,7 +42,7 @@ export function MirrorConsentModal(_props: MirrorConsentModalProps) {
   }
 
   function handleAccept(): void {
-    if (!agreed) return
+    if (!agreed) {return}
     acceptMirrorConsent()
   }
 

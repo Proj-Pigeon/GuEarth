@@ -23,6 +23,6 @@ test('every big category code resolves through the label table', () => {
 test('pois without a valid typecode are skipped instead of misclassified', () => {
   assert.equal(poiBigCategory({ type: '餐饮服务;中餐厅;特色/地方风味餐厅' }), undefined)
   assert.equal(poiBigCategory({ type: '餐饮服务;中餐厅;特色/地方风味餐厅', typecode: '999999' }), undefined)
-  assert.equal(poiBigCategory({ type: '餐饮服务;中餐厅;特色/地方风味餐厅', typecode: 50118 }), undefined)
+  assert.equal(poiBigCategory({ type: '餐饮服务;中餐厅;特色/地方风味餐厅', typecode: 50_118 }), undefined)
   assert.equal(poiBigCategory({}), undefined)
 })

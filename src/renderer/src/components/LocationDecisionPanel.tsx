@@ -47,8 +47,8 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
   }
 
   function flyToPlace(): void {
-    if (flyingRef.current) return
-    if (!viewer || viewer.isDestroyed()) return
+    if (flyingRef.current) {return}
+    if (!viewer || viewer.isDestroyed()) {return}
     flyingRef.current = true
     const settle = (): void => {
       flyingRef.current = false
@@ -56,7 +56,7 @@ export function LocationDecisionPanel({ viewer, onClose }: LocationDecisionPanel
     try {
       const [lon, lat] = activeCase.placeLonLat
       viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(lon, lat, 220000),
+        destination: Cesium.Cartesian3.fromDegrees(lon, lat, 220_000),
         duration: 1.5,
         complete: settle,
         cancel: settle

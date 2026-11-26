@@ -24,7 +24,7 @@ export interface ZonationMountain {
   viewHeight: number
   slopes: ZonationSlope[]
   facts: string[]
-  transect: Array<[number, number]>
+  transect: [number, number][]
 }
 
 export const zonationMountains: ZonationMountain[] = [
@@ -35,7 +35,7 @@ export const zonationMountains: ZonationMountain[] = [
     longitude: 86.925,
     latitude: 27.988,
     summitM: 8848,
-    viewHeight: 200000,
+    viewHeight: 200_000,
     slopes: [
       {
         side: 'south',
@@ -76,7 +76,7 @@ export const zonationMountains: ZonationMountain[] = [
     longitude: 88.35,
     latitude: 43.82,
     summitM: 5445,
-    viewHeight: 160000,
+    viewHeight: 160_000,
     slopes: [
       {
         side: 'north',
@@ -116,7 +116,7 @@ export const zonationMountains: ZonationMountain[] = [
     longitude: 37.356,
     latitude: -3.067,
     summitM: 5895,
-    viewHeight: 140000,
+    viewHeight: 140_000,
     slopes: [
       {
         side: 'single',
@@ -135,7 +135,7 @@ export const zonationMountains: ZonationMountain[] = [
       '从山麓热带雨林到山顶冰雪，被形容为“从赤道到北极”的缩影',
       '近几十年山顶冰川快速退缩，是全球变暖的直观例证'
     ],
-    transect: [[36.6, -3.4], [37.0, -3.25], [37.356, -3.067], [37.7, -2.9], [38.1, -2.75]]
+    transect: [[36.6, -3.4], [37, -3.25], [37.356, -3.067], [37.7, -2.9], [38.1, -2.75]]
   },
   {
     id: 'alps',
@@ -144,7 +144,7 @@ export const zonationMountains: ZonationMountain[] = [
     longitude: 6.865,
     latitude: 45.833,
     summitM: 4808,
-    viewHeight: 150000,
+    viewHeight: 150_000,
     slopes: [
       {
         side: 'single',
@@ -162,16 +162,16 @@ export const zonationMountains: ZonationMountain[] = [
       '温带山地基带为落叶阔叶林带，带谱比珠峰简单——纬度更高、相对高度更小',
       '雪线约 2900 米，明显低于赤道地区的山峰，体现纬度对雪线高度的控制'
     ],
-    transect: [[6.0, 46.15], [6.4, 46.0], [6.865, 45.833], [7.3, 45.7], [7.7, 45.55]]
+    transect: [[6, 46.15], [6.4, 46], [6.865, 45.833], [7.3, 45.7], [7.7, 45.55]]
   },
   {
     id: 'changbai',
     name: '长白山',
     range: '长白山脉（吉林）',
     longitude: 128.06,
-    latitude: 42.0,
+    latitude: 42,
     summitM: 2749,
-    viewHeight: 90000,
+    viewHeight: 90_000,
     slopes: [
       {
         side: 'single',
@@ -189,7 +189,7 @@ export const zonationMountains: ZonationMountain[] = [
       '温带季风气候下的山地，基带为针阔叶混交林，与当地水平自然带一致',
       '山体相对高度仅约 2100 米，只有 4 个自然带、无积雪冰川带——相对高度限制带谱完整性'
     ],
-    transect: [[127.3, 42.3], [127.7, 42.15], [128.06, 42.0], [128.4, 41.85], [128.8, 41.7]]
+    transect: [[127.3, 42.3], [127.7, 42.15], [128.06, 42], [128.4, 41.85], [128.8, 41.7]]
   }
 ]
 

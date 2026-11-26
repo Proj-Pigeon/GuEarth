@@ -27,7 +27,7 @@ export interface PoiLike {
 }
 
 export function poiBigCategory(poi: PoiLike): string | undefined {
-  if (typeof poi.typecode !== 'string') return undefined
+  if (typeof poi.typecode !== 'string') {return undefined}
   const code = poi.typecode.slice(0, 2)
   return POI_CATEGORY_LABELS[code] === undefined ? undefined : code
 }

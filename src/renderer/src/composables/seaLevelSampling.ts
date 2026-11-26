@@ -15,7 +15,7 @@ const allPointsCached = (): boolean =>
   coastalZones.every((zone) => gridPointsOf(zone).every(([lon, lat]) => heightCache.has(cacheKeyOf(lon, lat))))
 
 export function ensureLandMask(): Promise<boolean> {
-  if (landMask.value) return Promise.resolve(true)
+  if (landMask.value) {return Promise.resolve(true)}
   maskPromise ??= window.guEarth.datasets
     .getProvinces()
     .then((document) => {
@@ -57,7 +57,7 @@ export function ensureSeaLevelSamples(viewer: Cesium.Viewer): Promise<SeaSampleO
     } catch {
       recordSamples(points, cartographics.map((cartographic) => viewer.scene.globe.getHeight(cartographic) ?? Number.NaN))
     }
-    if (!heightCache.size) {
+    if (heightCache.size === 0) {
       seaSamplingStatus.value = 'idle'
       return 'failed'
     }

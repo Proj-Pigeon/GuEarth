@@ -27,12 +27,12 @@ export function stripMemoryFromPrompt(content: string): string {
 }
 
 export function redactApiKey(text: string, apiKey: string): string {
-  if (!text || !apiKey) return text
+  if (!text || !apiKey) {return text}
   return text.replaceAll(apiKey, REDACTED_MARKER)
 }
 
 function sanitizeToolArguments(name: string, rawArguments: string): string {
-  if (name !== 'save_memory') return rawArguments
+  if (name !== 'save_memory') {return rawArguments}
   try {
     const parsed: unknown = JSON.parse(rawArguments)
     if (isRecord(parsed)) {
@@ -56,9 +56,9 @@ export function formatTelemetryToolCalls(toolCalls: TelemetryToolCall[]): Record
 }
 
 function sanitizeToolContentValue(value: unknown, depth = 0): unknown {
-  if (depth > 6 || value === null || value === undefined) return value
-  if (Array.isArray(value)) return value.map((item) => sanitizeToolContentValue(item, depth + 1))
-  if (!isRecord(value)) return value
+  if (depth > 6 || value === null || value === undefined) {return value}
+  if (Array.isArray(value)) {return value.map((item) => sanitizeToolContentValue(item, depth + 1))}
+  if (!isRecord(value)) {return value}
   const sanitized: Record<string, unknown> = {}
   for (const [key, entry] of Object.entries(value)) {
     if (key === 'image' && isRecord(entry) && typeof entry.data === 'string') {
@@ -94,7 +94,7 @@ function sanitizeToolMessageContent(name: string | undefined, content: string, h
       const parsed: unknown = JSON.parse(content)
       nextContent = JSON.stringify(sanitizeToolContentValue(parsed))
     } catch {
-      nextContent = content.replace(/data:image\/[^;\s"']+;base64,[A-Za-z0-9+/=]+/g, '[image omitted]')
+      nextContent = content.replaceAll(/data:image\/[^;\s"']+;base64,[A-Za-z0-9+/=]+/g, '[image omitted]')
     }
   }
   return hadImage ? `${nextContent}\n[image omitted]` : nextContent
@@ -154,10 +154,10 @@ export function normalizeModelTestOutput(protocol: AiProtocol, payload: Record<s
   const choices = Array.isArray(payload.choices) ? payload.choices : []
   const messages: Record<string, unknown>[] = []
   for (const choice of choices) {
-    if (!isRecord(choice) || !isRecord(choice.message)) continue
+    if (!isRecord(choice) || !isRecord(choice.message)) {continue}
     const role = typeof choice.message.role === 'string' ? choice.message.role : 'assistant'
     const content = typeof choice.message.content === 'string' ? choice.message.content : ''
     messages.push({ role, content })
   }
-  return messages.length ? messages : [{ role: 'assistant', content: '' }]
+  return messages.length > 0 ? messages : [{ role: 'assistant', content: '' }]
 }

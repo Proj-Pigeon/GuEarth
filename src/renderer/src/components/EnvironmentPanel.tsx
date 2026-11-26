@@ -3,18 +3,11 @@ import * as Cesium from 'cesium'
 import { MapPinIcon, XIcon } from 'lucide-react'
 import { Button, Segmented } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
-import {
-  SEA_LEVEL_SCENARIOS,
-  coastalZones,
-  inundationByZone,
-  scenarioSummary,
-  seaLevelFacts,
-  totalGridCellCount,
-  useSeaLevelStore,
-  type SeaLevelScenario
-} from '@renderer/thematic/seaLevelRise'
+import { SEA_LEVEL_SCENARIOS, coastalZones, inundationByZone, scenarioSummary, seaLevelFacts, totalGridCellCount, useSeaLevelStore } from '@renderer/thematic/seaLevelRise';
+import type { SeaLevelScenario } from '@renderer/thematic/seaLevelRise';
 import { ensureSeaLevelSamples } from '@renderer/composables/seaLevelSampling'
-import BarChart, { type BarSeries } from './charts/BarChart'
+import BarChart from './charts/BarChart';
+import type { BarSeries } from './charts/BarChart';
 import styles from './EnvironmentPanel.module.css'
 
 export interface EnvironmentPanelProps {
@@ -56,7 +49,7 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
   )
 
   const beginSampling = useCallback(async (): Promise<void> => {
-    if (!viewer || viewer.isDestroyed()) return
+    if (!viewer || viewer.isDestroyed()) {return}
     await ensureSeaLevelSamples(viewer)
   }, [viewer])
 
@@ -65,8 +58,8 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
   }, [beginSampling])
 
   function flyToZone(index: number): void {
-    if (flyingRef.current) return
-    if (!viewer || viewer.isDestroyed()) return
+    if (flyingRef.current) {return}
+    if (!viewer || viewer.isDestroyed()) {return}
     flyingRef.current = true
     try {
       const zone = coastalZones[index]
@@ -91,7 +84,7 @@ export function EnvironmentPanel({ viewer, onClose }: EnvironmentPanelProps) {
         value={rise}
         options={scenarioOptions}
         className={styles.scenarioPicker}
-        onChange={(value) => setSeaLevelRise(value as SeaLevelScenario)}
+        onChange={(value) => setSeaLevelRise(value)}
       />
 
       {sampledReady ? (

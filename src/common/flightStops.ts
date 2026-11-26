@@ -23,8 +23,8 @@ export interface StopSwitchRequest {
   name?: unknown
 }
 
-export const DEFAULT_FLIGHT_HEIGHT = 60000
-export const MAX_FLIGHT_HEIGHT = 20000000
+export const DEFAULT_FLIGHT_HEIGHT = 60_000
+export const MAX_FLIGHT_HEIGHT = 20_000_000
 export const MAX_FLIGHT_STOPS = 12
 
 const SWITCH_INTENT_PATTERN = /切换|切到|切回|换到|换个地点|下一|上一|下个|上个|下[一]?站|上[一]?站|跳到|跳转|飞到|飞往|飞去|移到|定位到|带我看|带我去|(?:看看|看|查看|去|回|回到)\s*第\s*[一二三四五六七八九十百\d]+|^\s*第\s*[一二三四五六七八九十百\d]+\s*[个站处地点]*\s*$|回到|去看看|过去看|switch|next|prev|previous|fly\s*to|go\s*to/i
@@ -37,14 +37,14 @@ const SWITCH_CLAUSE_SEPARATOR = /[，。；！？：,;.!?:\n]+/
 
 export function hasExplicitStopSwitchIntent(userText: string): boolean {
   const normalized = userText.trim()
-  if (!normalized) return false
+  if (!normalized) {return false}
   return normalized
     .split(SWITCH_CLAUSE_SEPARATOR)
-    .some((clause) => !NEGATED_SWITCH_PATTERN.test(clause) && SWITCH_INTENT_PATTERN.test(clause.replace(NON_FLIGHT_SWITCH_PATTERN, ' ')))
+    .some((clause) => !NEGATED_SWITCH_PATTERN.test(clause) && SWITCH_INTENT_PATTERN.test(clause.replaceAll(NON_FLIGHT_SWITCH_PATTERN, ' ')))
 }
 
 function cleanText(value: unknown, maxLength: number): string {
-  if (typeof value !== 'string') return ''
+  if (typeof value !== 'string') {return ''}
   return value.trim().slice(0, maxLength)
 }
 
@@ -53,8 +53,8 @@ function isNearCoordinate(a: FlightStop, b: FlightStop): boolean {
 }
 
 function toNumber(value: unknown): number {
-  if (typeof value === 'number') return value
-  if (typeof value === 'string' && value.trim() !== '') return Number(value.trim())
+  if (typeof value === 'number') {return value}
+  if (typeof value === 'string' && value.trim() !== '') {return Number(value.trim())}
   return Number.NaN
 }
 
@@ -84,18 +84,18 @@ export function normalizeFlightStop(raw: FlightStopInput, index = 0): { stop?: F
 }
 
 export function normalizeFlightStopList(rawItems: unknown, startIndex = 0): { stops: FlightStop[]; errors: string[] } {
-  if (!Array.isArray(rawItems)) return { stops: [], errors: ['locations 需要是地点数组'] }
+  if (!Array.isArray(rawItems)) {return { stops: [], errors: ['locations 需要是地点数组'] }}
   const stops: FlightStop[] = []
   const errors: string[] = []
   for (const item of rawItems) {
-    if (stops.length >= MAX_FLIGHT_STOPS) break
+    if (stops.length >= MAX_FLIGHT_STOPS) {break}
     if (typeof item !== 'object' || item === null) {
       errors.push('地点项格式无效')
       continue
     }
     const normalized = normalizeFlightStop(item as FlightStopInput, startIndex + stops.length)
     if (normalized.error || !normalized.stop) {
-      if (normalized.error) errors.push(normalized.error)
+      if (normalized.error) {errors.push(normalized.error)}
       continue
     }
     if (!stops.some((existing) => isNearCoordinate(existing, normalized.stop!))) {
@@ -108,8 +108,8 @@ export function normalizeFlightStopList(rawItems: unknown, startIndex = 0): { st
 export function mergeFlightStops(existing: readonly FlightStop[], incoming: readonly FlightStop[]): FlightStop[] {
   const result = [...existing]
   for (const candidate of incoming) {
-    if (result.length >= MAX_FLIGHT_STOPS) break
-    if (result.some((item) => isNearCoordinate(item, candidate))) continue
+    if (result.length >= MAX_FLIGHT_STOPS) {break}
+    if (result.some((item) => isNearCoordinate(item, candidate))) {continue}
     result.push({
       ...candidate,
       id: `${result.length}:${candidate.longitude.toFixed(5)},${candidate.latitude.toFixed(5)}`,
@@ -122,7 +122,7 @@ export function mergeFlightStops(existing: readonly FlightStop[], incoming: read
 export function parseFlyToArgs(args: Record<string, unknown>, existingCount = 0): { stops: FlightStop[]; isBatch: boolean; error?: string } {
   if (args.locations !== undefined) {
     const { stops, errors } = normalizeFlightStopList(args.locations, existingCount)
-    if (!stops.length) return { stops: [], isBatch: true, error: errors[0] ?? 'locations 至少需要包含一个有效坐标地点' }
+    if (stops.length === 0) {return { stops: [], isBatch: true, error: errors[0] ?? 'locations 至少需要包含一个有效坐标地点' }}
     return { stops, isBatch: true }
   }
   const normalized = normalizeFlightStop(
@@ -142,12 +142,12 @@ export function parseFlyToArgs(args: Record<string, unknown>, existingCount = 0)
 }
 
 export function clampStopIndex(index: number, total: number): number {
-  if (total <= 0) return 0
+  if (total <= 0) {return 0}
   return Math.max(0, Math.min(total - 1, Math.trunc(index)))
 }
 
 export function resolveStopTarget(stops: readonly FlightStop[], currentIndex: number, request: StopSwitchRequest): { index?: number; error?: string } {
-  if (!stops.length) return { error: '当前没有可切换的飞行地点列表' }
+  if (stops.length === 0) {return { error: '当前没有可切换的飞行地点列表' }}
   const rawAction = typeof request.action === 'string' ? request.action.trim().toLowerCase() : ''
   const action: StopSwitchAction = rawAction === 'prev' || rawAction === 'previous'
     ? 'prev'
@@ -157,11 +157,11 @@ export function resolveStopTarget(stops: readonly FlightStop[], currentIndex: nu
         ? 'goto'
         : 'next'
   if (action === 'next') {
-    if (currentIndex >= stops.length - 1) return { error: '已经是最后一个地点' }
+    if (currentIndex >= stops.length - 1) {return { error: '已经是最后一个地点' }}
     return { index: currentIndex + 1 }
   }
   if (action === 'prev') {
-    if (currentIndex <= 0) return { error: '已经是第一个地点' }
+    if (currentIndex <= 0) {return { error: '已经是第一个地点' }}
     return { index: currentIndex - 1 }
   }
   if (request.index !== undefined && request.index !== null && request.index !== '') {
@@ -174,9 +174,9 @@ export function resolveStopTarget(stops: readonly FlightStop[], currentIndex: nu
   const query = typeof request.name === 'string' ? request.name.trim().toLowerCase() : ''
   if (query) {
     const exact = stops.findIndex((stop) => stop.name.trim().toLowerCase() === query)
-    if (exact >= 0) return { index: exact }
+    if (exact !== -1) {return { index: exact }}
     const partial = stops.findIndex((stop) => stop.name.trim().toLowerCase().includes(query) || query.includes(stop.name.trim().toLowerCase()))
-    if (partial >= 0) return { index: partial }
+    if (partial !== -1) {return { index: partial }}
     return { error: `未在当前飞行地点列表中找到「${typeof request.name === 'string' ? request.name.trim() : ''}」` }
   }
   return { error: '请指定切换方向（next/prev）、地点序号或地点名称' }
@@ -224,7 +224,7 @@ export function evaluateFlightToolGuard(guard: TurnFlightGuard, name: string, ar
   }
   if (name === 'fly_to') {
     const parsed = parseFlyToArgs(args)
-    if (parsed.error) return { allow: true, dispatchArgs: args }
+    if (parsed.error) {return { allow: true, dispatchArgs: args }}
     const flightMode = guard.flewInTurn ? 'queue' : 'initial'
     return {
       allow: true,

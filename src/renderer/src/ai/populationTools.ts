@@ -27,20 +27,20 @@ export function registerPopulationTools(): void {
     },
     execute: async (args) => {
       const name = typeof args.province === 'string' ? args.province.trim() : ''
-      if (!name) return { error: '需要 province 参数，省级行政区全称或「全国」' }
+      if (!name) {return { error: '需要 province 参数，省级行政区全称或「全国」' }}
       if (name === '全国') {
         return {
           province: '全国',
           year: POPULATION_CENSUS_YEAR,
           populationWan: national.populationWan,
-          mainland31Wan: 140978,
+          mainland31Wan: 140_978,
           urbanizationPct: latestUrbanization[1],
           urbanizationYear: latestUrbanization[0],
           note: `全国人口 ${national.populationWan} 万为大陆口径（含现役军人）；大陆31个省区市合计约140978万。城镇化率 ${latestUrbanization[1]}% 为常住人口口径（${latestUrbanization[0]} 年）。`
         }
       }
       const province = provincePopulation.find((item) => item.name === name)
-      if (!province) return { error: `未收录省级行政区「${name}」，请使用枚举中的全称`, available: provinceNames }
+      if (!province) {return { error: `未收录省级行政区「${name}」，请使用枚举中的全称`, available: provinceNames }}
       const density = Math.round(densityOf(province) * 10) / 10
       return {
         province: province.name,

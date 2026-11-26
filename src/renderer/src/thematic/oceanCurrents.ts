@@ -3,7 +3,7 @@ export type CurrentKind = 'warm' | 'cold'
 export interface OceanCurrent {
   name: string
   kind: CurrentKind
-  path: Array<[number, number]>
+  path: [number, number][]
   major?: boolean
   season?: 'summer' | 'winter'
 }
@@ -47,8 +47,8 @@ function shortestLonDelta(lon0: number, lon1: number): number {
   return delta > 180 ? delta - 360 : delta < -180 ? delta + 360 : delta
 }
 
-export function pathPointAt(path: Array<[number, number]>, fraction: number): PathPoint {
-  if (path.length < 2) return { position: path[0] ?? [0, 0], direction: [1, 0] }
+export function pathPointAt(path: [number, number][], fraction: number): PathPoint {
+  if (path.length < 2) {return { position: path[0] ?? [0, 0], direction: [1, 0] }}
   const weights: number[] = []
   let total = 0
   for (let i = 1; i < path.length; i += 1) {

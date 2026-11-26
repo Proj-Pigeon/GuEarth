@@ -25,7 +25,7 @@ test('parseSha256 accepts Base64 and prefixed encodings', () => {
 test('parseSha256 rejects malformed or missing digests', () => {
   assert.equal(parseSha256(undefined), null)
   assert.equal(parseSha256(null), null)
-  assert.equal(parseSha256(12345), null)
+  assert.equal(parseSha256(12_345), null)
   assert.equal(parseSha256(''), null)
   assert.equal(parseSha256('plain text'), null)
   assert.equal(parseSha256(HEX.slice(0, 63)), null)

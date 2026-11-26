@@ -8,7 +8,7 @@ const VISIBLE_COUNT = 3
 const ALLOWED_SCHEMES = new Set(['http:', 'https:'])
 
 function domainOf(reference: AiSearchReference): string {
-  if (reference.website) return reference.website
+  if (reference.website) {return reference.website}
   try {
     return new URL(reference.url).hostname
   } catch {

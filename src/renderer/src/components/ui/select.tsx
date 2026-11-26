@@ -1,4 +1,5 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { CheckIcon, ChevronDownIcon, XIcon } from 'lucide-react'
@@ -52,8 +53,8 @@ export function Select<T extends string = string>({
   const flatOptions = useMemo<SelectOption<T>[]>(() => {
     const list: SelectOption<T>[] = []
     for (const entry of options) {
-      if (isGroup(entry)) list.push(...entry.options)
-      else list.push(entry)
+      if (isGroup(entry)) {list.push(...entry.options)}
+      else {list.push(entry)}
     }
     return list
   }, [options])
@@ -129,7 +130,7 @@ export function Select<T extends string = string>({
     )
   }
 
-  const selectedLabel = value !== undefined ? labelByValue.get(value) : undefined
+  const selectedLabel = value === undefined ? undefined : labelByValue.get(value)
   const showClear = allowClear && value !== undefined && !disabled
 
   return (

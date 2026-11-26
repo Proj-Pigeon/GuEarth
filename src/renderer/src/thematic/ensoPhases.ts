@@ -22,11 +22,11 @@ function normalizeLongitude(value: number): number {
 }
 
 export function ensoAnomalyColor(anomaly: number): string {
-  if (anomaly <= -1.5) return '#1677ff'
-  if (anomaly <= -0.5) return '#69b1ff'
-  if (anomaly < 0.5) return '#bae7ff'
-  if (anomaly < 1.5) return '#ffc061'
-  if (anomaly < 2.2) return '#fa8c16'
+  if (anomaly <= -1.5) {return '#1677ff'}
+  if (anomaly <= -0.5) {return '#69b1ff'}
+  if (anomaly < 0.5) {return '#bae7ff'}
+  if (anomaly < 1.5) {return '#ffc061'}
+  if (anomaly < 2.2) {return '#fa8c16'}
   return '#fa541c'
 }
 
@@ -74,11 +74,11 @@ export const ensoPhaseMeta: Record<EnsoPhase, EnsoPhaseMeta> = {
       '我国冬季容易出现冷冬，次年夏季雨带偏北、北方降水偏多；登陆台风个数往往偏多',
       '赤道中东太平洋台风生成位置偏西，发展路径更靠近我国'
     ],
-    bands: buildEnsoBands([0.5, 0.6, 0.5, 0.4, 0.2, 0, -0.3, -0.6, -0.9, -1.2, -1.4, -1.6, -1.8, -2.0, -2.0, -1.9])
+    bands: buildEnsoBands([0.5, 0.6, 0.5, 0.4, 0.2, 0, -0.3, -0.6, -0.9, -1.2, -1.4, -1.6, -1.8, -2, -2, -1.9])
   }
 }
 
-export const ensoPhaseOptions: Array<{ value: EnsoPhase; label: string }> = [
+export const ensoPhaseOptions: { value: EnsoPhase; label: string }[] = [
   { value: 'normal', label: '正常年份' },
   { value: 'el-nino', label: '厄尔尼诺' },
   { value: 'la-nina', label: '拉尼娜' }

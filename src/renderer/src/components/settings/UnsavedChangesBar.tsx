@@ -29,7 +29,7 @@ export function UnsavedChangesBar({ open, saving, onSave, onDiscard }: UnsavedCh
     return () => clearTimeout(timer)
   }, [open])
 
-  if (!rendered) return null
+  if (!rendered) {return null}
 
   return (
     <div
@@ -38,7 +38,7 @@ export function UnsavedChangesBar({ open, saving, onSave, onDiscard }: UnsavedCh
       aria-label="未保存的改动"
       aria-live="polite"
       onTransitionEnd={() => {
-        if (!open) setRendered(false)
+        if (!open) {setRendered(false)}
       }}
     >
       <AlertCircleIcon className={styles.unsavedBarIcon} aria-hidden="true" />

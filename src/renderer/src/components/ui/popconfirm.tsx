@@ -1,8 +1,10 @@
-import { useState, type ReactElement, type ReactNode } from 'react'
+import { useState } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { runGuardedAction } from './actionError'
 import { Alert } from './alert'
 import { Button } from './button'
-import { Popover, type PopoverPlacement } from './popover'
+import { Popover } from './popover';
+import type { PopoverPlacement } from './popover';
 import { appToast } from './toast'
 
 export interface PopconfirmProps {
@@ -31,13 +33,13 @@ export function Popconfirm({
   const [errorMessage, setErrorMessage] = useState('')
 
   function handleOpenChange(nextOpen: boolean): void {
-    if (busy && !nextOpen) return
-    if (!nextOpen) setErrorMessage('')
+    if (busy && !nextOpen) {return}
+    if (!nextOpen) {setErrorMessage('')}
     setOpen(nextOpen)
   }
 
   async function handleConfirm(): Promise<void> {
-    if (busy) return
+    if (busy) {return}
     setBusy(true)
     setErrorMessage('')
     try {

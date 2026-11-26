@@ -1,12 +1,5 @@
-import {
-  forwardRef,
-  useState,
-  type ChangeEvent,
-  type InputHTMLAttributes,
-  type KeyboardEvent,
-  type ReactNode,
-  type TextareaHTMLAttributes
-} from 'react'
+import { forwardRef, useState } from 'react';
+import type { ChangeEvent, InputHTMLAttributes, KeyboardEvent, ReactNode, TextareaHTMLAttributes } from 'react';
 import { Input as BaseInput } from '@base-ui/react/input'
 import { EyeIcon, EyeOffIcon, XIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
@@ -27,7 +20,7 @@ const sizeClasses = {
   lg: 'h-10 rounded-xl px-3 text-[14px] leading-[22px]'
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+export const Input = forwardRef<HTMLInputElement, InputProps>((
   {
     size = 'md',
     prefix,
@@ -43,7 +36,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     ...props
   },
   ref
-) {
+) => {
   const hasValue = typeof value === 'string' ? value.length > 0 : value !== undefined && value !== null && String(value).length > 0
   const showClear = allowClear && hasValue && !disabled
 
@@ -103,10 +96,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 
 export type PasswordInputProps = Omit<InputProps, 'type'>
 
-export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(function PasswordInput(
+export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>((
   { suffix, ...props },
   ref
-) {
+) => {
   const [visible, setVisible] = useState(false)
   return (
     <Input
@@ -137,10 +130,10 @@ export interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
   status?: 'error'
 }
 
-export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function TextArea(
+export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>((
   { showCount = false, maxLength, value, status, className, disabled, ...props },
   ref
-) {
+) => {
   const currentLength = typeof value === 'string' ? value.length : 0
   return (
     <div className={cn('relative flex w-full flex-col', className)}>

@@ -49,7 +49,7 @@ export function normalizeActiveChoice(choice: unknown): string {
 export function parseActiveChoice(choice: unknown): ActiveModelPair {
   const value = normalizeActiveChoice(choice)
   const separatorIndex = value.indexOf(':')
-  if (separatorIndex < 0) return { providerId: '', modelId: '' }
+  if (separatorIndex === -1) {return { providerId: '', modelId: '' }}
   return { providerId: value.slice(0, separatorIndex), modelId: value.slice(separatorIndex + 1) }
 }
 
@@ -67,8 +67,8 @@ export function providerListSignature(providers: AiProviderConfig[]): string {
 }
 
 export function isAiDraftDirty(draft: AiDraftState, persisted: AiPersistedState): boolean {
-  if (providerListSignature(draft.providers) !== providerListSignature(persisted.providers)) return true
-  if (draftChoiceSignature(draft.activeChoice) !== activePairSignature(persisted.activeProviderId, persisted.activeModelId)) return true
-  if (JSON.stringify(draft.searchProviders.map(searchSignature)) !== JSON.stringify(persisted.searchProviders.map(searchSignature))) return true
+  if (providerListSignature(draft.providers) !== providerListSignature(persisted.providers)) {return true}
+  if (draftChoiceSignature(draft.activeChoice) !== activePairSignature(persisted.activeProviderId, persisted.activeModelId)) {return true}
+  if (JSON.stringify(draft.searchProviders.map(searchSignature)) !== JSON.stringify(persisted.searchProviders.map(searchSignature))) {return true}
   return draft.activeSearchProviderId !== persisted.activeSearchProviderId
 }

@@ -13,7 +13,7 @@ test('a Cesium request error is recognized whatever order its properties were cr
     { response: {}, responseHeaders: {}, statusCode: 502 },
     { statusCode: undefined, response: undefined, responseHeaders: undefined }
   ]
-  for (const shape of shapes) assert.equal(isRequestErrorShape(shape), true)
+  for (const shape of shapes) {assert.equal(isRequestErrorShape(shape), true)}
 })
 
 test('ordinary errors, arrays, incomplete and overloaded objects, and primitives are not request errors', () => {

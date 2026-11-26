@@ -1,4 +1,5 @@
-import { Component, useMemo, useState, type ReactNode } from 'react'
+import { Component, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Modal } from '@renderer/components/ui'
 import { useUpdaterStore } from '@renderer/stores/updater'
 import { tryRenderMarkdown } from '@renderer/utils/markdown'
@@ -27,7 +28,7 @@ class MarkdownNotesBoundary extends Component<MarkdownNotesBoundaryProps, Markdo
   }
 
   render(): ReactNode {
-    if (this.state.failed) return null
+    if (this.state.failed) {return null}
     return this.props.children
   }
 }

@@ -37,7 +37,7 @@ export function Checkbox({
     </BaseCheckbox.Root>
   )
 
-  if (!children) return control
+  if (!children) {return control}
 
   return (
     <label

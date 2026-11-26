@@ -10,7 +10,7 @@ export interface GeneralSettingsProps {
   onRestartGuide?: () => void
 }
 
-const themeModeOptions: Array<{ value: ThemeMode; label: string }> = [
+const themeModeOptions: { value: ThemeMode; label: string }[] = [
   { value: 'light', label: '浅色' },
   { value: 'dark', label: '深色' },
   { value: 'system', label: '跟随系统' }
@@ -30,16 +30,16 @@ export function GeneralSettings({ onRestartGuide }: GeneralSettingsProps) {
     window.guEarth.recordings
       .getDirectory()
       .then((value) => {
-        if (!cancelled) setDirectory(value)
+        if (!cancelled) {setDirectory(value)}
       })
-      .catch(() => undefined)
+      .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [])
 
   async function chooseDirectory(): Promise<void> {
-    if (choosing) return
+    if (choosing) {return}
     setChoosing(true)
     try {
       const next = await window.guEarth.recordings.chooseDirectory()
@@ -55,7 +55,7 @@ export function GeneralSettings({ onRestartGuide }: GeneralSettingsProps) {
   }
 
   async function restartGuide(): Promise<void> {
-    await window.guEarth.settings.update({ setupGuideDismissed: false }).catch(() => undefined)
+    await window.guEarth.settings.update({ setupGuideDismissed: false }).catch(() => {})
     closeSettingsWindow()
     onRestartGuide?.()
   }

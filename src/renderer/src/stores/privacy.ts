@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings, type PrivacySettingKey, type PrivacySettings } from '../../../common/privacy'
+import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../../../common/privacy';
+import type { PrivacySettingKey, PrivacySettings } from '../../../common/privacy';
 import { applyRendererPrivacySettings } from '../lib/privacyRuntime'
 
 const PRIVACY_KEYS: readonly PrivacySettingKey[] = [
@@ -89,8 +90,8 @@ export const usePrivacyStore = create<PrivacyStore>()(
   subscribeWithSelector((set, get) => ({
     ...createInitialPrivacyState(),
     async hydrate(): Promise<void> {
-      if (get().hydrated) return
-      if (hydratePromise) return hydratePromise
+      if (get().hydrated) {return}
+      if (hydratePromise) {return hydratePromise}
       hydratePromise = (async () => {
         const seqAtStart = { ...latestSeq }
         try {
@@ -123,7 +124,7 @@ export const usePrivacyStore = create<PrivacyStore>()(
       }
       if (typeof window === 'undefined' || !window.guEarth?.settings) {
         activeUpdates[key] -= 1
-        if (!enabled) pendingDisableCounts[key] -= 1
+        if (!enabled) {pendingDisableCounts[key] -= 1}
         settledSnapshot = { ...settledSnapshot, [key]: enabled }
         applyLocal(settledSnapshot)
         return true
@@ -131,14 +132,14 @@ export const usePrivacyStore = create<PrivacyStore>()(
       try {
         const saved = await window.guEarth.settings.update({ [key]: enabled })
         activeUpdates[key] -= 1
-        if (!enabled) pendingDisableCounts[key] -= 1
+        if (!enabled) {pendingDisableCounts[key] -= 1}
         const resolved = resolvePrivacySettings(saved as unknown as Record<string, unknown>)
         mergeSnapshot(resolved, seqAtStart, key, seq)
         applyLocal(settledSnapshot)
         return true
       } catch {
         activeUpdates[key] -= 1
-        if (!enabled) pendingDisableCounts[key] -= 1
+        if (!enabled) {pendingDisableCounts[key] -= 1}
         applyLocal(settledSnapshot)
         return false
       }

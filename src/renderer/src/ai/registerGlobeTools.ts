@@ -19,7 +19,8 @@ import { registerPopulationTools } from '@renderer/ai/populationTools'
 import type { RecordingStep } from '@renderer/composables/useScenePlayer'
 import { flyTransect } from '@renderer/composables/useTransectFlight'
 import { hidesThematicLayers, visibleThematicLayers } from '@renderer/lib/nightBasemap'
-import { ensoPhaseOptions, type EnsoPhase } from '@renderer/thematic/ensoPhases'
+import { ensoPhaseOptions } from '@renderer/thematic/ensoPhases';
+import type { EnsoPhase } from '@renderer/thematic/ensoPhases';
 import { HSR_END_YEAR, HSR_START_YEAR } from '@renderer/thematic/hsrLines'
 import { mountainById, zonationMountains } from '@renderer/thematic/mountainZonation'
 import { findPeaksNear, nearestPeaks } from '@renderer/thematic/notablePeaks'
@@ -46,22 +47,22 @@ export interface GlobeToolsBridge {
 }
 
 const optionalFiniteNumber = (value: unknown): number | undefined => {
-  if (value === null || value === undefined || value === '') return undefined
+  if (value === null || value === undefined || value === '') {return undefined}
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
 export function parseRecordingStep(raw: unknown, index: number): RecordingStep | { error: string } {
-  if (typeof raw !== 'object' || raw === null) return { error: `第 ${index + 1} 步格式无效` }
+  if (typeof raw !== 'object' || raw === null) {return { error: `第 ${index + 1} 步格式无效` }}
   const record = raw as Record<string, unknown>
   const longitude = Number(record.longitude)
   const latitude = Number(record.latitude)
   if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180 || !Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
     return { error: `第 ${index + 1} 步缺少有效经纬度` }
   }
-  const height = record.height === undefined ? 600000 : Number(record.height)
-  if (!Number.isFinite(height) || height <= 0 || height > 20000000) return { error: `第 ${index + 1} 步视点高度无效` }
-  const clampedHeight = Math.min(12000000, Math.max(10000, height))
+  const height = record.height === undefined ? 600_000 : Number(record.height)
+  if (!Number.isFinite(height) || height <= 0 || height > 20_000_000) {return { error: `第 ${index + 1} 步视点高度无效` }}
+  const clampedHeight = Math.min(12_000_000, Math.max(10_000, height))
   const heading = record.heading === undefined ? 0 : Number(record.heading)
   const pitch = record.pitch === undefined ? -90 : Number(record.pitch)
   if (!Number.isFinite(heading) || heading < -360 || heading > 360 || !Number.isFinite(pitch) || pitch < -90 || pitch > 90) {
@@ -73,19 +74,19 @@ export function parseRecordingStep(raw: unknown, index: number): RecordingStep |
   const requestedOverlays = collectStrings(record.overlays)
   const knownOverlays = thematicLayerCatalog.filter((layer) => requestedOverlays.includes(layer.id)).map((layer) => layer.id)
   const month = record.month === undefined ? climateStore.month : Number(record.month)
-  if (!Number.isFinite(month) || month < 1 || month > 12) return { error: `第 ${index + 1} 步 month 需为 1-12` }
+  if (!Number.isFinite(month) || month < 1 || month > 12) {return { error: `第 ${index + 1} 步 month 需为 1-12` }}
   let simTime: { date: string; hour: number } | null = null
   if (record.simTime !== null && record.simTime !== undefined) {
-    if (typeof record.simTime !== 'object') return { error: `第 ${index + 1} 步 simTime 格式无效` }
+    if (typeof record.simTime !== 'object') {return { error: `第 ${index + 1} 步 simTime 格式无效` }}
     const time = record.simTime as Record<string, unknown>
-    if (typeof time.date !== 'string' || !isValidDate(time.date)) return { error: `第 ${index + 1} 步 simTime.date 需为合法 YYYY-MM-DD` }
+    if (typeof time.date !== 'string' || !isValidDate(time.date)) {return { error: `第 ${index + 1} 步 simTime.date 需为合法 YYYY-MM-DD` }}
     const hour = time.hour === undefined ? 12 : Number(time.hour)
-    if (!Number.isFinite(hour) || hour < 0 || hour >= 24) return { error: `第 ${index + 1} 步 simTime.hour 需为 0-24` }
+    if (!Number.isFinite(hour) || hour < 0 || hour >= 24) {return { error: `第 ${index + 1} 步 simTime.hour 需为 0-24` }}
     simTime = { date: time.date, hour }
   }
   const markers = Array.isArray(record.markers)
     ? record.markers.flatMap((item) => {
-        if (typeof item !== 'object' || item === null) return []
+        if (typeof item !== 'object' || item === null) {return []}
         const entry = item as Record<string, unknown>
         const name = typeof entry.name === 'string' ? entry.name.trim().slice(0, 200) : ''
         const markerLon = Number(entry.longitude)
@@ -98,13 +99,14 @@ export function parseRecordingStep(raw: unknown, index: number): RecordingStep |
     : []
   const shapes = Array.isArray(record.shapes)
     ? record.shapes.flatMap((item) => {
-        if (typeof item !== 'object' || item === null) return []
+        if (typeof item !== 'object' || item === null) {return []}
         const entry = item as Record<string, unknown>
-        if (entry.kind !== 'polyline' && entry.kind !== 'polygon') return []
+        if (entry.kind !== 'polyline' && entry.kind !== 'polygon') {return []}
         const positions = parsePositions(entry.points, entry.kind === 'polygon' ? 3 : 2)
-        if (!positions) return []
+        if (!positions) {return []}
         const name = typeof entry.name === 'string' ? entry.name.trim().slice(0, 200) : ''
-        return [{ kind: entry.kind as 'polyline' | 'polygon', name, positions }]
+        const kind: 'polyline' | 'polygon' = entry.kind
+        return [{ kind, name, positions }]
       })
     : []
   const dwellMs = record.dwellMs === undefined ? 6000 : Number(record.dwellMs)
@@ -128,8 +130,8 @@ export function parseRecordingStep(raw: unknown, index: number): RecordingStep |
     ensoPhase,
     seaLevelRise,
     transportYear,
-    dwellMs: Math.min(60000, Math.max(1000, dwellMs)),
-    flyDurationMs: Math.min(15000, Math.max(500, flyDurationMs)),
+    dwellMs: Math.min(60_000, Math.max(1000, dwellMs)),
+    flyDurationMs: Math.min(15_000, Math.max(500, flyDurationMs)),
     markers,
     shapes
   }
@@ -211,10 +213,10 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
       const turnToken = typeof args.__turnToken === 'string' ? args.__turnToken : ''
       const flightMode = args.__flightMode === 'queue' ? 'queue' : 'initial'
       const parsed = parseFlyToArgs(args, flightMode === 'queue' ? flightStopsStore.total : 0)
-      if (parsed.error || !parsed.stops.length) return { error: parsed.error ?? '坐标无效，需要 WGS-84 经纬度' }
+      if (parsed.error || parsed.stops.length === 0) {return { error: parsed.error ?? '坐标无效，需要 WGS-84 经纬度' }}
       if (flightMode === 'queue') {
         const { added, total } = flightStopsStore.appendTurnStops(turnToken, parsed.stops)
-        if (!added.length) return { error: `「${parsed.stops[0].name}」未加入待查看列表：列表已满或地点重复（共 ${total} 个）` }
+        if (added.length === 0) {return { error: `「${parsed.stops[0].name}」未加入待查看列表：列表已满或地点重复（共 ${total} 个）` }}
         const current = useFlightStopsStore.getState().currentStop
         const addedName = added[0].name
         return {
@@ -227,7 +229,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
         }
       }
       const first = flightStopsStore.beginTurnStops(turnToken, parsed.stops)
-      if (!first) return { error: '没有有效飞行地点' }
+      if (!first) {return { error: '没有有效飞行地点' }}
       const actualHeight = await bridge.flyTo(first.longitude, first.latitude, first.height)
       if (actualHeight === undefined) {
         useFlightStopsStore.getState().clear()
@@ -312,7 +314,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
     },
     execute: async (args) => {
       const current = bridge.getViewer()
-      if (!current || current.isDestroyed()) return { error: '地球尚未就绪' }
+      if (!current || current.isDestroyed()) {return { error: '地球尚未就绪' }}
       const longitude = Number(args.longitude)
       const latitude = Number(args.latitude)
       if (!Number.isFinite(longitude) || !Number.isFinite(latitude) || longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
@@ -321,7 +323,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
       const cartographic = Cesium.Cartographic.fromDegrees(longitude, latitude)
       try {
         const [sampled] = await Cesium.sampleTerrainMostDetailed(current.terrainProvider, [cartographic.clone()])
-        if (sampled && Number.isFinite(sampled.height)) return { height: Math.round(sampled.height * 100) / 100, unit: '米（WGS-84 椭球高）', longitude, latitude }
+        if (sampled && Number.isFinite(sampled.height)) {return { height: Math.round(sampled.height * 100) / 100, unit: '米（WGS-84 椭球高）', longitude, latitude }}
       } catch {
         void 0
       }
@@ -358,13 +360,13 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
         return { error: '坐标无效，需要 WGS-84 经纬度' }
       }
       const radiusKm = args.radiusKm === undefined ? 300 : Number(args.radiusKm)
-      if (!Number.isFinite(radiusKm) || radiusKm < 10 || radiusKm > 3000) return { error: 'radiusKm 需为 10-3000 的千米数' }
+      if (!Number.isFinite(radiusKm) || radiusKm < 10 || radiusKm > 3000) {return { error: 'radiusKm 需为 10-3000 的千米数' }}
       const found = findPeaksNear(longitude, latitude, radiusKm)
-      if (!found.length) {
+      if (found.length === 0) {
         const nearest = nearestPeaks(longitude, latitude, 3)
         return {
           status: 'none',
-          center: { longitude: Math.round(longitude * 10000) / 10000, latitude: Math.round(latitude * 10000) / 10000 },
+          center: { longitude: Math.round(longitude * 10_000) / 10_000, latitude: Math.round(latitude * 10_000) / 10_000 },
           radiusKm,
           nearest,
           message: '查询范围内没有收录的名山高峰，nearest 为全球范围内距该点最近的三座；名录仅收录教材常用名山，不代表当地没有其他山峰'
@@ -372,7 +374,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
       }
       return {
         status: 'ok',
-        center: { longitude: Math.round(longitude * 10000) / 10000, latitude: Math.round(latitude * 10000) / 10000 },
+        center: { longitude: Math.round(longitude * 10_000) / 10_000, latitude: Math.round(latitude * 10_000) / 10_000 },
         radiusKm,
         peaks: found.slice(0, 8),
         totalMatches: found.length,
@@ -392,7 +394,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
           mountainId: {
             type: 'string',
             enum: zonationMountains.map((mountain) => mountain.id),
-            description: '内置剖面：' + zonationMountains.map((mountain) => `${mountain.id}（${mountain.name}）`).join('、')
+            description: `内置剖面：${  zonationMountains.map((mountain) => `${mountain.id}（${mountain.name}）`).join('、')}`
           },
           waypoints: {
             type: 'array',
@@ -412,12 +414,12 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
     },
     execute: async (args) => {
       const current = bridge.getViewer()
-      if (!current || current.isDestroyed()) return { error: '地球尚未就绪' }
-      let waypoints: Array<[number, number]>
+      if (!current || current.isDestroyed()) {return { error: '地球尚未就绪' }}
+      let waypoints: [number, number][]
       let expectedMaxGroundM: number | undefined
       if (typeof args.mountainId === 'string') {
         const mountain = mountainById(args.mountainId)
-        if (!mountain) return { error: `未知山脉 ${String(args.mountainId)}，可用剖面：${zonationMountains.map((item) => `${item.id}（${item.name}）`).join('、')}` }
+        if (!mountain) {return { error: `未知山脉 ${String(args.mountainId)}，可用剖面：${zonationMountains.map((item) => `${item.id}（${item.name}）`).join('、')}` }}
         waypoints = mountain.transect
         expectedMaxGroundM = mountain.summitM
       } else if (Array.isArray(args.waypoints)) {
@@ -426,10 +428,10 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
         return { error: '请提供 mountainId（内置山脉剖面）或 waypoints（2-6 个途经点）' }
       }
       const result = await flyTransect(current, waypoints, args.altitudeM === undefined ? { expectedMaxGroundM } : { altitudeM: Number(args.altitudeM), expectedMaxGroundM })
-      if ('error' in result) return result
-      const samplingNote = result.maxGroundM !== undefined
-        ? `沿线采样最高地表 ${result.maxGroundM} 米${result.degraded ? '（地形数据不完整，已启用安全盲飞高度）' : ''}`
-        : ''
+      if ('error' in result) {return result}
+      const samplingNote = result.maxGroundM === undefined
+        ? ''
+        : `沿线采样最高地表 ${result.maxGroundM} 米${result.degraded ? '（地形数据不完整，已启用安全盲飞高度）' : ''}`
       if (result.status === 'interrupted') {
         const reason = result.reason === 'exaggeration-changed'
           ? '飞行中垂直夸张被调整，高度计划已失效，飞行自动中断'
@@ -457,8 +459,8 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
     execute: async () => {
       const camera = useGlobeStore.getState().camera
       return {
-        longitude: Math.round(camera.longitude * 10000) / 10000,
-        latitude: Math.round(camera.latitude * 10000) / 10000,
+        longitude: Math.round(camera.longitude * 10_000) / 10_000,
+        latitude: Math.round(camera.latitude * 10_000) / 10_000,
         height: Math.round(camera.height),
         heading: Math.round(camera.heading * 10) / 10,
         pitch: Math.round(camera.pitch * 10) / 10
@@ -475,7 +477,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
     },
     execute: async () => {
       const current = bridge.getViewer()
-      if (!current || current.isDestroyed()) return { error: '地球尚未就绪' }
+      if (!current || current.isDestroyed()) {return { error: '地球尚未就绪' }}
       const canvas = current.scene.canvas
       const viewContext = () => {
         const cartographic = current.camera.positionCartographic
@@ -486,16 +488,16 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
           .map((cartesian) => Cesium.Cartographic.fromCartesian(cartesian))
         const extent = picked.length >= 3
           ? {
-              west: Math.round(Cesium.Math.toDegrees(Math.min(...picked.map((item) => item.longitude))) * 10000) / 10000,
-              south: Math.round(Cesium.Math.toDegrees(Math.min(...picked.map((item) => item.latitude))) * 10000) / 10000,
-              east: Math.round(Cesium.Math.toDegrees(Math.max(...picked.map((item) => item.longitude))) * 10000) / 10000,
-              north: Math.round(Cesium.Math.toDegrees(Math.max(...picked.map((item) => item.latitude))) * 10000) / 10000
+              west: Math.round(Cesium.Math.toDegrees(Math.min(...picked.map((item) => item.longitude))) * 10_000) / 10_000,
+              south: Math.round(Cesium.Math.toDegrees(Math.min(...picked.map((item) => item.latitude))) * 10_000) / 10_000,
+              east: Math.round(Cesium.Math.toDegrees(Math.max(...picked.map((item) => item.longitude))) * 10_000) / 10_000,
+              north: Math.round(Cesium.Math.toDegrees(Math.max(...picked.map((item) => item.latitude))) * 10_000) / 10_000
             }
           : undefined
         return {
           camera: {
-            longitude: Math.round(Cesium.Math.toDegrees(cartographic.longitude) * 10000) / 10000,
-            latitude: Math.round(Cesium.Math.toDegrees(cartographic.latitude) * 10000) / 10000,
+            longitude: Math.round(Cesium.Math.toDegrees(cartographic.longitude) * 10_000) / 10_000,
+            latitude: Math.round(Cesium.Math.toDegrees(cartographic.latitude) * 10_000) / 10_000,
             height: Math.round(cartographic.height),
             heading: Math.round(headingDegrees < 0 ? headingDegrees + 360 : headingDegrees),
             pitch: Math.round(Cesium.Math.toDegrees(current.camera.pitch) * 10) / 10
@@ -519,10 +521,10 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
       offscreen.width = Math.max(1, Math.round(canvas.width * scale))
       offscreen.height = Math.max(1, Math.round(canvas.height * scale))
       const context = offscreen.getContext('2d')
-      if (!context) return { error: '截图失败' }
+      if (!context) {return { error: '截图失败' }}
       context.drawImage(canvas, 0, 0, offscreen.width, offscreen.height)
       const image = offscreen.toDataURL('image/jpeg', 0.85)
-      if (!image.startsWith('data:image/')) return { error: '截图失败' }
+      if (!image.startsWith('data:image/')) {return { error: '截图失败' }}
       return {
         status: 'ok',
         screenshot: true,
@@ -551,12 +553,12 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
     execute: async (args) => {
       const solarStore = useSolarStore.getState()
       if (args.date !== undefined) {
-        if (!isValidDate(args.date)) return { error: 'date 需为合法的 YYYY-MM-DD 日期' }
+        if (!isValidDate(args.date)) {return { error: 'date 需为合法的 YYYY-MM-DD 日期' }}
         solarStore.setDate(args.date)
       }
       if (args.hour !== undefined) {
         const hour = Number(args.hour)
-        if (!Number.isFinite(hour) || hour < 0 || hour >= 24) return { error: 'hour 需为 0-24 的小时数' }
+        if (!Number.isFinite(hour) || hour < 0 || hour >= 24) {return { error: 'hour 需为 0-24 的小时数' }}
         solarStore.setHour(hour)
       }
       if (typeof args.play === 'boolean') {
@@ -594,10 +596,10 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
     },
     execute: async (args) => {
       const latitude = Number(args.latitude)
-      if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) return { error: '纬度无效，需 -90 到 90' }
+      if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {return { error: '纬度无效，需 -90 到 90' }}
       let dateStr = useSolarStore.getState().date
       if (args.date !== undefined) {
-        if (!isValidDate(args.date)) return { error: 'date 需为合法的 YYYY-MM-DD 日期' }
+        if (!isValidDate(args.date)) {return { error: 'date 需为合法的 YYYY-MM-DD 日期' }}
         dateStr = args.date
       }
       const { month, day } = datePartsOf(dateStr)
@@ -612,8 +614,8 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
         noonAltitudeDeg: round1(noonAltitudeDeg(latitude, declination)),
         dayLengthHours: round1(length.hours),
         polar: length.state === 'polar-day' ? '极昼' : length.state === 'polar-night' ? '极夜' : undefined,
-        sunriseLocalSolarTime: times.sunrise !== undefined ? formatClock(times.sunrise) : undefined,
-        sunsetLocalSolarTime: times.sunset !== undefined ? formatClock(times.sunset) : undefined,
+        sunriseLocalSolarTime: times.sunrise === undefined ? undefined : formatClock(times.sunrise),
+        sunsetLocalSolarTime: times.sunset === undefined ? undefined : formatClock(times.sunset),
         note: '日出日落为地方时（平太阳时近似）'
       }
     }
@@ -637,7 +639,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
           city: {
             type: 'string',
             enum: functionalZoneCities.map((city) => city.id),
-            description: '仅 functional-zones 城市功能分区图层使用：切换展示的城市（' + functionalZoneCities.map((city) => `${city.id}（${city.name}）`).join('、') + '），默认武汉'
+            description: `仅 functional-zones 城市功能分区图层使用：切换展示的城市（${  functionalZoneCities.map((city) => `${city.id}（${city.name}）`).join('、')  }），默认武汉`
           }
         },
         required: ['layerId', 'enabled']
@@ -645,23 +647,23 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
     },
     execute: async (args) => {
       const layer = thematicLayerCatalog.find((item) => item.id === args.layerId)
-      if (!layer) return { error: `未知图层 ${String(args.layerId)}，可用图层：${thematicLayerCatalog.map((item) => `${item.id}（${item.name}）`).join('、')}` }
-      if (typeof args.enabled !== 'boolean') return { error: 'enabled 需为布尔值' }
+      if (!layer) {return { error: `未知图层 ${String(args.layerId)}，可用图层：${thematicLayerCatalog.map((item) => `${item.id}（${item.name}）`).join('、')}` }}
+      if (typeof args.enabled !== 'boolean') {return { error: 'enabled 需为布尔值' }}
       const nightActive = hidesThematicLayers(useGlobeStore.getState().selectedLayerId)
-      if (args.enabled && nightActive) return { error: '夜光底图下教学图层已隐藏，请先用 set_basemap 切换回其他底图再开启图层' }
+      if (args.enabled && nightActive) {return { error: '夜光底图下教学图层已隐藏，请先用 set_basemap 切换回其他底图再开启图层' }}
       const climateStore = useClimateStore.getState()
       let cityName: string | undefined
       if (args.city !== undefined) {
-        if (layer.id !== 'functional-zones') return { error: 'city 参数仅用于 functional-zones 城市功能分区图层' }
+        if (layer.id !== 'functional-zones') {return { error: 'city 参数仅用于 functional-zones 城市功能分区图层' }}
         const city = functionalZoneCityById(String(args.city))
-        if (!city) return { error: `未知城市 ${String(args.city)}，可用城市：${functionalZoneCities.map((item) => `${item.id}（${item.name}）`).join('、')}` }
+        if (!city) {return { error: `未知城市 ${String(args.city)}，可用城市：${functionalZoneCities.map((item) => `${item.id}（${item.name}）`).join('、')}` }}
         climateStore.setFunctionalZoneCity(city.id)
         cityName = city.name
       }
       climateStore.setOverlay(layer.id, args.enabled)
       if (args.month !== undefined) {
         const month = Number(args.month)
-        if (!Number.isFinite(month) || month < 1 || month > 12) return { error: 'month 需为 1-12 的月份' }
+        if (!Number.isFinite(month) || month < 1 || month > 12) {return { error: 'month 需为 1-12 的月份' }}
         climateStore.setMonth(month)
         useClimateStore.setState({ isPlaying: false })
       }
@@ -674,7 +676,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
         month: nextMonth,
         city: cityName,
         message: args.enabled
-          ? `已开启「${layer.name}」图层${cityName ? `，展示城市：${cityName}` : ''}${args.month !== undefined ? `并设置月份为 ${nextMonth} 月` : ''}；可在地球上点击图层要素查看成因`
+          ? `已开启「${layer.name}」图层${cityName ? `，展示城市：${cityName}` : ''}${args.month === undefined ? '' : `并设置月份为 ${nextMonth} 月`}；可在地球上点击图层要素查看成因`
           : `已关闭「${layer.name}」图层`
       }
     }
@@ -691,7 +693,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
           panelId: {
             type: 'string',
             enum: teachingPanelCatalog.map((panel) => panel.id),
-            description: '面板 id：' + teachingPanelCatalog.map((panel) => `${panel.id}（${panel.name}）`).join('、')
+            description: `面板 id：${  teachingPanelCatalog.map((panel) => `${panel.id}（${panel.name}）`).join('、')}`
           },
           close: { type: 'boolean', description: 'true 时关闭全部教学面板并退出地方时点选模式，忽略 panelId' }
         }
@@ -703,8 +705,8 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
         return { status: 'ok', closed: true, message: '已关闭全部教学演示面板' }
       }
       const panel = teachingPanelCatalog.find((item) => item.id === args.panelId)
-      if (!panel) return { error: `未知面板 ${String(args.panelId)}，可用面板：${teachingPanelCatalog.map((item) => `${item.id}（${item.name}）`).join('、')}` }
-      if (hidesThematicLayers(useGlobeStore.getState().selectedLayerId)) return { error: '夜光模式下教学面板不可用，请先用 set_basemap 切回其他底图' }
+      if (!panel) {return { error: `未知面板 ${String(args.panelId)}，可用面板：${teachingPanelCatalog.map((item) => `${item.id}（${item.name}）`).join('、')}` }}
+      if (hidesThematicLayers(useGlobeStore.getState().selectedLayerId)) {return { error: '夜光模式下教学面板不可用，请先用 set_basemap 切回其他底图' }}
       panel.open()
       return { status: 'ok', panelId: panel.id, name: panel.name, message: `已打开「${panel.name}」面板：${panel.hint}` }
     }
@@ -721,7 +723,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
           basemapId: {
             type: 'string',
             enum: basemapChoices.map((provider) => provider.id),
-            description: '底图 id：' + basemapChoices.map((provider) => `${provider.id}（${provider.name}，${provider.description}）`).join('、')
+            description: `底图 id：${  basemapChoices.map((provider) => `${provider.id}（${provider.name}，${provider.description}）`).join('、')}`
           }
         },
         required: ['basemapId']
@@ -729,8 +731,8 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
     },
     execute: async (args) => {
       const basemap = basemapChoices.find((provider) => provider.id === args.basemapId)
-      if (!basemap) return { error: `未知底图 ${String(args.basemapId)}，可用底图：${basemapChoices.map((provider) => `${provider.id}（${provider.name}）`).join('、')}` }
-      if (useGlobeStore.getState().selectedLayerId === basemap.id) return { status: 'ok', basemapId: basemap.id, name: basemap.name, message: `当前已是「${basemap.name}」底图` }
+      if (!basemap) {return { error: `未知底图 ${String(args.basemapId)}，可用底图：${basemapChoices.map((provider) => `${provider.id}（${provider.name}）`).join('、')}` }}
+      if (useGlobeStore.getState().selectedLayerId === basemap.id) {return { status: 'ok', basemapId: basemap.id, name: basemap.name, message: `当前已是「${basemap.name}」底图` }}
       bridge.switchBasemap(basemap.id)
       return { status: 'ok', basemapId: basemap.id, name: basemap.name, message: `已切换到「${basemap.name}」底图（${basemap.description}）` }
     }
@@ -747,7 +749,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
           terrainId: {
             type: 'string',
             enum: terrainCatalog.map((terrain) => terrain.id),
-            description: '地形数据源：' + terrainCatalog.map((terrain) => `${terrain.id}（${terrain.name}，${terrain.description}）`).join('、')
+            description: `地形数据源：${  terrainCatalog.map((terrain) => `${terrain.id}（${terrain.name}，${terrain.description}）`).join('、')}`
           },
           exaggeration: { type: 'number', description: '垂直夸张倍数（1-5）：1 为真实比例，讲山系褶皱、峡谷下切可用 3-5' },
           lighting: { type: 'boolean', description: '地形太阳光照开关，开启后山脉有明暗立体感' }
@@ -758,20 +760,20 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
       let terrain: (typeof terrainCatalog)[number] | undefined
       if (args.terrainId !== undefined) {
         terrain = terrainCatalog.find((item) => item.id === args.terrainId)
-        if (!terrain) return { error: `未知地形 ${String(args.terrainId)}，可用地形：${terrainCatalog.map((item) => `${item.id}（${item.name}）`).join('、')}` }
+        if (!terrain) {return { error: `未知地形 ${String(args.terrainId)}，可用地形：${terrainCatalog.map((item) => `${item.id}（${item.name}）`).join('、')}` }}
       }
       let exaggeration: number | undefined
       if (args.exaggeration !== undefined) {
         const value = Number(args.exaggeration)
-        if (!Number.isFinite(value) || value < 1 || value > 5) return { error: 'exaggeration 需为 1-5 的数字' }
+        if (!Number.isFinite(value) || value < 1 || value > 5) {return { error: 'exaggeration 需为 1-5 的数字' }}
         exaggeration = Math.round(value * 10) / 10
       }
       let lighting: boolean | undefined
       if (args.lighting !== undefined) {
-        if (typeof args.lighting !== 'boolean') return { error: 'lighting 需为布尔值' }
+        if (typeof args.lighting !== 'boolean') {return { error: 'lighting 需为布尔值' }}
         lighting = args.lighting
       }
-      if (!terrain && exaggeration === undefined && lighting === undefined) return { error: '请至少提供 terrainId、exaggeration 或 lighting 之一' }
+      if (!terrain && exaggeration === undefined && lighting === undefined) {return { error: '请至少提供 terrainId、exaggeration 或 lighting 之一' }}
       const applied: string[] = []
       if (terrain) {
         bridge.setTerrain(terrain.id)
@@ -806,7 +808,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
     },
     execute: async (args) => {
       const current = bridge.getViewer()
-      if (!current || current.isDestroyed()) return { error: '地球尚未就绪' }
+      if (!current || current.isDestroyed()) {return { error: '地球尚未就绪' }}
       const longitude = Number(args.longitude)
       const latitude = Number(args.latitude)
       if (!Number.isFinite(longitude) || !Number.isFinite(latitude) || longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
@@ -816,13 +818,13 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
       let heightMeters: number | null = null
       try {
         const [sampled] = await Cesium.sampleTerrainMostDetailed(current.terrainProvider, [cartographic.clone()])
-        if (sampled && Number.isFinite(sampled.height)) heightMeters = Math.round(sampled.height * 100) / 100
+        if (sampled && Number.isFinite(sampled.height)) {heightMeters = Math.round(sampled.height * 100) / 100}
       } catch {
         void 0
       }
       if (heightMeters === null) {
         const fallback = current.scene.globe.getHeight(cartographic)
-        if (typeof fallback === 'number' && Number.isFinite(fallback)) heightMeters = Math.round(fallback * 100) / 100
+        if (typeof fallback === 'number' && Number.isFinite(fallback)) {heightMeters = Math.round(fallback * 100) / 100}
       }
       const nearest = nearestBoundary(longitude, latitude)
       const distanceKm = Math.round(nearest.distanceKm)
@@ -860,14 +862,14 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
     },
     execute: async (args) => {
       const name = typeof args.name === 'string' ? args.name.trim().slice(0, 80) : ''
-      if (!name) return { error: '需要提供场景名称' }
+      if (!name) {return { error: '需要提供场景名称' }}
       const narration = typeof args.narration === 'string' ? args.narration.trim().slice(0, 500) : ''
       try {
         const scene = bridge.captureScene(name, narration)
         const scenesStore = useScenesStore.getState()
         await scenesStore.addScene(scene)
         const saveError = useScenesStore.getState().saveError
-        if (saveError) return { error: `场景保存失败：${saveError}` }
+        if (saveError) {return { error: `场景保存失败：${saveError}` }}
         return { status: 'ok', id: scene.id, name, hint: '场景已保存，可在底部工具栏「教学场景」面板中查看、排序与播放' }
       } catch (error) {
         return { error: error instanceof Error ? error.message : '地球尚未就绪，无法捕获当前画面' }
@@ -896,8 +898,8 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
           month: scene.snapshot.month,
           solarSimulation: Boolean(scene.snapshot.simTime),
           camera: {
-            longitude: Math.round(scene.snapshot.camera.longitude * 10000) / 10000,
-            latitude: Math.round(scene.snapshot.camera.latitude * 10000) / 10000,
+            longitude: Math.round(scene.snapshot.camera.longitude * 10_000) / 10_000,
+            latitude: Math.round(scene.snapshot.camera.latitude * 10_000) / 10_000,
             height: Math.round(scene.snapshot.camera.height)
           }
         }))
@@ -926,7 +928,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
                 height: { type: 'number', description: '本幕视点高度（米），默认 600000。宁远勿近，观众要看清地理格局而非街道：国家/大区域尺度 800000-3000000，省域/城市群 200000-800000，单个城市 80000-200000，地貌细节也不低于 15000' },
                 heading: { type: 'number', description: '可选朝向角（度，默认 0）' },
                 pitch: { type: 'number', description: '可选俯仰角（度，-90 正俯视为默认，看地形起伏可用 -55 至 -70，中心点仍保持画面居中）' },
-                overlays: { type: 'array', description: '本幕开启的教学图层 id 列表（未列出的图层会被关闭），可选项：' + thematicLayerCatalog.map((layer) => `${layer.id}（${layer.name}）`).join('、'), items: { type: 'string' } },
+                overlays: { type: 'array', description: `本幕开启的教学图层 id 列表（未列出的图层会被关闭），可选项：${  thematicLayerCatalog.map((layer) => `${layer.id}（${layer.name}）`).join('、')}`, items: { type: 'string' } },
                 month: { type: 'number', description: '可选专题月份 1-12（配合季节性图层对比 1 月/7 月）' },
                 simTime: { type: 'object', description: '可选昼夜模拟 { date: "YYYY-MM-DD", hour: 北京时间 0-24 }，如夏至 2026-06-22', properties: { date: { type: 'string' }, hour: { type: 'number' } } },
                 ensoPhase: { type: 'string', description: '可选 ENSO 相位：normal（正常）/ el-nino（厄尔尼诺）/ la-nina（拉尼娜），配合 enso 图层讲解', enum: ['normal', 'el-nino', 'la-nina'] },
@@ -946,18 +948,18 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
       }
     },
     execute: async (args) => {
-      if (!Array.isArray(args.steps) || !args.steps.length) return { error: 'steps 需为非空数组' }
-      if (args.steps.length > MAX_RECORD_STEPS) return { error: `单次录制最多 ${MAX_RECORD_STEPS} 幕，请精简剧本` }
+      if (!Array.isArray(args.steps) || args.steps.length === 0) {return { error: 'steps 需为非空数组' }}
+      if (args.steps.length > MAX_RECORD_STEPS) {return { error: `单次录制最多 ${MAX_RECORD_STEPS} 幕，请精简剧本` }}
       const title = typeof args.title === 'string' && args.title.trim() ? args.title.trim().slice(0, 80) : '地理教学视频'
       const steps: RecordingStep[] = []
       for (let index = 0; index < args.steps.length; index += 1) {
         const step = parseRecordingStep(args.steps[index], index)
-        if ('error' in step) return { error: step.error }
+        if ('error' in step) {return { error: step.error }}
         steps.push(step)
       }
-      if (!await bridge.ensureRecordingDirectory()) return { error: '已取消视频保存文件夹选择，录制未开始' }
+      if (!await bridge.ensureRecordingDirectory()) {return { error: '已取消视频保存文件夹选择，录制未开始' }}
       const result = await bridge.recordVideo(title, steps)
-      if ('error' in result) return { error: result.error }
+      if ('error' in result) {return { error: result.error }}
       return {
         status: 'started',
         title,

@@ -88,8 +88,8 @@ export function buildDecisionPrompt(item: DecisionCase, selectedFactorIds: strin
   return [
     `我在「区位决策沙盘」练习：${item.question}`,
     `候选地点：${item.place}。背景：${item.context}`,
-    `我认为应当优先考虑的因素：${selected.length ? selected.map((factor) => factor.name).join('、') : '（暂无）'}；我暂时搁置的因素：${omitted.length ? omitted.map((factor) => factor.name).join('、') : '（无）'}。`,
-    ...(missed.length ? [`请特别检查我是否遗漏了关键因素（我可能低估了：${missed.join('、')}）。`] : []),
+    `我认为应当优先考虑的因素：${selected.length > 0 ? selected.map((factor) => factor.name).join('、') : '（暂无）'}；我暂时搁置的因素：${omitted.length > 0 ? omitted.map((factor) => factor.name).join('、') : '（无）'}。`,
+    ...(missed.length > 0 ? [`请特别检查我是否遗漏了关键因素（我可能低估了：${missed.join('、')}）。`] : []),
     '请按高考综合题的答题结构点评我的取舍：先指出我遗漏或误判的关键因素，再分「有利条件」「限制性条件」「综合评价」三段给出你的选址建议；必要时请调用 analyze_location 查询该地数据、set_layer 打开相关图层佐证。'
   ].join('\n')
 }

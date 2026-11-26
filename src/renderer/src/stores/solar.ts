@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { datePartsOf, formatClock, presetDate, shiftDate, type DateParts, type SolarPreset } from '@renderer/thematic/solarMath'
+import { datePartsOf, formatClock, presetDate, shiftDate } from '@renderer/thematic/solarMath';
+import type { DateParts, SolarPreset } from '@renderer/thematic/solarMath';
 
 const BEIJING_OFFSET_HOURS = 8
 const HOURS_PER_SECOND = 1.5
@@ -9,8 +10,8 @@ const DAYS_PER_SECOND = 12
 export type MotionPanel = 'solar-path' | 'obliquity' | 'rotation-speed'
 
 function beijingNow(): { date: string; hour: number } {
-  const ms = Date.now() + BEIJING_OFFSET_HOURS * 3600000
-  return { date: new Date(ms).toISOString().slice(0, 10), hour: (ms % 86400000) / 3600000 }
+  const ms = Date.now() + BEIJING_OFFSET_HOURS * 3_600_000
+  return { date: new Date(ms).toISOString().slice(0, 10), hour: (ms % 86_400_000) / 3_600_000 }
 }
 
 export interface SolarState {
@@ -41,7 +42,7 @@ export interface SolarActions {
 export type SolarStore = SolarState & SolarActions
 
 export function selectSolarUtcMs(state: Pick<SolarState, 'date' | 'hour'>): number {
-  return Date.parse(`${state.date}T00:00:00Z`) + (state.hour - BEIJING_OFFSET_HOURS) * 3600000
+  return Date.parse(`${state.date}T00:00:00Z`) + (state.hour - BEIJING_OFFSET_HOURS) * 3_600_000
 }
 
 export function selectSolarUtcHour(state: Pick<SolarState, 'hour'>): number {
@@ -100,18 +101,18 @@ export const useSolarStore = create<SolarStore>()(
       set({ motionPanel: panel })
     },
     setDate(value: string): void {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {return}
       set((state) => ({ date: value, ...deriveSolarFields(value, state.hour) }))
     },
     setHour(value: number): void {
-      if (!Number.isFinite(value)) return
+      if (!Number.isFinite(value)) {return}
       const hour = Math.min(24, Math.max(0, value))
       set((state) => ({ hour, ...deriveSolarFields(state.date, hour) }))
     },
     setPreset(preset: SolarPreset): void {
       const state = get()
       const year = Number(state.date.slice(0, 4))
-      if (!Number.isFinite(year)) return
+      if (!Number.isFinite(year)) {return}
       const date = presetDate(preset, year)
       set({ date, ...deriveSolarFields(date, state.hour) })
     },
@@ -139,12 +140,12 @@ export const useSolarStore = create<SolarStore>()(
         const year = Number(state.date.slice(0, 4))
         const startOfYear = Number.isFinite(year) ? Date.parse(`${year}-01-01T00:00:00Z`) : 0
         const span = Date.parse(`${(Number.isFinite(year) ? year : 2024) + 1}-01-01T00:00:00Z`) - startOfYear
-        const ms = Date.parse(`${state.date}T00:00:00Z`) + dtSeconds * DAYS_PER_SECOND * 86400000
+        const ms = Date.parse(`${state.date}T00:00:00Z`) + dtSeconds * DAYS_PER_SECOND * 86_400_000
         const date = new Date(startOfYear + (((ms - startOfYear) % span) + span) % span).toISOString().slice(0, 10)
         set({ date, ...deriveSolarFields(date, state.hour) })
         return
       }
-      if (!state.isPlaying) return
+      if (!state.isPlaying) {return}
       const next = state.hour + dtSeconds * HOURS_PER_SECOND
       if (next >= 24) {
         const hour = next - 24

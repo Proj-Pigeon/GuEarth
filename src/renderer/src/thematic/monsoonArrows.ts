@@ -1,5 +1,5 @@
 export interface MonsoonArrow {
-  path: Array<[number, number]>
+  path: [number, number][]
   label: string
 }
 

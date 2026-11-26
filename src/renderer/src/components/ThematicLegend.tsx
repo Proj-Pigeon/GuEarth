@@ -7,7 +7,8 @@ import { densityBins } from '@renderer/thematic/populationCensus'
 import { CITY_TIER_META, FUNCTIONAL_ZONES, functionalZoneCities } from '@renderer/thematic/urbanCities'
 import { AGRI_CATEGORY_META } from '@renderer/thematic/agriculturalRegions'
 import { industrialBases } from '@renderer/thematic/industrialBases'
-import { useOnlineDataStore, type TyphoonMode } from '@renderer/stores/onlineData'
+import { useOnlineDataStore } from '@renderer/stores/onlineData';
+import type { TyphoonMode } from '@renderer/stores/onlineData';
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import { typhoonIntensityStyles } from '@renderer/thematic/typhoonTracks'
 import {
@@ -28,7 +29,7 @@ const liveTyphoonEntries = [
   })),
   unknownTyphoonIntensityStyle
 ]
-const typhoonModeOptions: Array<{ label: string; value: TyphoonMode }> = [
+const typhoonModeOptions: { label: string; value: TyphoonMode }[] = [
   { label: '实时台风', value: 'live' },
   { label: '历史案例', value: 'history' }
 ]
@@ -72,7 +73,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
 
   const openSettingsWindow = useSettingsWindowStore((state) => state.open)
 
-  if (!hasActiveOverlay) return null
+  if (!hasActiveOverlay) {return null}
 
   const typhoonFeed = snapshot?.typhoons
   const typhoonHistory = snapshot?.typhoonConfigured === false || typhoonMode === 'history'
@@ -140,7 +141,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
           ))}
         </div>
       )}
-      {overlays['enso'] && (
+      {overlays.enso && (
         <div className={styles.legendGroup}>
           <div className={styles.legendItem}>
             <span className={styles.swatch} style={{ background: '#1677ff' }} />
@@ -180,7 +181,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
           </div>
         </div>
       )}
-      {overlays['typhoon'] && (
+      {overlays.typhoon && (
         <div className={styles.legendGroup}>
           <div className={styles.legendHeading}>台风（热带气旋）</div>
           {snapshot?.typhoonConfigured && (
@@ -231,16 +232,16 @@ export function ThematicLegend(_props: ThematicLegendProps) {
                   <p className={styles.legendCopy}>
                     更新时间：<span className={styles.legendTime}>{formatOnlineTime(typhoonFeed.fetchedAt)}</span>
                   </p>
-                  {!activeStormCount ? (
+                  {activeStormCount ? (
+                    <p className={styles.legendCopy}>
+                      当前有 {activeStormCount} 个活跃台风，点击路径点查看详情
+                    </p>
+                  ) : (
                     <Alert
                       type="info"
                       showIcon
                       title={typhoonCached ? '当前暂无活跃台风（历史缓存）' : '当前暂无活跃台风'}
                     />
-                  ) : (
-                    <p className={styles.legendCopy}>
-                      当前有 {activeStormCount} 个活跃台风，点击路径点查看详情
-                    </p>
                   )}
                   {forecastErrors && (
                     <Alert
@@ -452,7 +453,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
             className={styles.citySelect}
             aria-label="选择功能分区城市"
             onChange={(value) => {
-              if (value) setFunctionalZoneCity(value)
+              if (value) {setFunctionalZoneCity(value)}
             }}
           />
           {functionalZoneEntries.map((zone) => (

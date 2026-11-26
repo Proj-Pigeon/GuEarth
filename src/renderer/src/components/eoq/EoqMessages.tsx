@@ -1,20 +1,7 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent
-} from 'react'
-import {
-  ActionBarPrimitive,
-  MessagePrimitive,
-  ThreadPrimitive,
-  useAuiState,
-  type PartState
-} from '@assistant-ui/react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
+import { ActionBarPrimitive, MessagePrimitive, ThreadPrimitive, useAuiState } from '@assistant-ui/react';
+import type { PartState } from '@assistant-ui/react';
 import {
   AlertCircleIcon,
   AlertTriangleIcon,
@@ -25,7 +12,8 @@ import {
   RefreshCwIcon
 } from 'lucide-react'
 import { useConfirm, useToast } from '@renderer/components/ui'
-import { useAiStore, type ChatMessage, type ToolStep } from '@renderer/stores/ai'
+import { useAiStore } from '@renderer/stores/ai';
+import type { ChatMessage, ToolStep } from '@renderer/stores/ai';
 import { cn } from '@renderer/lib/utils'
 import EoqIconButton from './EoqIconButton'
 import EoqMarkdownText from './EoqMarkdownText'
@@ -37,8 +25,8 @@ import EoqWebSearch from './EoqWebSearch'
 type EoqGroupKey = 'group-reasoning' | 'group-tool'
 
 const eoqGroupBy = (part: PartState): readonly EoqGroupKey[] => {
-  if (part.type === 'reasoning') return ['group-reasoning']
-  if (part.type === 'tool-call' && part.toolName !== 'web_search') return ['group-tool']
+  if (part.type === 'reasoning') {return ['group-reasoning']}
+  if (part.type === 'tool-call' && part.toolName !== 'web_search') {return ['group-tool']}
   return []
 }
 
@@ -60,7 +48,7 @@ const EoqThreadActionsContext = createContext<EoqThreadActionsContextValue | nul
 
 function useEoqThreadActions(): EoqThreadActionsContextValue {
   const value = useContext(EoqThreadActionsContext)
-  if (!value) throw new Error('EoqThreadActionsContext is missing')
+  if (!value) {throw new Error('EoqThreadActionsContext is missing')}
   return value
 }
 
@@ -79,7 +67,7 @@ function EoqUserMessage() {
     handleEditKeydown
   } = useEoqThreadActions()
 
-  if (!chatMessage) return null
+  if (!chatMessage) {return null}
   const isEditing = editingId === chatMessage.id
 
   return (
@@ -149,14 +137,14 @@ function EoqAssistantMessage() {
 
   const toolStepsById = useMemo(() => {
     const map = new Map<string, ToolStep>()
-    if (!chatMessage) return map
+    if (!chatMessage) {return map}
     for (const part of chatMessage.parts) {
-      if (part.kind === 'tool') map.set(part.step.callId, part.step)
+      if (part.kind === 'tool') {map.set(part.step.callId, part.step)}
     }
     return map
   }, [chatMessage])
 
-  if (!chatMessage) return null
+  if (!chatMessage) {return null}
 
   return (
     <MessagePrimitive.Root className="assistant-block group/assistant flex min-w-0 animate-eoq-fade-up flex-col gap-2 px-0.5 motion-reduce:animate-none">
@@ -169,7 +157,7 @@ function EoqAssistantMessage() {
                 let durationMs = 0
                 for (const index of part.indices) {
                   const raw = chatMessage.parts[index]
-                  if (raw?.kind === 'reasoning') durationMs += raw.ms
+                  if (raw?.kind === 'reasoning') {durationMs += raw.ms}
                 }
                 return (
                   <EoqReasoning streaming={running} durationMs={durationMs || undefined}>
@@ -181,7 +169,7 @@ function EoqAssistantMessage() {
                 let failedCount = 0
                 for (const index of part.indices) {
                   const raw = chatMessage.parts[index]
-                  if (raw?.kind === 'tool' && raw.step.status === 'error') failedCount += 1
+                  if (raw?.kind === 'tool' && raw.step.status === 'error') {failedCount += 1}
                 }
                 return (
                   <EoqToolGroup group={part} failedCount={failedCount}>
@@ -189,10 +177,12 @@ function EoqAssistantMessage() {
                   </EoqToolGroup>
                 )
               }
-              case 'reasoning':
+              case 'reasoning': {
                 return <div className="whitespace-pre-wrap break-words">{part.text}</div>
-              case 'text':
+              }
+              case 'text': {
                 return <EoqMarkdownText />
+              }
               case 'tool-call': {
                 const step = toolStepsById.get(part.toolCallId)
                 if (part.toolName === 'web_search' && step) {
@@ -207,7 +197,7 @@ function EoqAssistantMessage() {
                 return (
                   <EoqToolCall
                     toolName={part.toolName}
-                    args={(part.args ?? {}) as Record<string, unknown>}
+                    args={(part.args ?? {})}
                     argsText={part.argsText}
                     result={part.result}
                     isError={part.isError}
@@ -216,14 +206,16 @@ function EoqAssistantMessage() {
                   />
                 )
               }
-              case 'indicator':
+              case 'indicator': {
                 return (
                   <span className="inline-block py-1 text-[12px] leading-5 text-muted-foreground shimmer motion-reduce:animate-none">
                     思考中…
                   </span>
                 )
-              default:
+              }
+              default: {
                 return null
+              }
             }
           }}
         </MessagePrimitive.GroupedParts>
@@ -321,16 +313,16 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
     setEditingDraft('')
   }, [currentConversationId])
 
-  useEffect(() => {
-    return () => {
+  useEffect(() => 
+    () => {
       if (copiedTimerRef.current !== undefined) clearTimeout(copiedTimerRef.current)
     }
-  }, [])
+  , [])
 
   const discardsFollowing = useCallback((messageId: string): boolean => {
     const currentMessages = useAiStore.getState().messages
     const index = currentMessages.findIndex((item) => item.id === messageId)
-    return index >= 0 && index < currentMessages.length - 1
+    return index !== -1 && index < currentMessages.length - 1
   }, [])
 
   const startEdit = useCallback((chatMessage: ChatMessage) => {
@@ -346,7 +338,7 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
   const confirmEdit = useCallback(
     (chatMessage: ChatMessage) => {
       const text = editingDraft.trim()
-      if (!text) return
+      if (!text) {return}
       if (!discardsFollowing(chatMessage.id)) {
         cancelEdit()
         void resendFrom(chatMessage.id, text)
@@ -368,7 +360,7 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
 
   const handleEditKeydown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>, chatMessage: ChatMessage) => {
-      if (event.nativeEvent.isComposing || event.keyCode === 229) return
+      if (event.nativeEvent.isComposing || event.keyCode === 229) {return}
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault()
         confirmEdit(chatMessage)
@@ -388,7 +380,7 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
         .writeText(chatMessage.content)
         .then(() => {
           setCopiedMessageId(chatMessage.id)
-          if (copiedTimerRef.current !== undefined) clearTimeout(copiedTimerRef.current)
+          if (copiedTimerRef.current !== undefined) {clearTimeout(copiedTimerRef.current)}
           copiedTimerRef.current = setTimeout(() => {
             setCopiedMessageId('')
             copiedTimerRef.current = undefined

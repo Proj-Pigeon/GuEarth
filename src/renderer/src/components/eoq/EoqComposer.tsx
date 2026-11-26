@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { AuiIf, ComposerPrimitive, useAui, useAuiState } from '@assistant-ui/react'
-import { ArrowUpIcon, ChevronUpIcon, SquareIcon, type LucideIcon } from 'lucide-react'
-import { DropdownMenu, type DropdownMenuEntry } from '@renderer/components/ui'
+import { ArrowUpIcon, ChevronUpIcon, SquareIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { DropdownMenu } from '@renderer/components/ui';
+import type { DropdownMenuEntry } from '@renderer/components/ui';
 import { useAiStore } from '@renderer/stores/ai'
 import type { AiModelConfig, AiProviderConfig } from '../../../../preload'
 import { cn } from '@renderer/lib/utils'
@@ -78,8 +81,8 @@ export function EoqComposer({ commands }: EoqComposerProps) {
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.nativeEvent.isComposing || event.keyCode === 229) return
-      if (!commandMenuOpen || filteredCommands.length === 0) return
+      if (event.nativeEvent.isComposing || event.keyCode === 229) {return}
+      if (!commandMenuOpen || filteredCommands.length === 0) {return}
 
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         const offset = event.key === 'ArrowDown' ? 1 : -1
@@ -128,7 +131,7 @@ export function EoqComposer({ commands }: EoqComposerProps) {
   const handleModelSelect = useCallback(
     (choice: string) => {
       const separatorIndex = choice.indexOf(':')
-      if (separatorIndex < 0) return
+      if (separatorIndex === -1) {return}
       setModelMenuOpen(false)
       void setActiveModel(choice.slice(0, separatorIndex), choice.slice(separatorIndex + 1))
     },
@@ -209,7 +212,7 @@ export function EoqComposer({ commands }: EoqComposerProps) {
       <ComposerPrimitive.Root className="flex w-full flex-col">
         <div
           onClick={(event) => {
-            if (event.target === event.currentTarget) inputRef.current?.focus()
+            if (event.target === event.currentTarget) {inputRef.current?.focus()}
           }}
           className="flex cursor-text flex-col gap-2 rounded-2xl border border-border-strong bg-elevated px-3 pt-2.5 pb-2 transition-[border-color,box-shadow] duration-200 hover:border-ink/25 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/12 motion-reduce:transition-none"
         >

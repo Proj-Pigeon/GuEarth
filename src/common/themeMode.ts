@@ -12,6 +12,6 @@ export function normalizeThemeMode(value: unknown): ThemeMode {
 }
 
 export function resolveTheme(mode: ThemeMode, systemPrefersDark: boolean): ResolvedTheme {
-  if (mode === 'system') return systemPrefersDark ? 'dark' : 'light'
+  if (mode === 'system') {return systemPrefersDark ? 'dark' : 'light'}
   return mode
 }

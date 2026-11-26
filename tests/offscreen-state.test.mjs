@@ -25,8 +25,8 @@ test('subtitle wrapping breaks lines on real newline characters', () => {
 })
 
 test('a literal backslash-n in a narration stays on a single line', () => {
-  assert.deepEqual(wrapText(subtitleContext, '第一行\\n第二行', 1000), ['第一行\\n第二行'])
-  assert.deepEqual(wrapText(subtitleContext, 'a\\nb', 1000), ['a\\nb'])
+  assert.deepEqual(wrapText(subtitleContext, String.raw`第一行\n第二行`, 1000), [String.raw`第一行\n第二行`])
+  assert.deepEqual(wrapText(subtitleContext, String.raw`a\nb`, 1000), [String.raw`a\nb`])
 })
 
 test('long narration wraps at maxWidth and caps at three lines', () => {

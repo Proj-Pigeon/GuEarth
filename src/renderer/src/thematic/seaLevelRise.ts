@@ -27,7 +27,7 @@ export const coastalZones: CoastalZone[] = [
     east: 119.2,
     north: 39.4,
     step: 0.1,
-    center: [118.3, 38.85, 420000],
+    center: [118.3, 38.85, 420_000],
     note: '渤海湾淤泥质海岸，地势极低平，天津大部分市区海拔不足 5 米，风暴潮与地面沉降叠加放大风险'
   },
   {
@@ -38,7 +38,7 @@ export const coastalZones: CoastalZone[] = [
     east: 119.7,
     north: 38.1,
     step: 0.1,
-    center: [119.2, 37.65, 280000],
+    center: [119.2, 37.65, 280_000],
     note: '黄河泥沙堆积的新生三角洲湿地，造陆与海侵并存，生态与油田设施集中'
   },
   {
@@ -49,7 +49,7 @@ export const coastalZones: CoastalZone[] = [
     east: 120.9,
     north: 34.2,
     step: 0.1,
-    center: [120.15, 33.4, 520000],
+    center: [120.15, 33.4, 520_000],
     note: '里下河洼地与滨海平原，排水不畅，历史上频受台风风暴潮与潮灾影响'
   },
   {
@@ -60,7 +60,7 @@ export const coastalZones: CoastalZone[] = [
     east: 121.9,
     north: 31.9,
     step: 0.1,
-    center: [121.0, 31.25, 480000],
+    center: [121, 31.25, 480_000],
     note: '中国经济密度最高的三角洲，上海中心城区平均海拔仅约 4 米，且存在地面沉降'
   },
   {
@@ -71,13 +71,13 @@ export const coastalZones: CoastalZone[] = [
     east: 114.5,
     north: 23.3,
     step: 0.1,
-    center: [113.4, 22.7, 420000],
+    center: [113.4, 22.7, 420_000],
     note: '河网密布的三角洲城市群，广州、佛山、中山沿海低地广阔，咸潮上溯加剧'
   }
 ]
 
-export const gridPointsOf = (zone: CoastalZone): Array<[number, number]> => {
-  const points: Array<[number, number]> = []
+export const gridPointsOf = (zone: CoastalZone): [number, number][] => {
+  const points: [number, number][] = []
   const columns = Math.max(1, Math.round((zone.east - zone.west) / zone.step))
   const rows = Math.max(1, Math.round((zone.north - zone.south) / zone.step))
   for (let row = 0; row < rows; row += 1) {
@@ -115,9 +115,9 @@ function pointInRing(lon: number, lat: number, ring: number[][]): boolean {
   for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
     const [currentLon, currentLat] = ring[index]
     const [previousLon, previousLat] = ring[previous]
-    if ((currentLat > lat) === (previousLat > lat)) continue
+    if ((currentLat > lat) === (previousLat > lat)) {continue}
     const crossingLon = ((previousLon - currentLon) * (lat - currentLat)) / (previousLat - currentLat) + currentLon
-    if (lon < crossingLon) inside = !inside
+    if (lon < crossingLon) {inside = !inside}
   }
   return inside
 }
@@ -127,24 +127,24 @@ export function buildLandMask(provinces: LandMaskSource[]): (lon: number, lat: n
   for (const province of provinces) {
     for (const rings of province.polygons) {
       const [outer, ...holes] = rings
-      if (!outer || outer.length < 3) continue
+      if (!outer || outer.length < 3) {continue}
       let west = Number.POSITIVE_INFINITY
       let east = Number.NEGATIVE_INFINITY
       let south = Number.POSITIVE_INFINITY
       let north = Number.NEGATIVE_INFINITY
       for (const [lon, lat] of outer) {
-        if (lon < west) west = lon
-        if (lon > east) east = lon
-        if (lat < south) south = lat
-        if (lat > north) north = lat
+        if (lon < west) {west = lon}
+        if (lon > east) {east = lon}
+        if (lat < south) {south = lat}
+        if (lat > north) {north = lat}
       }
       polygons.push({ outer, holes: holes.filter((hole) => hole.length >= 3), west, east, south, north })
     }
   }
   return (lon: number, lat: number): boolean => {
     for (const polygon of polygons) {
-      if (lon < polygon.west || lon > polygon.east || lat < polygon.south || lat > polygon.north) continue
-      if (pointInRing(lon, lat, polygon.outer) && !polygon.holes.some((hole) => pointInRing(lon, lat, hole))) return true
+      if (lon < polygon.west || lon > polygon.east || lat < polygon.south || lat > polygon.north) {continue}
+      if (pointInRing(lon, lat, polygon.outer) && !polygon.holes.some((hole) => pointInRing(lon, lat, hole))) {return true}
     }
     return false
   }
@@ -176,7 +176,7 @@ export function computeSampledCoverage(): number {
   let sampled = 0
   for (const zone of coastalZones) {
     for (const [lon, lat] of gridPointsOf(zone)) {
-      if (heightCache.has(cacheKeyOf(lon, lat))) sampled += 1
+      if (heightCache.has(cacheKeyOf(lon, lat))) {sampled += 1}
     }
   }
   return sampled / totalGridCellCount
@@ -259,33 +259,33 @@ export const FALLBACK_LAND_HEIGHT = 0.05
 
 export function isLandCell(lon: number, lat: number, height: number): boolean {
   const mask = useSeaLevelStore.getState().landMask
-  if (mask && mask(lon, lat)) return true
+  if (mask && mask(lon, lat)) {return true}
   return height > FALLBACK_LAND_HEIGHT
 }
 
-export function recordSamples(points: Array<[number, number]>, heights: Array<number>): void {
+export function recordSamples(points: [number, number][], heights: number[]): void {
   points.forEach(([lon, lat], index) => {
     const height = heights[index]
-    if (Number.isFinite(height)) heightCache.set(cacheKeyOf(lon, lat), height)
+    if (Number.isFinite(height)) {heightCache.set(cacheKeyOf(lon, lat), height)}
   })
   useSeaLevelStore.getState().bumpVersion()
 }
 
-export function seaLevelGridPoints(): Array<[number, number]> {
+export function seaLevelGridPoints(): [number, number][] {
   return coastalZones.flatMap((zone) => gridPointsOf(zone))
 }
 
-export function seedSampleHeights(heights: Array<number | null>): number {
+export function seedSampleHeights(heights: (number | null)[]): number {
   const points = seaLevelGridPoints()
-  const seededPoints: Array<[number, number]> = []
-  const seededHeights: Array<number> = []
+  const seededPoints: [number, number][] = []
+  const seededHeights: number[] = []
   for (let index = 0; index < points.length && index < heights.length; index += 1) {
     const height = heights[index]
-    if (typeof height !== 'number' || !Number.isFinite(height)) continue
+    if (typeof height !== 'number' || !Number.isFinite(height)) {continue}
     seededPoints.push(points[index])
     seededHeights.push(height)
   }
-  if (seededPoints.length) recordSamples(seededPoints, seededHeights)
+  if (seededPoints.length > 0) {recordSamples(seededPoints, seededHeights)}
   return seededPoints.length
 }
 
@@ -323,9 +323,9 @@ export function inundationByZone(rise: number): ZoneInundation[] {
     let areaKm2 = 0
     for (const [lon, lat] of gridPointsOf(zone)) {
       const height = heightCache.get(cacheKeyOf(lon, lat))
-      if (height === undefined) continue
+      if (height === undefined) {continue}
       sampled += 1
-      if (!isLandCell(lon, lat, height)) continue
+      if (!isLandCell(lon, lat, height)) {continue}
       if (isInundated(height, rise)) {
         floodedCells += 1
         areaKm2 += cellAreaKm2(zone, lat)

@@ -29,7 +29,7 @@ function loadImporter(respond, key = 'secret-key') {
   const load = compileFunction(`${outputText}\nreturn { importModels: exports.importModels, modelImporterInternals: exports.modelImporterInternals }`, ['require', 'exports'])
   const api = load((id) => {
     const dependency = dependencies.get(id)
-    if (!dependency) throw new Error(`Unexpected module dependency: ${id}`)
+    if (!dependency) {throw new Error(`Unexpected module dependency: ${id}`)}
     return dependency
   }, {})
   return { ...api, requests }
@@ -46,7 +46,7 @@ const catalog = {
         name: 'GPT-5 Mini',
         reasoning: true,
         reasoning_options: [{ type: 'effort', values: ['minimal', 'low', 'medium', 'high'] }],
-        limit: { context: 400000 },
+        limit: { context: 400_000 },
         modalities: { input: ['text', 'image'] }
       },
       'plain-model': { id: 'plain-model', name: 'Plain', reasoning: false, limit: { context: 8192 }, modalities: { input: ['text'] } }
@@ -67,14 +67,14 @@ function request(overrides = {}) {
 
 test('OpenAI model import appends one models path and maps matched capabilities', async () => {
   const importer = loadImporter((url) => {
-    if (url === 'https://models.dev/api.json') return response(catalog)
+    if (url === 'https://models.dev/api.json') {return response(catalog)}
     assert.equal(url, 'https://api.example.com/v1/models')
     return response({ data: [{ id: 'gpt-5-mini' }, { id: 'unmatched' }] })
   })
   const result = await importer.importModels(request())
   assert.equal(result.models.length, 2)
   assert.deepEqual(result.models[0], {
-    id: 'gpt-5-mini', label: 'GPT-5 Mini', contextWindow: 400000, streaming: true,
+    id: 'gpt-5-mini', label: 'GPT-5 Mini', contextWindow: 400_000, streaming: true,
     vision: true, thinking: true, thinkingLevel: 'high', enabled: true, matched: true, failureReason: undefined, existing: false
   })
   assert.equal(result.models[1].matched, false)
@@ -84,7 +84,7 @@ test('OpenAI model import appends one models path and maps matched capabilities'
 
 test('OpenAI host-only URL receives v1 models path', async () => {
   const importer = loadImporter((url) => {
-    if (url === 'https://models.dev/api.json') return response({})
+    if (url === 'https://models.dev/api.json') {return response({})}
     assert.equal(url, 'https://api.example.com/v1/models')
     return response({ data: [] })
   })
@@ -95,8 +95,8 @@ test('Anthropic import follows after_id cursor pagination', async () => {
   const urls = []
   const importer = loadImporter((url) => {
     urls.push(url)
-    if (url === 'https://models.dev/api.json') return response({ anthropic: { id: 'anthropic', name: 'Anthropic', models: { 'claude-1': { id: 'claude-1', name: 'Claude 1', reasoning: false, limit: { context: 10000 } }, 'claude-2': { id: 'claude-2', name: 'Claude 2', reasoning: false, limit: { context: 20000 } } } } })
-    if (url === 'https://api.anthropic.com/v1/models') return response({ data: [{ id: 'claude-1' }], has_more: true, last_id: 'claude-1' })
+    if (url === 'https://models.dev/api.json') {return response({ anthropic: { id: 'anthropic', name: 'Anthropic', models: { 'claude-1': { id: 'claude-1', name: 'Claude 1', reasoning: false, limit: { context: 10000 } }, 'claude-2': { id: 'claude-2', name: 'Claude 2', reasoning: false, limit: { context: 20000 } } } } })}
+    if (url === 'https://api.anthropic.com/v1/models') {return response({ data: [{ id: 'claude-1' }], has_more: true, last_id: 'claude-1' })}
     return response({ data: [{ id: 'claude-2' }], has_more: false, last_id: 'claude-2' })
   })
   const result = await importer.importModels(request({ protocol: 'anthropic', baseUrl: 'https://api.anthropic.com' }))
@@ -112,7 +112,7 @@ test('Anthropic import follows after_id cursor pagination', async () => {
 
 test('model group compatibility matches the model name after the first slash', async () => {
   const importer = loadImporter((url) => {
-    if (url === 'https://models.dev/api.json') return response(catalog)
+    if (url === 'https://models.dev/api.json') {return response(catalog)}
     return response({ data: [{ id: 'auto/gpt-5-mini' }] })
   })
   const strict = await importer.importModels(request())
@@ -120,7 +120,7 @@ test('model group compatibility matches the model name after the first slash', a
   const compatible = await importer.importModels(request({ modelGroupCompat: true }))
   assert.equal(compatible.models[0].matched, true)
   assert.equal(compatible.models[0].label, 'GPT-5 Mini')
-  assert.equal(compatible.models[0].contextWindow, 400000)
+  assert.equal(compatible.models[0].contextWindow, 400_000)
 })
 
 test('duplicate model ids prefer the official provider metadata', async () => {
@@ -134,7 +134,7 @@ test('duplicate model ids prefer the official provider metadata', async () => {
           name: 'GPT-6.1 Sol',
           reasoning: true,
           reasoning_options: [{ type: 'effort', values: ['low', 'medium', 'high'] }],
-          limit: { context: 1050000 },
+          limit: { context: 1_050_000 },
           modalities: { input: ['text', 'image'] },
           canonical_model_id: 'openai/gpt-6.1-sol'
         }
@@ -149,7 +149,7 @@ test('duplicate model ids prefer the official provider metadata', async () => {
           name: 'GPT-6.1 Sol',
           reasoning: true,
           reasoning_options: [{ type: 'effort', values: ['low', 'medium', 'high'] }],
-          limit: { context: 640000 },
+          limit: { context: 640_000 },
           modalities: { input: ['text', 'image'] },
           canonical_model_id: 'openai/gpt-6.1-sol'
         }
@@ -157,12 +157,12 @@ test('duplicate model ids prefer the official provider metadata', async () => {
     }
   }
   const importer = loadImporter((url) => {
-    if (url === 'https://models.dev/api.json') return response(duplicated)
+    if (url === 'https://models.dev/api.json') {return response(duplicated)}
     return response({ data: [{ id: 'auto/gpt-6.1-sol' }] })
   })
   const result = await importer.importModels(request({ baseUrl: 'https://sub.example.com/v1', modelGroupCompat: true }))
   assert.equal(result.models[0].matched, true)
-  assert.equal(result.models[0].contextWindow, 1050000)
+  assert.equal(result.models[0].contextWindow, 1_050_000)
 })
 
 test('model group compatibility resolves reseller-only duplicates', async () => {
@@ -174,7 +174,7 @@ test('model group compatibility resolves reseller-only duplicates', async () => 
         'reseller-model': {
           id: 'reseller-model', name: 'Reseller Model', reasoning: true,
           reasoning_options: [{ type: 'effort', values: ['low', 'high'] }],
-          limit: { context: 1000000 }, modalities: { input: ['text', 'image'] },
+          limit: { context: 1_000_000 }, modalities: { input: ['text', 'image'] },
           canonical_model_id: 'vendor/reseller-model'
         }
       }
@@ -186,21 +186,21 @@ test('model group compatibility resolves reseller-only duplicates', async () => 
         'reseller-model': {
           id: 'reseller-model', name: 'Reseller Model', reasoning: true,
           reasoning_options: [{ type: 'effort', values: ['low', 'high'] }],
-          limit: { context: 1048576 }, modalities: { input: ['text', 'image'] },
+          limit: { context: 1_048_576 }, modalities: { input: ['text', 'image'] },
           canonical_model_id: 'vendor/reseller-model'
         }
       }
     }
   }
   const importer = loadImporter((url) => {
-    if (url === 'https://models.dev/api.json') return response(resellers)
+    if (url === 'https://models.dev/api.json') {return response(resellers)}
     return response({ data: [{ id: 'auto/reseller-model' }] })
   })
   const strict = await importer.importModels(request())
   assert.equal(strict.models[0].matched, false)
   const compatible = await importer.importModels(request({ modelGroupCompat: true }))
   assert.equal(compatible.models[0].matched, true)
-  assert.equal(compatible.models[0].contextWindow, 1048576)
+  assert.equal(compatible.models[0].contextWindow, 1_048_576)
 })
 
 test('model ids can be re-matched without requesting the provider list again', async () => {
@@ -234,7 +234,7 @@ test('import errors do not include the provider key', async () => {
 
 test('Anthropic import rejects stalled pagination cursors and page overflow', async () => {
   const stalled = loadImporter((url) => {
-    if (url.includes('after_id=cursor-1')) return response({ data: [{ id: 'm2' }], has_more: true, last_id: 'cursor-1' })
+    if (url.includes('after_id=cursor-1')) {return response({ data: [{ id: 'm2' }], has_more: true, last_id: 'cursor-1' })}
     return response({ data: [{ id: 'm1' }], has_more: true, last_id: 'cursor-1' })
   })
   await assert.rejects(stalled.importModels(request({ protocol: 'anthropic', baseUrl: 'https://api.anthropic.com' })), {
@@ -284,10 +284,10 @@ test('models.dev catalog uses EdgeOne mirror when enabled and falls back to orig
   const importer = loadImporter((url) => {
     urls.push(url)
     if (url === 'https://proxy.project-pigeon.com/modelsdev') {
-      if (mirrorFail) return response({}, 502)
+      if (mirrorFail) {return response({}, 502)}
       return response(catalog)
     }
-    if (url === 'https://models.dev/api.json') return response(catalog)
+    if (url === 'https://models.dev/api.json') {return response(catalog)}
     return response({ data: [{ id: 'gpt-5-mini' }] })
   })
   importer.modelImporterInternals.setModelsDevMirrorEnabled(true)
@@ -299,8 +299,8 @@ test('models.dev catalog uses EdgeOne mirror when enabled and falls back to orig
   mirrorFail = true
   const fallbackImporter = loadImporter((url) => {
     fallbackUrls.push(url)
-    if (url === 'https://proxy.project-pigeon.com/modelsdev') return response({}, 502)
-    if (url === 'https://models.dev/api.json') return response(catalog)
+    if (url === 'https://proxy.project-pigeon.com/modelsdev') {return response({}, 502)}
+    if (url === 'https://models.dev/api.json') {return response(catalog)}
     return response({ data: [{ id: 'gpt-5-mini' }] })
   })
   fallbackImporter.modelImporterInternals.setModelsDevMirrorEnabled(true)

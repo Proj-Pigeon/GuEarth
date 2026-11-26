@@ -1,6 +1,8 @@
-import { forwardRef, type ReactNode } from 'react'
+import { forwardRef } from 'react';
+import type { ReactNode } from 'react';
 import { Button as BaseButton } from '@base-ui/react/button'
-import { cva, type VariantProps } from 'class-variance-authority'
+import { cva } from 'class-variance-authority';
+import type { VariantProps } from 'class-variance-authority';
 import { Loader2Icon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 
@@ -91,7 +93,7 @@ export interface ButtonProps
   icon?: ReactNode
 }
 
-export const Button = forwardRef<HTMLElement, ButtonProps>(function Button(
+export const Button = forwardRef<HTMLElement, ButtonProps>((
   {
     variant,
     size,
@@ -107,7 +109,7 @@ export const Button = forwardRef<HTMLElement, ButtonProps>(function Button(
     ...props
   },
   ref
-) {
+) => {
   const isDisabled = Boolean(disabled || loading)
   const leadingIcon = loading ? (
     <Loader2Icon className="size-3.5 shrink-0 animate-spin" aria-hidden="true" />

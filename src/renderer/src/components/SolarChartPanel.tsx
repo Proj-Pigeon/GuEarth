@@ -3,7 +3,8 @@ import { XIcon } from 'lucide-react'
 import { Button, Segmented, Slider } from '@renderer/components/ui'
 import { useSolarStore } from '@renderer/stores/solar'
 import { dayLength, declinationForDate, monthStartDayOfYear, noonAltitudeDeg, solarDeclinationDeg } from '@renderer/thematic/solarMath'
-import LineChart, { type ChartSeries } from './charts/LineChart'
+import LineChart from './charts/LineChart';
+import type { ChartSeries } from './charts/LineChart';
 import styles from './SolarChartPanel.module.css'
 
 export interface SolarChartPanelProps {
@@ -31,7 +32,7 @@ const latitudeFormatter = (value: number): string => (value === 0 ? '0°' : `${M
 
 const dateFormatter = (value: number): string => {
   const index = monthStarts.findIndex((start, i) => value >= start && value < (monthStarts[i + 1] ?? 366))
-  return index >= 0 ? `${index + 1}月` : ''
+  return index !== -1 ? `${index + 1}月` : ''
 }
 
 export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {
@@ -45,23 +46,23 @@ export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {
 
   const dayLengthSeries = useMemo<ChartSeries[]>(() => {
     if (mode === 'latitude') {
-      const points: Array<[number, number]> = []
-      for (let lat = -90; lat <= 90; lat += 2) points.push([lat, dayLength(lat, declination).hours])
+      const points: [number, number][] = []
+      for (let lat = -90; lat <= 90; lat += 2) {points.push([lat, dayLength(lat, declination).hours])}
       return [{ name: '昼长', color: DAY_LENGTH_COLOR, points, markY: [12] }]
     }
-    const points: Array<[number, number]> = []
-    for (let day = 1; day <= 365; day += 2) points.push([day, dayLength(latitude, solarDeclinationDeg(day)).hours])
+    const points: [number, number][] = []
+    for (let day = 1; day <= 365; day += 2) {points.push([day, dayLength(latitude, solarDeclinationDeg(day)).hours])}
     return [{ name: `昼长（${latLabel(latitude)}）`, color: DAY_LENGTH_COLOR, points, markY: [12] }]
   }, [mode, declination, latitude])
 
   const altitudeSeries = useMemo<ChartSeries[]>(() => {
     if (mode === 'latitude') {
-      const points: Array<[number, number]> = []
-      for (let lat = -90; lat <= 90; lat += 2) points.push([lat, noonAltitudeDeg(lat, declination)])
+      const points: [number, number][] = []
+      for (let lat = -90; lat <= 90; lat += 2) {points.push([lat, noonAltitudeDeg(lat, declination)])}
       return [{ name: '正午太阳高度', color: ALTITUDE_COLOR, points, markY: [0] }]
     }
-    const points: Array<[number, number]> = []
-    for (let day = 1; day <= 365; day += 2) points.push([day, noonAltitudeDeg(latitude, solarDeclinationDeg(day))])
+    const points: [number, number][] = []
+    for (let day = 1; day <= 365; day += 2) {points.push([day, noonAltitudeDeg(latitude, solarDeclinationDeg(day))])}
     return [{ name: `正午太阳高度（${latLabel(latitude)}）`, color: ALTITUDE_COLOR, points, markY: [0] }]
   }, [mode, declination, latitude])
 

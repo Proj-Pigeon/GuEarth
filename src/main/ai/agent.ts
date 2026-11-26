@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { ipcMain, net, type IpcMainInvokeEvent, type WebContents } from 'electron'
+import { ipcMain, net } from 'electron';
+import type { IpcMainInvokeEvent, WebContents } from 'electron';
 import type {
   AgentMemory,
   AiChatEvent,
@@ -24,7 +25,8 @@ import type { AiChatHistoryStore } from './chatHistoryStore'
 import type { AiSettingsStore } from './settingsStore'
 import type { AiMemoryStore } from './memoryStore'
 import type { EoqHawdbClient } from './hawdb/client'
-import { createTurnFlightGuard, evaluateFlightToolGuard, type TurnFlightGuard } from '../../common/flightStops'
+import { createTurnFlightGuard, evaluateFlightToolGuard } from '../../common/flightStops';
+import type { TurnFlightGuard } from '../../common/flightStops';
 import { formatTelemetryToolCalls, redactApiKey, sanitizeTelemetryMessages, sanitizeTelemetryToolSpan } from '../../common/aiTelemetry'
 import { captureAiGeneration, captureAiSpan } from './posthog'
 
@@ -183,18 +185,18 @@ interface MemoryRuntime {
 }
 
 function selectMemoriesForPrompt(allMemories: AgentMemory[], recalled?: AgentMemory[]): AgentMemory[] {
-  if (allMemories.length <= MEMORY_FULL_INJECT_LIMIT) return allMemories
+  if (allMemories.length <= MEMORY_FULL_INJECT_LIMIT) {return allMemories}
   const selected: AgentMemory[] = []
   const seen = new Set<string>()
   for (const item of recalled ?? []) {
-    if (seen.has(item.id)) continue
+    if (seen.has(item.id)) {continue}
     seen.add(item.id)
     selected.push(item)
-    if (selected.length >= MEMORY_RECALL_LIMIT) break
+    if (selected.length >= MEMORY_RECALL_LIMIT) {break}
   }
   const recent = [...allMemories].slice(-MEMORY_RECENT_LIMIT).reverse()
   for (const item of recent) {
-    if (seen.has(item.id)) continue
+    if (seen.has(item.id)) {continue}
     seen.add(item.id)
     selected.push(item)
   }
@@ -209,7 +211,7 @@ function memoryPromptLines(memories: AgentMemory[], totalCount: number): string[
     '- 一次性的临时信息（当前视角、本次会话的临时问题与数据）不要保存。',
     '- 发现某条记忆过时或错误时，调用 delete_memory 按 id 删除，需要时再保存新的。'
   ]
-  if (!memories.length) return [...rules, '当前暂无已保存的用户记忆。']
+  if (memories.length === 0) {return [...rules, '当前暂无已保存的用户记忆。']}
   const heading = totalCount > memories.length
     ? `与当前话题最相关及最近保存的用户记忆（共 ${totalCount} 条，展示 ${memories.length} 条，id：内容）：`
     : '已保存的用户记忆（id：内容）：'
@@ -225,7 +227,7 @@ const SOCRATIC_PROMPT_LINES = [
 
 function buildSystemPrompt(memory: MemoryRuntime, socratic = false, recalledMemories?: AgentMemory[]): string {
   const blocks = [SYSTEM_PROMPT]
-  if (socratic) blocks.push(SOCRATIC_PROMPT_LINES)
+  if (socratic) {blocks.push(SOCRATIC_PROMPT_LINES)}
   if (memory.enabled) {
     const allMemories = memory.store.list()
     blocks.push(...memoryPromptLines(selectMemoriesForPrompt(allMemories, recalledMemories), allMemories.length))
@@ -275,7 +277,7 @@ interface AgentSession {
 const MAX_TOOL_ROUNDS = 16
 const TOOL_RESULT_LIMIT = 24_000
 const RENDERER_TOOL_TIMEOUT_MS = 60_000
-const ANALYZE_TERRAIN_TIMEOUT_MS = 8_000
+const ANALYZE_TERRAIN_TIMEOUT_MS = 8000
 const SEARCH_FAILURE_GUIDANCE_THRESHOLD = 3
 
 const SEARCH_FAILURE_GUIDANCE = [
@@ -294,12 +296,12 @@ const watchedSenders = new WeakSet<WebContents>()
 
 function abortSenderWork(sender: WebContents): void {
   for (const [sessionId, session] of sessions) {
-    if (session.sender !== sender) continue
+    if (session.sender !== sender) {continue}
     session.controller.abort()
     sessions.delete(sessionId)
   }
   for (const [callId, entry] of pendingRendererTools) {
-    if (entry.sender !== sender) continue
+    if (entry.sender !== sender) {continue}
     clearTimeout(entry.timer)
     pendingRendererTools.delete(callId)
     entry.resolve({ ok: false, content: JSON.stringify({ error: '页面已关闭或刷新，工具执行中止' }) })
@@ -307,11 +309,11 @@ function abortSenderWork(sender: WebContents): void {
 }
 
 function watchSenderLifecycle(sender: WebContents): void {
-  if (watchedSenders.has(sender)) return
+  if (watchedSenders.has(sender)) {return}
   watchedSenders.add(sender)
   sender.on('destroyed', () => abortSenderWork(sender))
   sender.on('did-start-navigation', (_event, _url, isInPlace, isMainFrame) => {
-    if (isInPlace || !isMainFrame) return
+    if (isInPlace || !isMainFrame) {return}
     abortSenderWork(sender)
   })
 }
@@ -326,20 +328,20 @@ function safeParseJson(text: string): Record<string, unknown> {
 }
 
 function clampToolResult(value: string): string {
-  if (value.length <= TOOL_RESULT_LIMIT) return value
+  if (value.length <= TOOL_RESULT_LIMIT) {return value}
   return `${value.slice(0, TOOL_RESULT_LIMIT / 2)}\n…(结果过长已截断)…\n${value.slice(-TOOL_RESULT_LIMIT / 2)}`
 }
 
 function extractImage(value: unknown): ToolImage | undefined {
-  if (typeof value !== 'object' || value === null) return undefined
+  if (typeof value !== 'object' || value === null) {return undefined}
   const image = (value as Record<string, unknown>).image
-  if (typeof image !== 'string') return undefined
+  if (typeof image !== 'string') {return undefined}
   const match = /^data:([^;]+);base64,(.+)$/.exec(image)
   return match ? { mediaType: match[1], data: match[2] } : undefined
 }
 
 function withoutImage(value: unknown): unknown {
-  if (typeof value !== 'object' || value === null) return value
+  if (typeof value !== 'object' || value === null) {return value}
   const { image, ...rest } = value as Record<string, unknown>
   return image === undefined ? value : rest
 }
@@ -352,31 +354,31 @@ function streamError(message: string): Error {
 
 function streamErrorText(payload: Record<string, unknown>): string {
   const raw = payload.error
-  if (typeof raw === 'string' && raw) return raw
+  if (typeof raw === 'string' && raw) {return raw}
   if (typeof raw === 'object' && raw !== null) {
     const record = raw as Record<string, unknown>
-    if (typeof record.message === 'string' && record.message) return record.message
-    if (typeof record.type === 'string' && record.type) return record.type
+    if (typeof record.message === 'string' && record.message) {return record.message}
+    if (typeof record.type === 'string' && record.type) {return record.type}
   }
-  if (!Array.isArray(payload.choices) && typeof payload.message === 'string' && payload.message) return payload.message
+  if (!Array.isArray(payload.choices) && typeof payload.message === 'string' && payload.message) {return payload.message}
   return ''
 }
 
 function imageUnsupported(error: unknown): boolean {
-  if (error instanceof Error && error.name === 'StreamError') return false
+  if (error instanceof Error && error.name === 'StreamError') {return false}
   const message = error instanceof Error ? error.message : String(error)
   return /image|vision|multimodal|modal|unsupported|不支持|图片/i.test(message)
 }
 
 function stringifyArgSummary(args: unknown): string {
-  if (typeof args !== 'object' || args === null) return ''
+  if (typeof args !== 'object' || args === null) {return ''}
   const entries = Object.entries(args as Record<string, unknown>).filter(([, value]) => value !== undefined)
   return entries.map(([key, value]) => `${key}=${typeof value === 'string' ? value : JSON.stringify(value)}`).join(' ')
 }
 
 function estimateTokens(text: string): number {
   let cjk = 0
-  for (const char of text) if (/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/.test(char)) cjk += 1
+  for (const char of text) {if (/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/.test(char)) cjk += 1}
   return cjk + Math.ceil((text.length - cjk) / 3.5)
 }
 
@@ -397,9 +399,9 @@ function contextStatsForMessages(messages: WireMessage[], contextWindow: number)
     const cost = messageTokenCost(message)
     usedTokens += cost
     const category = categoryByKey.get(message.role)
-    if (category) category.tokens += cost
+    if (category) {category.tokens += cost}
   }
-  for (const category of categories) category.ratio = usedTokens ? Math.round(category.tokens / usedTokens * 100) : 0
+  for (const category of categories) {category.ratio = usedTokens ? Math.round(category.tokens / usedTokens * 100) : 0}
   return {
     usedTokens,
     contextWindow,
@@ -423,13 +425,13 @@ function contextMessagesForEntries(entries: AiContextEntry[], systemContent: str
 
 function retainedTurns(messages: WireMessage[]): AiChatTurn[] {
   return messages.flatMap((message): AiChatTurn[] => {
-    if (message.role !== 'user' && message.role !== 'assistant') return []
+    if (message.role !== 'user' && message.role !== 'assistant') {return []}
     return [{ role: message.role, content: message.content }]
   })
 }
 
 function trimHistory(messages: WireMessage[], contextWindow: number): WireMessage[] {
-  const budget = Math.max(2_000, Math.floor(contextWindow * 0.6))
+  const budget = Math.max(2000, Math.floor(contextWindow * 0.6))
   const system = messages.filter((message) => message.role === 'system')
   const rest = messages.filter((message) => message.role !== 'system')
   let total = system.reduce((sum, message) => sum + estimateTokens(message.content), 0)
@@ -437,7 +439,7 @@ function trimHistory(messages: WireMessage[], contextWindow: number): WireMessag
   for (let index = rest.length - 1; index >= 0; index -= 1) {
     const message = rest[index]
     const cost = messageTokenCost(message)
-    if (kept.length >= 4 && total + cost > budget) break
+    if (kept.length >= 4 && total + cost > budget) {break}
     kept.unshift(message)
     total += cost
   }
@@ -446,22 +448,22 @@ function trimHistory(messages: WireMessage[], contextWindow: number): WireMessag
 
 function apiEndpoint(baseUrl: string, protocol: AiProviderConfig['protocol'], path: string): string {
   let base = baseUrl.trim().replace(/\/+$/, '')
-  if (/^https?:\/\/[^/]+$/i.test(base)) base = `${base}/v1`
+  if (/^https?:\/\/[^/]+$/i.test(base)) {base = `${base}/v1`}
   return `${base}${path}`
 }
 
 function openaiThinkingBody(model: AiModelConfig, baseUrl: string): Record<string, unknown> {
-  if (!model.thinking) return {}
-  if (/dashscope|qwen/i.test(baseUrl)) return { enable_thinking: true }
+  if (!model.thinking) {return {}}
+  if (/dashscope|qwen/i.test(baseUrl)) {return { enable_thinking: true }}
   return { reasoning_effort: model.thinkingLevel }
 }
 
-const anthropicBudget: Record<string, number> = { low: 1_024, medium: 4_096, high: 16_384 }
+const anthropicBudget: Record<string, number> = { low: 1024, medium: 4096, high: 16_384 }
 
 function toOpenAiMessages(messages: WireMessage[]): unknown[] {
   return messages.map((message) => {
-    if (message.role === 'system') return { role: 'system', content: message.content }
-    if (message.role === 'user') return { role: 'user', content: message.content }
+    if (message.role === 'system') {return { role: 'system', content: message.content }}
+    if (message.role === 'user') {return { role: 'user', content: message.content }}
     if (message.role === 'assistant') {
       const entry: Record<string, unknown> = { role: 'assistant', content: message.content || '' }
       if (message.toolCalls?.length) {
@@ -485,18 +487,16 @@ function toOpenAiMessages(messages: WireMessage[]): unknown[] {
 function toAnthropicMessages(messages: WireMessage[]): unknown[] {
   const result: { role: string; content: unknown }[] = []
   for (const message of messages) {
-    if (message.role === 'system') continue
+    if (message.role === 'system') {continue}
     if (message.role === 'user') {
       result.push({ role: 'user', content: message.content })
       continue
     }
     if (message.role === 'assistant') {
-      const blocks: Record<string, unknown>[] = [
-        ...(message.thinkingBlocks ?? []).map((block) => ({ type: 'thinking', thinking: block.thinking, signature: block.signature }))
-      ]
-      if (message.content) blocks.push({ type: 'text', text: message.content })
-      for (const call of message.toolCalls ?? []) blocks.push({ type: 'tool_use', id: call.id, name: call.name, input: safeParseJson(call.arguments) })
-      result.push({ role: 'assistant', content: blocks.length ? blocks : [{ type: 'text', text: '' }] })
+      const blocks: Record<string, unknown>[] = (message.thinkingBlocks ?? []).map((block) => ({ type: 'thinking', thinking: block.thinking, signature: block.signature }))
+      if (message.content) {blocks.push({ type: 'text', text: message.content })}
+      for (const call of message.toolCalls ?? []) {blocks.push({ type: 'tool_use', id: call.id, name: call.name, input: safeParseJson(call.arguments) })}
+      result.push({ role: 'assistant', content: blocks.length > 0 ? blocks : [{ type: 'text', text: '' }] })
       continue
     }
     const content = message.image
@@ -507,20 +507,20 @@ function toAnthropicMessages(messages: WireMessage[]): unknown[] {
       : message.content
     const block = { type: 'tool_result', tool_use_id: message.callId, content, is_error: message.isError === true }
     const last = result[result.length - 1]
-    if (last && last.role === 'user' && Array.isArray(last.content)) last.content.push(block)
-    else result.push({ role: 'user', content: [block] })
+    if (last?.role === 'user' && Array.isArray(last.content)) {last.content.push(block)}
+    else {result.push({ role: 'user', content: [block] })}
   }
   return result
 }
 
 async function readSse(response: Response, onEvent: (data: string) => void): Promise<void> {
   const reader = response.body?.getReader()
-  if (!reader) throw new Error('响应缺少数据流')
+  if (!reader) {throw new Error('响应缺少数据流')}
   const decoder = new TextDecoder()
   let buffer = ''
   for (;;) {
     const { done, value } = await reader.read()
-    if (done) break
+    if (done) {break}
     buffer += decoder.decode(value, { stream: true })
     let newlineIndex = buffer.indexOf('\n')
     while (newlineIndex >= 0) {
@@ -528,7 +528,7 @@ async function readSse(response: Response, onEvent: (data: string) => void): Pro
       buffer = buffer.slice(newlineIndex + 1)
       if (line.startsWith('data:')) {
         const data = line.slice(5).trim()
-        if (data) onEvent(data)
+        if (data) {onEvent(data)}
       }
       newlineIndex = buffer.indexOf('\n')
     }
@@ -571,8 +571,8 @@ function observabilityProvider(provider: AiProviderConfig): string {
     [/cerebras\.ai$/, 'cerebras']
   ]
   const known = knownProviders.find(([pattern]) => pattern.test(hostname))
-  if (known) return known[1]
-  const configuredName = provider.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  if (known) {return known[1]}
+  const configuredName = provider.name.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '_').replaceAll(/^_+|_+$/g, '')
   return configuredName || provider.id
 }
 
@@ -590,7 +590,7 @@ function captureModelGeneration(observability: AiObservabilityContext, provider:
             {
               role: 'assistant',
               content: result.text,
-              ...(result.toolCalls.length ? { tool_calls: formatTelemetryToolCalls(result.toolCalls) } : {})
+              ...(result.toolCalls.length > 0 ? { tool_calls: formatTelemetryToolCalls(result.toolCalls) } : {})
             }
           ]
         }
@@ -599,7 +599,7 @@ function captureModelGeneration(observability: AiObservabilityContext, provider:
     requestUrl: apiEndpoint(provider.baseUrl, provider.protocol, provider.protocol === 'anthropic' ? '/messages' : '/chat/completions'),
     latencyMs: Date.now() - startedAt,
     stream: model.streaming,
-    ...(tools.length ? { tools } : {}),
+    ...(tools.length > 0 ? { tools } : {}),
     ...(failure ? { error: failure } : {})
   })
 }
@@ -612,9 +612,9 @@ function httpFailureError(provider: AiProviderConfig, model: AiModelConfig, url:
     `接口：${url}`
   ]
   const requestId = response.headers.get('x-request-id') ?? response.headers.get('request-id')
-  if (requestId) parts.push(`请求ID：${requestId}`)
+  if (requestId) {parts.push(`请求ID：${requestId}`)}
   const detail = body.trim()
-  if (detail) parts.push(`服务端返回：${detail.slice(0, 1200)}`)
+  if (detail) {parts.push(`服务端返回：${detail.slice(0, 1200)}`)}
   return new Error(parts.join('；'))
 }
 
@@ -624,7 +624,7 @@ async function fetchResponse(url: string, init: RequestInit, provider: AiProvide
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
     const reason = error instanceof Error ? error.message : String(error)
-    throw new Error(`网络请求异常（供应商：${provider.name}；模型：${model.id}；接口：${url}）：${reason}`)
+    throw new Error(`网络请求异常（供应商：${provider.name}；模型：${model.id}；接口：${url}）：${reason}`, { cause: error })
   }
 }
 
@@ -647,8 +647,8 @@ function sleepAbortable(ms: number, signal: AbortSignal): Promise<void> {
       signal.removeEventListener('abort', onAbort)
       reject(new DOMException('Aborted', 'AbortError'))
     }
-    if (signal.aborted) onAbort()
-    else signal.addEventListener('abort', onAbort)
+    if (signal.aborted) {onAbort()}
+    else {signal.addEventListener('abort', onAbort)}
   })
 }
 
@@ -658,14 +658,14 @@ async function fetchWithRetry(url: string, init: RequestInit, provider: AiProvid
     try {
       response = await fetchResponse(url, init, provider, model)
     } catch (error) {
-      if (isAbortError(error) || attempt >= MAX_LLM_RETRIES) throw error
+      if (isAbortError(error) || attempt >= MAX_LLM_RETRIES) {throw error}
       const reason = error instanceof Error ? error.message : String(error)
       const tail = reason.includes('：') ? reason.split('：').pop() ?? reason : reason
       onRetry?.(attempt + 1, MAX_LLM_RETRIES, `网络异常（${tail.slice(0, 60)}）`)
       await sleepAbortable(RETRY_BASE_DELAY_MS * 2 ** attempt, signal)
       continue
     }
-    if (response.ok) return response
+    if (response.ok) {return response}
     const body = await response.text().catch(() => '')
     if (!RETRYABLE_STATUSES.has(response.status) || attempt >= MAX_LLM_RETRIES) {
       throw httpFailureError(provider, model, url, response, body)
@@ -678,22 +678,22 @@ async function fetchWithRetry(url: string, init: RequestInit, provider: AiProvid
 async function fetchJson(url: string, init: RequestInit, provider: AiProviderConfig, model: AiModelConfig, signal: AbortSignal, onRetry?: (attempt: number, maxRetries: number, reason: string) => void): Promise<Record<string, unknown>> {
   const response = await fetchWithRetry(url, init, provider, model, signal, onRetry)
   const parsed: unknown = await response.json()
-  if (typeof parsed !== 'object' || parsed === null) throw new Error('响应格式错误')
+  if (typeof parsed !== 'object' || parsed === null) {throw new Error('响应格式错误')}
   return parsed as Record<string, unknown>
 }
 
 function collectOpenAiToolCalls(raw: unknown): WireToolCall[] {
-  if (!Array.isArray(raw)) return []
+  if (!Array.isArray(raw)) {return []}
   const byIndex = new Map<number, { id: string; name: string; args: string }>()
   for (const [position, fragment] of raw.entries()) {
-    if (typeof fragment !== 'object' || fragment === null) continue
+    if (typeof fragment !== 'object' || fragment === null) {continue}
     const piece = fragment as { index?: unknown; id?: unknown; function?: { name?: unknown; arguments?: unknown } }
     const index = typeof piece.index === 'number' ? piece.index : position
     const current = byIndex.get(index) ?? { id: '', name: '', args: '' }
-    if (typeof piece.id === 'string' && piece.id) current.id = piece.id
+    if (typeof piece.id === 'string' && piece.id) {current.id = piece.id}
     if (piece.function) {
-      if (typeof piece.function.name === 'string' && piece.function.name && !current.name) current.name = piece.function.name
-      if (typeof piece.function.arguments === 'string') current.args += piece.function.arguments
+      if (typeof piece.function.name === 'string' && piece.function.name && !current.name) {current.name = piece.function.name}
+      if (typeof piece.function.arguments === 'string') {current.args += piece.function.arguments}
     }
     byIndex.set(index, current)
   }
@@ -718,7 +718,7 @@ async function runOpenAiTurn(options: {
     messages: toOpenAiMessages(messages),
     ...openaiThinkingBody(model, provider.baseUrl)
   }
-  if (tools.length) {
+  if (tools.length > 0) {
     body.tools = tools.map((tool) => ({ type: 'function', function: { name: tool.name, description: tool.description, parameters: tool.parameters } }))
     body.tool_choice = 'auto'
   }
@@ -726,11 +726,11 @@ async function runOpenAiTurn(options: {
   if (!model.streaming) {
     const json = await fetchJson(url, { method: 'POST', headers, body: JSON.stringify(body), signal }, provider, model, signal, onRetry)
     const jsonError = streamErrorText(json)
-    if (jsonError) throw streamError(`模型服务返回错误（${model.id}）：${jsonError}`)
+    if (jsonError) {throw streamError(`模型服务返回错误（${model.id}）：${jsonError}`)}
     const choice = Array.isArray(json.choices) && json.choices[0] && typeof json.choices[0] === 'object' ? json.choices[0] as Record<string, unknown> : {}
     const message = typeof choice.message === 'object' && choice.message !== null ? choice.message as Record<string, unknown> : {}
     const reasoning = typeof message.reasoning_content === 'string' ? message.reasoning_content : ''
-    if (reasoning) onReasoningDelta(reasoning)
+    if (reasoning) {onReasoningDelta(reasoning)}
     return {
       text: typeof message.content === 'string' ? message.content : '',
       reasoning,
@@ -744,14 +744,14 @@ async function runOpenAiTurn(options: {
   let reasoning = ''
   const toolAccumulator = new Map<number, { id: string; name: string; args: string }>()
   await readSse(response, (data) => {
-    if (data === '[DONE]') return
+    if (data === '[DONE]') {return}
     const json = safeParseJson(data)
     const errorText = streamErrorText(json)
-    if (errorText) throw streamError(`模型服务返回错误（${model.id}）：${errorText}`)
+    if (errorText) {throw streamError(`模型服务返回错误（${model.id}）：${errorText}`)}
     const choices = json.choices
-    if (!Array.isArray(choices) || !choices.length) return
+    if (!Array.isArray(choices) || choices.length === 0) {return}
     const delta = (typeof choices[0] === 'object' && choices[0] !== null ? (choices[0] as Record<string, unknown>).delta : null) as Record<string, unknown> | null
-    if (!delta) return
+    if (!delta) {return}
     if (typeof delta.content === 'string' && delta.content) {
       text += delta.content
       onTextDelta(delta.content)
@@ -763,14 +763,14 @@ async function runOpenAiTurn(options: {
     }
     if (Array.isArray(delta.tool_calls)) {
       for (const fragment of delta.tool_calls) {
-        if (typeof fragment !== 'object' || fragment === null) continue
+        if (typeof fragment !== 'object' || fragment === null) {continue}
         const piece = fragment as { index?: unknown; id?: unknown; function?: { name?: unknown; arguments?: unknown } }
         const index = typeof piece.index === 'number' ? piece.index : 0
         const current = toolAccumulator.get(index) ?? { id: '', name: '', args: '' }
-        if (typeof piece.id === 'string' && piece.id) current.id = piece.id
+        if (typeof piece.id === 'string' && piece.id) {current.id = piece.id}
         if (piece.function) {
-          if (typeof piece.function.name === 'string' && piece.function.name && !current.name) current.name = piece.function.name
-          if (typeof piece.function.arguments === 'string') current.args += piece.function.arguments
+          if (typeof piece.function.name === 'string' && piece.function.name && !current.name) {current.name = piece.function.name}
+          if (typeof piece.function.arguments === 'string') {current.args += piece.function.arguments}
         }
         toolAccumulator.set(index, current)
       }
@@ -794,7 +794,7 @@ async function runAnthropicTurn(options: {
   const { provider, model, apiKey, messages, tools, signal, onTextDelta, onReasoningDelta, onRetry } = options
   const url = apiEndpoint(provider.baseUrl, provider.protocol, '/messages')
   const budgetTokens = anthropicBudget[model.thinkingLevel] ?? anthropicBudget.medium
-  const maxTokens = model.thinking ? Math.max(8_192, budgetTokens * 2) : 8_192
+  const maxTokens = model.thinking ? Math.max(8192, budgetTokens * 2) : 8192
   const systemContent = messages.find((message) => message.role === 'system')?.content ?? SYSTEM_PROMPT
   const body: Record<string, unknown> = {
     model: model.id,
@@ -802,19 +802,19 @@ async function runAnthropicTurn(options: {
     system: systemContent,
     messages: toAnthropicMessages(messages)
   }
-  if (model.thinking) body.thinking = { type: 'enabled', budget_tokens: budgetTokens }
-  if (tools.length) body.tools = tools.map((tool) => ({ name: tool.name, description: tool.description, input_schema: tool.parameters }))
+  if (model.thinking) {body.thinking = { type: 'enabled', budget_tokens: budgetTokens }}
+  if (tools.length > 0) {body.tools = tools.map((tool) => ({ name: tool.name, description: tool.description, input_schema: tool.parameters }))}
   const headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
   if (!model.streaming) {
     const json = await fetchJson(url, { method: 'POST', headers, body: JSON.stringify(body), signal }, provider, model, signal, onRetry)
     const jsonError = streamErrorText(json)
-    if (jsonError) throw streamError(`模型服务返回错误（${model.id}）：${jsonError}`)
+    if (jsonError) {throw streamError(`模型服务返回错误（${model.id}）：${jsonError}`)}
     const blocks = Array.isArray(json.content) ? json.content.filter((block): block is Record<string, unknown> => typeof block === 'object' && block !== null) : []
     const text = blocks.filter((block) => block.type === 'text').map((block) => String(block.text ?? '')).join('')
     const thinkingBlocks = blocks.filter((block) => block.type === 'thinking').map((block) => ({ thinking: String(block.thinking ?? ''), signature: String(block.signature ?? '') }))
     const reasoning = thinkingBlocks.map((block) => block.thinking).join('')
-    if (reasoning) onReasoningDelta(reasoning)
-    if (text) onTextDelta(text)
+    if (reasoning) {onReasoningDelta(reasoning)}
+    if (text) {onTextDelta(text)}
     return {
       text,
       reasoning,
@@ -831,7 +831,7 @@ async function runAnthropicTurn(options: {
   await readSse(response, (data) => {
     const json = safeParseJson(data)
     const type = json.type
-    if (type === 'error') throw streamError(`模型服务返回错误（${model.id}）：${streamErrorText(json) || '未知错误'}`)
+    if (type === 'error') {throw streamError(`模型服务返回错误（${model.id}）：${streamErrorText(json) || '未知错误'}`)}
     if (type === 'content_block_start') {
       const index = Number(json.index ?? 0)
       const block = typeof json.content_block === 'object' && json.content_block !== null ? json.content_block as Record<string, unknown> : {}
@@ -842,7 +842,7 @@ async function runAnthropicTurn(options: {
       const index = Number(json.index ?? 0)
       const block = blockTypes.get(index)
       const delta = typeof json.delta === 'object' && json.delta !== null ? json.delta as Record<string, unknown> : {}
-      if (!block) return
+      if (!block) {return}
       if (delta.type === 'text_delta' && typeof delta.text === 'string') {
         text += delta.text
         onTextDelta(delta.text)
@@ -859,9 +859,9 @@ async function runAnthropicTurn(options: {
     if (type === 'content_block_stop') {
       const index = Number(json.index ?? 0)
       const block = blockTypes.get(index)
-      if (!block) return
-      if (block.type === 'thinking' && block.thinking) thinkingBlocks.push({ thinking: block.thinking, signature: block.signature })
-      if (block.type === 'tool_use' && block.name) toolCalls.push({ id: block.id || `call_${index}`, name: block.name, arguments: block.args || '{}' })
+      if (!block) {return}
+      if (block.type === 'thinking' && block.thinking) {thinkingBlocks.push({ thinking: block.thinking, signature: block.signature })}
+      if (block.type === 'tool_use' && block.name) {toolCalls.push({ id: block.id || `call_${index}`, name: block.name, arguments: block.args || '{}' })}
     }
   })
   const reasoning = thinkingBlocks.map((block) => block.thinking).join('')
@@ -869,7 +869,7 @@ async function runAnthropicTurn(options: {
 }
 
 function emit(sender: WebContents, event: AiChatEvent): void {
-  if (sender.isDestroyed()) return
+  if (sender.isDestroyed()) {return}
   sender.send('ai:event', event)
 }
 
@@ -911,7 +911,7 @@ async function runModelTurn(options: {
   try {
     return await invoke(messages)
   } catch (error) {
-    if (signal.aborted || !messages.some((message) => message.image) || !imageUnsupported(error)) throw error
+    if (signal.aborted || !messages.some((message) => message.image) || !imageUnsupported(error)) {throw error}
     return invoke(messages.map((message) => (message.image ? { ...message, image: undefined } : message)))
   }
 }
@@ -942,7 +942,7 @@ async function executeTool(
 ): Promise<ToolOutcome & { callId: string; summary: string }> {
   const startedAt = Date.now()
   const args = safeParseJson(argsJson)
-  if (name === 'web_search') args.query = typeof args.query === 'string' ? args.query.trim().slice(0, 500) : ''
+  if (name === 'web_search') {args.query = typeof args.query === 'string' ? args.query.trim().slice(0, 500) : ''}
   const callId = `${name}:${Date.now()}:${randomUUID()}`
   emit(sender, { sessionId, type: 'tool-start', callId, name, args })
   let outcome: ToolOutcome
@@ -965,11 +965,11 @@ async function executeTool(
       const limit = typeof args.limit === 'number' ? args.limit : 5
       if (!query) {
         outcome = { ok: false, content: JSON.stringify({ error: '缺少检索关键词' }) }
-      } else if (!chatHistoryStore) {
-        outcome = { ok: false, content: JSON.stringify({ error: '历史对话检索暂不可用' }) }
-      } else {
+      } else if (chatHistoryStore) {
         const hits = await chatHistoryStore.search(query, limit)
         outcome = { ok: true, content: clampToolResult(JSON.stringify({ query, hits, total: hits.length })) }
+      } else {
+        outcome = { ok: false, content: JSON.stringify({ error: '历史对话检索暂不可用' }) }
       }
     } else if (name === 'web_search') {
       const result = await searchWeb(searchProvider, args.query, signal)
@@ -981,7 +981,7 @@ async function executeTool(
       if (result.error) {
         const failures = (searchFailuresBySession.get(sessionId) ?? 0) + 1
         searchFailuresBySession.set(sessionId, failures)
-        if (failures >= SEARCH_FAILURE_GUIDANCE_THRESHOLD) result.guidance = SEARCH_FAILURE_GUIDANCE
+        if (failures >= SEARCH_FAILURE_GUIDANCE_THRESHOLD) {result.guidance = SEARCH_FAILURE_GUIDANCE}
       } else {
         searchFailuresBySession.delete(sessionId)
       }
@@ -1015,33 +1015,33 @@ async function executeTool(
             terrainTimer = setTimeout(() => resolve({ ok: false, content: JSON.stringify({ error: '地形查询超时' }) }), ANALYZE_TERRAIN_TIMEOUT_MS)
           })
         ])
-        if (terrainTimer) clearTimeout(terrainTimer)
+        if (terrainTimer) {clearTimeout(terrainTimer)}
         const terrain = safeParseJson(terrainOutcome.content)
-        if (typeof terrain.height === 'number') result.elevationMeters = terrain.height
+        if (typeof terrain.height === 'number') {result.elevationMeters = terrain.height}
       }
       outcome = { ok: !result.error, content: clampToolResult(JSON.stringify(result)) }
     } else if (name === 'save_memory') {
-      if (!memory?.enabled) {
-        outcome = { ok: false, content: JSON.stringify({ error: '记忆功能未开启，请在 AI 设置 → 记忆 中开启' }) }
-      } else {
+      if (memory?.enabled) {
         try {
           const saved = await memory.store.add(typeof args.content === 'string' ? args.content : '', 'agent')
           outcome = { ok: true, content: JSON.stringify({ memorySaved: true, id: saved.id, content: saved.content, message: '已写入记忆' }) }
         } catch (error) {
           outcome = { ok: false, content: JSON.stringify({ error: error instanceof Error ? error.message : '记忆写入失败' }) }
         }
+      } else {
+        outcome = { ok: false, content: JSON.stringify({ error: '记忆功能未开启，请在 AI 设置 → 记忆 中开启' }) }
       }
     } else if (name === 'delete_memory') {
       const id = typeof args.id === 'string' ? args.id.trim() : ''
       if (!memory?.enabled) {
         outcome = { ok: false, content: JSON.stringify({ error: '记忆功能未开启，请在 AI 设置 → 记忆 中开启' }) }
-      } else if (!id) {
-        outcome = { ok: false, content: JSON.stringify({ error: '缺少记忆 id' }) }
-      } else {
+      } else if (id) {
         const deleted = await memory.store.delete(id)
         outcome = deleted
           ? { ok: true, content: JSON.stringify({ memoryDeleted: true, id, message: '已删除记忆' }) }
           : { ok: false, content: JSON.stringify({ error: `未找到 id 为 ${id} 的记忆` }) }
+      } else {
+        outcome = { ok: false, content: JSON.stringify({ error: '缺少记忆 id' }) }
       }
     } else {
       outcome = await dispatchRendererTool(sender, sessionId, callId, name, guard.dispatchArgs)
@@ -1060,7 +1060,7 @@ async function executeTool(
     input: sanitizedSpan.input,
     output: sanitizedSpan.output,
     latencyMs: Date.now() - startedAt,
-    ...(!outcome.ok ? { error: summarizeToolResult(outcome.content) } : {})
+    ...(outcome.ok ? {} : { error: summarizeToolResult(outcome.content) })
   })
   return { ...outcome, callId, summary: summarizeToolResult(outcome.content) }
 }
@@ -1086,7 +1086,7 @@ async function compressMessages(options: {
   const keepCount = Math.min(4, rest.length)
   const hasOlderMessages = rest.length > keepCount
   const older = hasOlderMessages ? rest.slice(0, rest.length - keepCount) : rest
-  if (!older.length) throw new Error('无法压缩上下文')
+  if (older.length === 0) {throw new Error('无法压缩上下文')}
   const transcript = older.map((message) => {
     const role = message.role === 'user' ? '用户' : message.role === 'assistant' ? '助手' : '工具'
     return `${role}：${message.content}`
@@ -1117,7 +1117,7 @@ async function compressMessages(options: {
     throw error
   }
   const summary = summaryResult.text.trim()
-  if (!summary) throw new Error('无法压缩上下文')
+  if (!summary) {throw new Error('无法压缩上下文')}
   const summaryMessage: WireMessage = { role: 'assistant', content: `[上下文摘要]\n${summary}` }
   const kept = hasOlderMessages ? rest.slice(-keepCount) : []
   const compressedMessages = [...(system ? [system] : []), summaryMessage, ...kept]
@@ -1160,7 +1160,7 @@ async function runAgent(options: {
   for (const turn of turns) {
     if (turn.content.trim()) {
       conversationMessages.push({ role: turn.role, content: turn.content })
-      if (turn.role === 'user') lastUserMessage = turn.content
+      if (turn.role === 'user') {lastUserMessage = turn.content}
     }
   }
   const recalledMemories = memory.enabled && memory.store.list().length > MEMORY_FULL_INJECT_LIMIT && lastUserMessage.trim()
@@ -1172,7 +1172,7 @@ async function runAgent(options: {
   const historyTools = hawdb?.isReady() ? [SEARCH_CONVERSATIONS_TOOL] : []
   const toolset: AiToolDefinition[] = [...tools.filter((tool) => !['retrieve_knowledge', 'search_conversations', 'search_place', 'web_search', 'save_memory', 'delete_memory', 'poi_statistics', 'analyze_location'].includes(tool.name)), KNOWLEDGE_TOOL, ...historyTools, SEARCH_PLACE_TOOL, POI_STATISTICS_TOOL, ANALYZE_LOCATION_TOOL, WEB_SEARCH_TOOL, ...memoryTools]
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-    if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+    if (signal.aborted) {throw new DOMException('Aborted', 'AbortError')}
     const currentStats = contextStatsForMessages(messages, model.contextWindow)
     send({ sessionId, type: 'context-stats', stats: currentStats })
     if (currentStats.usagePercent >= 80) {
@@ -1200,8 +1200,8 @@ async function runAgent(options: {
       onRetry
     })
     signal.throwIfAborted()
-    if (!model.streaming && result.text) send({ sessionId, type: 'text-delta', text: result.text })
-    if (!result.toolCalls.length) {
+    if (!model.streaming && result.text) {send({ sessionId, type: 'text-delta', text: result.text })}
+    if (result.toolCalls.length === 0) {
       messages.push({ role: 'assistant', content: result.text })
       if (!result.text.trim()) {
         send({ sessionId, type: 'error', message: result.reasoning.trim() ? '模型只返回了思考过程，没有给出结论，请重试' : '模型没有返回内容，请重试' })
@@ -1237,7 +1237,7 @@ async function runAgent(options: {
     onRetry
   })
   signal.throwIfAborted()
-  if (!model.streaming && finalResult.text) send({ sessionId, type: 'text-delta', text: finalResult.text })
+  if (!model.streaming && finalResult.text) {send({ sessionId, type: 'text-delta', text: finalResult.text })}
   messages.push({ role: 'assistant', content: finalResult.text })
   if (!finalResult.text.trim()) {
     send({ sessionId, type: 'error', message: '工具调用轮次过多，已停止' })
@@ -1248,7 +1248,7 @@ async function runAgent(options: {
 
 function summarizeToolResult(content: string): string {
   const parsed = safeParseJson(content)
-  if (typeof parsed.error === 'string') return parsed.error.slice(0, 60)
+  if (typeof parsed.error === 'string') {return parsed.error.slice(0, 60)}
   if (parsed.status === 'queued' && typeof parsed.total === 'number') {
     const addedName = typeof parsed.addedName === 'string' && parsed.addedName ? `「${parsed.addedName}」` : ''
     return `已加入地点列表${addedName}（共 ${parsed.total} 个，停留在第 1 个）`
@@ -1258,21 +1258,21 @@ function summarizeToolResult(content: string): string {
     const label = typeof current === 'string' && current ? `「${current}」` : ''
     return `已创建 ${parsed.stops.length} 个地点，停留在 1/${parsed.stops.length}${label}`
   }
-  if (typeof parsed.message === 'string' && parsed.message.trim()) return parsed.message.slice(0, 60)
-  if (parsed.memorySaved === true) return `已记住：${typeof parsed.content === 'string' ? parsed.content.slice(0, 40) : ''}`
-  if (parsed.memoryDeleted === true) return '已删除记忆'
-  if (Array.isArray(parsed.hits)) return parsed.hits.length ? `${parsed.hits.length} 条历史对话` : '未找到相关历史对话'
-  if (Array.isArray(parsed.matches)) return parsed.matches.length ? `${parsed.matches.length} 条知识条目` : '知识库未命中'
-  if (Array.isArray(parsed.references)) return parsed.references.length ? `${parsed.references.length} 条来源` : '未找到相关网页'
-  if (Array.isArray(parsed.places)) return `${parsed.places.length} 个地点`
-  if (parsed.status === 'vision_disabled') return '模型未开启视觉，已返回文字视角'
-  if (parsed.screenshot) return '已截图'
-  if (Array.isArray(parsed.shapes)) return `${parsed.shapes.length} 个标注`
-  if (typeof parsed.removed === 'number') return `已删除 ${parsed.removed} 个标注`
-  if (typeof parsed.added === 'number') return `已添加标记 ${parsed.added} 个${typeof parsed.skipped === 'number' ? `（${parsed.skipped} 个无效跳过）` : ''}`
-  if (typeof parsed.name === 'string' && parsed.name) return parsed.kind === 'point' ? `已添加标记「${parsed.name}」` : `已绘制「${parsed.name}」`
-  if (typeof parsed.measurement === 'string' && parsed.measurement) return parsed.measurement
-  if (typeof parsed.height === 'number') return `海拔 ${Math.round(parsed.height)} m`
+  if (typeof parsed.message === 'string' && parsed.message.trim()) {return parsed.message.slice(0, 60)}
+  if (parsed.memorySaved === true) {return `已记住：${typeof parsed.content === 'string' ? parsed.content.slice(0, 40) : ''}`}
+  if (parsed.memoryDeleted === true) {return '已删除记忆'}
+  if (Array.isArray(parsed.hits)) {return parsed.hits.length ? `${parsed.hits.length} 条历史对话` : '未找到相关历史对话'}
+  if (Array.isArray(parsed.matches)) {return parsed.matches.length ? `${parsed.matches.length} 条知识条目` : '知识库未命中'}
+  if (Array.isArray(parsed.references)) {return parsed.references.length ? `${parsed.references.length} 条来源` : '未找到相关网页'}
+  if (Array.isArray(parsed.places)) {return `${parsed.places.length} 个地点`}
+  if (parsed.status === 'vision_disabled') {return '模型未开启视觉，已返回文字视角'}
+  if (parsed.screenshot) {return '已截图'}
+  if (Array.isArray(parsed.shapes)) {return `${parsed.shapes.length} 个标注`}
+  if (typeof parsed.removed === 'number') {return `已删除 ${parsed.removed} 个标注`}
+  if (typeof parsed.added === 'number') {return `已添加标记 ${parsed.added} 个${typeof parsed.skipped === 'number' ? `（${parsed.skipped} 个无效跳过）` : ''}`}
+  if (typeof parsed.name === 'string' && parsed.name) {return parsed.kind === 'point' ? `已添加标记「${parsed.name}」` : `已绘制「${parsed.name}」`}
+  if (typeof parsed.measurement === 'string' && parsed.measurement) {return parsed.measurement}
+  if (typeof parsed.height === 'number') {return `海拔 ${Math.round(parsed.height)} m`}
   if (parsed.province === '全国' && typeof parsed.populationWan === 'number' && typeof parsed.urbanizationPct === 'number') {
     return `${parsed.province}：人口 ${parsed.populationWan} 万、城镇化 ${parsed.urbanizationPct}%`
   }
@@ -1280,7 +1280,7 @@ function summarizeToolResult(content: string): string {
     const population = typeof parsed.populationWan === 'number' ? `人口 ${parsed.populationWan} 万、` : ''
     return `${parsed.province}：${population}密度约 ${parsed.densityPerKm2} 人/km²`
   }
-  if (typeof parsed.longitude === 'number') return '已定位'
+  if (typeof parsed.longitude === 'number') {return '已定位'}
   const center = typeof parsed.center === 'object' && parsed.center !== null ? parsed.center as { name?: unknown } : null
   if (center && Array.isArray(parsed.categories)) {
     const name = typeof center.name === 'string' && center.name ? center.name : '该地点'
@@ -1291,21 +1291,21 @@ function summarizeToolResult(content: string): string {
 }
 
 function validateTurns(turns: unknown): AiChatTurn[] {
-  if (!Array.isArray(turns)) throw new Error('无效的对话历史')
+  if (!Array.isArray(turns)) {throw new Error('无效的对话历史')}
   return turns.flatMap((turn): AiChatTurn[] => {
-    if (typeof turn !== 'object' || turn === null) return []
+    if (typeof turn !== 'object' || turn === null) {return []}
     const record = turn as { role?: unknown; content?: unknown }
-    if ((record.role !== 'user' && record.role !== 'assistant') || typeof record.content !== 'string') return []
+    if ((record.role !== 'user' && record.role !== 'assistant') || typeof record.content !== 'string') {return []}
     return [{ role: record.role, content: record.content.slice(0, 20_000) }]
   })
 }
 
 function validateContextEntries(entries: unknown): AiContextEntry[] {
-  if (!Array.isArray(entries)) throw new Error('无效的上下文')
+  if (!Array.isArray(entries)) {throw new Error('无效的上下文')}
   return entries.flatMap((entry): AiContextEntry[] => {
-    if (typeof entry !== 'object' || entry === null) return []
+    if (typeof entry !== 'object' || entry === null) {return []}
     const record = entry as { role?: unknown; content?: unknown; callId?: unknown; name?: unknown; isError?: unknown }
-    if ((record.role !== 'user' && record.role !== 'assistant' && record.role !== 'tool') || typeof record.content !== 'string') return []
+    if ((record.role !== 'user' && record.role !== 'assistant' && record.role !== 'tool') || typeof record.content !== 'string') {return []}
     return [{
       role: record.role,
       content: record.content.slice(0, TOOL_RESULT_LIMIT),
@@ -1317,15 +1317,15 @@ function validateContextEntries(entries: unknown): AiContextEntry[] {
 }
 
 function validateChatRequest(sessionId: unknown, turns: unknown, tools: unknown, aiSessionId: unknown, distinctId: unknown): { sessionId: string; aiSessionId: string; distinctId: string; turns: AiChatTurn[]; tools: AiToolDefinition[] } {
-  if (typeof sessionId !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(sessionId)) throw new Error('无效的会话标识')
+  if (typeof sessionId !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(sessionId)) {throw new Error('无效的会话标识')}
   const normalizedAiSessionId = typeof aiSessionId === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(aiSessionId) ? aiSessionId : sessionId
   const normalizedDistinctId = typeof distinctId === 'string' ? distinctId.trim().slice(0, 256) : ''
   const normalizedTurns = validateTurns(turns)
   const normalizedTools = Array.isArray(tools) ? tools.flatMap((tool): AiToolDefinition[] => {
-    if (typeof tool !== 'object' || tool === null) return []
+    if (typeof tool !== 'object' || tool === null) {return []}
     const record = tool as { name?: unknown; description?: unknown; parameters?: unknown }
-    if (typeof record.name !== 'string' || !/^[a-z0-9_]{1,64}$/i.test(record.name) || typeof record.description !== 'string') return []
-    return [{ name: record.name, description: record.description.slice(0, 2_000), parameters: typeof record.parameters === 'object' && record.parameters !== null ? record.parameters as Record<string, unknown> : { type: 'object', properties: {} } }]
+    if (typeof record.name !== 'string' || !/^[a-z0-9_]{1,64}$/i.test(record.name) || typeof record.description !== 'string') {return []}
+    return [{ name: record.name, description: record.description.slice(0, 2000), parameters: typeof record.parameters === 'object' && record.parameters !== null ? record.parameters as Record<string, unknown> : { type: 'object', properties: {} } }]
   }) : []
   return { sessionId, aiSessionId: normalizedAiSessionId, distinctId: normalizedDistinctId, turns: normalizedTurns, tools: normalizedTools }
 }
@@ -1344,32 +1344,32 @@ export function registerAiIpcHandlers(
   ipcMain.handle('ai:history-get', (_event, id: unknown) => typeof id === 'string' ? chatHistoryStore.get(id) : null)
   ipcMain.handle('ai:history-save', (_event, value: unknown) => chatHistoryStore.save(value))
   ipcMain.handle('ai:history-delete', (_event, id: unknown) => {
-    if (typeof id !== 'string' || !id) return chatHistoryStore.list()
+    if (typeof id !== 'string' || !id) {return chatHistoryStore.list()}
     return chatHistoryStore.delete(id)
   })
   ipcMain.handle('ai:history-search', (_event, query: unknown, limit: unknown, excludeId: unknown) => {
-    if (typeof query !== 'string' || !query.trim()) return []
+    if (typeof query !== 'string' || !query.trim()) {return []}
     const capped = typeof limit === 'number' && Number.isFinite(limit) ? limit : 5
     return chatHistoryStore.search(query, capped, typeof excludeId === 'string' ? excludeId : undefined)
   })
   ipcMain.handle('ai:memory-list', () => memoryStore.list())
   ipcMain.handle('ai:memory-add', async (_event, content: unknown) => {
-    if (typeof content !== 'string') throw new Error('无效的记忆内容')
+    if (typeof content !== 'string') {throw new Error('无效的记忆内容')}
     await memoryStore.add(content, 'user')
     return memoryStore.list()
   })
   ipcMain.handle('ai:memory-delete', async (_event, id: unknown) => {
-    if (typeof id !== 'string' || !id.trim()) throw new Error('无效的记忆标识')
-    if (!await memoryStore.delete(id.trim())) throw new Error('未找到该记忆，可能已被删除')
+    if (typeof id !== 'string' || !id.trim()) {throw new Error('无效的记忆标识')}
+    if (!await memoryStore.delete(id.trim())) {throw new Error('未找到该记忆，可能已被删除')}
     return memoryStore.list()
   })
   ipcMain.handle('ai:memory-recall', (_event, query: unknown, limit: unknown) => {
-    if (typeof query !== 'string' || !query.trim()) return []
+    if (typeof query !== 'string' || !query.trim()) {return []}
     const capped = typeof limit === 'number' && Number.isFinite(limit) ? limit : 8
     return memoryStore.recall(query, capped)
   })
   ipcMain.handle('ai:hawdb-status', async () => {
-    if (hawdb?.isReady()) return hawdb.status()
+    if (hawdb?.isReady()) {return hawdb.status()}
     return {
       ready: false,
       storageMode: 'disk' as const,
@@ -1392,9 +1392,9 @@ export function registerAiIpcHandlers(
     const settings = settingsStore.snapshot()
     const provider = settings.providers.find((item) => item.id === settings.activeProviderId)
     const model = provider?.models.find((item) => item.id === settings.activeModelId)
-    if (!provider || !model) throw new Error('未选择 AI 模型，请先在 AI 设置中添加供应商与模型并设为默认')
+    if (!provider || !model) {throw new Error('未选择 AI 模型，请先在 AI 设置中添加供应商与模型并设为默认')}
     const apiKey = readProviderKey(`ai-${provider.id}`)
-    if (!apiKey) throw new Error(`未配置「${provider.name}」的 API Key，请在 AI 设置中保存`)
+    if (!apiKey) {throw new Error(`未配置「${provider.name}」的 API Key，请在 AI 设置中保存`)}
     const controller = new AbortController()
     const normalizedAiSessionId = typeof aiSessionId === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(aiSessionId) ? aiSessionId : null
     const normalizedDistinctId = typeof distinctId === 'string' ? distinctId.trim().slice(0, 256) : ''
@@ -1420,9 +1420,9 @@ export function registerAiIpcHandlers(
     const searchProvider = settings.searchProviders.find((item) => item.id === settings.activeSearchProviderId)
     const provider = settings.providers.find((item) => item.id === settings.activeProviderId)
     const model = provider?.models.find((item) => item.id === settings.activeModelId)
-    if (!provider || !model) throw new Error('未选择 AI 模型，请先在 AI 设置中添加供应商与模型并设为默认')
+    if (!provider || !model) {throw new Error('未选择 AI 模型，请先在 AI 设置中添加供应商与模型并设为默认')}
     const apiKey = readProviderKey(`ai-${provider.id}`)
-    if (!apiKey) throw new Error(`未配置「${provider.name}」的 API Key，请在 AI 设置中保存`)
+    if (!apiKey) {throw new Error(`未配置「${provider.name}」的 API Key，请在 AI 设置中保存`)}
     const existing = sessions.get(request.sessionId)
     existing?.controller.abort()
     const controller = new AbortController()
@@ -1443,17 +1443,17 @@ export function registerAiIpcHandlers(
       })
       .finally(() => {
         searchFailuresBySession.delete(request.sessionId)
-        if (sessions.get(request.sessionId)?.sender === sender) sessions.delete(request.sessionId)
+        if (sessions.get(request.sessionId)?.sender === sender) {sessions.delete(request.sessionId)}
       })
   })
   ipcMain.handle('ai:stop', (_event, sessionId: unknown) => {
-    if (typeof sessionId !== 'string') return
+    if (typeof sessionId !== 'string') {return}
     sessions.get(sessionId)?.controller.abort()
   })
   ipcMain.handle('ai:tool-result', (_event, sessionId: unknown, callId: unknown, ok: unknown, result: unknown) => {
-    if (typeof sessionId !== 'string' || typeof callId !== 'string') return
+    if (typeof sessionId !== 'string' || typeof callId !== 'string') {return}
     const entry = pendingRendererTools.get(callId)
-    if (!entry) return
+    if (!entry) {return}
     clearTimeout(entry.timer)
     pendingRendererTools.delete(callId)
     const image = extractImage(result)
@@ -1463,6 +1463,6 @@ export function registerAiIpcHandlers(
 }
 
 function signalAborted(controller: AbortController, error: unknown): boolean {
-  if (controller.signal.aborted) return true
+  if (controller.signal.aborted) {return true}
   return error instanceof Error && /abort/i.test(error.message)
 }

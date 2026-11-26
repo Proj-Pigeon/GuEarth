@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as Cesium from 'cesium'
-import { ensoPhaseMeta, type EnsoPhase } from '@renderer/thematic/ensoPhases'
+import { ensoPhaseMeta } from '@renderer/thematic/ensoPhases';
+import type { EnsoPhase } from '@renderer/thematic/ensoPhases';
 import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
 import styles from './WalkerCirculationOverlay.module.css'
 
@@ -18,7 +19,7 @@ interface FlowPath {
 }
 
 const ANCHOR = Cesium.Cartesian3.fromDegrees(-155, 0)
-const ANCHOR_VIEW_HEIGHT = 9500000
+const ANCHOR_VIEW_HEIGHT = 9_500_000
 
 const phaseFlows: Record<EnsoPhase, FlowPath[]> = {
   normal: [
@@ -54,7 +55,7 @@ export function WalkerCirculationOverlay({ viewer, phase }: WalkerCirculationOve
   useEffect(() => {
     const activeViewer = viewer && !viewer.isDestroyed() ? viewer : undefined
     if (!activeViewer) {
-      if (overlayRef.current) overlayRef.current.style.display = 'none'
+      if (overlayRef.current) {overlayRef.current.style.display = 'none'}
       return
     }
     const scratch = new Cesium.Cartesian2()
@@ -63,7 +64,7 @@ export function WalkerCirculationOverlay({ viewer, phase }: WalkerCirculationOve
 
     function frame(): void {
       const element = overlayRef.current
-      if (!activeViewer || activeViewer.isDestroyed() || !element) return
+      if (!activeViewer || activeViewer.isDestroyed() || !element) {return}
       let facing = true
       if (activeViewer.scene.mode === Cesium.SceneMode.SCENE3D) {
         activeViewer.scene.globe.ellipsoid.geodeticSurfaceNormal(ANCHOR, scratchNormal)
@@ -109,10 +110,10 @@ export function WalkerCirculationOverlay({ viewer, phase }: WalkerCirculationOve
         <rect x="2" y="2" width="376" height="196" rx="12" fill="rgba(255,255,255,0.92)" stroke={dc.hairline} />
         <rect x="12" y="12" width="356" height="150" rx="8" fill="rgba(22,119,255,0.05)" />
         <path d="M 12 162 L 368 162 L 368 188 L 12 188 Z" fill="url(#wk-ocean)" />
-        {phase !== 'el-nino' ? (
-          <path d="M 12 162 L 120 162 Q 160 130 200 128 L 368 162 Z" fill="url(#wk-warm)" />
-        ) : (
+        {phase === 'el-nino' ? (
           <path d="M 12 162 L 368 162 L 368 140 Q 260 126 190 128 Q 100 130 12 150 Z" fill="url(#wk-warm)" />
+        ) : (
+          <path d="M 12 162 L 120 162 Q 160 130 200 128 L 368 162 Z" fill="url(#wk-warm)" />
         )}
         <path
           d={thermoclines[phase]}
@@ -145,13 +146,13 @@ export function WalkerCirculationOverlay({ viewer, phase }: WalkerCirculationOve
           <text x="312" y="184" fontSize="10.5" fill={dc.inkSecondary} textAnchor="middle">
             东太平洋（南美沿岸）
           </text>
-          {phase !== 'el-nino' ? (
-            <text x="74" y="96" fontSize="11" fontWeight="600" fill={dc.warmAir} textAnchor="middle">
-              上升气流
-            </text>
-          ) : (
+          {phase === 'el-nino' ? (
             <text x="176" y="100" fontSize="11" fontWeight="600" fill={dc.warmAir} textAnchor="middle">
               上升气流东移
+            </text>
+          ) : (
+            <text x="74" y="96" fontSize="11" fontWeight="600" fill={dc.warmAir} textAnchor="middle">
+              上升气流
             </text>
           )}
           <text x="330" y="100" fontSize="11" fontWeight="600" fill={dc.coldAir} textAnchor="middle">
@@ -160,13 +161,13 @@ export function WalkerCirculationOverlay({ viewer, phase }: WalkerCirculationOve
           <text x="195" y="24" fontSize="11" fontWeight="600" fill={dc.vaporFlow} textAnchor="middle">
             高空向东流
           </text>
-          {phase !== 'el-nino' ? (
-            <text x="195" y="146" fontSize="11" fontWeight="600" fill={dc.vaporFlow} textAnchor="middle">
-              信风（近地面自东向西）
-            </text>
-          ) : (
+          {phase === 'el-nino' ? (
             <text x="150" y="140" fontSize="11" fontWeight="600" fill={dc.vaporFlow} textAnchor="middle">
               信风减弱甚至转向
+            </text>
+          ) : (
+            <text x="195" y="146" fontSize="11" fontWeight="600" fill={dc.vaporFlow} textAnchor="middle">
+              信风（近地面自东向西）
             </text>
           )}
           <text x="368" y="172" fontSize="9.5" fill={dc.warmAir} textAnchor="end" opacity="0.8">

@@ -1,4 +1,5 @@
-import { forwardRef, type HTMLAttributes, type ReactNode } from 'react'
+import { forwardRef } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@renderer/lib/utils'
 
 export type BadgeTone = 'primary' | 'info' | 'success' | 'warning' | 'error'
@@ -27,10 +28,10 @@ const countToneClasses: Record<BadgeTone, string> = {
   error: 'bg-destructive text-destructive-foreground'
 }
 
-export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
+export const Badge = forwardRef<HTMLSpanElement, BadgeProps>((
   { dot = false, count, tone = 'primary', className, children, ...props },
   ref
-) {
+) => {
   const showDot = dot && count === undefined
   const showCount = typeof count === 'number' && count > 0
   return (

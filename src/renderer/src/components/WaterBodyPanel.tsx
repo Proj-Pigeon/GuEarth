@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { XIcon } from 'lucide-react'
 import { Button, Segmented } from '@renderer/components/ui'
-import LineChart, { type ChartSeries } from './charts/LineChart'
+import LineChart from './charts/LineChart';
+import type { ChartSeries } from './charts/LineChart';
 import styles from './WaterBodyPanel.module.css'
 
 export interface WaterBodyPanelProps {
@@ -22,7 +23,7 @@ const rechargeOptions = [
   { value: 'lake', label: '湖泊水' }
 ]
 
-const monthlyDischarge: Record<RechargeType, Array<[number, number]>> = {
+const monthlyDischarge: Record<RechargeType, [number, number][]> = {
   rain: [
     [1, 2.2],
     [2, 2.8],
@@ -47,7 +48,7 @@ const monthlyDischarge: Record<RechargeType, Array<[number, number]>> = {
     [7, 8.8],
     [8, 7.2],
     [9, 2.6],
-    [10, 1.0],
+    [10, 1],
     [11, 0.5],
     [12, 0.4]
   ],
@@ -57,17 +58,17 @@ const monthlyDischarge: Record<RechargeType, Array<[number, number]>> = {
     [3, 4.6],
     [4, 4.6],
     [5, 4.8],
-    [6, 5.0],
+    [6, 5],
     [7, 5.3],
     [8, 5.2],
-    [9, 5.0],
+    [9, 5],
     [10, 4.9],
     [11, 4.8],
     [12, 4.8]
   ],
   lake: [
     [1, 3.6],
-    [2, 4.0],
+    [2, 4],
     [3, 4.8],
     [4, 5.8],
     [5, 6.8],

@@ -93,7 +93,7 @@ test('flattenVisibleTree and resolveTreeKeyAction support WAI-ARIA tree navigati
 
 test('runGuardedAction catches sync and async rejections without propagating', async () => {
   const errors = []
-  const okSync = await runGuardedAction(() => undefined, (message) => errors.push(message))
+  const okSync = await runGuardedAction(() => {}, (message) => errors.push(message))
   assert.equal(okSync, true)
   assert.deepEqual(errors, [])
 

@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { LineChartIcon, PauseIcon, PlayIcon, RepeatIcon } from 'lucide-react'
 import type * as Cesium from 'cesium'
 import { Button, MonthDayPicker, Slider, Tooltip } from '@renderer/components/ui'
@@ -43,15 +44,15 @@ export function SolarTimePanel({ viewer, renderChart }: SolarTimePanelProps) {
   const [chartOpen, setChartOpen] = useState(false)
 
   useVisibleAnimation(active && (isPlaying || isAnnualPlaying), (dt) => {
-    if (dt > 0) advance(dt)
-    if (viewer && !viewer.isDestroyed()) viewer.scene.requestRender()
+    if (dt > 0) {advance(dt)}
+    if (viewer && !viewer.isDestroyed()) {viewer.scene.requestRender()}
   })
 
   useEffect(() => {
-    if (viewer && !viewer.isDestroyed()) viewer.scene.requestRender()
+    if (viewer && !viewer.isDestroyed()) {viewer.scene.requestRender()}
   }, [date, hour, active, viewer])
 
-  if (!active) return null
+  if (!active) {return null}
 
   const panelClasses = [
     styles.solarPanel,

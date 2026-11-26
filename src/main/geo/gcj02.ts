@@ -1,4 +1,4 @@
-const GCJ_ELLIPSE_A = 6378245
+const GCJ_ELLIPSE_A = 6_378_245
 const GCJ_ELLIPSE_EE = 0.00669342162296594323
 const GCJ_MAGIC_LAT = 35
 const GCJ_MAGIC_LON = 105
@@ -24,7 +24,7 @@ export function outsideChina(lon: number, lat: number): boolean {
 }
 
 export function wgs84ToGcj02(lon: number, lat: number): [number, number] {
-  if (outsideChina(lon, lat)) return [lon, lat]
+  if (outsideChina(lon, lat)) {return [lon, lat]}
   const dLat = offsetLat(lon - GCJ_MAGIC_LON, lat - GCJ_MAGIC_LAT)
   const dLon = offsetLon(lon - GCJ_MAGIC_LON, lat - GCJ_MAGIC_LAT)
   const radLat = (lat / 180) * Math.PI

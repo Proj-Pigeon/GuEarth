@@ -1,12 +1,7 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import {
-  createStreamingDelayState,
-  renderMarkdown,
-  renderStreamingMarkdown,
-  resetStreamingDelayState,
-  settleStreamingDelayState,
-  type StreamingDelayState
-} from '@renderer/utils/markdown'
+import { useLayoutEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { createStreamingDelayState, renderMarkdown, renderStreamingMarkdown, resetStreamingDelayState, settleStreamingDelayState } from '@renderer/utils/markdown';
+import type { StreamingDelayState } from '@renderer/utils/markdown';
 import styles from './StreamingMarkdown.module.css'
 
 const STREAM_RENDER_INTERVAL_MS = 50
@@ -55,7 +50,7 @@ export function StreamingMarkdown({ text, streaming = false, onRendered }: Strea
   function settle(): void {
     settleTimerRef.current = undefined
     const current = latestPropsRef.current
-    if (!current.streaming) return
+    if (!current.streaming) {return}
     settledRef.current = true
     settleStreamingDelayState(delayStateRef.current!, current.text)
     const nextNodes = renderMarkdown(current.text)
@@ -68,18 +63,18 @@ export function StreamingMarkdown({ text, streaming = false, onRendered }: Strea
     settledRef.current = false
     const current = latestPropsRef.current
     const delayState = delayStateRef.current!
-    if (!current.streaming) {
-      resetStreamingDelayState(delayState)
-      const nextNodes = renderMarkdown(current.text)
-      hasNodesRef.current = nextNodes.length > 0
-      setNodes(nextNodes)
-    } else {
+    if (current.streaming) {
       const nextNodes = renderStreamingMarkdown(current.text, delayState)
       hasNodesRef.current = nextNodes.length > 0
       setNodes(nextNodes)
       if (current.text) {
         settleTimerRef.current = setTimeout(settle, STREAM_IDLE_SETTLE_MS)
       }
+    } else {
+      resetStreamingDelayState(delayState)
+      const nextNodes = renderMarkdown(current.text)
+      hasNodesRef.current = nextNodes.length > 0
+      setNodes(nextNodes)
     }
     onRenderedRef.current?.()
   }
@@ -108,11 +103,11 @@ export function StreamingMarkdown({ text, streaming = false, onRendered }: Strea
     }
   }, [text, streaming])
 
-  useLayoutEffect(() => {
-    return () => {
+  useLayoutEffect(() => 
+    () => {
       clearTimers()
     }
-  }, [])
+  , [])
 
   return <div className={`answer-text ${styles.answerText}`}>{nodes}</div>
 }

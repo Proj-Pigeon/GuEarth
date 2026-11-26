@@ -38,16 +38,16 @@ export function SearchProviderSettings({
   const [error, setError] = useState('')
 
   const refreshCredential = useCallback(async (providerId = selectedIdRef.current): Promise<void> => {
-    if (!providerId) return
+    if (!providerId) {return}
     setLoading(true)
     setError('')
     try {
       const status = await window.guEarth.settings.hasProviderApiKey(`ai-search-${providerId}`)
-      if (selectedIdRef.current === providerId) setCredential(status)
+      if (selectedIdRef.current === providerId) {setCredential(status)}
     } catch {
-      if (selectedIdRef.current === providerId) setError('无法读取搜索密钥状态，请重试')
+      if (selectedIdRef.current === providerId) {setError('无法读取搜索密钥状态，请重试')}
     } finally {
-      if (selectedIdRef.current === providerId) setLoading(false)
+      if (selectedIdRef.current === providerId) {setLoading(false)}
     }
   }, [])
 
@@ -65,7 +65,7 @@ export function SearchProviderSettings({
   async function saveKey(): Promise<void> {
     const providerId = selectedIdRef.current
     const key = apiKeyDraft.trim()
-    if (!providerId || !key || saving || clearing) return
+    if (!providerId || !key || saving || clearing) {return}
     setSaving(true)
     setError('')
     try {
@@ -84,7 +84,7 @@ export function SearchProviderSettings({
 
   async function clearKey(): Promise<void> {
     const providerId = selectedIdRef.current
-    if (!providerId || saving || clearing) return
+    if (!providerId || saving || clearing) {return}
     setClearing(true)
     setError('')
     try {
@@ -111,7 +111,7 @@ export function SearchProviderSettings({
           aria-label="默认搜索供应商"
           className={styles.searchProviderSelect}
           onChange={(value) => {
-            if (value) onActiveProviderIdChange(value)
+            if (value) {onActiveProviderIdChange(value)}
           }}
         />
       )}

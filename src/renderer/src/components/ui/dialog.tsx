@@ -1,12 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode
-} from 'react'
+import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { XIcon } from 'lucide-react'
@@ -61,9 +54,9 @@ export function Modal({
 }: ModalProps) {
   const handleOpenChange = useCallback(
     (nextOpen: boolean, details?: { reason?: string }) => {
-      if (nextOpen) return
-      if (details?.reason === 'escape-key' && !keyboard) return
-      if (details?.reason === 'outside-press' && !maskClosable) return
+      if (nextOpen) {return}
+      if (details?.reason === 'escape-key' && !keyboard) {return}
+      if (details?.reason === 'outside-press' && !maskClosable) {return}
       onCancel?.()
     },
     [keyboard, maskClosable, onCancel]
@@ -97,12 +90,12 @@ export function Modal({
         >
           {(title !== undefined || closable) && (
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-5 py-3.5">
-              {title !== undefined ? (
+              {title === undefined ? (
+                <span />
+              ) : (
                 <BaseDialog.Title className="m-0 text-[15px] leading-6 font-semibold text-ink">
                   {title}
                 </BaseDialog.Title>
-              ) : (
-                <span />
               )}
               {closable && (
                 <Button
@@ -120,7 +113,7 @@ export function Modal({
             style={bodyStyle}
             className={cn(
               'min-h-0 overflow-y-auto px-5 py-4 text-[14px] leading-[22px]',
-              bodyStyle?.height !== undefined ? 'flex-[0_1_auto]' : 'flex-1',
+              bodyStyle?.height === undefined ? 'flex-1' : 'flex-[0_1_auto]',
               bodyClassName
             )}
           >
@@ -129,9 +122,7 @@ export function Modal({
 
           {footer !== null && (
             <div className="flex shrink-0 items-center justify-end gap-2 border-t border-hairline px-5 py-3">
-              {footer !== undefined ? (
-                footer
-              ) : (
+              {footer === undefined ? (
                 <>
                   <Button disabled={confirmLoading} onClick={() => onCancel?.()}>
                     {cancelText}
@@ -148,6 +139,8 @@ export function Modal({
                     {okText}
                   </Button>
                 </>
+              ) : (
+                footer
               )}
             </div>
           )}
@@ -187,7 +180,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const close = useCallback(() => {
-    if (busy) return
+    if (busy) {return}
     const current = optionsRef.current
     setErrorMessage('')
     setOptions(null)
@@ -196,7 +189,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
 
   const accept = useCallback(async () => {
     const current = optionsRef.current
-    if (!current || busy) return
+    if (!current || busy) {return}
     setBusy(true)
     setErrorMessage('')
     try {
@@ -219,7 +212,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
       <BaseAlertDialog.Root
         open={Boolean(options)}
         onOpenChange={(nextOpen) => {
-          if (!nextOpen) close()
+          if (!nextOpen) {close()}
         }}
       >
         <BaseAlertDialog.Portal>
@@ -258,6 +251,6 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
 
 export function useConfirm() {
   const ctx = useContext(ConfirmContext)
-  if (!ctx) throw new Error('ConfirmDialogProvider is missing')
+  if (!ctx) {throw new Error('ConfirmDialogProvider is missing')}
   return ctx.confirm
 }

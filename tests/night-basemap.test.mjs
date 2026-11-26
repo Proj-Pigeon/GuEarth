@@ -18,7 +18,7 @@ test('the night basemap hides every thematic layer', () => {
 test('capture, playback and the offscreen renderer all apply the night rule', () => {
   assert.match(appSource, /const nightBasemapActive = hidesThematicLayers\(selectedLayerId\)/)
   assert.match(toolsSource, /overlays: visibleThematicLayers\(store\.selectedLayerId, knownOverlays\)/)
-  assert.match(toolsSource, /if \(args\.enabled && nightActive\) return \{ error:/)
+  assert.match(toolsSource, /if \(args\.enabled && nightActive\) \{return \{ error:/)
   assert.match(scenePlayerSource, /overlays: visibleThematicLayers\(globeStore\.selectedLayerId,/)
   assert.match(scenePlayerSource, /const overlays = visibleThematicLayers\(snapshot\.basemapId, snapshot\.overlays\)/)
   assert.match(offscreenSource, /const overlays = visibleThematicLayers\(basemapId, snapshot\.overlays\)/)

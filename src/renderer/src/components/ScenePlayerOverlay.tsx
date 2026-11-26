@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { SkipForwardIcon } from 'lucide-react'
 import { Button, Segmented, Spinner } from '@renderer/components/ui'
-import { useScenesStore, type RecordingPrewarmQuality } from '@renderer/stores/scenes'
+import { useScenesStore } from '@renderer/stores/scenes';
+import type { RecordingPrewarmQuality } from '@renderer/stores/scenes';
 import type { PlayerState } from '@renderer/composables/useScenePlayer'
 import styles from './ScenePlayerOverlay.module.css'
 
@@ -11,7 +12,7 @@ export interface ScenePlayerOverlayProps {
   onStop: () => void
 }
 
-const prewarmQualityOptions: Array<{ label: string; value: RecordingPrewarmQuality }> = [
+const prewarmQualityOptions: { label: string; value: RecordingPrewarmQuality }[] = [
   { label: '标准', value: 'standard' },
   { label: '高清', value: 'high' },
   { label: '极清', value: 'ultra' }
@@ -24,7 +25,7 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent): void {
-      if (!player.active) return
+      if (!player.active) {return}
       if (event.key === 'Escape') {
         event.preventDefault()
         onStop()
@@ -39,7 +40,7 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
     return () => window.removeEventListener('keydown', handleKeydown)
   }, [player.active, onNext, onStop])
 
-  if (!player.active) return null
+  if (!player.active) {return null}
 
   const recordingActive = recording.state === 'recording' || recording.state === 'preparing'
   const isRecordingPreparing = recording.state === 'preparing'
@@ -52,10 +53,10 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
     : ''
 
   let recordNotice = ''
-  if (recording.state === 'preparing') recordNotice = '正在准备录制…'
-  else if (recording.state === 'recording') recordNotice = `录制中 ${recording.currentStep}/${recording.totalSteps}`
-  else if (recording.state === 'saving') recordNotice = '正在保存视频…'
-  else if (recording.state === 'error') recordNotice = `录制失败：${recording.error}`
+  if (recording.state === 'preparing') {recordNotice = '正在准备录制…'}
+  else if (recording.state === 'recording') {recordNotice = `录制中 ${recording.currentStep}/${recording.totalSteps}`}
+  else if (recording.state === 'saving') {recordNotice = '正在保存视频…'}
+  else if (recording.state === 'error') {recordNotice = `录制失败：${recording.error}`}
 
   return (
     <div className={styles.sceneOverlay}>

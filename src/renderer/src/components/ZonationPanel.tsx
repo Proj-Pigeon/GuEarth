@@ -2,14 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
 import { Loader2Icon, XIcon } from 'lucide-react'
 import { Alert, Button, Select } from '@renderer/components/ui'
-import {
-  mountainById,
-  snowlineM,
-  zonationMountains,
-  zonationPrinciples,
-  type ZonationMountain,
-  type ZonationSlope
-} from '@renderer/thematic/mountainZonation'
+import { mountainById, snowlineM, zonationMountains, zonationPrinciples } from '@renderer/thematic/mountainZonation';
+import type { ZonationMountain, ZonationSlope } from '@renderer/thematic/mountainZonation';
 import { greatCircleKm } from '@renderer/lib/transect'
 import {
   cancelTransectFlight,
@@ -47,7 +41,7 @@ function spectrumY(mountain: ZonationMountain, elevationM: number): number {
 
 export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
   const [activeId, setActiveId] = useState<string>(zonationMountains[0].id)
-  const [profile, setProfile] = useState<Array<[number, number]>>([])
+  const [profile, setProfile] = useState<[number, number][]>([])
   const [sampling, setSampling] = useState(false)
   const [degraded, setDegraded] = useState(false)
   const [flying, setFlying] = useState(false)
@@ -80,7 +74,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
         clipId: `zonation-clip-${active.id}-${index}`,
         triangle: `M ${cx - halfW} ${SPECTRUM_BASE_Y} L ${cx} ${SPECTRUM_TOP_Y} L ${cx + halfW} ${SPECTRUM_BASE_Y} Z`,
         belts,
-        snowY: snow !== undefined ? spectrumY(active, snow) : undefined
+        snowY: snow === undefined ? undefined : spectrumY(active, snow)
       }
     })
   }, [active])
@@ -93,7 +87,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
       PROFILE_TOP + (1 - elevationM / elevMax) * (PROFILE_H - PROFILE_TOP - PROFILE_BOTTOM)
     let summit: { x: number; y: number; elevationM: number } | undefined
     for (const [km, elevationM] of profile) {
-      if (!summit || elevationM > summit.elevationM) summit = { x: toX(km), y: toY(elevationM), elevationM }
+      if (!summit || elevationM > summit.elevationM) {summit = { x: toX(km), y: toY(elevationM), elevationM }}
     }
     const stripeSlope = active.slopes[0]
     const snow = snowlineM(stripeSlope)
@@ -105,7 +99,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
         y: toY(belt.toM),
         height: Math.max(1, toY(belt.fromM) - toY(belt.toM))
       })),
-      snowY: snow !== undefined ? toY(snow) : undefined,
+      snowY: snow === undefined ? undefined : toY(snow),
       summit,
       baseY: toY(0),
       peakElevation: summit ? Math.round(summit.elevationM) : active.summitM,
@@ -118,7 +112,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
       profileRequestIdRef.current += 1
       const requestId = profileRequestIdRef.current
       setProfile([])
-      if (!targetViewer || targetViewer.isDestroyed()) return
+      if (!targetViewer || targetViewer.isDestroyed()) {return}
       setSampling(true)
       setDegraded(false)
       try {
@@ -128,7 +122,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
           undefined,
           mountain.summitM
         )
-        if (requestId !== profileRequestIdRef.current) return
+        if (requestId !== profileRequestIdRef.current) {return}
         setDegraded(sampledDegraded)
         let distance = 0
         setProfile(
@@ -141,7 +135,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
           })
         )
       } finally {
-        if (requestId === profileRequestIdRef.current) setSampling(false)
+        if (requestId === profileRequestIdRef.current) {setSampling(false)}
       }
     },
     []
@@ -180,7 +174,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
 
   function selectMountain(mountainId: string): void {
     const mountain = mountainById(mountainId)
-    if (!mountain) return
+    if (!mountain) {return}
     activeIdRef.current = mountain.id
     setActiveId(mountain.id)
     setFlightNote('')
@@ -188,7 +182,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
   }
 
   async function startFlight(): Promise<void> {
-    if (flying) return
+    if (flying) {return}
     if (!viewer || viewer.isDestroyed()) {
       setFlightNote('地球尚未就绪，稍后再试')
       return
@@ -199,7 +193,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
       const result = await flyTransect(viewer, active.transect, {
         expectedMaxGroundM: active.summitM,
         onProgress: ({ stage, completed, total }) => {
-          if (!mountedRef.current) return
+          if (!mountedRef.current) {return}
           if (stage === 'prewarm') {
             setFlightNote(`飞行准备：并发预载沿线影像（画面短暂降暗）${completed}/${total}…`)
           } else if (stage === 'flying') {
@@ -207,7 +201,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
           }
         }
       })
-      if (!mountedRef.current) return
+      if (!mountedRef.current) {return}
       if ('error' in result) {
         setFlightNote(result.error)
       } else if (result.status === 'interrupted') {
@@ -220,15 +214,15 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
         setFlightNote(reason)
       } else {
         const samplingNote =
-          result.maxGroundM !== undefined
-            ? `，沿线最高地表 ${result.maxGroundM} 米${result.degraded ? '（数据不完整，已用安全盲飞高度）' : ''}`
-            : ''
+          result.maxGroundM === undefined
+            ? ''
+            : `，沿线最高地表 ${result.maxGroundM} 米${result.degraded ? '（数据不完整，已用安全盲飞高度）' : ''}`
         setFlightNote(
           `剖面飞行完成：全程约 ${result.totalKm} 千米，最高飞行高度约 ${result.flightAltitudeM} 米${samplingNote}`
         )
       }
     } finally {
-      if (mountedRef.current) setFlying(false)
+      if (mountedRef.current) {setFlying(false)}
     }
   }
 
@@ -245,7 +239,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
         options={mountainOptions}
         aria-label="选择山脉"
         onChange={(value) => {
-          if (value) selectMountain(String(value))
+          if (value) {selectMountain(String(value))}
         }}
       />
 

@@ -80,7 +80,7 @@ test('hawdb CLI parser reads flags and values without depending on argv order', 
 })
 
 test('hawdb output paths place Windows binary flat and POSIX binaries under arch folder', () => {
-  assert.ok(packagedHawdbBinaryPath('/repo', 'win32', 'x64').endsWith('resources/bin/hawdb_ffi.dll') || packagedHawdbBinaryPath('/repo', 'win32', 'x64').endsWith('resources\\bin\\hawdb_ffi.dll'))
+  assert.ok(packagedHawdbBinaryPath('/repo', 'win32', 'x64').endsWith('resources/bin/hawdb_ffi.dll') || packagedHawdbBinaryPath('/repo', 'win32', 'x64').endsWith(String.raw`resources\bin\hawdb_ffi.dll`))
   assert.ok(packagedHawdbBinaryPath('/repo', 'linux', 'arm64').includes('arm64'))
   assert.ok(defaultHawdbBinaryPath('/repo', 'darwin', 'arm64').endsWith('libhawdb_ffi.dylib'))
 })

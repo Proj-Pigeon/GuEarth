@@ -68,7 +68,7 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
             className={styles.numberControl}
             aria-label="线宽"
             onChange={(value) => {
-              if (typeof value === 'number') onChange({ lineWidth: value })
+              if (typeof value === 'number') {onChange({ lineWidth: value })}
             }}
           />
         </label>
@@ -94,7 +94,7 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
               className={styles.fontSelect}
               aria-label="系统字体"
               onChange={(value) => {
-                if (value) onChange({ fontFamily: value })
+                if (value) {onChange({ fontFamily: value })}
               }}
             />
           </label>
@@ -108,7 +108,7 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
               className={styles.numberControl}
               aria-label="字号"
               onChange={(value) => {
-                if (typeof value === 'number') onChange({ fontSize: value })
+                if (typeof value === 'number') {onChange({ fontSize: value })}
               }}
             />
           </label>

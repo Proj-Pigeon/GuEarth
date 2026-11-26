@@ -16,7 +16,7 @@ test('notable peaks: ids and names unique, coordinates and elevations plausible'
 })
 
 test('findPeaksNear returns windward-region giants sorted by elevation', () => {
-  const aroundEverest = findPeaksNear(86.9, 28.0, 150)
+  const aroundEverest = findPeaksNear(86.9, 28, 150)
   assert.ok(aroundEverest.length >= 4)
   assert.equal(aroundEverest[0].name, '珠穆朗玛峰')
   for (let index = 1; index < aroundEverest.length; index += 1) {
@@ -58,6 +58,6 @@ test('catalogue covers representative summits across inhabited continents', () =
   ]
   for (const [continent, longitude, latitude] of probes) {
     const found = findPeaksNear(longitude, latitude, 500)
-    assert.ok(found.length >= 1, `${continent} probe should match at least one catalogue peak`)
+    assert.ok(found.length > 0, `${continent} probe should match at least one catalogue peak`)
   }
 })

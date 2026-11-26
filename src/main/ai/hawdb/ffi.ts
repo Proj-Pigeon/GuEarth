@@ -74,7 +74,7 @@ interface NativeSymbols {
 let bufferStructRegistered = false
 
 function ensureBufferStruct(): void {
-  if (bufferStructRegistered) return
+  if (bufferStructRegistered) {return}
   koffi.struct('HawdbBuffer', {
     ptr: 'void *',
     len: 'size_t'
@@ -86,7 +86,7 @@ const EMPTY_BYTES = Buffer.alloc(1)
 const utf8Decoder = new TextDecoder()
 
 function encodeUtf8(value: string): { buf: Buffer; len: number } {
-  if (!value.length) return { buf: EMPTY_BYTES, len: 0 }
+  if (value.length === 0) {return { buf: EMPTY_BYTES, len: 0 }}
   const buf = Buffer.from(value, 'utf8')
   return { buf, len: buf.length }
 }
@@ -96,13 +96,13 @@ function emptyBuffer(): RawHawdbBuffer {
 }
 
 function serializeOpenOptions(options?: HawdbOpenOptions): string {
-  if (!options) return '{}'
+  if (!options) {return '{}'}
   const payload: Record<string, unknown> = {}
-  if (options.readOnly !== undefined) payload.read_only = options.readOnly
-  if (options.durability !== undefined) payload.durability = options.durability
-  if (options.maxReadResultRows !== undefined) payload.max_read_result_rows = options.maxReadResultRows
-  if (options.maxReadIntermediateRows !== undefined) payload.max_read_intermediate_rows = options.maxReadIntermediateRows
-  if (options.maxReadResultPayloadBytes !== undefined) payload.max_read_result_payload_bytes = options.maxReadResultPayloadBytes
+  if (options.readOnly !== undefined) {payload.read_only = options.readOnly}
+  if (options.durability !== undefined) {payload.durability = options.durability}
+  if (options.maxReadResultRows !== undefined) {payload.max_read_result_rows = options.maxReadResultRows}
+  if (options.maxReadIntermediateRows !== undefined) {payload.max_read_intermediate_rows = options.maxReadIntermediateRows}
+  if (options.maxReadResultPayloadBytes !== undefined) {payload.max_read_result_payload_bytes = options.maxReadResultPayloadBytes}
   if (options.relationalMonotonicAppendFastPath !== undefined) {
     payload.relational_monotonic_append_fast_path = options.relationalMonotonicAppendFastPath
   }
@@ -110,9 +110,9 @@ function serializeOpenOptions(options?: HawdbOpenOptions): string {
 }
 
 function decodeResultPayload(text: string | null): HawdbQueryResult {
-  if (!text) return new HawdbQueryResult([], [])
+  if (!text) {return new HawdbQueryResult([], [])}
   const parsed = parseLosslessJson(text)
-  if (typeof parsed !== 'object' || parsed === null) return new HawdbQueryResult([], [])
+  if (typeof parsed !== 'object' || parsed === null) {return new HawdbQueryResult([], [])}
   const record = parsed as Record<string, unknown>
   const columns = Array.isArray(record.columns) ? record.columns.map((item) => String(item)) : []
   const rows = Array.isArray(record.rows) ? (record.rows as unknown[][]) : []
@@ -134,7 +134,7 @@ export class HawdbTransaction {
   }
 
   private assertActive(): void {
-    if (!this.active) throw new HawdbError('transaction_expired', '事务已结束，不可继续使用')
+    if (!this.active) {throw new HawdbError('transaction_expired', '事务已结束，不可继续使用')}
   }
 
   query(cypher: string, params?: Record<string, unknown>): HawdbQueryResult {
@@ -164,18 +164,18 @@ export class HawdbDatabase {
   }
 
   private assertOpen(): void {
-    if (this.closed) throw new HawdbError('database_closed', 'HawDB 数据库句柄已关闭')
+    if (this.closed) {throw new HawdbError('database_closed', 'HawDB 数据库句柄已关闭')}
   }
 
   query(cypher: string, params?: Record<string, unknown>): HawdbQueryResult {
     this.assertOpen()
-    if (this.inTransaction) throw new HawdbError('active_transaction', '事务进行中请使用事务句柄执行查询')
+    if (this.inTransaction) {throw new HawdbError('active_transaction', '事务进行中请使用事务句柄执行查询')}
     return this.library.runQuery(this.handle, cypher, params ?? {}, false, false)
   }
 
   querySQL(sql: string, params?: unknown[]): HawdbQueryResult {
     this.assertOpen()
-    if (this.inTransaction) throw new HawdbError('active_transaction', '事务进行中请使用事务句柄执行查询')
+    if (this.inTransaction) {throw new HawdbError('active_transaction', '事务进行中请使用事务句柄执行查询')}
     return this.library.runQuery(this.handle, sql, params ?? [], false, true)
   }
 
@@ -185,7 +185,7 @@ export class HawdbDatabase {
 
   transaction<T>(body: (tx: HawdbTransaction) => T): T {
     this.assertOpen()
-    if (this.inTransaction) throw new HawdbError('nested_transaction', 'HawDB 不支持嵌套事务')
+    if (this.inTransaction) {throw new HawdbError('nested_transaction', 'HawDB 不支持嵌套事务')}
     this.library.beginTransaction(this.handle)
     this.inTransaction = true
     const tx = new HawdbTransaction(this.library, this.handle)
@@ -227,8 +227,8 @@ export class HawdbDatabase {
   }
 
   close(): void {
-    if (this.closed) return
-    if (this.inTransaction) throw new HawdbError('active_transaction', '事务未结束前不可关闭数据库')
+    if (this.closed) {return}
+    if (this.inTransaction) {throw new HawdbError('active_transaction', '事务未结束前不可关闭数据库')}
     this.closed = true
     this.library.closeHandle(this.handle)
   }
@@ -271,11 +271,11 @@ export class HawdbLibrary {
   private takeBuffer(buffer: RawHawdbBuffer): string | null {
     const length = Number(buffer.len)
     if (!buffer.ptr) {
-      if (length !== 0) throw new TypeError('HawDB 返回了空指针但长度非零的缓冲区')
+      if (length !== 0) {throw new TypeError('HawDB 返回了空指针但长度非零的缓冲区')}
       return null
     }
     try {
-      if (length === 0) return ''
+      if (length === 0) {return ''}
       const bytes = koffi.decode(buffer.ptr, 'uint8_t', length) as Uint8Array
       return utf8Decoder.decode(bytes)
     } finally {
@@ -285,7 +285,7 @@ export class HawdbLibrary {
 
   private errorFrom(errorBuffer: RawHawdbBuffer, fallback: string): HawdbError {
     const text = this.takeBuffer(errorBuffer)
-    if (!text) return new HawdbError('ffi', fallback)
+    if (!text) {return new HawdbError('ffi', fallback)}
     try {
       const parsed = parseLosslessJson(text)
       if (typeof parsed === 'object' && parsed !== null) {
@@ -301,7 +301,7 @@ export class HawdbLibrary {
   }
 
   private assertOpen(): void {
-    if (this.closed) throw new HawdbError('library_closed', 'HawDB 动态库已卸载，不可继续调用')
+    if (this.closed) {throw new HawdbError('library_closed', 'HawDB 动态库已卸载，不可继续调用')}
   }
 
   version(): string {
@@ -309,7 +309,7 @@ export class HawdbLibrary {
     const out = emptyBuffer()
     this.symbols.hawdb_version(out)
     const text = this.takeBuffer(out)
-    if (text === null) throw new HawdbError('ffi', '无法读取 HawDB 版本号')
+    if (text === null) {throw new HawdbError('ffi', '无法读取 HawDB 版本号')}
     return text
   }
 
@@ -329,7 +329,7 @@ export class HawdbLibrary {
     const optionBytes = encodeUtf8(serializeOpenOptions(options))
     const errOut = emptyBuffer()
     const handle = this.symbols.hawdb_open(pathBytes.buf, pathBytes.len, optionBytes.buf, optionBytes.len, errOut)
-    if (!handle) throw this.errorFrom(errOut, `无法打开 HawDB 数据库：${path}`)
+    if (!handle) {throw this.errorFrom(errOut, `无法打开 HawDB 数据库：${path}`)}
     const stray = this.takeBuffer(errOut)
     if (stray !== null) {
       this.symbols.hawdb_close(handle)
@@ -343,7 +343,7 @@ export class HawdbLibrary {
     this.assertOpen()
     const errOut = emptyBuffer()
     const handle = this.symbols.hawdb_open_in_memory(errOut)
-    if (!handle) throw this.errorFrom(errOut, '无法创建内存 HawDB 数据库')
+    if (!handle) {throw this.errorFrom(errOut, '无法创建内存 HawDB 数据库')}
     const stray = this.takeBuffer(errOut)
     if (stray !== null) {
       this.symbols.hawdb_close(handle)
@@ -354,9 +354,9 @@ export class HawdbLibrary {
   }
 
   closeHandle(handle: unknown): void {
-    if (!this.handles.has(handle)) return
+    if (!this.handles.has(handle)) {return}
     this.handles.delete(handle)
-    if (!this.closed) this.symbols.hawdb_close(handle)
+    if (!this.closed) {this.symbols.hawdb_close(handle)}
   }
 
   runQuery(handle: unknown, statement: string, params: unknown, inTransaction: boolean, sql: boolean): HawdbQueryResult {
@@ -378,7 +378,7 @@ export class HawdbLibrary {
     }
     const payload = this.takeBuffer(resultOut)
     const stray = this.takeBuffer(errOut)
-    if (stray !== null) throw new HawdbError('ffi', stray)
+    if (stray !== null) {throw new HawdbError('ffi', stray)}
     return decodeResultPayload(payload)
   }
 
@@ -389,7 +389,7 @@ export class HawdbLibrary {
       throw this.errorFrom(errOut, '无法开启 HawDB 事务')
     }
     const stray = this.takeBuffer(errOut)
-    if (stray !== null) throw new HawdbError('ffi', stray)
+    if (stray !== null) {throw new HawdbError('ffi', stray)}
   }
 
   commitTransaction(handle: unknown): void {
@@ -398,18 +398,18 @@ export class HawdbLibrary {
     const errOut = emptyBuffer()
     const ok = this.symbols.hawdb_commit_transaction(handle, resultOut, errOut)
     this.takeBuffer(resultOut)
-    if (!ok) throw this.errorFrom(errOut, '提交 HawDB 事务失败')
+    if (!ok) {throw this.errorFrom(errOut, '提交 HawDB 事务失败')}
     const stray = this.takeBuffer(errOut)
-    if (stray !== null) throw new HawdbError('ffi', stray)
+    if (stray !== null) {throw new HawdbError('ffi', stray)}
   }
 
   rollbackTransaction(handle: unknown): void {
     this.assertOpen()
     const errOut = emptyBuffer()
     const ok = this.symbols.hawdb_rollback_transaction(handle, errOut)
-    if (!ok) throw this.errorFrom(errOut, '回滚 HawDB 事务失败')
+    if (!ok) {throw this.errorFrom(errOut, '回滚 HawDB 事务失败')}
     const stray = this.takeBuffer(errOut)
-    if (stray !== null) throw new HawdbError('ffi', stray)
+    if (stray !== null) {throw new HawdbError('ffi', stray)}
   }
 
   private parseReport(reportOut: RawHawdbBuffer, errOut: RawHawdbBuffer, ok: boolean, fallback: string): Record<string, unknown> {
@@ -420,8 +420,8 @@ export class HawdbLibrary {
     }
     const payload = this.takeBuffer(reportOut)
     const stray = this.takeBuffer(errOut)
-    if (stray !== null) throw new HawdbError('ffi', stray)
-    if (!payload) return {}
+    if (stray !== null) {throw new HawdbError('ffi', stray)}
+    if (!payload) {return {}}
     const parsed = parseLosslessJson(payload)
     return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {}
   }
@@ -467,7 +467,7 @@ export class HawdbLibrary {
   }
 
   close(): void {
-    if (this.closed) return
+    if (this.closed) {return}
     if (this.handles.size > 0) {
       throw new HawdbError('open_handles', '关闭 HawDB 动态库前必须先关闭全部数据库句柄')
     }

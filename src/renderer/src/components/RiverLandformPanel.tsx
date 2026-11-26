@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
 import { Loader2Icon, XIcon } from 'lucide-react'
 import { Alert, Button } from '@renderer/components/ui'
-import LineChart, { type ChartSeries } from './charts/LineChart'
+import LineChart from './charts/LineChart';
+import type { ChartSeries } from './charts/LineChart';
 import styles from './RiverLandformPanel.module.css'
 
 export interface RiverLandformPanelProps {
@@ -15,7 +16,7 @@ interface RiverReach {
   name: string
   stage: string
   center: [number, number, number]
-  waypoints: Array<[number, number]>
+  waypoints: [number, number][]
   landform: string
   facts: string[]
 }
@@ -25,7 +26,7 @@ const reaches: RiverReach[] = [
     id: 'upper',
     name: '上游 · 金沙江虎跳峡',
     stage: '上游：V 形谷',
-    center: [100.05, 27.25, 46000],
+    center: [100.05, 27.25, 46_000],
     waypoints: [
       [99.8, 27.48],
       [99.92, 27.37],
@@ -44,13 +45,13 @@ const reaches: RiverReach[] = [
     id: 'middle',
     name: '中游 · 荆江河曲',
     stage: '中游：河曲',
-    center: [112.5, 29.75, 150000],
+    center: [112.5, 29.75, 150_000],
     waypoints: [
       [111.8, 29.9],
       [112.1, 29.72],
       [112.4, 29.82],
       [112.7, 29.62],
-      [113.0, 29.72]
+      [113, 29.72]
     ],
     landform: '河曲：侧蚀为主，凹岸侵蚀、凸岸堆积',
     facts: [
@@ -63,13 +64,13 @@ const reaches: RiverReach[] = [
     id: 'lower',
     name: '下游 · 长江三角洲',
     stage: '下游：三角洲',
-    center: [120.7, 31.6, 300000],
+    center: [120.7, 31.6, 300_000],
     waypoints: [
       [118.8, 31.95],
       [119.8, 31.75],
       [120.6, 31.58],
       [121.4, 31.42],
-      [122.0, 31.3]
+      [122, 31.3]
     ],
     landform: '三角洲：流速骤降，泥沙堆积为主',
     facts: [
@@ -80,8 +81,8 @@ const reaches: RiverReach[] = [
   }
 ]
 
-function interpolate(waypoints: Array<[number, number]>): Array<[number, number]> {
-  const points: Array<[number, number]> = []
+function interpolate(waypoints: [number, number][]): [number, number][] {
+  const points: [number, number][] = []
   for (let index = 0; index < waypoints.length - 1; index += 1) {
     const [x0, y0] = waypoints[index]
     const [x1, y1] = waypoints[index + 1]
@@ -95,7 +96,7 @@ function interpolate(waypoints: Array<[number, number]>): Array<[number, number]
 
 export function RiverLandformPanel({ viewer, onClose }: RiverLandformPanelProps) {
   const [activeReach, setActiveReach] = useState<RiverReach>(reaches[0])
-  const [profile, setProfile] = useState<Array<[number, number]>>([])
+  const [profile, setProfile] = useState<[number, number][]>([])
   const [sampling, setSampling] = useState(false)
   const [degraded, setDegraded] = useState(false)
 
@@ -108,7 +109,7 @@ export function RiverLandformPanel({ viewer, onClose }: RiverLandformPanelProps)
     sampleSeqRef.current += 1
     const seq = sampleSeqRef.current
     setProfile([])
-    if (!targetViewer || targetViewer.isDestroyed()) return
+    if (!targetViewer || targetViewer.isDestroyed()) {return}
     setSampling(true)
     setDegraded(false)
     try {
@@ -118,7 +119,7 @@ export function RiverLandformPanel({ viewer, onClose }: RiverLandformPanelProps)
       let isDegraded = false
       try {
         const sampled = await Cesium.sampleTerrainMostDetailed(targetViewer.terrainProvider, cartographics)
-        if (sampleSeqRef.current !== seq || targetViewer.isDestroyed()) return
+        if (sampleSeqRef.current !== seq || targetViewer.isDestroyed()) {return}
         heights = sampled.map((item) =>
           Number.isFinite(item.height)
             ? item.height
@@ -128,11 +129,11 @@ export function RiverLandformPanel({ viewer, onClose }: RiverLandformPanelProps)
         )
         isDegraded = sampled.some((item) => !Number.isFinite(item.height))
       } catch {
-        if (sampleSeqRef.current !== seq || targetViewer.isDestroyed()) return
+        if (sampleSeqRef.current !== seq || targetViewer.isDestroyed()) {return}
         heights = cartographics.map((item) => targetViewer.scene.globe.getHeight(item) ?? 0)
         isDegraded = true
       }
-      if (sampleSeqRef.current !== seq) return
+      if (sampleSeqRef.current !== seq) {return}
       setDegraded(isDegraded)
       let distance = 0
       setProfile(
@@ -180,8 +181,8 @@ export function RiverLandformPanel({ viewer, onClose }: RiverLandformPanelProps)
   }
 
   const xMax = Math.max(60, Math.ceil(profile[profile.length - 1]?.[0] ?? 60))
-  const yMin = Math.min(0, Math.floor((profile.length ? Math.min(...profile.map((p) => p[1])) : 0) / 500) * 500)
-  const yMax = Math.ceil((profile.length ? Math.max(...profile.map((p) => p[1])) : 1000) / 500) * 500
+  const yMin = Math.min(0, Math.floor((profile.length > 0 ? Math.min(...profile.map((p) => p[1])) : 0) / 500) * 500)
+  const yMax = Math.ceil((profile.length > 0 ? Math.max(...profile.map((p) => p[1])) : 1000) / 500) * 500
 
   return (
     <div className={styles.riverPanel} role="group" aria-label="河流地貌发育">

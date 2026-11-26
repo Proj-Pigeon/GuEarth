@@ -51,7 +51,7 @@ const narrationPreview = (scene: TeachingScene): string =>
 
 const sceneTags = (scene: TeachingScene): string[] => {
   const names = scene.snapshot.overlays.slice(0, 2).map(layerNameOf)
-  if (scene.snapshot.overlays.length > 2) names.push(`+${scene.snapshot.overlays.length - 2}`)
+  if (scene.snapshot.overlays.length > 2) {names.push(`+${scene.snapshot.overlays.length - 2}`)}
   return names
 }
 
@@ -86,7 +86,7 @@ export function SceneBookmarksPanel({
 
   function confirmSave(): void {
     const name = saveName.trim()
-    if (!name) return
+    if (!name) {return}
     setSaveVisible(false)
     onSave(name, saveNarration.trim())
   }
@@ -101,7 +101,7 @@ export function SceneBookmarksPanel({
 
   function confirmEdit(): void {
     const name = editName.trim()
-    if (!name) return
+    if (!name) {return}
     setEditVisible(false)
     onUpdate(editId, {
       name,
@@ -138,7 +138,7 @@ export function SceneBookmarksPanel({
           {saveError && <Alert type="error" showIcon title={saveError} className={styles.panelAlert} />}
         </div>
         <div className={styles.sceneList}>
-          {!scenes.length ? (
+          {scenes.length === 0 ? (
             <div className={styles.sceneEmpty}>
               <Empty description="还没有教学场景">
                 <span className={styles.sceneEmptyHint}>将当前视角与图层保存为场景，方便课堂播放。</span>

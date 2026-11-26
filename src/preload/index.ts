@@ -4,7 +4,8 @@ import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiSta
 import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
 import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, TileMirrorMode } from '../common/tileMirror'
 import type { TouchInteractionMode } from '../common/touchInteraction'
-import { isThemeMode, type ResolvedTheme, type ThemeMode } from '../common/themeMode'
+import { isThemeMode } from '../common/themeMode';
+import type { ResolvedTheme, ThemeMode } from '../common/themeMode';
 import type { EnsoPhase } from '../common/thematicState'
 import type { LaboratoryProvider, LaboratoryProviderInput, OnlineDataSnapshot } from '../common/onlineData'
 
@@ -435,7 +436,7 @@ export interface OffscreenRecordingScript {
   scenes: TeachingScene[]
   annotations: OffscreenRecordingAnnotation[]
   terrain: OffscreenRecordingTerrain
-  seaLevelHeights?: Array<number | null>
+  seaLevelHeights?: (number | null)[]
   prewarmQuality: OffscreenPrewarmQuality
   centerTarget: boolean
   width: number
@@ -511,7 +512,7 @@ interface PreloadGlobal {
 function applyInitialDocumentAttributes(): void {
   const host = globalThis as unknown as PreloadGlobal
   const root = host.document?.documentElement
-  if (!root) return
+  if (!root) {return}
   root.classList.toggle('dark', initialTheme.resolvedTheme === 'dark')
   root.style.colorScheme = initialTheme.resolvedTheme
   root.dataset.platform = process.platform

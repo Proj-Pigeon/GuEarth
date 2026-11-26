@@ -1,5 +1,5 @@
 import { nativeImage } from 'electron'
-import { endianness } from 'os'
+import { endianness } from 'node:os'
 import { tileCenter, wgs84ToGcj02 } from './geo'
 
 const TILE_SIZE = 256
@@ -28,16 +28,16 @@ export function tileWgs84ShiftPixels(level: number, x: number, y: number): { dx:
   const [gcjLongitude, gcjLatitude] = wgs84ToGcj02(longitude, latitude)
   const deltaLongitude = gcjLongitude - longitude
   const deltaLatitude = gcjLatitude - latitude
-  if (deltaLongitude === 0 && deltaLatitude === 0) return null
+  if (deltaLongitude === 0 && deltaLatitude === 0) {return null}
   const worldPixels = TILE_SIZE * 2 ** level
   const dx = (deltaLongitude / 360) * worldPixels
   const dy = mercatorYFromLatitude(latitude + deltaLatitude, worldPixels) - mercatorYFromLatitude(latitude, worldPixels)
-  if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return null
+  if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {return null}
   return { dx, dy }
 }
 
 function swapRedBlueChannels(pixels: Buffer): void {
-  if (!NATIVE_BITMAP_IS_BGRA) return
+  if (!NATIVE_BITMAP_IS_BGRA) {return}
   for (let offset = 0; offset < pixels.length; offset += 4) {
     const first = pixels[offset]
     pixels[offset] = pixels[offset + 2]
@@ -47,9 +47,9 @@ function swapRedBlueChannels(pixels: Buffer): void {
 
 function decodeTilePixels(tile: WarpSourceTile): Buffer | null {
   const image = nativeImage.createFromBuffer(Buffer.from(tile.buffer))
-  if (image.isEmpty()) return null
+  if (image.isEmpty()) {return null}
   const size = image.getSize()
-  if (size.width !== TILE_SIZE || size.height !== TILE_SIZE) return null
+  if (size.width !== TILE_SIZE || size.height !== TILE_SIZE) {return null}
   const pixels = image.toBitmap()
   swapRedBlueChannels(pixels)
   return pixels
@@ -61,7 +61,7 @@ function bufferToArrayBuffer(data: Buffer): ArrayBuffer {
 
 export async function warpTileToWgs84(level: number, x: number, y: number, fetchSourceTile: WarpSourceFetcher): Promise<WarpedTile | null> {
   const shift = tileWgs84ShiftPixels(level, x, y)
-  if (!shift) return null
+  if (!shift) {return null}
   const worldTiles = 2 ** level
   const baseX = x * TILE_SIZE
   const baseY = y * TILE_SIZE
@@ -87,11 +87,11 @@ export async function warpTileToWgs84(level: number, x: number, y: number, fetch
   let contentType: string | null = null
   for (let index = 0; index < fetched.length; index += 1) {
     const tile = fetched[index]
-    if (!tile) return null
+    if (!tile) {return null}
     const pixels = decodeTilePixels(tile)
-    if (!pixels) return null
-    if (tile.contentType.includes('png')) contentType = 'image/png'
-    else if (contentType === null) contentType = 'image/jpeg'
+    if (!pixels) {return null}
+    if (tile.contentType.includes('png')) {contentType = 'image/png'}
+    else if (contentType === null) {contentType = 'image/jpeg'}
     const canvasX = (index % columns) * TILE_SIZE
     const canvasY = Math.floor(index / columns) * TILE_SIZE
     for (let line = 0; line < TILE_SIZE; line += 1) {
@@ -182,7 +182,7 @@ export async function warpTileToWgs84(level: number, x: number, y: number, fetch
   }
   swapRedBlueChannels(output)
   const image = nativeImage.createFromBitmap(output, { width: TILE_SIZE, height: TILE_SIZE })
-  if (image.isEmpty()) return null
+  if (image.isEmpty()) {return null}
   const data = contentType === 'image/png' ? image.toPNG() : image.toJPEG(92)
   return { data: bufferToArrayBuffer(data), contentType: contentType ?? 'image/png' }
 }

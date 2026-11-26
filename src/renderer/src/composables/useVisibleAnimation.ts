@@ -12,7 +12,7 @@ export function useVisibleAnimation(
   enabledRef.current = enabled
 
   useEffect(() => {
-    if (!isEnabled) return
+    if (!isEnabled) {return}
     let frame = 0
     let previous = 0
 
@@ -45,7 +45,7 @@ export function useVisibleAnimation(
 
     const sync = (): void => {
       stop()
-      if (!document.hidden && active()) frame = requestAnimationFrame(animate)
+      if (!document.hidden && active()) {frame = requestAnimationFrame(animate)}
     }
 
     document.addEventListener('visibilitychange', sync)

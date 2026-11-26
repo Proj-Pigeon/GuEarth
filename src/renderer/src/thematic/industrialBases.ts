@@ -3,30 +3,30 @@ import type { MigrationFlow } from './populationCensus'
 export interface IndustrialBase {
   name: string
   color: string
-  rings: Array<Array<[number, number]>>
+  rings: Array<[number, number]>[]
   labelAt: [number, number]
   pillars: string[]
   summary: string
 }
 
-const liaozhongnanRing: Array<[number, number]> = [
-  [121.0, 39.7], [121.2, 40.5], [121.5, 41.2], [122.2, 41.6], [123.2, 42.0], [124.0, 41.6],
-  [124.5, 40.8], [124.2, 40.0], [123.4, 39.5], [122.3, 39.3], [121.4, 39.0]
+const liaozhongnanRing: [number, number][] = [
+  [121, 39.7], [121.2, 40.5], [121.5, 41.2], [122.2, 41.6], [123.2, 42], [124, 41.6],
+  [124.5, 40.8], [124.2, 40], [123.4, 39.5], [122.3, 39.3], [121.4, 39]
 ]
 
-const jingjintangRing: Array<[number, number]> = [
-  [115.4, 39.4], [115.6, 38.4], [116.2, 37.9], [116.8, 38.3], [117.4, 38.6], [118.0, 38.2],
-  [118.6, 38.5], [118.9, 39.3], [118.3, 40.0], [117.6, 40.5], [116.8, 40.8], [115.8, 40.4]
+const jingjintangRing: [number, number][] = [
+  [115.4, 39.4], [115.6, 38.4], [116.2, 37.9], [116.8, 38.3], [117.4, 38.6], [118, 38.2],
+  [118.6, 38.5], [118.9, 39.3], [118.3, 40], [117.6, 40.5], [116.8, 40.8], [115.8, 40.4]
 ]
 
-const changsanjiaoRing: Array<[number, number]> = [
-  [118.5, 31.5], [118.9, 30.6], [119.5, 30.1], [120.4, 30.3], [121.4, 30.7], [122.0, 31.4],
+const changsanjiaoRing: [number, number][] = [
+  [118.5, 31.5], [118.9, 30.6], [119.5, 30.1], [120.4, 30.3], [121.4, 30.7], [122, 31.4],
   [121.8, 32.1], [120.8, 32.6], [119.6, 32.9], [118.6, 32.6]
 ]
 
-const pearlRiverDeltaRing: Array<[number, number]> = [
-  [112.0, 22.8], [112.3, 22.2], [113.0, 21.9], [113.8, 22.1], [114.5, 22.4], [114.6, 23.0],
-  [114.0, 23.4], [113.1, 23.5], [112.2, 23.4]
+const pearlRiverDeltaRing: [number, number][] = [
+  [112, 22.8], [112.3, 22.2], [113, 21.9], [113.8, 22.1], [114.5, 22.4], [114.6, 23],
+  [114, 23.4], [113.1, 23.5], [112.2, 23.4]
 ]
 
 export const industrialBases: IndustrialBase[] = [
@@ -66,12 +66,12 @@ export const industrialBases: IndustrialBase[] = [
 
 export const industrialTransferFlows: MigrationFlow[] = [
   { fromName: '珠三角', from: [113.3, 23.2], toName: '湘南', to: [112.4, 26.5], path: [[113.3, 23.2], [113.1, 24.4], [112.8, 25.5], [112.4, 26.5]], weight: 'major', note: '劳动密集型产业内迁' },
-  { fromName: '珠三角', from: [114.2, 23.0], toName: '赣南', to: [114.9, 26.0], path: [[114.2, 23.0], [114.5, 24.2], [114.9, 26.0]], weight: 'minor' },
-  { fromName: '长三角', from: [119.0, 31.5], toName: '皖江', to: [117.3, 31.2], path: [[119.0, 31.5], [118.2, 31.4], [117.3, 31.2]], weight: 'major', note: '皖江城市带承接产业转移示范区' },
-  { fromName: '长三角', from: [119.9, 32.4], toName: '苏北', to: [117.9, 34.0], path: [[119.9, 32.4], [118.9, 33.2], [117.9, 34.0]], weight: 'minor' },
+  { fromName: '珠三角', from: [114.2, 23], toName: '赣南', to: [114.9, 26], path: [[114.2, 23], [114.5, 24.2], [114.9, 26]], weight: 'minor' },
+  { fromName: '长三角', from: [119, 31.5], toName: '皖江', to: [117.3, 31.2], path: [[119, 31.5], [118.2, 31.4], [117.3, 31.2]], weight: 'major', note: '皖江城市带承接产业转移示范区' },
+  { fromName: '长三角', from: [119.9, 32.4], toName: '苏北', to: [117.9, 34], path: [[119.9, 32.4], [118.9, 33.2], [117.9, 34]], weight: 'minor' },
   { fromName: '京津', from: [116.8, 39.5], toName: '冀中', to: [118.2, 39.1], path: [[116.8, 39.5], [117.5, 39.3], [118.2, 39.1]], weight: 'minor', note: '京津产业向河北疏解' },
-  { fromName: '东部沿海', from: [118.8, 31.0], toName: '成渝', to: [106.6, 29.6], path: [[118.8, 31.0], [114.5, 30.6], [110.5, 30.2], [106.6, 29.6]], weight: 'major', note: '西部大开发与产业梯度转移' },
-  { fromName: '珠三角', from: [112.9, 22.2], toName: '东南亚', to: [106.7, 20.9], path: [[112.9, 22.2], [110.5, 21.5], [108.2, 21.0], [106.7, 20.9]], weight: 'minor', note: '劳动力成本驱动，向海外转移' }
+  { fromName: '东部沿海', from: [118.8, 31], toName: '成渝', to: [106.6, 29.6], path: [[118.8, 31], [114.5, 30.6], [110.5, 30.2], [106.6, 29.6]], weight: 'major', note: '西部大开发与产业梯度转移' },
+  { fromName: '珠三角', from: [112.9, 22.2], toName: '东南亚', to: [106.7, 20.9], path: [[112.9, 22.2], [110.5, 21.5], [108.2, 21], [106.7, 20.9]], weight: 'minor', note: '劳动力成本驱动，向海外转移' }
 ]
 
 export const industrialTransferFacts = [

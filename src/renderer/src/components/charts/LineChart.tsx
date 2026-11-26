@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { use, type EChartsCoreOption } from 'echarts/core'
+import { use } from 'echarts/core';
+import type { EChartsCoreOption } from 'echarts/core';
 import { LineChart as EChartsLineChart } from 'echarts/charts'
 import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
@@ -12,7 +13,7 @@ use([EChartsLineChart, GridComponent, TooltipComponent, MarkLineComponent, SVGRe
 export interface ChartSeries {
   name: string
   color: string
-  points: Array<[number, number]>
+  points: [number, number][]
   dashed?: boolean
   markY?: number[]
 }
@@ -69,7 +70,7 @@ export function LineChart({
         textStyle: { color: '#ffffff', fontSize: 12, lineHeight: 20 },
         formatter: (params: unknown) => {
           const list = Array.isArray(params) ? (params as TooltipParam[]) : []
-          if (!list.length) return ''
+          if (list.length === 0) {return ''}
           const head = xFormatter ? xFormatter(list[0].value[0]) : String(list[0].value[0])
           const rows = list
             .map((item) => `${item.marker}${item.seriesName} ${Math.round(item.value[1] * 10) / 10}`)

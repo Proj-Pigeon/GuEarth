@@ -36,9 +36,9 @@ function fixture(t, respond, refreshToken = '') {
       clearProviderKey: (id) => secrets.delete(id)
     }],
     ['./jsonStore', { serialQueue, writeJson: async () => {} }],
-    ['crypto', nodeRequire('crypto')],
-    ['os', nodeRequire('os')],
-    ['path', nodeRequire('path')]
+    ['node:crypto', nodeRequire('node:crypto')],
+    ['node:os', nodeRequire('node:os')],
+    ['node:path', nodeRequire('node:path')]
   ])
   const signals = {
     any: AbortSignal.any.bind(AbortSignal),
@@ -54,7 +54,7 @@ function fixture(t, respond, refreshToken = '') {
   `, ['require', 'exports', 'AbortSignal'])
   const api = loadAccountModule((id) => {
     const dependency = dependencies.get(id)
-    if (!dependency) throw new Error(`Unexpected module dependency: ${id}`)
+    if (!dependency) {throw new Error(`Unexpected module dependency: ${id}`)}
     return dependency
   }, {}, signals)
   const tick = async (ms) => { vi.advanceTimersByTime(ms); await nextTurn() }
@@ -63,8 +63,8 @@ function fixture(t, respond, refreshToken = '') {
 
 function stalledResponse(_url, { signal }) {
   return new Promise((_resolve, reject) => {
-    if (signal.aborted) reject(signal.reason)
-    else signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+    if (signal.aborted) {reject(signal.reason)}
+    else {signal.addEventListener('abort', () => reject(signal.reason), { once: true })}
   })
 }
 
@@ -109,10 +109,10 @@ test('discovery still respects caller cancellation', async (t) => {
 test('polling retries network failures and timed out token requests at the current interval', async (t) => {
   let polls = 0
   const account = fixture(t, (url, options) => {
-    if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) return json({}, 404)
+    if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) {return json({}, 404)}
     polls += 1
-    if (polls === 1) throw new TypeError('Network unavailable')
-    if (polls === 2) return stalledResponse(url, options)
+    if (polls === 1) {throw new TypeError('Network unavailable')}
+    if (polls === 2) {return stalledResponse(url, options)}
     return json(tokenPayload)
   })
   const controller = new AbortController()
@@ -137,11 +137,11 @@ test('polling retries network failures and timed out token requests at the curre
 test('polling keeps slow_down and Retry-After intervals for retryable responses', async (t) => {
   let polls = 0
   const account = fixture(t, (url) => {
-    if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) return json({}, 404)
+    if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) {return json({}, 404)}
     polls += 1
-    if (polls === 1) return json({ error: 'slow_down' }, 400)
-    if (polls === 2) return json({ error: 'authorization_pending' }, 400)
-    if (polls === 3) return json({}, 429, { 'Retry-After': '20' })
+    if (polls === 1) {return json({ error: 'slow_down' }, 400)}
+    if (polls === 2) {return json({ error: 'authorization_pending' }, 400)}
+    if (polls === 3) {return json({}, 429, { 'Retry-After': '20' })}
     return json(tokenPayload)
   })
   const polling = account.exchangeDeviceCode('local-device-code', 2, Date.now() + 60_000, new AbortController().signal)
@@ -175,7 +175,7 @@ test('polling stops for terminal authorization errors', async (t) => {
 test('polling does not retry a network failure after the challenge expires', async (t) => {
   const failure = new TypeError('Network unavailable')
   const account = fixture(t, async (url) => {
-    if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) return json({}, 404)
+    if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) {return json({}, 404)}
     await account.tick(1000)
     throw failure
   })
@@ -187,9 +187,9 @@ test('polling does not retry a network failure after the challenge expires', asy
 
 test('login restores an existing refresh token before creating device authorization', async (t) => {
   const account = fixture(t, (url) => {
-    if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) return json({}, 404)
-    if (url.endsWith('/oauth2/token')) return json(tokenPayload)
-    if (url.endsWith('/oauth2/userinfo')) return json({ sub: 'local-user' })
+    if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) {return json({}, 404)}
+    if (url.endsWith('/oauth2/token')) {return json(tokenPayload)}
+    if (url.endsWith('/oauth2/userinfo')) {return json({ sub: 'local-user' })}
     assert.fail(`Unexpected request: ${url}`)
   }, 'existing-local-refresh')
   const state = await account.startLogin()
@@ -203,9 +203,9 @@ test('login restores an existing refresh token before creating device authorizat
 
 test('login continues device authorization after a temporary restore failure while retaining the refresh token', async (t) => {
   const account = fixture(t, (url) => {
-    if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) return json({}, 404)
-    if (url.endsWith('/oauth2/token')) throw new TypeError('Network unavailable')
-    if (url.endsWith('/oauth2/device_authorization')) return json({ error: 'access_denied' }, 400)
+    if (url.endsWith(passport.PASSPORT_DISCOVERY_PATH)) {return json({}, 404)}
+    if (url.endsWith('/oauth2/token')) {throw new TypeError('Network unavailable')}
+    if (url.endsWith('/oauth2/device_authorization')) {return json({ error: 'access_denied' }, 400)}
     assert.fail(`Unexpected request: ${url}`)
   }, 'existing-local-refresh')
   assert.equal((await account.startLogin()).phase, 'signed-out')

@@ -2,7 +2,8 @@ import * as Cesium from 'cesium'
 import { logger } from '../../../common/logger'
 import { attachOriginTerrainFallback, withoutTileAvailability } from '../../../common/terrainAvailability'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
-import { mirrorArcGisTerrainUrl, mirrorEndpointLabel, type MirrorEndpointId } from '../../../common/tileMirror'
+import { mirrorArcGisTerrainUrl, mirrorEndpointLabel } from '../../../common/tileMirror';
+import type { MirrorEndpointId } from '../../../common/tileMirror';
 import { useGlobeStore } from '@renderer/stores/globe'
 
 const arcgisTerrainUrl = 'https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'

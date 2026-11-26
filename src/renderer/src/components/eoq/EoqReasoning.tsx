@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useScrollLock } from '@assistant-ui/react'
 import { BrainIcon, ChevronDownIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
@@ -7,7 +8,7 @@ import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from './colla
 const ANIMATION_DURATION = 200
 
 function formatReasoningDuration(durationMs?: number): string {
-  if (durationMs === undefined || durationMs <= 0) return '已深度思考'
+  if (durationMs === undefined || durationMs <= 0) {return '已深度思考'}
   const seconds = durationMs / 1000
   return seconds < 1 ? '已思考 <1s' : `已思考 ${Math.round(seconds)}s`
 }
@@ -30,9 +31,9 @@ export function EoqReasoning({ streaming, durationMs, children }: EoqReasoningPr
 
   const prevStreamingRef = useRef(streaming)
   useLayoutEffect(() => {
-    if (prevStreamingRef.current === streaming) return
+    if (prevStreamingRef.current === streaming) {return}
     prevStreamingRef.current = streaming
-    if (userOpen === null) lockScroll()
+    if (userOpen === null) {lockScroll()}
   }, [lockScroll, streaming, userOpen])
 
   const handleOpenChange = useCallback(
@@ -44,10 +45,10 @@ export function EoqReasoning({ streaming, durationMs, children }: EoqReasoningPr
   )
 
   useEffect(() => {
-    if (!isPreview) return
+    if (!isPreview) {return}
     const scrollEl = scrollRef.current
     const contentEl = contentRef.current
-    if (!scrollEl || !contentEl) return
+    if (!scrollEl || !contentEl) {return}
 
     let pinned = true
     let lastScrollTop = scrollEl.scrollTop
@@ -58,7 +59,7 @@ export function EoqReasoning({ streaming, durationMs, children }: EoqReasoningPr
       scrollEl.scrollHeight <= scrollEl.clientHeight
 
     const pin = () => {
-      if (!pinned) return
+      if (!pinned) {return}
       scrollEl.scrollTop = scrollEl.scrollHeight
     }
 

@@ -1,5 +1,6 @@
 import { Button, Progress } from '@renderer/components/ui'
-import { useZonationStore, type ZonationFlightStage } from '@renderer/stores/zonation'
+import { useZonationStore } from '@renderer/stores/zonation';
+import type { ZonationFlightStage } from '@renderer/stores/zonation';
 import { cancelTransectFlight } from '@renderer/composables/useTransectFlight'
 import styles from './ZonationFlightHud.module.css'
 
@@ -14,7 +15,7 @@ const stageText: Record<ZonationFlightStage, string> = {
 export function ZonationFlightHud(_props: ZonationFlightHudProps) {
   const flightHud = useZonationStore((state) => state.flightHud)
 
-  if (!flightHud) return null
+  if (!flightHud) {return null}
 
   const percent =
     flightHud.total > 0 ? Math.min(100, Math.round((flightHud.completed / flightHud.total) * 100)) : 0

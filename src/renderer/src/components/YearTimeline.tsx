@@ -23,11 +23,11 @@ export function YearTimeline(_props: YearTimelineProps) {
   const advance = useTransportStore((state) => state.advance)
 
   useVisibleAnimation(isPlaying, (dt) => {
-    if (dt > 0) advance(dt)
+    if (dt > 0) {advance(dt)}
   })
 
   const displayYear = Math.floor(year)
-  const mileageText = `约 ${(hsrMileageAt(displayYear) / 10000).toFixed(2)} 万公里`
+  const mileageText = `约 ${(hsrMileageAt(displayYear) / 10_000).toFixed(2)} 万公里`
 
   return (
     <div className={styles.yearTimeline} role="group" aria-label="年份时间轴">

@@ -1,5 +1,7 @@
-import { forwardRef, type ButtonHTMLAttributes } from 'react'
-import { cva, type VariantProps } from 'class-variance-authority'
+import { forwardRef } from 'react';
+import type { ButtonHTMLAttributes } from 'react';
+import { cva } from 'class-variance-authority';
+import type { VariantProps } from 'class-variance-authority';
 import { Tooltip } from '@renderer/components/ui'
 import { cn } from '@renderer/lib/utils'
 
@@ -37,7 +39,7 @@ export interface EoqIconButtonProps
 }
 
 export const EoqIconButton = forwardRef<HTMLButtonElement, EoqIconButtonProps>(
-  function EoqIconButton(
+  (
     {
       tooltip,
       tooltipPlacement = 'top',
@@ -49,7 +51,7 @@ export const EoqIconButton = forwardRef<HTMLButtonElement, EoqIconButtonProps>(
       ...props
     },
     ref
-  ) {
+  ) => {
     const button = (
       <button
         ref={ref}

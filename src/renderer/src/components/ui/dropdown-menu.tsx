@@ -1,4 +1,5 @@
-import { isValidElement, type ReactElement, type ReactNode } from 'react'
+import { isValidElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { Menu as BaseMenu } from '@base-ui/react/menu'
 import { CheckIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
@@ -32,9 +33,9 @@ function parseDropdownPlacement(placement: DropdownPlacement): {
   side: 'top' | 'bottom'
   align: 'start' | 'end'
 } {
-  if (placement === 'topLeft') return { side: 'top', align: 'start' }
-  if (placement === 'topRight') return { side: 'top', align: 'end' }
-  if (placement === 'bottomRight') return { side: 'bottom', align: 'end' }
+  if (placement === 'topLeft') {return { side: 'top', align: 'start' }}
+  if (placement === 'topRight') {return { side: 'top', align: 'end' }}
+  if (placement === 'bottomRight') {return { side: 'bottom', align: 'end' }}
   return { side: 'bottom', align: 'start' }
 }
 

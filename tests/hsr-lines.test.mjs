@@ -25,7 +25,7 @@ test('hsr growth series is monotonic and bracketed by the line catalogue', () =>
   }
   assert.ok(hsrMileageAt(2007) === 0)
   assert.ok(hsrMileageAt(2008) >= hsrLines.find((line) => line.name === '京津城际').lengthKm)
-  assert.ok(hsrMileageAt(HSR_END_YEAR) > 40000)
+  assert.ok(hsrMileageAt(HSR_END_YEAR) > 40_000)
 })
 
 test('hsrLinesUpTo grows monotonically with the year', () => {
@@ -40,12 +40,12 @@ test('hsrLinesUpTo grows monotonically with the year', () => {
 
 test('hsr facts are informative', () => {
   assert.ok(hsrFacts.length >= 3)
-  for (const fact of hsrFacts) assert.ok(fact.length >= 12)
+  for (const fact of hsrFacts) {assert.ok(fact.length >= 12)}
 })
 
 test('growth series covers the full timeline window', () => {
   const lastEntry = hsrGrowthSeries[hsrGrowthSeries.length - 1]
   assert.equal(lastEntry[0], HSR_END_YEAR)
   assert.equal(hsrMileageAt(HSR_END_YEAR), lastEntry[1])
-  assert.ok(lastEntry[1] >= 50000)
+  assert.ok(lastEntry[1] >= 50_000)
 })

@@ -11,7 +11,7 @@ test('zonation mountains: ids unique, coordinates valid, transects bracket the s
     assert.ok(Number.isFinite(mountain.longitude) && Number.isFinite(mountain.latitude), `${mountain.id} coords must be finite`)
     assert.ok(mountain.longitude >= -180 && mountain.longitude <= 180 && mountain.latitude >= -90 && mountain.latitude <= 90, `${mountain.id} coords out of range`)
     assert.ok(mountain.summitM >= 2000 && mountain.summitM <= 9000, `${mountain.id} summit implausible`)
-    assert.ok(mountain.viewHeight >= 50000 && mountain.viewHeight <= 500000, `${mountain.id} view height implausible`)
+    assert.ok(mountain.viewHeight >= 50_000 && mountain.viewHeight <= 500_000, `${mountain.id} view height implausible`)
     assert.ok(mountain.transect.length >= 3 && mountain.transect.length <= 6, `${mountain.id} transect needs 3-6 waypoints`)
     for (const [longitude, latitude] of mountain.transect) {
       assert.ok(Math.abs(longitude - mountain.longitude) <= 3, `${mountain.id} transect longitude too far`)
@@ -74,7 +74,7 @@ test('mountainById and beltAtAltitude resolve the expected belts', () => {
 
 test('zonation principles are informative', () => {
   assert.ok(zonationPrinciples.length >= 4)
-  for (const principle of zonationPrinciples) assert.ok(principle.length >= 12)
+  for (const principle of zonationPrinciples) {assert.ok(principle.length >= 12)}
 })
 
 test('greatCircleKm and bearingDeg match known geometry', () => {
@@ -116,7 +116,7 @@ test('transectHops walks from the end to the start within the hop budget', () =>
 test('planTransectAltitudes keeps every point safe, floored, bounded and convex-proof', () => {
   const clearance = 2000
   const minimum = 9000
-  const surfaces = [1000, 20000, 15000, 3000, 500]
+  const surfaces = [1000, 20_000, 15_000, 3000, 500]
   const altitudes = planTransectAltitudes(surfaces, clearance, minimum)
   assert.equal(altitudes.length, surfaces.length)
   for (let index = 0; index < surfaces.length; index += 1) {
@@ -124,30 +124,30 @@ test('planTransectAltitudes keeps every point safe, floored, bounded and convex-
     assert.ok(altitudes[index] >= minimum, `point ${index} below minimum altitude`)
   }
   assert.ok(Math.max(...altitudes) <= Math.max(...surfaces) + clearance, 'altitude overshoots the highest local surface')
-  const convex = planTransectAltitudes([0, 19000, 0], clearance, minimum)
+  const convex = planTransectAltitudes([0, 19_000, 0], clearance, minimum)
   for (const altitude of convex) {
-    assert.ok(altitude >= 19000 + clearance, 'convex mid-bump must lift neighbouring samples too')
+    assert.ok(altitude >= 19_000 + clearance, 'convex mid-bump must lift neighbouring samples too')
   }
-  const requested = planTransectAltitudes([100, 200], clearance, minimum, 25000)
-  for (const altitude of requested) assert.ok(altitude >= 25000)
+  const requested = planTransectAltitudes([100, 200], clearance, minimum, 25_000)
+  for (const altitude of requested) {assert.ok(altitude >= 25000)}
   assert.deepEqual(planTransectAltitudes([], clearance, minimum), [])
 })
 
 test('planTransectAltitudes keeps ridge shoulders above the ridge after smoothing', () => {
   const clearance = 2000
   const minimum = 2500
-  const ridge = planTransectAltitudes([0, 0, 19000, 0, 0], clearance, minimum)
+  const ridge = planTransectAltitudes([0, 0, 19_000, 0, 0], clearance, minimum)
   for (const index of [1, 2, 3]) {
-    assert.ok(ridge[index] >= 19000 + clearance - 1e-6, `shoulder ${index} dipped to ${ridge[index]} below the ridge surface`)
+    assert.ok(ridge[index] >= 19_000 + clearance - 1e-6, `shoulder ${index} dipped to ${ridge[index]} below the ridge surface`)
   }
 })
 
 test('planTransectAltitudes lifts samples two steps away from a ridge', () => {
   const clearance = 2000
   const minimum = 2500
-  const altitudes = planTransectAltitudes([0, 0, 0, 19000, 0, 0, 0], clearance, minimum)
+  const altitudes = planTransectAltitudes([0, 0, 0, 19_000, 0, 0, 0], clearance, minimum)
   for (const index of [1, 2, 3, 4, 5]) {
-    assert.ok(altitudes[index] >= 19000 + clearance - 1e-6, `two-step shoulder ${index} dipped to ${altitudes[index]} below the ridge surface`)
+    assert.ok(altitudes[index] >= 19_000 + clearance - 1e-6, `two-step shoulder ${index} dipped to ${altitudes[index]} below the ridge surface`)
   }
 })
 

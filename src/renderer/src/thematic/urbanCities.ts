@@ -131,7 +131,7 @@ export const functionalZoneCities: FunctionalZoneCity[] = [
     name: '武汉',
     longitude: 114.34,
     latitude: 30.56,
-    viewHeight: 130000,
+    viewHeight: 130_000,
     overview: '武汉：长江与汉江交汇的三镇格局——商业区集中于汉口、武昌中心，大型住宅区向外拓展，工业区沿长江与城市外缘布局，光谷代表高新技术产业新形态。',
     districts: wuhanFunctionalDistricts
   },
@@ -140,7 +140,7 @@ export const functionalZoneCities: FunctionalZoneCity[] = [
     name: '上海',
     longitude: 121.47,
     latitude: 31.23,
-    viewHeight: 150000,
+    viewHeight: 150_000,
     overview: '上海：浦西中心商业区与浦东陆家嘴CBD隔江相望，工业区沿黄浦江下游与宝山一线布局，居住区随轨道交通向外环外扩展。',
     districts: [
       { name: '陆家嘴金融贸易区', kind: 'commercial', longitude: 121.502, latitude: 31.24, radiusKm: 2, note: '浦东CBD：中国金融要素最集聚的中心商务区，与外滩隔江相望' },
@@ -158,7 +158,7 @@ export const functionalZoneCities: FunctionalZoneCity[] = [
     name: '北京',
     longitude: 116.4,
     latitude: 39.9,
-    viewHeight: 150000,
+    viewHeight: 150_000,
     overview: '北京：CBD（国贸）与金融街东西呼应，中关村依托科教资源发展高新技术产业，回龙观天通苑体现职住分离，首钢搬迁是工业区区位调整的经典案例。',
     districts: [
       { name: '国贸CBD', kind: 'commercial', longitude: 116.459, latitude: 39.909, radiusKm: 1.8, note: '北京商务中心区：跨国公司总部与金融保险集聚' },
@@ -176,13 +176,13 @@ export const functionalZoneCities: FunctionalZoneCity[] = [
     name: '广州',
     longitude: 113.29,
     latitude: 23.13,
-    viewHeight: 140000,
+    viewHeight: 140_000,
     overview: '广州：传统中轴（北京路）与新中轴（珠江新城）并行，工业"东进"黄埔开发区，居住"南拓"番禺华南板块。',
     districts: [
       { name: '珠江新城CBD', kind: 'commercial', longitude: 113.322, latitude: 23.119, radiusKm: 1.8, note: '广州CBD：金融总部集聚，与广州塔构成城市新中轴' },
       { name: '北京路·上下九商圈', kind: 'commercial', longitude: 113.257, latitude: 23.122, radiusKm: 1.5, note: '岭南传统商业核心，老城中轴' },
       { name: '天河路商圈', kind: 'commercial', longitude: 113.362, latitude: 23.137, radiusKm: 1.4, note: '华南客流第一商圈（天河城、正佳广场）' },
-      { name: '番禺华南板块居住区', kind: 'residential', longitude: 113.32, latitude: 23.0, radiusKm: 4, note: '大型楼盘集聚的近郊居住板块——郊区化居住扩展案例' },
+      { name: '番禺华南板块居住区', kind: 'residential', longitude: 113.32, latitude: 23, radiusKm: 4, note: '大型楼盘集聚的近郊居住板块——郊区化居住扩展案例' },
       { name: '广州科学城', kind: 'industrial', longitude: 113.453, latitude: 23.166, radiusKm: 3, note: '高新技术产业与科研机构集聚' },
       { name: '黄埔·广州开发区', kind: 'industrial', longitude: 113.462, latitude: 23.109, radiusKm: 4, note: '东部工业走廊：外向型先进制造基地' }
     ]
@@ -192,7 +192,7 @@ export const functionalZoneCities: FunctionalZoneCity[] = [
     name: '深圳',
     longitude: 114.06,
     latitude: 22.55,
-    viewHeight: 110000,
+    viewHeight: 110_000,
     overview: '深圳：多中心带状城市——福田CBD、罗湖传统商业、南山科技园高新产业、蛇口前海自贸片区，居住组团沿轨道交通向外扩展。',
     districts: [
       { name: '福田CBD', kind: 'commercial', longitude: 114.057, latitude: 22.543, radiusKm: 1.8, note: '深圳CBD：金融与总部经济（平安金融中心）' },
@@ -208,7 +208,7 @@ export const functionalZoneCities: FunctionalZoneCity[] = [
     name: '成都',
     longitude: 104.07,
     latitude: 30.66,
-    viewHeight: 130000,
+    viewHeight: 130_000,
     overview: '成都：单中心圈层结构向"双城"演进——春熙路老商圈与金融城新城CBD并存，高新技术产业南拓天府软件园，居住区向南、向外环扩展。',
     districts: [
       { name: '春熙路·太古里商圈', kind: 'commercial', longitude: 104.081, latitude: 30.657, radiusKm: 1.3, note: '百年市级商业中心，文旅消费地标' },
@@ -223,7 +223,7 @@ export const functionalZoneCities: FunctionalZoneCity[] = [
     name: '沈阳',
     longitude: 123.43,
     latitude: 41.8,
-    viewHeight: 120000,
+    viewHeight: 120_000,
     overview: '沈阳：铁西区是新中国工业摇篮，"东搬西建"后老厂区更新为住宅与商业，装备制造西迁经济技术开发区——老工业区改造的教科书案例。',
     districts: [
       { name: '中街商圈', kind: 'commercial', longitude: 123.455, latitude: 41.803, radiusKm: 1.2, note: '东北历史最久的商业街之一' },

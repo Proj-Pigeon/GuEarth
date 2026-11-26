@@ -74,7 +74,7 @@ export function sampleWind(lon: number, lat: number, month: number): WindVector 
   let v = base.v
   for (const cell of monsoonCells) {
     const intensity = cell.season === 'summer' ? summer : winter
-    if (intensity <= 0.02) continue
+    if (intensity <= 0.02) {continue}
     const magnitude = bump(lon, lat, cell.lonCenter, cell.latCenter, cell.lonSpread, cell.latSpread) * cell.speed * intensity
     u += cell.dirU * magnitude
     v += cell.dirV * magnitude

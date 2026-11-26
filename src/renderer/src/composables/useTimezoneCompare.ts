@@ -27,7 +27,7 @@ const LABEL_FONT = '13px SFMono-Regular, Consolas, "Liberation Mono", Menlo, mon
 
 function utcHoursNow(): number {
   const solarStore = useSolarStore.getState()
-  if (solarStore.active) return solarStore.utcHour
+  if (solarStore.active) {return solarStore.utcHour}
   const now = new Date()
   return now.getUTCHours() + now.getUTCMinutes() / 60
 }
@@ -53,7 +53,7 @@ export function useTimezoneCompare(viewer: Cesium.Viewer | undefined): UseTimezo
   const clearEntities = useCallback((): void => {
     const current = currentViewer()
     if (dataSourceRef.current) {
-      if (current) current.dataSources.remove(dataSourceRef.current, true)
+      if (current) {current.dataSources.remove(dataSourceRef.current, true)}
       dataSourceRef.current = undefined
     }
   }, [currentViewer])
@@ -72,7 +72,7 @@ export function useTimezoneCompare(viewer: Cesium.Viewer | undefined): UseTimezo
   const addPick = useCallback((pick: TimezonePick, color: string): void => {
     const current = currentViewer()
     const dataSource = dataSourceRef.current
-    if (!current || !dataSource) return
+    if (!current || !dataSource) {return}
     const cesiumColor = Cesium.Color.fromCssColorString(color)
     dataSource.entities.add({
       position: Cesium.Cartesian3.fromDegrees(pick.longitude, pick.latitude),
@@ -112,14 +112,14 @@ export function useTimezoneCompare(viewer: Cesium.Viewer | undefined): UseTimezo
 
   const handleClick = useCallback((movement: { position: Cesium.Cartesian2 }): void => {
     const current = currentViewer()
-    if (!current) return
+    if (!current) {return}
     const picked = current.scene.pickPositionSupported ? current.scene.pickPosition(movement.position) : undefined
     const cartesian = picked ?? current.camera.pickEllipsoid(movement.position)
-    if (!cartesian) return
+    if (!cartesian) {return}
     const cartographic = Cesium.Cartographic.fromCartesian(cartesian)
     const longitude = Cesium.Math.toDegrees(cartographic.longitude)
     const latitude = Cesium.Math.toDegrees(cartographic.latitude)
-    if (picksRef.current.length >= 2) clearComparison()
+    if (picksRef.current.length >= 2) {clearComparison()}
     picksRef.current.push({ label: picksRef.current.length === 0 ? 'A' : 'B', longitude, latitude })
     if (!dataSourceRef.current) {
       dataSourceRef.current = new Cesium.CustomDataSource('timezone-compare')
@@ -146,7 +146,7 @@ export function useTimezoneCompare(viewer: Cesium.Viewer | undefined): UseTimezo
     return () => {
       handler.destroy()
       if (dataSourceRef.current) {
-        if (!current.isDestroyed()) current.dataSources.remove(dataSourceRef.current, true)
+        if (!current.isDestroyed()) {current.dataSources.remove(dataSourceRef.current, true)}
         dataSourceRef.current = undefined
       }
       picksRef.current = []

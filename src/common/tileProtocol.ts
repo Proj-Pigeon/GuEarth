@@ -1,6 +1,6 @@
 export const TILE_FAILURE_STATUS = 502
 
-export const TILE_FETCH_TIMEOUT_MS = 8_000
+export const TILE_FETCH_TIMEOUT_MS = 8000
 
 export const TILE_FETCH_ATTEMPTS = 3
 
@@ -33,7 +33,7 @@ function defaultSleep(ms: number): Promise<void> {
 }
 
 function normalizeRetryAttempts(attempts: number | undefined): number {
-  if (attempts === undefined || !Number.isFinite(attempts)) return TILE_FETCH_ATTEMPTS
+  if (attempts === undefined || !Number.isFinite(attempts)) {return TILE_FETCH_ATTEMPTS}
   return Math.max(1, Math.trunc(attempts))
 }
 
@@ -53,14 +53,14 @@ export async function fetchTilePayloadWithRetry(
         const data = await response.arrayBuffer()
         return { ok: true, status: response.status, headers: response.headers, data }
       }
-      void response.body?.cancel().catch(() => undefined)
+      void response.body?.cancel().catch(() => {})
       if (!isRetryableTileStatus(response.status) || attempt === attempts - 1) {
         return { ok: false, status: response.status, headers: response.headers }
       }
       await sleep(tileRetryDelayMs(attempt, baseDelayMs))
     } catch (error) {
       lastError = error
-      if (attempt < attempts - 1) await sleep(tileRetryDelayMs(attempt, baseDelayMs))
+      if (attempt < attempts - 1) {await sleep(tileRetryDelayMs(attempt, baseDelayMs))}
     }
   }
   throw lastError

@@ -45,7 +45,7 @@ export const useTransportStore = create<TransportStore>()(
     },
     advance(dtSeconds: number): void {
       const state = get()
-      if (!state.isPlaying) return
+      if (!state.isPlaying) {return}
       const next = state.year + dtSeconds * YEARS_PER_SECOND
       set({ year: next > HSR_END_YEAR ? HSR_START_YEAR + (next - HSR_END_YEAR) : next })
     }

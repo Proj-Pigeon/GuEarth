@@ -46,7 +46,7 @@ export interface GlobeToolbarProps {
   onUpdateClick: () => void
 }
 
-const tools: Array<{ id: DrawTool; label: string; icon: ReactNode }> = [
+const tools: { id: DrawTool; label: string; icon: ReactNode }[] = [
   { id: 'point', label: '绘制点', icon: <MapPinIcon className="size-4" /> },
   { id: 'line', label: '绘制线', icon: <WaypointsIcon className="size-4" /> },
   { id: 'polygon', label: '绘制多边形', icon: <PentagonIcon className="size-4" /> },

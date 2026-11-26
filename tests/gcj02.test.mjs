@@ -14,8 +14,8 @@ const citiesGcj02 = [
 
 function metersBetween(lonA, latA, lonB, latB) {
   const latMid = (((latA + latB) / 2) * Math.PI) / 180
-  const dx = ((lonB - lonA) * 111320 * Math.cos(latMid))
-  const dy = (latB - latA) * 110540
+  const dx = ((lonB - lonA) * 111_320 * Math.cos(latMid))
+  const dy = (latB - latA) * 110_540
   return Math.hypot(dx, dy)
 }
 

@@ -14,8 +14,10 @@ import {
   urbanizationFacts,
   urbanizationSeries
 } from '@renderer/thematic/populationCensus'
-import BarChart, { type BarSeries } from './charts/BarChart'
-import LineChart, { type ChartSeries } from './charts/LineChart'
+import BarChart from './charts/BarChart';
+import type { BarSeries } from './charts/BarChart';
+import LineChart from './charts/LineChart';
+import type { ChartSeries } from './charts/LineChart';
 import styles from './PopulationPanel.module.css'
 
 export interface PopulationPanelProps {
@@ -24,7 +26,7 @@ export interface PopulationPanelProps {
 
 type Tab = 'pyramid' | 'urbanization' | 'hu-line'
 
-const tabOptions: Array<{ value: Tab; label: string }> = [
+const tabOptions: { value: Tab; label: string }[] = [
   { value: 'pyramid', label: '金字塔' },
   { value: 'urbanization', label: '城镇化' },
   { value: 'hu-line', label: '胡焕庸线' }
@@ -69,7 +71,7 @@ export function PopulationPanel({ onClose }: PopulationPanelProps) {
           size="sm"
           options={tabOptions}
           aria-label="人口面板标签"
-          onChange={(value) => setTab(value as Tab)}
+          onChange={(value) => setTab(value)}
         />
         <Button variant="ghost" size="sm" aria-label="关闭人口面板" icon={<XIcon className="size-3.5" />} onClick={onClose} />
       </div>

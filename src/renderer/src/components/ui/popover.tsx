@@ -1,4 +1,5 @@
-import { isValidElement, type ReactElement, type ReactNode } from 'react'
+import { isValidElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '@renderer/lib/utils'
 
@@ -8,10 +9,10 @@ function parsePlacement(placement: PopoverPlacement): {
   side: 'top' | 'bottom' | 'left' | 'right'
   align: 'start' | 'center' | 'end'
 } {
-  if (placement === 'topLeft') return { side: 'top', align: 'start' }
-  if (placement === 'topRight') return { side: 'top', align: 'end' }
-  if (placement === 'bottomLeft') return { side: 'bottom', align: 'start' }
-  if (placement === 'bottomRight') return { side: 'bottom', align: 'end' }
+  if (placement === 'topLeft') {return { side: 'top', align: 'start' }}
+  if (placement === 'topRight') {return { side: 'top', align: 'end' }}
+  if (placement === 'bottomLeft') {return { side: 'bottom', align: 'start' }}
+  if (placement === 'bottomRight') {return { side: 'bottom', align: 'end' }}
   return { side: placement, align: 'center' }
 }
 

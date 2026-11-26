@@ -23,11 +23,11 @@ const historyFsUrl = `data:text/javascript,${encodeURIComponent(`
 `)}`
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier === 'fs/promises' && context.parentURL.endsWith('/jsonStore.ts')) return nextResolve(historyFsUrl, context)
+    if (specifier === 'node:fs/promises' && context.parentURL.endsWith('/jsonStore.ts')) {return nextResolve(historyFsUrl, context)}
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
       throw error
     }
   }
@@ -173,7 +173,7 @@ test('recovery excludes deleted, superseded, evicted and uncommitted residual bo
   await store.save(conversation('evicted', 0))
   const evictionIndex = JSON.parse(await readFile(join(`${path}.d`, 'index.json'), 'utf8'))
   const evictedFile = evictionIndex.conversations.find((item) => item.id === 'evicted').file
-  for (let i = 0; i < 49; i++) await store.save(conversation(`retained-${i}`, 3 + i))
+  for (let i = 0; i < 49; i++) {await store.save(conversation(`retained-${i}`, 3 + i))}
   const expected = store.list()
   await writeFile(join(`${path}.d`, deletedFile), JSON.stringify(conversation('private')))
   await writeFile(join(`${path}.d`, supersededFile), JSON.stringify(conversation('updated', 200, 'old private text')))
@@ -262,8 +262,8 @@ test('existing history without trustworthy manifests does not scan bodies or rep
     await writeFile(join(`${path}.d`, 'private.residual.json'), JSON.stringify(conversation('private')))
     await rm(join(`${path}.d`, 'index.json'))
     const recoveryPath = join(`${path}.d`, 'recovery.json')
-    if (state === 'missing') await rm(recoveryPath)
-    else await writeFile(recoveryPath, state === 'corrupt' ? '{broken' : JSON.stringify({ version: 2, conversations: [] }))
+    if (state === 'missing') {await rm(recoveryPath)}
+    else {await writeFile(recoveryPath, state === 'corrupt' ? '{broken' : JSON.stringify({ version: 2, conversations: [] }))}
     const reopened = new AiChatHistoryStore()
     await reopened.init(path)
     assert.deepEqual(reopened.list(), [])

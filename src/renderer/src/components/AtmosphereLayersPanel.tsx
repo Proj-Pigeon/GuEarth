@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { XIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui'
-import LineChart, { type ChartSeries } from './charts/LineChart'
+import LineChart from './charts/LineChart';
+import type { ChartSeries } from './charts/LineChart';
 import styles from './AtmosphereLayersPanel.module.css'
 
 export interface AtmosphereLayersPanelProps {
@@ -10,10 +11,10 @@ export interface AtmosphereLayersPanelProps {
 
 const TEMP_COLOR = '#1677ff'
 
-const profilePoints: Array<[number, number]> = []
-for (let h = 0; h <= 12; h += 1) profilePoints.push([15 - (h * 70) / 12, h])
-for (let h = 13; h <= 50; h += 1) profilePoints.push([-55 + ((h - 12) * 52) / 38, h])
-for (let h = 51; h <= 85; h += 1) profilePoints.push([-3 - ((h - 50) * 87) / 35, h])
+const profilePoints: [number, number][] = []
+for (let h = 0; h <= 12; h += 1) {profilePoints.push([15 - (h * 70) / 12, h])}
+for (let h = 13; h <= 50; h += 1) {profilePoints.push([-55 + ((h - 12) * 52) / 38, h])}
+for (let h = 51; h <= 85; h += 1) {profilePoints.push([-3 - ((h - 50) * 87) / 35, h])}
 
 const layers = [
   {
