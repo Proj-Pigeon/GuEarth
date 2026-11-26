@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 
 const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
 const preloadSource = await readFile(new URL('../src/preload/index.ts', import.meta.url), 'utf8')

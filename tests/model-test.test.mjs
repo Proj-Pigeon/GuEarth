@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { compileFunction } from 'node:vm'
 import { ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 
 const aiTelemetrySource = readFileSync(new URL('../src/common/aiTelemetry.ts', import.meta.url), 'utf8')
 const aiTelemetryOutput = transpileModule(aiTelemetrySource, {

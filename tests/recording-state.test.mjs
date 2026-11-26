@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { ENSO_PHASES, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS } from '../src/common/thematicState.ts'
 import { ensoPhaseOptions } from '../src/renderer/src/thematic/ensoPhases.ts'
 import { HSR_END_YEAR as rendererEndYear, HSR_START_YEAR as rendererStartYear } from '../src/renderer/src/thematic/hsrLines.ts'

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { CustomDataSource, JulianDate, PolylineDashMaterialProperty } from 'cesium'
 import { buildLiveTyphoons } from '../src/renderer/src/thematic/liveTyphoons.ts'
 

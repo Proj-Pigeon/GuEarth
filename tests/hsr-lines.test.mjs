@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { HSR_END_YEAR, HSR_START_YEAR, hsrFacts, hsrGrowthSeries, hsrLines, hsrLinesUpTo, hsrMileageAt } from '../src/renderer/src/thematic/hsrLines.ts'
 
 test('hsr lines: opening years within growth window and paths in China bounds', () => {

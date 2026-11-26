@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { registerHooks } from 'node:module'
 import { mkdtemp, readFile, writeFile, readdir, rename, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'

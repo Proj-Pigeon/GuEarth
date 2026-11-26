@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { hidesThematicLayers, visibleThematicLayers } from '../src/renderer/src/lib/nightBasemap.ts'
 
 const appSource = await readFile(new URL('../src/renderer/src/App.tsx', import.meta.url), 'utf8')

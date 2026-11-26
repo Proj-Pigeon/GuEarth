@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { compileFunction } from 'node:vm'
 import { ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
 import * as shared from '../src/common/onlineData.ts'

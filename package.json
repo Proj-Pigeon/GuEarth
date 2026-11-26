@@ -16,20 +16,22 @@
     "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
     "fetch:hawdb": "node scripts/fetch-hawdb.mjs",
     "start": "electron-vite preview",
-    "typecheck": "node node_modules/typescript/bin/tsc --noEmit -p tsconfig.node.json && node node_modules/typescript/bin/tsc --noEmit -p tsconfig.web.json",
-    "test": "vitest run"
+    "test": "vp run ctest",
+    "check": "vp run ccheck"
   },
   "overrides": {
     "app-builder-lib": {
       "@electron/get": "5.1.0"
     },
     "katex": "^0.18.2",
-    "minimatch": "11.0.3"
+    "minimatch": "11.0.3",
+    "vite": "npm:@voidzero-dev/vite-plus-core@8.3.8000"
   },
   "devDependencies": {
     "@assistant-ui/react": "^0.15.37",
     "@assistant-ui/react-markdown": "^0.14.26",
     "@base-ui/react": "^1.9.0",
+    "@liangmi/vp-config": "^1.0.2",
     "@sentry/electron": "^8.0.0",
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^26.6.3",
@@ -56,8 +58,8 @@
     "tailwindcss": "^4.3.5",
     "tw-shimmer": "^0.4.14",
     "typescript": "^7.0.2",
-    "vite": "^8.4.0",
-    "vitest": "^5.1.2",
+    "vite": "npm:@voidzero-dev/vite-plus-core@8.3.8000",
+    "vite-plus": "1.7.0",
     "zustand": "^5.1.0"
   },
   "dependencies": {

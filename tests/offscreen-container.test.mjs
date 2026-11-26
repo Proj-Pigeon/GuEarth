@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { fileURLToPath } from 'node:url'
 
 import { findFfmpegBinary } from '../src/main/ffmpeg.ts'

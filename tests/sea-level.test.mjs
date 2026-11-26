@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import {
   SEA_LEVEL_SCENARIOS, buildLandMask, cacheKeyOf, cellAreaKm2, coastalZones, gridPointsOf, heightCache,
   inundationByZone, isLandCell, isInundated, recordSamples, seaLevelFacts, scenarioSummary,

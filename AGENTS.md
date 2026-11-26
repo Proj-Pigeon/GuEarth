@@ -22,8 +22,8 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 
 **Pinned versions — do not bump casually:**
 
-- `vite@^8` — the project uses Vite 8 with electron-vite@6.
-- `typescript@^7` — the native TypeScript compiler (`tsconfig.node.json` + `tsconfig.web.json`). TypeScript 7 has no stable JS API yet, so tests that compile or parse source import TypeScript 6 from `@typescript/typescript6`. `npm run typecheck` calls `node_modules/typescript/bin/tsc` directly, because `@typescript/typescript6` also links a TypeScript 6 `tsc` into `node_modules/.bin`.
+- `vite-plus` — Vite+ provides Vite 8 through the npm alias for `vite` (`@voidzero-dev/vite-plus-core`). Keep the `devDependencies` alias and the `overrides` entry aligned when upgrading Vite+.
+- `typescript@^7` — the native TypeScript compiler (`tsconfig.node.json` + `tsconfig.web.json`). TypeScript 7 has no stable JS API yet, so tests that compile or parse source import TypeScript 6 from `@typescript/typescript6`. Type checking runs in `npm run check` through Vite+, so don't call `tsc` from scripts: `@typescript/typescript6` also links a TypeScript 6 `tsc` into `node_modules/.bin`.
 - `@base-ui/react@^1.9` + `tailwindcss@^4.3` + `lucide-react` — headless Base UI primitives wrapped in `src/renderer/src/components/ui/` following [DESIGN.md](./DESIGN.md) monochrome Light/Dark tokens. Do not reintroduce `antd` or `@ant-design/*`.
 - Electron binaries must be installed manually with the npmmirror mirror:
   `ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" node node_modules/electron/install.js`
@@ -95,9 +95,11 @@ npm run dev        # electron-vite dev server + app
 npm run build      # production build
 npm run fetch:ffmpeg   # pinned LGPL FFmpeg for Windows or Linux into resources/bin
 npm run build:linux    # AppImage + deb for Linux x64 and arm64
-npm run typecheck  # tsc (node) + tsc (web)
-npm test           # Vitest unit tests (tests/*.test.mjs), run by CI
+npm run check      # vp check: type checks (lint and format are off for now), run by CI
+npm test           # Vitest unit tests through Vite+ (tests/*.test.mjs), run by CI
 ```
+
+Vite+ config lives in `vite.config.mts`, on top of the `@liangmi/vp-config` preset. Import test APIs from `vite-plus/test`, not `vitest`.
 
 Vitest uses native Node.js imports (`experimental.viteModuleRunner: false` in `vite.config.mts`), so the `module.registerHooks` fixtures in the tests can load React components and simulate filesystem failures.
 
