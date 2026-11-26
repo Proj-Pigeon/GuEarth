@@ -62,6 +62,7 @@ export async function resolveFlightDestination(scene: Scene, longitude: number, 
     const sampled = await Promise.race([
       sampleTerrainMostDetailed(scene.terrainProvider, positions, false),
       new Promise<undefined>((resolve) => {
+        // oxlint-disable-next-line unicorn/no-useless-undefined -- `resolve` of a `Promise<undefined>` requires its argument
         const timer = setTimeout(() => resolve(undefined), FLIGHT_TERRAIN_TIMEOUT_MS)
         clearTerrainTimeout = () => clearTimeout(timer)
       })

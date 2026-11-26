@@ -220,6 +220,7 @@ export function Select<T extends string = string>({
           aria-label="清除选择"
           onClick={(event) => {
             event.stopPropagation()
+            // oxlint-disable-next-line unicorn/no-useless-undefined -- `onChange` requires its value argument
             onChange?.(undefined)
           }}
           className="absolute right-7 inline-flex size-4 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-ink-tertiary hover:bg-muted hover:text-ink"

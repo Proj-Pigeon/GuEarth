@@ -34,37 +34,6 @@ import type { ThemeMode } from '../common/themeMode';
 import { ENSO_PHASE_SET, HSR_END_YEAR, HSR_START_YEAR, SEA_LEVEL_SCENARIOS } from '../common/thematicState';
 import type { EnsoPhase } from '../common/thematicState';
 import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../common/privacy'
-
-attachConsoleLogTee('main')
-
-function readInitialErrorReportingEnabled(): boolean {
-  try {
-    const raw = readFileSync(join(app.getPath('userData'), 'settings.json'), 'utf8')
-    const parsed: unknown = JSON.parse(raw)
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      return DEFAULT_PRIVACY_SETTINGS.errorReportingEnabled
-    }
-    return resolvePrivacySettings(parsed as Record<string, unknown>).errorReportingEnabled
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException | null)?.code
-    if (code === 'ENOENT') {return DEFAULT_PRIVACY_SETTINGS.errorReportingEnabled}
-    return false
-  }
-}
-
-let errorReportingEnabled = readInitialErrorReportingEnabled()
-let sentryIntegrationsInstalled = errorReportingEnabled
-
-Sentry.init({
-  dsn: 'https://28239780e3a5ede424bde1114849f448@o4509333304573952.ingest.us.sentry.io/4512192370769920',
-  enabled: errorReportingEnabled,
-  sendClientReports: false,
-  beforeSend(event) {
-    if (!errorReportingEnabled) {return null}
-    event.extra = { ...event.extra, mainProcessLogs: logger.dump(80) }
-    return event
-  }
-})
 import { execFileSync, spawn } from 'node:child_process'
 import { readFileSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -100,6 +69,37 @@ import { initUpdater } from './updater'
 import { initAccount } from './account'
 import { setAiPosthogEnabled, shutdownPosthog } from './ai/posthog'
 import { capturePosthogLog, setPosthogLogsEnabled, shutdownPosthogLogs } from './posthogLogs'
+
+attachConsoleLogTee('main')
+
+function readInitialErrorReportingEnabled(): boolean {
+  try {
+    const raw = readFileSync(join(app.getPath('userData'), 'settings.json'), 'utf8')
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return DEFAULT_PRIVACY_SETTINGS.errorReportingEnabled
+    }
+    return resolvePrivacySettings(parsed as Record<string, unknown>).errorReportingEnabled
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | null)?.code
+    if (code === 'ENOENT') {return DEFAULT_PRIVACY_SETTINGS.errorReportingEnabled}
+    return false
+  }
+}
+
+let errorReportingEnabled = readInitialErrorReportingEnabled()
+let sentryIntegrationsInstalled = errorReportingEnabled
+
+Sentry.init({
+  dsn: 'https://28239780e3a5ede424bde1114849f448@o4509333304573952.ingest.us.sentry.io/4512192370769920',
+  enabled: errorReportingEnabled,
+  sendClientReports: false,
+  beforeSend(event) {
+    if (!errorReportingEnabled) {return null}
+    event.extra = { ...event.extra, mainProcessLogs: logger.dump(80) }
+    return event
+  }
+})
 
 interface PersistedSettings {
   selectedImageryProviderId: string

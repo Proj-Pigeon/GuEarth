@@ -12,12 +12,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizeModel(value: unknown): AiModelConfig | null {
-  if (!isRecord(value)) return null
+  if (!isRecord(value)) {return null}
   const id = typeof value.id === 'string' ? value.id.trim().slice(0, 200) : ''
-  if (!id) return null
+  if (!id) {return null}
   const label = typeof value.label === 'string' && value.label.trim() ? value.label.trim().slice(0, 80) : id
   const contextWindow = typeof value.contextWindow === 'number' && Number.isFinite(value.contextWindow)
-    ? Math.min(2_000_000, Math.max(4_096, Math.round(value.contextWindow)))
+    ? Math.min(2_000_000, Math.max(4096, Math.round(value.contextWindow)))
     : 128_000
   const thinkingLevel = thinkingLevels.has(value.thinkingLevel as AiThinkingLevel) ? value.thinkingLevel as AiThinkingLevel : 'medium'
   return {

@@ -1347,7 +1347,7 @@ function createCesiumViewerController(
 }
 
 export function useCesiumViewer(containerRef: RefObject<HTMLDivElement | null>): UseCesiumViewerResult {
-  const [viewer, setViewer] = useState<Cesium.Viewer | undefined>(undefined)
+  const [viewer, setViewer] = useState<Cesium.Viewer | undefined>()
   const viewerRef = useRef<Cesium.Viewer | undefined>(undefined)
   const mountedRef = useRef(false)
   const [controller] = useState(() =>

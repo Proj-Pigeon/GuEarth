@@ -8,6 +8,7 @@ import { isThemeMode } from '../common/themeMode';
 import type { ResolvedTheme, ThemeMode } from '../common/themeMode';
 import type { EnsoPhase } from '../common/thematicState'
 import type { LaboratoryProvider, LaboratoryProviderInput, OnlineDataSnapshot } from '../common/onlineData'
+import type { ConversationSearchHit, HawdbStatusInfo, MemoryRecallMatch } from '../main/ai/hawdb/protocol'
 
 export interface ProviderCredentialStatus {
   configured: boolean
@@ -303,7 +304,6 @@ export interface StoredAiConversation extends StoredAiConversationSummary {
   compression?: StoredAiCompression
 }
 
-import type { ConversationSearchHit, HawdbStatusInfo, MemoryRecallMatch } from '../main/ai/hawdb/protocol'
 
 export type { ConversationSearchHit as AiConversationSearchHit, HawdbStatusInfo as AiHawdbStatus, MemoryRecallMatch as AiMemoryRecallMatch }
 
