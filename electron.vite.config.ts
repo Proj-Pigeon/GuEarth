@@ -49,7 +49,7 @@ export default defineConfig({
   main: {
     build: {
       externalizeDeps: false,
-      rollupOptions: {
+      rolldownOptions: {
         external: ['koffi'],
         input: {
           index: resolve('src/main/index.ts'),
@@ -72,16 +72,14 @@ export default defineConfig({
     },
     plugins: [react(), tailwindcss(), cesiumStaticPlugin()],
     build: {
-      rollupOptions: {
+      rolldownOptions: {
         input: {
           index: resolve('src/renderer/index.html'),
           offscreen: resolve('src/renderer/offscreen.html')
         },
         output: {
-          manualChunks(id) {
-            const normalizedId = id.replaceAll('\\', '/')
-            if (normalizedId.includes('/node_modules/cesium/') || normalizedId.includes('/node_modules/@cesium/')) return 'cesium'
-            return undefined
+          codeSplitting: {
+            groups: [{ name: 'cesium', test: /[\\/]node_modules[\\/]@?cesium[\\/]/ }]
           }
         }
       }
