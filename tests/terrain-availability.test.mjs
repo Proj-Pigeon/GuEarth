@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { withoutTileAvailability } from '../src/common/terrainAvailability.ts'
 
 function availabilityProbe() {

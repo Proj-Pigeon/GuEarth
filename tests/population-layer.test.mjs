@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import {
   censusAgeStructure, densityBins, densityColor, densityOf, densityRank, huComparison, huLineEndpoints,
   migrationFlows, nationalPopulation, populationRank, provincePopulation, provinceSummary, pyramid2020, pyramidAgeGroups,

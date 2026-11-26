@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { formatActionError, runGuardedAction } from '../src/renderer/src/components/ui/actionError.ts'
 import { computeGuideCardPosition } from '../src/renderer/src/lib/guidePosition.ts'
 import { flattenVisibleTree, resolveTreeKeyAction } from '../src/renderer/src/lib/treeNavigation.ts'

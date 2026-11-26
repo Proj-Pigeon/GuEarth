@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { access, readFile } from 'node:fs/promises'
-import { test } from 'node:test'
+import { test } from 'vitest'
 
 const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
 const macSource = await readFile(new URL('../src/main/offscreenMac.ts', import.meta.url), 'utf8')

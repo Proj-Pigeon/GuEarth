@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -28,7 +28,7 @@ function storeFixture(t) {
   resetDrawingStore()
   const saved = []
   globalThis.window = { guEarth: { annotations: { save: async (document) => { saved.push(document) } } } }
-  t.after(() => { delete globalThis.window })
+  t.onTestFinished(() => { delete globalThis.window })
   return { store: () => useDrawingStore.getState(), saved }
 }
 

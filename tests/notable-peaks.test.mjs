@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { findPeaksNear, nearestPeaks, notablePeaks } from '../src/renderer/src/thematic/notablePeaks.ts'
 
 test('notable peaks: ids and names unique, coordinates and elevations plausible', () => {

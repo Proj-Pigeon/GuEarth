@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { TERRAIN_PROVIDER_ID_SET, TERRAIN_PROVIDER_IDS } from '../src/common/terrainProviders.ts'
 
 const registrySource = await readFile(new URL('../src/renderer/src/terrain/terrainRegistry.ts', import.meta.url), 'utf8')

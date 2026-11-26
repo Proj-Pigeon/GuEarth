@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { updateInstallContent, updateReadyHint } from '../src/renderer/src/stores/updateCopy.ts'
 import {
   DEB_INSTALL_EXECUTABLE,

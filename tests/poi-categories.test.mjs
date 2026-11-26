@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { POI_CATEGORY_LABELS, poiBigCategory } from '../src/main/ai/poiCategories.ts'
 
 test('real-shaped amap pois classify by their typecode, not the chinese type name', () => {
