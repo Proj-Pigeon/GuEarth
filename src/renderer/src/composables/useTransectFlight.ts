@@ -69,11 +69,11 @@ let tileCacheOriginal: number | null = null
 const groundSampleCache = new WeakMap<Cesium.Viewer, { key: string; at: number; sample: TransectGroundSample; terrainProvider: Cesium.TerrainProvider; samplingProviderId: string }>()
 
 function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => { setTimeout(resolve, ms) })
 }
 
 function nextFrame(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()))
+  return new Promise((resolve) => { requestAnimationFrame(() => resolve()) })
 }
 
 function easeInOutCubic(t: number): number {

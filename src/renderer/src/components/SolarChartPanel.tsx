@@ -32,7 +32,7 @@ const latitudeFormatter = (value: number): string => (value === 0 ? '0°' : `${M
 
 const dateFormatter = (value: number): string => {
   const index = monthStarts.findIndex((start, i) => value >= start && value < (monthStarts[i + 1] ?? 366))
-  return index !== -1 ? `${index + 1}月` : ''
+  return index === -1 ? '' : `${index + 1}月`
 }
 
 export function SolarChartPanel({ className, onClose }: SolarChartPanelProps) {

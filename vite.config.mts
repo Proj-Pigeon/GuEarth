@@ -29,6 +29,8 @@ export default liangmi({
         'typescript/no-unnecessary-type-conversion': 'off',
         // `||` treats empty strings as missing on purpose, such as for env variables.
         'typescript/prefer-nullish-coalescing': 'off',
+        // Tool `execute`, imagery providers and retry handlers must return promises, and `async` turns throws into rejections.
+        'typescript/require-await': 'off',
         // `toSorted` and `toReversed` need the ES2023 lib, and tsconfig targets ES2022.
         'unicorn/no-array-sort': 'off',
         'unicorn/no-array-reverse': 'off',

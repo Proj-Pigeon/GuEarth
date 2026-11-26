@@ -81,7 +81,7 @@ const PREWARM_HOLD_MS = 400
 const RECORDING_MIRROR_RESOLUTION_SCALE = 0.6
 
 function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => { setTimeout(resolve, ms) })
 }
 
 function normalizedHeadingDegrees(radians: number): number {
@@ -173,7 +173,7 @@ export function createScenePlayerController(
     if (!current || current.isDestroyed()) {throw new Error('地球尚未就绪')}
     if (current.scene.mode !== Cesium.SceneMode.SCENE3D) {throw new Error('请先切换到 3D 视图再保存场景')}
     const cartographic = current.camera.positionCartographic
-    if (!Number.isFinite(cartographic.longitude) || !Number.isFinite(cartographic.latitude) || !Number.isFinite(cartographic.height)) {throw new Error('当前视角无效，无法保存场景')}
+    if (!Number.isFinite(cartographic.longitude) || !Number.isFinite(cartographic.latitude) || !Number.isFinite(cartographic.height)) {throw new TypeError('当前视角无效，无法保存场景')}
     const globeStore = useGlobeStore.getState()
     const climateStore = useClimateStore.getState()
     const solarStore = useSolarStore.getState()

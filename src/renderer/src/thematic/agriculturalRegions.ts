@@ -4,7 +4,7 @@ export interface AgriculturalRegion {
   name: string
   category: AgriculturalCategory
   crop: string
-  rings: Array<[number, number]>[]
+  rings: [number, number][][]
   labelAt: [number, number]
   summary: string
 }

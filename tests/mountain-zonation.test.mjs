@@ -129,7 +129,7 @@ test('planTransectAltitudes keeps every point safe, floored, bounded and convex-
     assert.ok(altitude >= 19_000 + clearance, 'convex mid-bump must lift neighbouring samples too')
   }
   const requested = planTransectAltitudes([100, 200], clearance, minimum, 25_000)
-  for (const altitude of requested) {assert.ok(altitude >= 25000)}
+  for (const altitude of requested) {assert.ok(altitude >= 25_000)}
   assert.deepEqual(planTransectAltitudes([], clearance, minimum), [])
 })
 

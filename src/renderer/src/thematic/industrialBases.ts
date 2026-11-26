@@ -3,7 +3,7 @@ import type { MigrationFlow } from './populationCensus'
 export interface IndustrialBase {
   name: string
   color: string
-  rings: Array<[number, number]>[]
+  rings: [number, number][][]
   labelAt: [number, number]
   pillars: string[]
   summary: string

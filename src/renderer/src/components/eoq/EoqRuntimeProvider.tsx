@@ -111,7 +111,7 @@ export function convertChatMessage(message: ChatMessage): ThreadMessageLike {
         : {
             timing: {
               startedAt: part.step.startedAt,
-              ...(part.step.completedAt !== undefined ? { completedAt: part.step.completedAt } : {})
+              ...(part.step.completedAt === undefined ? {} : { completedAt: part.step.completedAt })
             }
           })
     }

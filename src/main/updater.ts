@@ -1,8 +1,8 @@
 import { app, BrowserWindow, ipcMain, net } from 'electron'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { createWriteStream, existsSync, mkdirSync, readdirSync, realpathSync, renameSync, rmSync } from 'fs';
-import type { WriteStream } from 'fs';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, realpathSync, renameSync, rmSync } from 'node:fs';
+import type { WriteStream } from 'node:fs';
 import { join } from 'node:path'
 import { logger } from '../common/logger'
 import type { UpdateCheckOutcome, UpdateState, UpdaterEvent } from '../preload'
@@ -232,7 +232,7 @@ async function downloadUpdate(): Promise<void> {
       receivedBytes += value.byteLength
       hash.update(value)
       if (!activeStream.write(Buffer.from(value))) {
-        await Promise.race([new Promise<void>((resolve) => activeStream.once('drain', () => resolve())), streamFailure])
+        await Promise.race([new Promise<void>((resolve) => { activeStream.once('drain', () => resolve()) }), streamFailure])
       }
       const now = Date.now()
       if (now - lastEmitAt >= PROGRESS_EMIT_INTERVAL_MS) {

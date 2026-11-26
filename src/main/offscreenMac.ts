@@ -1,6 +1,6 @@
 import { rmSync } from 'node:fs'
-import { mkdtemp, open, rename as renameFile, rm, stat, writeFile } from 'fs/promises';
-import type { FileHandle } from 'fs/promises';
+import { mkdtemp, open, rename as renameFile, rm, stat, writeFile } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto'
 import { format, join } from 'node:path'
 import { BrowserWindow, shell } from 'electron'
@@ -92,8 +92,8 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       host.clearTeardownHook(teardown)
       activeMacSession = null
       host.dropWindow()
-      if (videoFile) {void videoFile.close().catch(() => undefined)}
-      if (tempDir) {void rm(tempDir, { recursive: true, force: true }).catch(() => undefined)}
+      if (videoFile) {void videoFile.close().catch(() => {})}
+      if (tempDir) {void rm(tempDir, { recursive: true, force: true }).catch(() => {})}
     }
     const teardown = (): void => {
       const pending = !settled
@@ -102,7 +102,7 @@ export function encodeMacOffscreenRecording(script: OffscreenRecordingScript, ho
       host.clearTeardownHook(teardown)
       activeMacSession = null
       host.dropWindow()
-      if (videoFile) {void videoFile.close().catch(() => undefined)}
+      if (videoFile) {void videoFile.close().catch(() => {})}
       const directory = tempDir
       tempDir = null
       if (directory) {rmSync(directory, { recursive: true, force: true })}

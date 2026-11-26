@@ -48,10 +48,10 @@ test('province census table is complete and internally consistent', () => {
     assert.ok(['east', 'west', 'cross'].includes(province.huSide))
   }
   const westNames = new Set(['内蒙古自治区', '宁夏回族自治区', '甘肃省', '青海省', '新疆维吾尔自治区', '西藏自治区'])
-  const crossNames = ['四川省', '云南省', '陕西省']
+  const crossNames = new Set(['四川省', '云南省', '陕西省'])
   for (const province of provincePopulation) {
     assert.equal(westNames.has(province.name), province.huSide === 'west')
-    assert.equal(crossNames.includes(province.name), province.huSide === 'cross')
+    assert.equal(crossNames.has(province.name), province.huSide === 'cross')
   }
 })
 
@@ -94,7 +94,7 @@ test('census age structure rows sum to 100 percent', () => {
 
 test('national population and urbanization series are sane', () => {
   assert.deepEqual(nationalPopulation.map((row) => row.year), [1953, 1964, 1982, 1990, 2000, 2010, 2020])
-  for (const row of nationalPopulation) {assert.ok(row.populationWan > 50000 && row.populationWan < 150000)}
+  for (const row of nationalPopulation) {assert.ok(row.populationWan > 50_000 && row.populationWan < 150_000)}
   assert.equal(urbanizationSeries[0][0], 1949)
   for (const [year, pct] of urbanizationSeries) {
     assert.ok(year >= 1949 && year <= 2023)

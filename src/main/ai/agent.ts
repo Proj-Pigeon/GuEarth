@@ -378,7 +378,7 @@ function stringifyArgSummary(args: unknown): string {
 
 function estimateTokens(text: string): number {
   let cjk = 0
-  for (const char of text) {if (/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/.test(char)) cjk += 1}
+  for (const char of text) {if (/[\u4E00-\u9FFF\u3000-\u303F\uFF00-\uFFEF]/.test(char)) {cjk += 1}}
   return cjk + Math.ceil((text.length - cjk) / 3.5)
 }
 
@@ -622,7 +622,7 @@ async function fetchResponse(url: string, init: RequestInit, provider: AiProvide
   try {
     return await net.fetch(url, init)
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    if (error instanceof DOMException && error.name === 'AbortError') {throw error}
     const reason = error instanceof Error ? error.message : String(error)
     throw new Error(`网络请求异常（供应商：${provider.name}；模型：${model.id}；接口：${url}）：${reason}`, { cause: error })
   }
@@ -1261,9 +1261,9 @@ function summarizeToolResult(content: string): string {
   if (typeof parsed.message === 'string' && parsed.message.trim()) {return parsed.message.slice(0, 60)}
   if (parsed.memorySaved === true) {return `已记住：${typeof parsed.content === 'string' ? parsed.content.slice(0, 40) : ''}`}
   if (parsed.memoryDeleted === true) {return '已删除记忆'}
-  if (Array.isArray(parsed.hits)) {return parsed.hits.length ? `${parsed.hits.length} 条历史对话` : '未找到相关历史对话'}
-  if (Array.isArray(parsed.matches)) {return parsed.matches.length ? `${parsed.matches.length} 条知识条目` : '知识库未命中'}
-  if (Array.isArray(parsed.references)) {return parsed.references.length ? `${parsed.references.length} 条来源` : '未找到相关网页'}
+  if (Array.isArray(parsed.hits)) {return parsed.hits.length > 0 ? `${parsed.hits.length} 条历史对话` : '未找到相关历史对话'}
+  if (Array.isArray(parsed.matches)) {return parsed.matches.length > 0 ? `${parsed.matches.length} 条知识条目` : '知识库未命中'}
+  if (Array.isArray(parsed.references)) {return parsed.references.length > 0 ? `${parsed.references.length} 条来源` : '未找到相关网页'}
   if (Array.isArray(parsed.places)) {return `${parsed.places.length} 个地点`}
   if (parsed.status === 'vision_disabled') {return '模型未开启视觉，已返回文字视角'}
   if (parsed.screenshot) {return '已截图'}
@@ -1291,7 +1291,7 @@ function summarizeToolResult(content: string): string {
 }
 
 function validateTurns(turns: unknown): AiChatTurn[] {
-  if (!Array.isArray(turns)) {throw new Error('无效的对话历史')}
+  if (!Array.isArray(turns)) {throw new TypeError('无效的对话历史')}
   return turns.flatMap((turn): AiChatTurn[] => {
     if (typeof turn !== 'object' || turn === null) {return []}
     const record = turn as { role?: unknown; content?: unknown }
@@ -1301,7 +1301,7 @@ function validateTurns(turns: unknown): AiChatTurn[] {
 }
 
 function validateContextEntries(entries: unknown): AiContextEntry[] {
-  if (!Array.isArray(entries)) {throw new Error('无效的上下文')}
+  if (!Array.isArray(entries)) {throw new TypeError('无效的上下文')}
   return entries.flatMap((entry): AiContextEntry[] => {
     if (typeof entry !== 'object' || entry === null) {return []}
     const record = entry as { role?: unknown; content?: unknown; callId?: unknown; name?: unknown; isError?: unknown }
@@ -1354,7 +1354,7 @@ export function registerAiIpcHandlers(
   })
   ipcMain.handle('ai:memory-list', () => memoryStore.list())
   ipcMain.handle('ai:memory-add', async (_event, content: unknown) => {
-    if (typeof content !== 'string') {throw new Error('无效的记忆内容')}
+    if (typeof content !== 'string') {throw new TypeError('无效的记忆内容')}
     await memoryStore.add(content, 'user')
     return memoryStore.list()
   })

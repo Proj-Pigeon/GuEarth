@@ -3,7 +3,7 @@ import type { AiModelConfig, AiProviderConfig, AiProtocol, AiSearchProviderConfi
 import { defaultAiSettings, defaultSearchProviders } from '../../shared/aiSettings'
 
 const thinkingLevels = new Set<AiThinkingLevel>(['low', 'medium', 'high'])
-const protocols: AiProtocol[] = ['openai', 'anthropic']
+const protocols = new Set<AiProtocol>(['openai', 'anthropic'])
 const idPattern = /^[a-z0-9][a-z0-9_-]{0,63}$/i
 const maxModelsPerProvider = 256
 
@@ -37,7 +37,7 @@ function normalizeProvider(value: unknown): AiProviderConfig | null {
   const id = typeof value.id === 'string' && idPattern.test(value.id) ? value.id : ''
   if (!id) {return null}
   const name = typeof value.name === 'string' && value.name.trim() ? value.name.trim().slice(0, 80) : id
-  const protocol = protocols.includes(value.protocol as AiProtocol) ? value.protocol as AiProtocol : 'openai'
+  const protocol = protocols.has(value.protocol as AiProtocol) ? value.protocol as AiProtocol : 'openai'
   let baseUrl = typeof value.baseUrl === 'string' ? value.baseUrl.trim() : ''
   if (!baseUrl) {baseUrl = protocol === 'anthropic' ? 'https://api.anthropic.com' : ''}
   baseUrl = baseUrl.replace(/\/+$/, '').slice(0, 500)

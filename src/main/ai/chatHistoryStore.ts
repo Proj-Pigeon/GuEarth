@@ -140,7 +140,7 @@ interface RecoveryManifest {
 
 function sortedEntries(list: HistoryEntry[]): HistoryEntry[] {
   const unique = new Map<string, HistoryEntry>()
-  for (const item of list) {if (!unique.has(item.id)) unique.set(item.id, item)}
+  for (const item of list) {if (!unique.has(item.id)) {unique.set(item.id, item)}}
   return [...unique.values()].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_CONVERSATIONS)
 }
 
@@ -333,7 +333,7 @@ export class AiChatHistoryStore {
         throw error
       }
       await Promise.all(removed.map((item) => unlink(this.conversationPath(item.file)).catch(() => {})))
-      if (!next.some((item) => item.file === entry.file)) {await unlink(this.conversationPath(entry.file)).catch(() => undefined)}
+      if (!next.some((item) => item.file === entry.file)) {await unlink(this.conversationPath(entry.file)).catch(() => {})}
       return this.list()
     })
   }
@@ -347,7 +347,7 @@ export class AiChatHistoryStore {
       const removed = this.conversations.find((item) => item.id === id)
       const next = this.conversations.filter((item) => item.id !== id)
       await this.persistIndex(next)
-      if (removed) {await unlink(this.conversationPath(removed.file)).catch(() => undefined)}
+      if (removed) {await unlink(this.conversationPath(removed.file)).catch(() => {})}
       return this.list()
     })
   }

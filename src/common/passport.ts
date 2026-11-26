@@ -52,7 +52,7 @@ export function encodeBase64Url(bytes: Uint8Array): string {
       output += BASE64URL_ALPHABET[(accumulator >>> bits) & 0x3F]
     }
   }
-  if (bits > 0) {output += BASE64URL_ALPHABET[(accumulator << (6 - bits)) & 0x3f]}
+  if (bits > 0) {output += BASE64URL_ALPHABET[(accumulator << (6 - bits)) & 0x3F]}
   return output
 }
 

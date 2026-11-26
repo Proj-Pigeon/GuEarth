@@ -82,7 +82,7 @@ function toRingCartesians(points: [number, number][]): Cesium.Cartesian3[] {
 
 interface LabeledPolygonRegionSpec {
   properties: Cesium.PropertyBag
-  rings: Array<[number, number]>[]
+  rings: [number, number][][]
   color: Cesium.Color
   fillAlpha: number
   lineAlpha: number

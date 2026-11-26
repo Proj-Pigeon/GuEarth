@@ -251,7 +251,7 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
     onStepChangeRef.current?.(nextStep)
     await waitNextFrame()
     if ([6, 7, 8].includes(nextStep) || [6, 7, 8].includes(currentRef.current)) {
-      await new Promise((resolve) => window.setTimeout(resolve, 320))
+      await new Promise((resolve) => { window.setTimeout(resolve, 320) })
     }
     if (!unmountedRef.current) {
       currentRef.current = nextStep

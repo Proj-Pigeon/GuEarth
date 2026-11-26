@@ -6,9 +6,9 @@ import { cn } from '@renderer/lib/utils'
 export const CollapsibleRoot = forwardRef<
   ComponentRef<typeof Collapsible.Root>,
   ComponentPropsWithoutRef<typeof Collapsible.Root>
->((props, ref) => {
-  return <Collapsible.Root ref={ref} data-slot="collapsible" {...props} />
-})
+>((props, ref) => 
+  <Collapsible.Root ref={ref} data-slot="collapsible" {...props} />
+)
 
 export function CollapsibleTrigger({ className, ...props }: Collapsible.Trigger.Props) {
   return (

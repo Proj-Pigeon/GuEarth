@@ -45,7 +45,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
 
   useEffect(() => 
     () => {
-      if (copiedTimerRef.current !== undefined) clearTimeout(copiedTimerRef.current)
+      if (copiedTimerRef.current !== undefined) {clearTimeout(copiedTimerRef.current)}
     }
   , [])
 

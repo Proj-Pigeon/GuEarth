@@ -307,7 +307,7 @@ function settingsSnapshot(): GuEarthSettings {
 }
 
 function pathPart(value: number): string {
-  if (!Number.isInteger(value)) {throw new Error('无效的瓦片坐标')}
+  if (!Number.isInteger(value)) {throw new TypeError('无效的瓦片坐标')}
   return value < 0 ? `n${Math.abs(value)}` : String(value)
 }
 
@@ -868,7 +868,7 @@ function normalizeShape(value: unknown): StoredShape {
   if (!isRecord(value)) {throw new Error('无效的标注数据')}
   const id = safeId(value.id)
   if (value.kind !== 'point' && value.kind !== 'polyline' && value.kind !== 'polygon' && value.kind !== 'arrow' && value.kind !== 'text') {throw new Error('无效的标注类型')}
-  if (!Array.isArray(value.positions)) {throw new Error('无效的标注坐标')}
+  if (!Array.isArray(value.positions)) {throw new TypeError('无效的标注坐标')}
   const positions: GeoPosition[] = value.positions.map((item) => {
     if (!isRecord(item)) {throw new Error('无效的标注坐标')}
     const { longitude, latitude, height } = item
@@ -1175,15 +1175,15 @@ function registerIpcHandlers(): void {
       if (patch.selectedImageryProviderId !== undefined) {nextSettings.selectedImageryProviderId = safeId(patch.selectedImageryProviderId)}
       if (patch.selectedTerrainProviderId !== undefined) {nextSettings.selectedTerrainProviderId = safeId(patch.selectedTerrainProviderId)}
       if (patch.terrainExaggeration !== undefined) {
-        if (typeof patch.terrainExaggeration !== 'number' || !Number.isFinite(patch.terrainExaggeration)) {throw new Error('无效的地形夸张设置')}
+        if (typeof patch.terrainExaggeration !== 'number' || !Number.isFinite(patch.terrainExaggeration)) {throw new TypeError('无效的地形夸张设置')}
         nextSettings.terrainExaggeration = Math.min(5, Math.max(1, patch.terrainExaggeration))
       }
       if (patch.terrainLighting !== undefined) {
-        if (typeof patch.terrainLighting !== 'boolean') {throw new Error('无效的光照设置')}
+        if (typeof patch.terrainLighting !== 'boolean') {throw new TypeError('无效的光照设置')}
         nextSettings.terrainLighting = patch.terrainLighting
       }
       if (patch.tileCacheEnabled !== undefined) {
-        if (typeof patch.tileCacheEnabled !== 'boolean') {throw new Error('无效的缓存设置')}
+        if (typeof patch.tileCacheEnabled !== 'boolean') {throw new TypeError('无效的缓存设置')}
         nextSettings.tileCacheEnabled = patch.tileCacheEnabled
       }
       if (patch.tileMirrorMode !== undefined) {
@@ -1199,7 +1199,7 @@ function registerIpcHandlers(): void {
         nextSettings.tileMirrorSource = patch.tileMirrorSource
       }
       if (patch.mirrorConsentPrompted !== undefined) {
-        if (typeof patch.mirrorConsentPrompted !== 'boolean') {throw new Error('无效的镜像协议确认设置')}
+        if (typeof patch.mirrorConsentPrompted !== 'boolean') {throw new TypeError('无效的镜像协议确认设置')}
         nextSettings.mirrorConsentPrompted = patch.mirrorConsentPrompted
       }
       if (patch.touchInteractionMode !== undefined) {
@@ -1211,7 +1211,7 @@ function registerIpcHandlers(): void {
         nextSettings.themeMode = patch.themeMode
       }
       if (patch.networkProxy !== undefined) {
-        if (typeof patch.networkProxy !== 'string') {throw new Error('无效的代理设置')}
+        if (typeof patch.networkProxy !== 'string') {throw new TypeError('无效的代理设置')}
         const normalized = normalizeNetworkProxy(patch.networkProxy)
         if (normalized === '' && patch.networkProxy.trim() !== '') {throw new Error('无效的代理地址')}
         networkProxyChanged = normalized !== nextSettings.networkProxy
@@ -1226,19 +1226,19 @@ function registerIpcHandlers(): void {
         nextSettings.providerStyles = providerStyles
       }
       if (patch.setupGuideDismissed !== undefined) {
-        if (typeof patch.setupGuideDismissed !== 'boolean') {throw new Error('无效的向导设置')}
+        if (typeof patch.setupGuideDismissed !== 'boolean') {throw new TypeError('无效的向导设置')}
         nextSettings.setupGuideDismissed = patch.setupGuideDismissed
       }
       if (patch.errorReportingEnabled !== undefined) {
-        if (typeof patch.errorReportingEnabled !== 'boolean') {throw new Error('无效的错误报告设置')}
+        if (typeof patch.errorReportingEnabled !== 'boolean') {throw new TypeError('无效的错误报告设置')}
         nextSettings.errorReportingEnabled = patch.errorReportingEnabled
       }
       if (patch.telemetryEnabled !== undefined) {
-        if (typeof patch.telemetryEnabled !== 'boolean') {throw new Error('无效的遥测设置')}
+        if (typeof patch.telemetryEnabled !== 'boolean') {throw new TypeError('无效的遥测设置')}
         nextSettings.telemetryEnabled = patch.telemetryEnabled
       }
       if (patch.aiTelemetryEnabled !== undefined) {
-        if (typeof patch.aiTelemetryEnabled !== 'boolean') {throw new Error('无效的 AI 使用信息上报设置')}
+        if (typeof patch.aiTelemetryEnabled !== 'boolean') {throw new TypeError('无效的 AI 使用信息上报设置')}
         nextSettings.aiTelemetryEnabled = patch.aiTelemetryEnabled
       }
       return nextSettings
@@ -1297,7 +1297,7 @@ function registerIpcHandlers(): void {
       if (settings.tileMirrorMode === 'on' && settings.tileMirrorSource === 'auto') {
         void probeMirrorEndpoints('settings')
       }
-      if (tileMirrorModeChanged && tileMirrorModeNow === 'on') {void refreshEarthquakes().catch(() => undefined)}
+      if (tileMirrorModeChanged && tileMirrorModeNow === 'on') {void refreshEarthquakes().catch(() => {})}
     }
     return settingsSnapshot()
   })
@@ -1333,7 +1333,7 @@ function registerIpcHandlers(): void {
     }
   })
   ipcMain.handle('places:search', async (_event, keyword: unknown, provider: unknown) => {
-    if (typeof keyword !== 'string') {throw new Error('无效的搜索关键词')}
+    if (typeof keyword !== 'string') {throw new TypeError('无效的搜索关键词')}
     if (provider !== undefined && provider !== 'amap' && provider !== 'baidu') {throw new Error('无效的搜索源')}
     const preferred: PlaceSearchProvider = provider ?? (hasProviderKey('amap') ? 'amap' : hasProviderKey('baidu') ? 'baidu' : 'amap')
     const requestId = beginPlacesRequest()
@@ -1504,7 +1504,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle('recordings:offscreen-cancel', (): void => { cancelOffscreenRecording?.() })
   ipcMain.handle('recordings:offscreen-stats', (): OffscreenRecordingProbeResult => offscreenRecordingStats())
   ipcMain.handle('logging:copy-report', (_event, rendererDump: unknown): void => {
-    if (typeof rendererDump !== 'string') {throw new Error('无效的日志数据')}
+    if (typeof rendererDump !== 'string') {throw new TypeError('无效的日志数据')}
     clipboard.writeText([
       '=== 咕咕地球诊断日志 ===',
       `版本 ${app.getVersion()} | Electron ${process.versions.electron} | Chrome ${process.versions.chrome} | Node ${process.versions.node} | ${process.platform} ${process.getSystemVersion()}`,
@@ -1610,7 +1610,7 @@ async function startOffscreenRecordingWindow(script?: OffscreenRecordingScript):
       const serialized = JSON.stringify(script).replaceAll('<', String.raw`\u003c`)
       await window.webContents.executeJavaScript(`window.guEarthOffscreenRecorder.play(${serialized})`)
     } else {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => { setTimeout(resolve, 1000) })
     }
     const elapsed = Math.max(1, Date.now() - offscreenPaintStartedAt)
     return { fps: Math.round(offscreenPaintFrames * 1000 / elapsed), frames: offscreenPaintFrames }
@@ -1744,7 +1744,7 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
       stopOffscreenRecordingWindow()
       terminateOffscreenEncoder(ffmpeg)
       ffmpeg = null
-      if (tempDir) {void rm(tempDir, { recursive: true, force: true }).catch(() => undefined)}
+      if (tempDir) {void rm(tempDir, { recursive: true, force: true }).catch(() => {})}
     }
     const teardown = (): void => {
       const pending = !settled
@@ -1906,7 +1906,7 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
         '-t', recordingSeconds.toFixed(6), '-an', ...offscreenVideoEncoderArgs, '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-f', 'mp4', temporaryPath
       ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'], cwd: frameDirectory })
       ffmpeg = encoder
-      encoder.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk))
+      encoder.stderr?.on('data', (chunk: Buffer) => { stderr.push(chunk) })
       const code = await new Promise<number | null>((resolveClose, rejectClose) => {
         encoder.once('error', rejectClose)
         encoder.once('close', resolveClose)
@@ -2068,7 +2068,7 @@ app.whenReady().then(async () => {
     void probeMirrorEndpoints('startup', () => resolveReady?.()).finally(() => resolveReady?.())
     startupMirrorProbeReady = Promise.race([
       firstOrAllReady,
-      new Promise<void>((resolve) => setTimeout(resolve, STARTUP_MIRROR_PROBE_BUDGET_MS))
+      new Promise<void>((resolve) => { setTimeout(resolve, STARTUP_MIRROR_PROBE_BUDGET_MS) })
     ])
   }
   const legacyHistoryPath = join(userDataPath, 'ai-chat-history.json')
@@ -2147,7 +2147,7 @@ app.on('before-quit', (event) => {
   quitting = true
   void Promise.all([shutdownPosthog(), shutdownPosthogLogs()])
     .catch(() => {})
-    .finally(() => flushJsonWrites())
+    .then(() => flushJsonWrites())
     .then(() => eoqHawdb.close())
     .catch(() => {})
     .finally(() => app.quit())

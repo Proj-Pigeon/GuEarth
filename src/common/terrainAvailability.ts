@@ -68,7 +68,7 @@ export function attachOriginTerrainFallback<
       if (resolvedOrigin) {return resolvedOrigin.requestTileGeometry(x, y, level, request)}
       return getOriginProvider().then((origin) => {
         const fallbackAttempt = origin.requestTileGeometry(x, y, level, request)
-        if (!fallbackAttempt) {return Promise.reject(new Error('Origin terrain tile request deferred'))}
+        if (!fallbackAttempt) {throw new Error('Origin terrain tile request deferred');}
         return fallbackAttempt
       })
     }

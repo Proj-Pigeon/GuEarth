@@ -43,7 +43,7 @@ let session: OffscreenMacEncoderSession | null = null
 
 async function begin(config: OffscreenMacEncoderConfig): Promise<void> {
   if (session) {throw new Error('macOS 编码会话已在进行')}
-  if (typeof VideoEncoder === 'undefined') {throw new Error('当前系统缺少 H.264 视频编码器（VideoEncoder 不可用），无法录制视频')}
+  if (typeof VideoEncoder === 'undefined') {throw new TypeError('当前系统缺少 H.264 视频编码器（VideoEncoder 不可用），无法录制视频')}
   const support = await VideoEncoder.isConfigSupported({
     codec: OFFSCREEN_MAC_CODEC,
     width: config.width,

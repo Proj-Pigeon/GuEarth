@@ -212,7 +212,7 @@ function createCesiumViewerController(
     }
     entities.collectionChanged.addEventListener(listener)
     for (const entity of entities.values) {wrapEntityGraphics(entity)}
-    return () => entities.collectionChanged.removeEventListener(listener)
+    return () => { entities.collectionChanged.removeEventListener(listener) }
   }
 
   function handleDataSourceAdded(_collection: Cesium.DataSourceCollection, dataSource: Cesium.DataSource): void {
@@ -452,7 +452,7 @@ function createCesiumViewerController(
       imagery: currentViewer.scene.globe.tilesLoaded && Boolean(activeLayer && !activeLayer.isDestroyed() && activeLayer.show && activeLayer.ready)
     })
     try {
-      const surface = (currentViewer.scene.globe as unknown as { _surface?: { _tilesToRender?: { data?: { renderedMesh?: unknown; terrainState?: number; imagery?: Array<{ useWebMercatorT?: boolean; readyImagery?: { imageryLayer?: Cesium.ImageryLayer; texture?: unknown; textureWebMercator?: unknown } }> } }[] } })._surface
+      const surface = (currentViewer.scene.globe as unknown as { _surface?: { _tilesToRender?: { data?: { renderedMesh?: unknown; terrainState?: number; imagery?: { useWebMercatorT?: boolean; readyImagery?: { imageryLayer?: Cesium.ImageryLayer; texture?: unknown; textureWebMercator?: unknown } }[] } }[] } })._surface
       const tiles = surface?._tilesToRender
       if (!Array.isArray(tiles)) {return fallback()}
       let terrain = false
@@ -1190,7 +1190,7 @@ function createCesiumViewerController(
         flyToOrientation()
       }
       currentViewer.scene.morphComplete.addEventListener(morphComplete)
-      currentViewer.scene.morphTo3D(1.0)
+      currentViewer.scene.morphTo3D(1)
       useGlobeStore.getState().setSceneMode('3D')
     }
   }

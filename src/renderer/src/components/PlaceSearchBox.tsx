@@ -169,7 +169,7 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
 
   useEffect(() => 
     () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+      if (debounceTimerRef.current) {clearTimeout(debounceTimerRef.current)}
       requestSeqRef.current += 1
     }
   , [])

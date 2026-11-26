@@ -95,7 +95,7 @@ test('Anthropic import follows after_id cursor pagination', async () => {
   const urls = []
   const importer = loadImporter((url) => {
     urls.push(url)
-    if (url === 'https://models.dev/api.json') {return response({ anthropic: { id: 'anthropic', name: 'Anthropic', models: { 'claude-1': { id: 'claude-1', name: 'Claude 1', reasoning: false, limit: { context: 10000 } }, 'claude-2': { id: 'claude-2', name: 'Claude 2', reasoning: false, limit: { context: 20000 } } } } })}
+    if (url === 'https://models.dev/api.json') {return response({ anthropic: { id: 'anthropic', name: 'Anthropic', models: { 'claude-1': { id: 'claude-1', name: 'Claude 1', reasoning: false, limit: { context: 10_000 } }, 'claude-2': { id: 'claude-2', name: 'Claude 2', reasoning: false, limit: { context: 20_000 } } } } })}
     if (url === 'https://api.anthropic.com/v1/models') {return response({ data: [{ id: 'claude-1' }], has_more: true, last_id: 'claude-1' })}
     return response({ data: [{ id: 'claude-2' }], has_more: false, last_id: 'claude-2' })
   })

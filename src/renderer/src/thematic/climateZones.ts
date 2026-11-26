@@ -1,7 +1,7 @@
 export interface ClimateZone {
   name: string
   color: string
-  rings: Array<[number, number]>[]
+  rings: [number, number][][]
   labelAt: [number, number]
 }
 

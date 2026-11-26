@@ -29,7 +29,7 @@ export function tileRetryDelayMs(attempt: number, baseDelayMs = TILE_RETRY_BASE_
 }
 
 function defaultSleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => { setTimeout(resolve, ms) })
 }
 
 function normalizeRetryAttempts(attempts: number | undefined): number {

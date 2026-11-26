@@ -514,7 +514,7 @@ export function registerGlobeTools(bridge: GlobeToolsBridge): void {
       }
       const loadStart = Date.now()
       while (!current.scene.globe.tilesLoaded && Date.now() - loadStart < 3000) {
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await new Promise((resolve) => { setTimeout(resolve, 100) })
       }
       const scale = Math.min(1, 1280 / Math.max(canvas.width, canvas.height))
       const offscreen = document.createElement('canvas')

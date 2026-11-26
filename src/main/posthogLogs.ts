@@ -81,7 +81,7 @@ export function setPosthogLogsEnabled(enabled: boolean): void {
     const activeProvider = provider
     provider = null
     posthogLogger = null
-    if (activeProvider) {void activeProvider.shutdown().catch(() => undefined)}
+    if (activeProvider) {void activeProvider.shutdown().catch(() => {})}
     return
   }
   ensureLogger()

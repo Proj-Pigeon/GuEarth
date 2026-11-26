@@ -161,7 +161,7 @@ function cloneContextStats(stats: AiContextStats): AiContextStats {
 }
 
 function formatContextTokens(tokens: number): string {
-  if (tokens < 1000) {return `${Math.max(0.1, tokens / 1_000).toFixed(1)}k`}
+  if (tokens < 1000) {return `${Math.max(0.1, tokens / 1000).toFixed(1)}k`}
   return `${(tokens / 1000).toFixed(tokens >= 10_000 ? 0 : 1)}k`
 }
 

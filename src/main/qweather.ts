@@ -99,8 +99,8 @@ export async function fetchTyphoonFeed(credentials: QWeatherCredentials, cancell
     if (code === '204') {return { storm: [], forecast: [] }}
     if (code !== '200') {throw apiError(code)}
     if (isRecord(data.refer)) {
-      strings(data.refer.sources).forEach((source) => sources.add(source))
-      strings(data.refer.license).forEach((item) => license.add(item))
+      strings(data.refer.sources).forEach((source) => { sources.add(source) })
+      strings(data.refer.license).forEach((item) => { license.add(item) })
     }
     return data
   }

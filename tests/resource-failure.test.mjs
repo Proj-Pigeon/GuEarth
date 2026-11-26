@@ -48,7 +48,7 @@ test('a throwing tile pipeline settles into a 502 response so the protocol handl
     async () => {
       throw new Error('nativeImage decode failed')
     },
-    (error) => failures.push(error)
+    (error) => { failures.push(error) }
   )
   assert.equal(response.status, TILE_FAILURE_STATUS)
   assert.equal(await response.text(), 'Tile unavailable')

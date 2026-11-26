@@ -315,7 +315,7 @@ export function EoqMessages({ onSubmitPrompt }: EoqMessagesProps) {
 
   useEffect(() => 
     () => {
-      if (copiedTimerRef.current !== undefined) clearTimeout(copiedTimerRef.current)
+      if (copiedTimerRef.current !== undefined) {clearTimeout(copiedTimerRef.current)}
     }
   , [])
 

@@ -157,7 +157,7 @@ test('thematic sources clean up across viewer changes, delayed additions and unm
   const pendingFeeds = []
   dom.window.guEarth = {
     datasets: {
-      getEarthquakes: () => new Promise((resolveFeed) => pendingFeeds.push(resolveFeed)),
+      getEarthquakes: () => new Promise((resolveFeed) => { pendingFeeds.push(resolveFeed) }),
       getOnlineData: async () => ({ revision: 1, earthquakes: null, earthquakeError: '', typhoons: null, typhoonError: '', typhoonConfigured: false, typhoonStatus: 'unconfigured' }),
       onOnlineData: () => () => {}
     }
@@ -174,7 +174,7 @@ test('thematic sources clean up across viewer changes, delayed additions and unm
   const second = makeViewer()
   const added = []
   const originalAdd = first.dataSources.add.bind(first.dataSources)
-  first.dataSources.add = (source) => new Promise((resolveAdd) => added.push(async () => resolveAdd(await originalAdd(source))))
+  first.dataSources.add = (source) => new Promise((resolveAdd) => { added.push(async () => resolveAdd(await originalAdd(source))) })
 
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
@@ -324,7 +324,7 @@ test('typhoon layers fetch newly configured data on demand and ignore obsolete I
     datasets: {
       getOnlineData: () => new Promise((resolveData) => { resolveInitial = resolveData }),
       onOnlineData: (listener) => { notify = listener; return () => { unsubscribed = true } },
-      ensureTyphoons: () => new Promise((resolveTyphoons) => requests.push(resolveTyphoons))
+      ensureTyphoons: () => new Promise((resolveTyphoons) => { requests.push(resolveTyphoons) })
     }
   }
   resetClimateStore()

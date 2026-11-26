@@ -64,7 +64,7 @@ export const EoqIconButton = forwardRef<HTMLButtonElement, EoqIconButtonProps>(
       </button>
     )
 
-    if (!tooltip) return button
+    if (!tooltip) {return button}
 
     return (
       <Tooltip title={tooltip} placement={tooltipPlacement}>

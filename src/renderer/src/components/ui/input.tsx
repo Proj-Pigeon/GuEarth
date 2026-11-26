@@ -48,7 +48,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>((
   }
 
   const handleClear = () => {
-    if (!onChange) return
+    if (!onChange) {return}
     const synthetic = {
       target: { value: '' },
       currentTarget: { value: '' }
@@ -150,7 +150,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>((
       />
       {showCount && (
         <span className="mt-1 self-end font-mono text-[11px] leading-4 text-ink-tertiary">
-          {maxLength !== undefined ? `${currentLength} / ${maxLength}` : currentLength}
+          {maxLength === undefined ? currentLength : `${currentLength} / ${maxLength}`}
         </span>
       )}
     </div>

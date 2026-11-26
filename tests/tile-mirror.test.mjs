@@ -577,7 +577,7 @@ test('globeStore syncs mirror mode back to actual status when consent persistenc
   assert.equal(store().mirrorConsentOpen, false)
   assert.equal(store().mirrorConsentPrompted, true)
 
-  await new Promise((resolve) => setTimeout(resolve, 0))
+  await new Promise((resolve) => { setTimeout(resolve, 0) })
   assert.equal(store().tileMirrorMode, 'off')
   assert.deepEqual(store().mirroredProviders, [])
   assert.equal(failureStore().degradations.length, 1)
@@ -811,7 +811,7 @@ test('globeStore hydrates, persists, and rolls back tileMirrorSource and applies
   failUpdates = true
   store().setTileMirrorSource('cloudflare')
   assert.equal(store().tileMirrorSource, 'cloudflare')
-  await new Promise((resolve) => setTimeout(resolve, 0))
+  await new Promise((resolve) => { setTimeout(resolve, 0) })
   assert.equal(store().tileMirrorSource, 'auto')
   assert.equal(store().activeMirrorEndpoint, 'edgeone')
 })
@@ -1005,7 +1005,7 @@ test('globeStore preserves pending tileMirrorSource across stale broadcasts and 
   assert.equal(updates[1].selectedTerrainProviderId, 'cesium-world-terrain')
 
   resolveSourceSave()
-  await new Promise((resolve) => setTimeout(resolve, 0))
+  await new Promise((resolve) => { setTimeout(resolve, 0) })
   assert.equal(store().tileMirrorSource, 'cloudflare')
 
   store().applyTileMirrorStatus({

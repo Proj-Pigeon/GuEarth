@@ -470,7 +470,7 @@ export class MirrorEndpointManager {
     this.failedAt.clear()
     if (preference === 'auto') {
       const probes = this.getProbeResults()
-      if (probes.length > 0) this.active = selectBestMirrorEndpoint(probes, this.active)
+      if (probes.length > 0) {this.active = selectBestMirrorEndpoint(probes, this.active)}
     } else {
       this.active = preference
     }

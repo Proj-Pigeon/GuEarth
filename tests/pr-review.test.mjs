@@ -52,7 +52,7 @@ test('cache quota includes metadata and evicts complete oldest pairs', async (t)
   for (const name of ['old', 'new']) {
     await writeFile(join(path, `${name}.bin`), Buffer.alloc(10))
     await writeFile(join(path, `${name}.json`), Buffer.alloc(10))
-    if (name === 'old') {for (const extension of ['bin', 'json']) await utimes(join(path, `${name}.${extension}`), 1, 1)}
+    if (name === 'old') {for (const extension of ['bin', 'json']) {await utimes(join(path, `${name}.${extension}`), 1, 1)}}
   }
   assert.equal((await listTileFiles(path)).reduce((sum, file) => sum + file.size, 0), 40)
   assert.equal(await pruneTileFiles(path, 20), 20)

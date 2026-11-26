@@ -90,8 +90,8 @@ async function fetchText(url: string, init: RequestInit): Promise<string> {
     if (!response.ok) {throw new Error(`模型列表请求失败（HTTP ${response.status}）`)}
     return body
   } catch (error) {
-    if (error instanceof ResponseTooLargeError) throw error
-    if (timedOut || controller.signal.aborted) throw new Error('模型列表请求超时', { cause: error })
+    if (error instanceof ResponseTooLargeError) {throw error}
+    if (timedOut || controller.signal.aborted) {throw new Error('模型列表请求超时', { cause: error })}
     throw error instanceof Error ? error : new Error('模型列表请求失败')
   } finally {
     clearTimeout(timer)
@@ -104,13 +104,13 @@ function parseJson(body: string): Record<string, unknown> {
     if (!isRecord(value)) {throw new Error('响应格式错误')}
     return value
   } catch (error) {
-    if (error instanceof Error && error.message === '响应格式错误') throw error
+    if (error instanceof Error && error.message === '响应格式错误') {throw error}
     throw new Error('模型列表响应不是有效 JSON', { cause: error })
   }
 }
 
 function modelIds(payload: Record<string, unknown>): string[] {
-  if (!Array.isArray(payload.data)) {throw new Error('模型列表响应缺少 data 数组')}
+  if (!Array.isArray(payload.data)) {throw new TypeError('模型列表响应缺少 data 数组')}
   const seen = new Set<string>()
   const ids: string[] = []
   for (const item of payload.data) {
@@ -371,7 +371,7 @@ export async function importModels(value: unknown): Promise<AiModelImportResult>
   const idsPromise = request.ids === undefined
     ? (() => {
         const apiKey = readProviderKey(`ai-${provider.id}`)
-        if (!apiKey) return Promise.reject(new Error(`未配置「${provider.name}」的 API Key，请先保存 API Key`))
+        if (!apiKey) {return Promise.reject(new Error(`未配置「${provider.name}」的 API Key，请先保存 API Key`))}
         return fetchProviderIds(provider, apiKey)
       })()
     : Promise.resolve(request.ids)

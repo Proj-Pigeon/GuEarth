@@ -133,7 +133,7 @@ export function Modal({
                     disabled={okDisabled}
                     loading={confirmLoading}
                     onClick={() => {
-                      void runGuardedAction(onOk, (message) => appToast.error(message))
+                      void runGuardedAction(onOk, (message) => { appToast.error(message) })
                     }}
                   >
                     {okText}

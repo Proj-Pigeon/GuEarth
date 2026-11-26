@@ -308,7 +308,7 @@ test('shutdown flush waits for queued operations after an earlier failure', asyn
   const rejected = enqueue(async () => { throw new Error('failed') })
   await assert.rejects(rejected)
   const saved = enqueue(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    await new Promise((resolve) => { setTimeout(resolve, 10) })
     order.push('saved')
   })
   await flushJsonWrites()

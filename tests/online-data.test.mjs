@@ -178,7 +178,7 @@ test('QWeather skips all network requests when the external signal is already ab
 test('one overall deadline bounds startup instead of multiplying timeout per storm', async () => {
   const controller = new AbortController()
   const durations = []
-  const api = weather((_url, { signal }) => new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true })), {
+  const api = weather((_url, { signal }) => new Promise((_resolve, reject) => { signal.addEventListener('abort', () => reject(signal.reason), { once: true }) }), {
     AbortSignal: { any: AbortSignal.any.bind(AbortSignal), timeout: (ms) => { durations.push(ms); return controller.signal } }
   })
   const fetching = api.fetchTyphoonFeed(credentials)

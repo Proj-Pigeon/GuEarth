@@ -110,7 +110,7 @@ test('software renderers are recognized from the Basic Render Driver string', ()
   assert.equal(shouldUseSoftwareMsaaWorkaround('llvmpipe (LLVM 15.0.7, 256 bits)'), true)
   assert.equal(shouldUseSoftwareMsaaWorkaround('NVIDIA GeForce RTX 3070 Laptop GPU'), false)
   const gl = {
-    RENDERER: 0x1f_01,
+    RENDERER: 0x1F_01,
     getExtension(name) {
       assert.equal(name, 'WEBGL_debug_renderer_info')
       return { UNMASKED_RENDERER_WEBGL: 0x92_46 }
