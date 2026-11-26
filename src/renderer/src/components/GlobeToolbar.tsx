@@ -193,7 +193,7 @@ export function GlobeToolbar({
         {updateVisible && (
           <Tooltip title={updateTooltip} placement="top">
             {updateStatus === 'available' ? (
-              <Badge dot>
+              <Badge dot tone="info">
                 <Button
                   className={styles.toolbarCircle}
                   variant="default"

@@ -40,6 +40,7 @@
   --destructive-foreground: #ffffff;
   --warning: #d97706;
   --success: #16a34a;
+  --info: #2563eb;
   --radius: 10px;
   --shadow-panel: 0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-popup: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
@@ -86,6 +87,7 @@
   --destructive-foreground: #ffffff;
   --warning: #f59e0b;
   --success: #22c55e;
+  --info: #60a5fa;
   --shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.42), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-popup: 0 10px 30px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
   --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.62), 0 6px 18px rgba(0, 0, 0, 0.4);
@@ -130,6 +132,7 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);
   --color-success: var(--success);
+  --color-info: var(--info);
   --animate-eoq-fade-up: eoq-fade-up 0.2s cubic-bezier(0.23, 1, 0.32, 1) both;
   --animate-eoq-pop: eoq-pop 0.16s cubic-bezier(0.23, 1, 0.32, 1) both;
 }

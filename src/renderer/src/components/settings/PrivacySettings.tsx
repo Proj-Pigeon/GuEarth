@@ -81,7 +81,7 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
               <div className={styles.settingCopy}>
                 <div className={styles.settingTitleRow}>
                   <span className={styles.settingTitle}>{item.title}</span>
-                  <Tag tone={enabled ? 'outline' : 'neutral'}>{enabled ? '已开启' : '已关闭'}</Tag>
+                  <Tag tone={enabled ? 'info' : 'neutral'}>{enabled ? '已开启' : '已关闭'}</Tag>
                 </div>
                 <p className={styles.settingDesc}>{item.summary}</p>
               </div>

@@ -1,7 +1,7 @@
 export { Accordion, type AccordionItemConfig, type AccordionProps } from './accordion'
 export { Alert, type AlertProps, type AlertType } from './alert'
 export { Avatar, type AvatarProps } from './avatar'
-export { Badge, type BadgeProps } from './badge'
+export { Badge, type BadgeProps, type BadgeTone } from './badge'
 export { Button, type ButtonProps } from './button'
 export { Checkbox, type CheckboxProps } from './checkbox'
 export {

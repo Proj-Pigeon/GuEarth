@@ -19,10 +19,18 @@
   pointer-events: auto;
 }
 
+.failureAlert[data-alert-type='warning'] {
+  background: color-mix(in srgb, var(--warning) 10%, var(--elevated));
+}
+
+.failureAlert[data-alert-type='error'] {
+  background: color-mix(in srgb, var(--destructive) 9%, var(--elevated));
+}
+
 .failureText {
   display: block;
   overflow: hidden;
-  color: var(--ink);
+  color: inherit;
   font-size: 13px;
   line-height: 20px;
   text-overflow: ellipsis;

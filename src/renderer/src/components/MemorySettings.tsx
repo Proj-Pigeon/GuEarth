@@ -134,7 +134,7 @@ export function MemorySettings({ active }: MemorySettingsProps) {
                 <div className={styles.memoryItemBody}>
                   <p className={styles.memoryItemContent}>{memory.content}</p>
                   <div className={styles.memoryItemMeta}>
-                    <Tag tone={memory.source === 'agent' ? 'outline' : 'neutral'}>
+                    <Tag tone={memory.source === 'agent' ? 'info' : 'neutral'}>
                       {memory.source === 'agent' ? '助手保存' : '手动添加'}
                     </Tag>
                     <span className={styles.memoryItemTime}>{formatTime(memory.createdAt)}</span>

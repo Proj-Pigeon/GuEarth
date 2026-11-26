@@ -25,6 +25,7 @@ colors:
     destructive: '#dc2626'
     warning: '#d97706'
     success: '#16a34a'
+    info: '#2563eb'
   dark:
     background: '#171717'
     surface: '#171717'
@@ -47,6 +48,7 @@ colors:
     destructive: '#ef4444'
     warning: '#f59e0b'
     success: '#22c55e'
+    info: '#60a5fa'
 typography:
   heading-lg:
     fontSize: '20px'
@@ -105,7 +107,7 @@ The active resolved theme toggles `.dark` on `document.documentElement`. All CSS
 
 UI chrome is strictly monochrome. Semantic colors appear **only** in two places:
 
-1. **Status feedback**: `--destructive` (errors, destructive confirmations), `--warning` (degraded terrain/cache notices), and `--success` (verified credentials, saved indicators) — always paired with text or icons.
+1. **Status feedback**: `--destructive` (errors, destructive confirmations), `--warning` (degraded terrain/cache notices, unsaved changes, mirror fallbacks), `--success` (verified credentials, active mirror acceleration, saved indicators), and `--info` (active toggles, in-progress states, live informational notices) — always paired with text or icons. Passive helper notices (`Alert type="neutral"`) and static category tags (`Tag tone="neutral"`) stay monochrome.
 2. **Scientific geography encodings**: Cesium thematic layers, legends, SVG physics diagrams (`diagramTheme.ts`), and ECharts data series (warm/cold fronts, ocean currents, Köppen zones, SST anomalies, elevation/population ramps, age pyramids). Neutral diagram axes, strokes, gridlines, and ECharts tooltips adapt dynamically to Light and Dark themes.
 
 ## Base UI Primitives (`src/renderer/src/components/ui/`)

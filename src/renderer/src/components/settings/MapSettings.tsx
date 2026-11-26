@@ -111,7 +111,13 @@ export function MapSettings(_props: MapSettingsProps) {
     tileMirrorEnabled &&
     mirrorFallenBackProviders.length > 0 &&
     (mirrorFallenBackProviders.includes(selectedLayerId) || mirroredProviders.length === 0)
-  const tileMirrorStatusTone = tileMirrorFallenBack ? 'warning' : tileMirrorRouteActive ? 'outline' : 'neutral'
+  const tileMirrorStatusTone = tileMirrorFallenBack
+    ? 'warning'
+    : tileMirrorRouteActive
+      ? mirrorProbingEndpoints
+        ? 'info'
+        : 'success'
+      : 'neutral'
   const tileMirrorStatusLabel = tileMirrorFallenBack
     ? '镜像异常，已回退直连'
     : tileMirrorRouteActive
@@ -339,7 +345,7 @@ export function MapSettings(_props: MapSettingsProps) {
           )}
           {supportsSecurityKey && !requiresSecurityKey && (
             <Alert
-              type="info"
+              type="neutral"
               title={
                 credentialProviderId === 'amap'
                   ? '仅在高德控制台开启数字签名时填写签名私钥'
@@ -489,7 +495,7 @@ export function MapSettings(_props: MapSettingsProps) {
             <div className={styles.settingTitleRow}>
               <span className={styles.settingTitle}>触摸操作</span>
               {touchInteractionMode !== 'off' && (
-                <Tag tone={touchInteractionActive ? 'outline' : 'neutral'}>
+                <Tag tone={touchInteractionActive ? 'info' : 'neutral'}>
                   {touchInteractionActive ? '触摸交互已启用' : '未检测到触摸设备'}
                 </Tag>
               )}

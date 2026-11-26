@@ -1234,7 +1234,7 @@ export function AiSettingsSection({
         <div className={styles.importSummary}>
           <Alert
             className="min-w-0 flex-1"
-            type="info"
+            type="neutral"
             showIcon
             title={
               importMatching

@@ -41,7 +41,7 @@ function ToastToneIcon({ tone }: { tone: ToastTone }) {
   if (tone === 'success') return <CheckCircle2Icon className="size-4 shrink-0 text-success" aria-hidden="true" />
   if (tone === 'warning') return <AlertTriangleIcon className="size-4 shrink-0 text-warning" aria-hidden="true" />
   if (tone === 'error') return <XCircleIcon className="size-4 shrink-0 text-destructive" aria-hidden="true" />
-  return <InfoIcon className="size-4 shrink-0 text-ink-secondary" aria-hidden="true" />
+  return <InfoIcon className="size-4 shrink-0 text-info" aria-hidden="true" />
 }
 
 function ToastList() {

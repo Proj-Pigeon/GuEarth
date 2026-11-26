@@ -146,7 +146,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
                   <span className={styles.settingTitle}>
                     {phase === 'finalizing' ? '正在完成登录' : '等待浏览器确认'}
                   </span>
-                  <Tag tone={challengeExpired ? 'error' : 'neutral'}>
+                  <Tag tone={challengeExpired ? 'error' : 'info'}>
                     {challengeExpired ? '已超时' : `剩余 ${remainingText}`}
                   </Tag>
                 </div>
