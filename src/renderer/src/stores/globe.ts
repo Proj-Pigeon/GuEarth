@@ -235,8 +235,22 @@ function detectTouchEnvironment(): TouchEnvironment {
 
 let touchEnvironment: TouchEnvironment = detectTouchEnvironment()
 
+function readInitialTheme(): { themeMode: ThemeMode; resolvedTheme: ResolvedTheme } {
+  const boot = typeof window !== 'undefined' ? window.guEarth?.initialTheme : undefined
+  if (boot) {
+    const themeMode = normalizeThemeMode(boot.themeMode)
+    const resolvedTheme: ResolvedTheme =
+      boot.resolvedTheme === 'dark' || boot.resolvedTheme === 'light'
+        ? boot.resolvedTheme
+        : resolveTheme(themeMode, detectSystemPrefersDark())
+    return { themeMode, resolvedTheme }
+  }
+  return { themeMode: 'light', resolvedTheme: resolveTheme('light', detectSystemPrefersDark()) }
+}
+
 export function createInitialGlobeState(): GlobeState {
   touchEnvironment = detectTouchEnvironment()
+  const initialTheme = readInitialTheme()
   return {
     layers: defaultLayers.map((layer) => ({ ...layer })),
     selectedLayerId: 'osm',
@@ -261,8 +275,8 @@ export function createInitialGlobeState(): GlobeState {
     networkProxy: '',
     touchInteractionMode: 'auto',
     touchInteractionActive: resolveTouchInteractionActive('auto', touchEnvironment),
-    themeMode: 'light',
-    resolvedTheme: resolveTheme('light', detectSystemPrefersDark()),
+    themeMode: initialTheme.themeMode,
+    resolvedTheme: initialTheme.resolvedTheme,
     providerCredentials: {},
     isLayerPanelOpen: false,
     isGlobeReady: false,

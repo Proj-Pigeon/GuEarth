@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import {
   ChevronRightIcon,
   FolderIcon,
@@ -24,6 +24,7 @@ import {
   useConfirm,
   useToast
 } from '@renderer/components/ui'
+import { flattenVisibleTree, resolveTreeKeyAction, type TreeNavNode } from '@renderer/lib/treeNavigation'
 import type { AnnotationEntry } from '../../../preload'
 import { useDrawingStore, type DrawnShape } from '@renderer/stores/drawing'
 import styles from './AnnotationPanel.module.css'
@@ -91,8 +92,10 @@ export function AnnotationPanel({
   const [folderName, setFolderName] = useState('')
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
   const [selectedEntryKey, setSelectedEntryKey] = useState<string | null>(null)
+  const [focusedKey, setFocusedKey] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dropHint, setDropHint] = useState<{ key: string; placement: DropPlacement } | null>(null)
+  const treeItemRefs = useRef(new Map<string, HTMLDivElement>())
 
   const treeData = useMemo<AnnotationTreeNode[]>(() => {
     const shapesById = new Map(shapes.map((shape, index) => [shape.id, { shape, index }]))
@@ -121,6 +124,35 @@ export function AnnotationPanel({
 
   const expandedSet = useMemo(() => new Set(expandedKeys), [expandedKeys])
   const activeKey = selectedEntryKey ?? (selectedShapeId ? `shape:${selectedShapeId}` : null)
+
+  const visibleItems = useMemo(() => {
+    const toNavNode = (node: AnnotationTreeNode): TreeNavNode => ({
+      key: node.key,
+      isFolder: node.nodeType === 'folder',
+      children: node.children?.map(toNavNode)
+    })
+    return flattenVisibleTree(treeData.map(toNavNode), expandedSet)
+  }, [treeData, expandedSet])
+
+  const visibleKeySet = useMemo(() => new Set(visibleItems.map((item) => item.key)), [visibleItems])
+  const rovingKey =
+    (focusedKey && visibleKeySet.has(focusedKey) ? focusedKey : null) ??
+    (activeKey && visibleKeySet.has(activeKey) ? activeKey : null) ??
+    visibleItems[0]?.key ??
+    null
+
+  function focusTreeItem(key: string): void {
+    setFocusedKey(key)
+    treeItemRefs.current.get(key)?.focus()
+  }
+
+  function expandKey(key: string): void {
+    setExpandedKeys((previous) => (previous.includes(key) ? previous : [...previous, key]))
+  }
+
+  function collapseKey(key: string): void {
+    setExpandedKeys((previous) => previous.filter((item) => item !== key))
+  }
 
   function toggleExpand(key: string): void {
     setExpandedKeys((previous) =>
@@ -227,12 +259,39 @@ export function AnnotationPanel({
 
   function selectNode(node: AnnotationTreeNode): void {
     setSelectedEntryKey(node.key)
+    setFocusedKey(node.key)
     if (node.nodeType === 'shape') onFly(node.entryId)
     else toggleExpand(node.key)
   }
 
+  function handleTreeKeyDown(event: KeyboardEvent<HTMLDivElement>, node: AnnotationTreeNode): void {
+    if (event.target !== event.currentTarget) return
+    const action = resolveTreeKeyAction(event.key, node.key, visibleItems, expandedSet)
+    if (
+      action ||
+      event.key === 'ArrowDown' ||
+      event.key === 'ArrowUp' ||
+      event.key === 'ArrowRight' ||
+      event.key === 'ArrowLeft' ||
+      event.key === 'Home' ||
+      event.key === 'End'
+    ) {
+      event.preventDefault()
+    }
+    if (!action) return
+    if (action.type === 'focus') {
+      focusTreeItem(action.key)
+    } else if (action.type === 'expand') {
+      expandKey(action.key)
+    } else if (action.type === 'collapse') {
+      collapseKey(action.key)
+    } else if (action.type === 'activate') {
+      selectNode(node)
+    }
+  }
+
   function renderNodes(nodes: AnnotationTreeNode[], depth: number): ReactNode {
-    return nodes.map((node) => {
+    return nodes.map((node, index) => {
       const expanded = node.nodeType === 'folder' && expandedSet.has(node.key)
       const selected = activeKey === node.key
       const hint = dropHint?.key === node.key ? dropHint.placement : null
@@ -241,12 +300,28 @@ export function AnnotationPanel({
         : styles.rowActions
 
       return (
-        <div key={node.key} className={styles.treeNodeWrap}>
+        <div
+          key={node.key}
+          ref={(element) => {
+            if (element) treeItemRefs.current.set(node.key, element)
+            else treeItemRefs.current.delete(node.key)
+          }}
+          role="treeitem"
+          aria-level={depth + 1}
+          aria-setsize={nodes.length}
+          aria-posinset={index + 1}
+          aria-selected={selected}
+          aria-expanded={node.nodeType === 'folder' ? expanded : undefined}
+          aria-label={node.title}
+          tabIndex={node.key === rovingKey ? 0 : -1}
+          className={styles.treeNodeWrap}
+          onFocus={(event) => {
+            if (event.target === event.currentTarget) setFocusedKey(node.key)
+          }}
+          onKeyDown={(event) => handleTreeKeyDown(event, node)}
+        >
           <div
             draggable
-            role="treeitem"
-            aria-selected={selected}
-            aria-expanded={node.nodeType === 'folder' ? expanded : undefined}
             style={{ paddingLeft: `${8 + depth * 18}px` }}
             className={[
               styles.treeRow,
@@ -281,6 +356,7 @@ export function AnnotationPanel({
             {node.nodeType === 'folder' ? (
               <button
                 type="button"
+                tabIndex={-1}
                 aria-label={expanded ? '收起文件夹' : '展开文件夹'}
                 className={styles.expandToggle}
                 onClick={(event) => {

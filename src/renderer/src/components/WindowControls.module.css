@@ -1,13 +1,24 @@
 .dragStrip {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 28px;
+  top: 6px;
+  left: 16px;
+  right: 16px;
+  height: 22px;
   z-index: 5;
   -webkit-app-region: drag;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.dragStripMaximized {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+}
+
+.dragStripDarwin {
+  left: 84px;
 }
 
 .controlsPill {

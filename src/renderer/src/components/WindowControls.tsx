@@ -24,11 +24,11 @@ function RestoreIcon() {
 }
 
 export function WindowControls() {
-  const [state, setState] = useState<WindowControlsState>({
+  const [state, setState] = useState<WindowControlsState>(() => ({
     maximized: false,
     fullScreen: false,
-    platform: ''
-  })
+    platform: window.guEarth?.platform ?? ''
+  }))
 
   useEffect(() => {
     const api = window.guEarth?.windowControls
@@ -46,8 +46,17 @@ export function WindowControls() {
     }
   }, [])
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.documentElement.dataset.fullscreen = state.fullScreen ? 'true' : 'false'
+    return () => {
+      delete document.documentElement.dataset.fullscreen
+    }
+  }, [state.fullScreen])
+
   if (!window.guEarth?.windowControls) return null
 
+  const isMac = state.platform === 'darwin'
   const expanded = state.maximized || state.fullScreen
 
   function handleMinimize(): void {
@@ -62,13 +71,17 @@ export function WindowControls() {
     void window.guEarth.windowControls.close()
   }
 
+  const dragStripClass = [
+    styles.dragStrip,
+    expanded ? styles.dragStripMaximized : '',
+    isMac && !state.fullScreen ? styles.dragStripDarwin : ''
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   const controlsPill = (
     <div className={styles.controlsPill} role="toolbar" aria-label="窗口控制">
-      <div
-        className={styles.dragHandle}
-        title="拖动窗口"
-        onDoubleClick={handleToggleMaximize}
-      >
+      <div className={styles.dragHandle} title="拖动窗口">
         <GripHorizontalIcon className="size-3.5" aria-hidden="true" />
       </div>
       <button
@@ -103,12 +116,8 @@ export function WindowControls() {
 
   return (
     <>
-      <div
-        className={styles.dragStrip}
-        aria-hidden="true"
-        onDoubleClick={handleToggleMaximize}
-      />
-      {typeof document !== 'undefined' ? createPortal(controlsPill, document.body) : null}
+      <div className={dragStripClass} aria-hidden="true" />
+      {!isMac && typeof document !== 'undefined' ? createPortal(controlsPill, document.body) : null}
     </>
   )
 }

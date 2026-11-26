@@ -11,7 +11,10 @@ import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { XIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { runGuardedAction } from './actionError'
+import { Alert } from './alert'
 import { Button } from './button'
+import { appToast } from './toast'
 
 export interface ModalProps {
   open: boolean
@@ -138,7 +141,9 @@ export function Modal({
                     danger={okDanger}
                     disabled={okDisabled}
                     loading={confirmLoading}
-                    onClick={() => void onOk?.()}
+                    onClick={() => {
+                      void runGuardedAction(onOk, (message) => appToast.error(message))
+                    }}
                   >
                     {okText}
                   </Button>
@@ -171,17 +176,20 @@ const ConfirmContext = createContext<ConfirmContextValue | null>(null)
 export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   const [options, setOptions] = useState<ConfirmOptions | null>(null)
   const [busy, setBusy] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   const optionsRef = useRef<ConfirmOptions | null>(null)
   optionsRef.current = options
 
   const confirm = useCallback((next: ConfirmOptions) => {
     setBusy(false)
+    setErrorMessage('')
     setOptions(next)
   }, [])
 
   const close = useCallback(() => {
     if (busy) return
     const current = optionsRef.current
+    setErrorMessage('')
     setOptions(null)
     current?.onCancel?.()
   }, [busy])
@@ -190,9 +198,16 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
     const current = optionsRef.current
     if (!current || busy) return
     setBusy(true)
+    setErrorMessage('')
     try {
-      await current.onOk?.()
-      setOptions(null)
+      const ok = await runGuardedAction(current.onOk, (message) => {
+        setErrorMessage(message)
+        appToast.error(message)
+      })
+      if (ok) {
+        setErrorMessage('')
+        setOptions(null)
+      }
     } finally {
       setBusy(false)
     }
@@ -220,6 +235,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                 </BaseAlertDialog.Description>
               )}
             </div>
+            {errorMessage && <Alert type="error" showIcon title={errorMessage} />}
             <div className="flex items-center justify-end gap-2">
               <Button disabled={busy} onClick={close}>
                 {options?.cancelText ?? '取消'}

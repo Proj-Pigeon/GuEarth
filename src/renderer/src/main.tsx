@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/electron/renderer'
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
@@ -56,6 +56,16 @@ function handleRenderError(error: unknown, info?: { componentStack?: string }): 
   console.error(error)
 }
 
+function applyDocumentTheme(theme: 'light' | 'dark'): void {
+  document.documentElement.classList.toggle('dark', theme === 'dark')
+  document.documentElement.style.colorScheme = theme
+}
+
+if (window.guEarth?.platform) {
+  document.documentElement.dataset.platform = window.guEarth.platform
+}
+applyDocumentTheme(useGlobeStore.getState().resolvedTheme)
+
 function Root() {
   const touchInteractionActive = useGlobeStore((state) => state.touchInteractionActive)
   const resolvedTheme = useGlobeStore((state) => state.resolvedTheme)
@@ -67,9 +77,8 @@ function Root() {
     }
   }, [touchInteractionActive])
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', resolvedTheme === 'dark')
-    document.documentElement.style.colorScheme = resolvedTheme
+  useLayoutEffect(() => {
+    applyDocumentTheme(resolvedTheme)
   }, [resolvedTheme])
 
   return (

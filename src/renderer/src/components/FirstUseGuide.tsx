@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -11,6 +12,11 @@ import {
 import { createPortal } from 'react-dom'
 import { XIcon } from 'lucide-react'
 import { Button, Checkbox } from '@renderer/components/ui'
+import {
+  computeGuideCardPosition,
+  type GuidePlacement,
+  type GuideRectBox
+} from '@renderer/lib/guidePosition'
 
 export interface FirstUseGuideHandle {
   start: () => void
@@ -26,15 +32,14 @@ interface GuideStep {
   title: string
   description: ReactNode
   targetName: string
-  placement: 'top' | 'bottom' | 'bottomLeft' | 'left'
+  placement: GuidePlacement
 }
 
-interface RectBox {
-  top: number
-  left: number
-  width: number
-  height: number
-}
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+const DEFAULT_CARD_WIDTH = 340
+const DEFAULT_CARD_HEIGHT = 176
 
 const legacyCompletedKey = 'guearth.first-use-guide.completed.v1'
 
@@ -64,16 +69,25 @@ function waitNextFrame(): Promise<void> {
   })
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) => element.getClientRects().length > 0
+  )
 }
 
 export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) {
   const [open, setOpen] = useState(false)
   const [current, setCurrent] = useState(0)
   const [dontPromptAgain, setDontPromptAgain] = useState(true)
-  const [targetRect, setTargetRect] = useState<RectBox | null>(null)
+  const [targetRect, setTargetRect] = useState<GuideRectBox | null>(null)
+  const [cardSize, setCardSize] = useState({ width: DEFAULT_CARD_WIDTH, height: DEFAULT_CARD_HEIGHT })
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1440,
+    height: typeof window !== 'undefined' ? window.innerHeight : 900
+  }))
 
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
   const openRef = useRef(open)
   openRef.current = open
   const currentRef = useRef(current)
@@ -207,16 +221,41 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
 
   useEffect(() => {
     if (!open) return
-    measureTarget()
+    const handleViewportResize = (): void => {
+      setViewport({ width: window.innerWidth, height: window.innerHeight })
+      measureTarget()
+    }
+    handleViewportResize()
     const timer = window.setTimeout(measureTarget, 220)
-    window.addEventListener('resize', measureTarget)
+    window.addEventListener('resize', handleViewportResize)
     window.addEventListener('scroll', measureTarget, true)
     return () => {
       window.clearTimeout(timer)
-      window.removeEventListener('resize', measureTarget)
+      window.removeEventListener('resize', handleViewportResize)
       window.removeEventListener('scroll', measureTarget, true)
     }
   }, [open, current, measureTarget])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const card = cardRef.current
+    if (!card) return
+    const measureCard = (): void => {
+      const rect = card.getBoundingClientRect()
+      const nextWidth = Math.round(rect.width) || DEFAULT_CARD_WIDTH
+      const nextHeight = Math.round(rect.height) || DEFAULT_CARD_HEIGHT
+      setCardSize((previous) =>
+        previous.width === nextWidth && previous.height === nextHeight
+          ? previous
+          : { width: nextWidth, height: nextHeight }
+      )
+    }
+    measureCard()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measureCard)
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [open, current])
 
   async function handleChange(nextStep: number): Promise<void> {
     if (transitioningRef.current) return
@@ -235,13 +274,13 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
     transitioningRef.current = false
   }
 
-  function savePreference(value: boolean): void {
+  const savePreference = useCallback((value: boolean): void => {
     dontPromptAgainRef.current = value
     setDontPromptAgain(value)
     void window.guEarth.settings.update({ setupGuideDismissed: value }).catch(() => undefined)
-  }
+  }, [])
 
-  function handleClose(): void {
+  const handleClose = useCallback((): void => {
     openRef.current = false
     setOpen(false)
     queueMicrotask(() => {
@@ -249,14 +288,14 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
         savePreference(true)
       }
     })
-  }
+  }, [savePreference])
 
-  function handleFinish(): void {
+  const handleFinish = useCallback((): void => {
     finishedThisCycleRef.current = true
     openRef.current = false
     setOpen(false)
     savePreference(dontPromptAgainRef.current)
-  }
+  }, [savePreference])
 
   useEffect(() => {
     async function checkFirstUse(): Promise<void> {
@@ -298,43 +337,76 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
 
   useEffect(() => {
     if (!open) return
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    cardRef.current?.focus({ preventScroll: true })
+    return () => {
+      const previous = previousFocusRef.current
+      previousFocusRef.current = null
+      if (previous && previous.isConnected) {
+        previous.focus({ preventScroll: true })
+      }
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const card = cardRef.current
+    if (!card) return
+    if (!card.contains(document.activeElement)) {
+      card.focus({ preventScroll: true })
+    }
+  }, [open, current])
+
+  useEffect(() => {
+    if (!open) return
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
         event.preventDefault()
         handleClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const card = cardRef.current
+      if (!card) return
+      const focusables = getFocusableElements(card)
+      if (focusables.length === 0) {
+        event.preventDefault()
+        card.focus({ preventScroll: true })
+        return
+      }
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const active = document.activeElement
+      if (!(active instanceof HTMLElement) || !card.contains(active)) {
+        event.preventDefault()
+        ;(event.shiftKey ? last : first).focus({ preventScroll: true })
+        return
+      }
+      if (event.shiftKey) {
+        if (active === first || active === card) {
+          event.preventDefault()
+          last.focus({ preventScroll: true })
+        }
+      } else if (active === last) {
+        event.preventDefault()
+        first.focus({ preventScroll: true })
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open])
+  }, [open, handleClose])
 
   if (!open || typeof document === 'undefined') return null
 
-  const cardWidth = 340
-  const cardHeight = 176
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-
-  let cardTop = Math.round((vh - cardHeight) / 2)
-  let cardLeft = Math.round((vw - cardWidth) / 2)
-
-  if (targetRect) {
-    if (activeStep.placement === 'top') {
-      cardTop = targetRect.top - cardHeight - 14
-      cardLeft = targetRect.left + targetRect.width / 2 - cardWidth / 2
-    } else if (activeStep.placement === 'bottomLeft') {
-      cardTop = targetRect.top + targetRect.height + 14
-      cardLeft = targetRect.left
-    } else if (activeStep.placement === 'left') {
-      cardTop = targetRect.top + targetRect.height / 2 - cardHeight / 2
-      cardLeft = targetRect.left - cardWidth - 14
-    } else {
-      cardTop = targetRect.top + targetRect.height + 14
-      cardLeft = targetRect.left + targetRect.width / 2 - cardWidth / 2
-    }
-    cardTop = clamp(cardTop, 16, Math.max(16, vh - cardHeight - 16))
-    cardLeft = clamp(cardLeft, 16, Math.max(16, vw - cardWidth - 16))
-  }
+  const { top: cardTop, left: cardLeft } = computeGuideCardPosition(
+    targetRect,
+    activeStep.placement,
+    cardSize.width,
+    cardSize.height,
+    viewport.width,
+    viewport.height
+  )
 
   const isLast = current >= steps.length - 1
 
@@ -380,8 +452,10 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
       )}
 
       <div
-        style={{ top: cardTop, left: cardLeft, width: cardWidth }}
-        className="fixed flex flex-col gap-3 rounded-2xl border border-hairline bg-elevated p-4 text-ink shadow-[var(--shadow-dialog)]"
+        ref={cardRef}
+        tabIndex={-1}
+        style={{ top: cardTop, left: cardLeft, width: DEFAULT_CARD_WIDTH }}
+        className="fixed flex flex-col gap-3 rounded-2xl border border-hairline bg-elevated p-4 text-ink shadow-[var(--shadow-dialog)] outline-none"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="text-[14px] leading-5 font-semibold text-ink">{activeStep.title}</div>

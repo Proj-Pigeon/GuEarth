@@ -80,6 +80,10 @@
   pointer-events: none;
 }
 
+:global(html[data-platform='darwin']:not([data-fullscreen='true'])) .sceneTop {
+  left: 84px;
+}
+
 .sceneTitle {
   font-weight: 600;
 }

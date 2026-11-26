@@ -1067,6 +1067,16 @@ const macRecordingHost: OffscreenMacSessionHost = {
   sweepStaleDirectories: removeStaleOffscreenDirectories
 }
 
+function windowBackgroundColor(): string {
+  return nativeTheme.shouldUseDarkColors ? '#171717' : '#ffffff'
+}
+
+function syncMainWindowBackground(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setBackgroundColor(windowBackgroundColor())
+  }
+}
+
 function readWindowControlsState(win: BrowserWindow | null): WindowControlsState {
   return {
     maximized: win ? win.isMaximized() : false,
@@ -1076,6 +1086,12 @@ function readWindowControlsState(win: BrowserWindow | null): WindowControlsState
 }
 
 function registerIpcHandlers(): void {
+  ipcMain.on('app:initial-theme', (event): void => {
+    event.returnValue = {
+      themeMode: settings.themeMode,
+      resolvedTheme: nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
+    }
+  })
   ipcMain.handle('window:get-state', (event): WindowControlsState => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? mainWindow
     return readWindowControlsState(win)
@@ -1227,9 +1243,7 @@ function registerIpcHandlers(): void {
     }
     if (patch.themeMode !== undefined) {
       nativeTheme.themeSource = settings.themeMode
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#171717' : '#ffffff')
-      }
+      syncMainWindowBackground()
     }
     if (networkProxyChanged) {
       void applyNetworkProxy().then(() => {
@@ -1926,14 +1940,22 @@ function displayAppName(): string {
 }
 
 function createWindow(): void {
+  const isMac = process.platform === 'darwin'
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 992,
     minHeight: 600,
-    frame: false,
+    ...(isMac
+      ? {
+          titleBarStyle: 'hidden',
+          trafficLightPosition: { x: 16, y: 20 }
+        }
+      : {
+          frame: false
+        }),
     hasShadow: true,
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#171717' : '#ffffff',
+    backgroundColor: windowBackgroundColor(),
     show: false,
     autoHideMenuBar: true,
     title: displayAppName(),
@@ -2020,6 +2042,7 @@ app.whenReady().then(async () => {
   await mkdir(tileCachePath, { recursive: true })
   settings = await readSettings()
   nativeTheme.themeSource = settings.themeMode
+  nativeTheme.on('updated', syncMainWindowBackground)
   applyPrivacySettings(settings)
   tileMirrorRouter.setMode(settings.tileMirrorMode)
   mirrorEndpointManager.setPreference(settings.tileMirrorSource)
