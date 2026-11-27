@@ -31,7 +31,7 @@
     "@assistant-ui/react": "^0.15.37",
     "@assistant-ui/react-markdown": "^0.14.26",
     "@base-ui/react": "^1.9.0",
-    "@liangmi/vp-config": "^1.0.2",
+    "@liangmi/vp-config": "^1.1.0",
     "@sentry/electron": "^8.0.0",
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^26.6.3",
