@@ -60,7 +60,7 @@ export function geodesicDistance(from: Cesium.Cartesian3, to: Cesium.Cartesian3)
 
 export function pathDistance(cartesians: Cesium.Cartesian3[]): number {
   let total = 0
-  for (let index = 1; index < cartesians.length; index += 1) total += geodesicDistance(cartesians[index - 1], cartesians[index])
+  for (let index = 1; index < cartesians.length; index += 1) {total += geodesicDistance(cartesians[index - 1], cartesians[index])}
   return total
 }
 
@@ -74,7 +74,7 @@ export function formatDistance(meters: number): string {
 }
 
 export function formatArea(squareMeters: number): string {
-  return squareMeters >= 1000000 ? `${(squareMeters / 1000000).toFixed(2)} km²` : `${squareMeters.toFixed(0)} m²`
+  return squareMeters >= 1_000_000 ? `${(squareMeters / 1_000_000).toFixed(2)} km²` : `${squareMeters.toFixed(0)} m²`
 }
 
 export function centroidOf(cartesians: Cesium.Cartesian3[]): Cesium.Cartesian3 {
@@ -87,7 +87,7 @@ export function dedupe(cartesians: Cesium.Cartesian3[]): Cesium.Cartesian3[] {
 }
 
 export function isUsablePosition(position: Cesium.Cartesian3 | undefined): position is Cesium.Cartesian3 {
-  if (!position) return false
+  if (!position) {return false}
   return Number.isFinite(position.x) && Number.isFinite(position.y) && Number.isFinite(position.z) && Cesium.Cartesian3.magnitudeSquared(position) > 0
 }
 
@@ -101,7 +101,7 @@ export function surfacePosition(cartesian: Cesium.Cartesian3): Cesium.Cartesian3
 }
 
 export function ringOf(cartesians: Cesium.Cartesian3[]): Cesium.Cartesian3[] {
-  return cartesians.length ? [...cartesians, cartesians[0]] : []
+  return cartesians.length > 0 ? [...cartesians, cartesians[0]] : []
 }
 
 export function isGroundPolylineSupported(viewer: Cesium.Viewer): boolean {
@@ -117,7 +117,7 @@ export function terrainPath(positions: Cesium.Cartesian3[], maxSegments: number)
     const to = points[index]
     const geodesic = new Cesium.EllipsoidGeodesic(from, to)
     const segments = Math.max(1, Math.ceil(geodesic.surfaceDistance / spacing))
-    if (!path.length) path.push(from)
+    if (path.length === 0) {path.push(from)}
     for (let segment = 1; segment < segments; segment += 1) {
       const fraction = segment / segments
       const point = geodesic.interpolateUsingFraction(fraction)
@@ -140,16 +140,16 @@ export function terrainSurfacePositions(viewer: Cesium.Viewer, path: Cesium.Cart
 
 export function polylineOptions(viewer: Cesium.Viewer, positions: Cesium.Cartesian3[], width: number, color: Cesium.Color): { graphics: Cesium.PolylineGraphics.ConstructorOptions; drapedPath?: Cesium.Cartographic[] } | undefined {
   const sanitized = sanitizePositions(positions)
-  if (sanitized.length < 2) return undefined
-  if (isGroundPolylineSupported(viewer)) return { graphics: { positions: sanitized, width, material: color, clampToGround: true } }
+  if (sanitized.length < 2) {return undefined}
+  if (isGroundPolylineSupported(viewer)) {return { graphics: { positions: sanitized, width, material: color, clampToGround: true } }}
   const material = new Cesium.ColorMaterialProperty(color)
   const drapedPath = terrainPath(sanitized, 512)
   return { graphics: { positions: terrainSurfacePositions(viewer, drapedPath), width, material, depthFailMaterial: material }, drapedPath }
 }
 
 export function measurementFor(kind: ShapeVisual['kind'], cartesians: Cesium.Cartesian3[]): string {
-  if (kind === 'polyline' && cartesians.length >= 2) return formatDistance(pathDistance(cartesians))
-  if (kind === 'polygon' && cartesians.length >= 3) return formatArea(polygonArea(cartesians))
+  if (kind === 'polyline' && cartesians.length >= 2) {return formatDistance(pathDistance(cartesians))}
+  if (kind === 'polygon' && cartesians.length >= 3) {return formatArea(polygonArea(cartesians))}
   return ''
 }
 
@@ -170,7 +170,7 @@ export function polygonGraphics(color: Cesium.Color, hierarchy: Cesium.Cartesian
 
 export function shapeLabelOptions(shape: ShapeVisual, cartesians: Cesium.Cartesian3[], textOverride?: string): Cesium.LabelGraphics.ConstructorOptions | undefined {
   const text = textOverride ?? (shape.kind === 'text' ? shape.annotation : shape.annotation || measurementFor(shape.kind, cartesians))
-  if (!text) return undefined
+  if (!text) {return undefined}
   const textColor = Cesium.Color.fromCssColorString(shape.textColor) ?? Cesium.Color.WHITE
   return {
     ...LABEL_STYLE,

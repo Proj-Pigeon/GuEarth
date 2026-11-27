@@ -1,4 +1,4 @@
-import type { AgentMemory, StoredAiConversation, StoredAiConversationSummary } from '../../../preload'
+import type { AgentMemory, StoredAiConversationSummary } from '../../../preload'
 import type { KnowledgeEntry, KnowledgeMatch } from '../knowledge'
 
 export type HawdbStorageMode = 'disk' | 'memory-snapshot'

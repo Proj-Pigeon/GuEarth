@@ -25,15 +25,15 @@ export function MonthTimeline({ viewer }: MonthTimelineProps) {
   const flightStopsVisible = useFlightStopsStore((state) => state.visible)
 
   useVisibleAnimation(isPlaying && hasSeasonalOverlay, (dt) => {
-    if (dt > 0) advance(dt)
-    if (viewer && !viewer.isDestroyed()) viewer.scene.requestRender()
+    if (dt > 0) {advance(dt)}
+    if (viewer && !viewer.isDestroyed()) {viewer.scene.requestRender()}
   })
 
   useEffect(() => {
-    if (viewer && !viewer.isDestroyed()) viewer.scene.requestRender()
+    if (viewer && !viewer.isDestroyed()) {viewer.scene.requestRender()}
   }, [month, viewer])
 
-  if (!hasSeasonalOverlay) return null
+  if (!hasSeasonalOverlay) {return null}
 
   const displayMonth = Math.min(12, Math.floor(month))
   const seasonText =

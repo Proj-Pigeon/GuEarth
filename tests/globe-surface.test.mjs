@@ -77,12 +77,12 @@ test('repeated recoverable render faults stop the loop, a single one does not', 
 
 test('a missing drawing buffer is reported once after the layout stays visible', () => {
   const state = { since: 0, reported: false }
-  assert.equal(advanceBufferGap(state, 'buffer-missing', 1_000, BUFFER_MISSING_REPORT_MS), 'waiting')
-  assert.equal(advanceBufferGap(state, 'buffer-missing', 1_000 + BUFFER_MISSING_REPORT_MS - 1, BUFFER_MISSING_REPORT_MS), 'waiting')
-  assert.equal(advanceBufferGap(state, 'awaiting-layout', 5_000, BUFFER_MISSING_REPORT_MS), 'ok')
+  assert.equal(advanceBufferGap(state, 'buffer-missing', 1000, BUFFER_MISSING_REPORT_MS), 'waiting')
+  assert.equal(advanceBufferGap(state, 'buffer-missing', 1000 + BUFFER_MISSING_REPORT_MS - 1, BUFFER_MISSING_REPORT_MS), 'waiting')
+  assert.equal(advanceBufferGap(state, 'awaiting-layout', 5000, BUFFER_MISSING_REPORT_MS), 'ok')
   assert.equal(state.since, 0)
-  assert.equal(advanceBufferGap(state, 'buffer-missing', 9_000, BUFFER_MISSING_REPORT_MS), 'waiting')
-  assert.equal(advanceBufferGap(state, 'buffer-missing', 9_000 + BUFFER_MISSING_REPORT_MS, BUFFER_MISSING_REPORT_MS), 'report')
+  assert.equal(advanceBufferGap(state, 'buffer-missing', 9000, BUFFER_MISSING_REPORT_MS), 'waiting')
+  assert.equal(advanceBufferGap(state, 'buffer-missing', 9000 + BUFFER_MISSING_REPORT_MS, BUFFER_MISSING_REPORT_MS), 'report')
   assert.equal(advanceBufferGap(state, 'buffer-missing', 20_000, BUFFER_MISSING_REPORT_MS), 'waiting')
   assert.equal(advanceBufferGap(state, 'rendered', 21_000, BUFFER_MISSING_REPORT_MS), 'ok')
   assert.equal(state.reported, false)
@@ -110,13 +110,13 @@ test('software renderers are recognized from the Basic Render Driver string', ()
   assert.equal(shouldUseSoftwareMsaaWorkaround('llvmpipe (LLVM 15.0.7, 256 bits)'), true)
   assert.equal(shouldUseSoftwareMsaaWorkaround('NVIDIA GeForce RTX 3070 Laptop GPU'), false)
   const gl = {
-    RENDERER: 0x1f01,
+    RENDERER: 0x1F_01,
     getExtension(name) {
       assert.equal(name, 'WEBGL_debug_renderer_info')
-      return { UNMASKED_RENDERER_WEBGL: 0x9246 }
+      return { UNMASKED_RENDERER_WEBGL: 0x92_46 }
     },
     getParameter(parameter) {
-      assert.equal(parameter, 0x9246)
+      assert.equal(parameter, 0x92_46)
       return 'Microsoft Basic Render Driver'
     }
   }
@@ -141,7 +141,7 @@ test('the globe viewer keeps rendering ownership and surfaces WebGL failure in C
   const lostAt = viewerSource.indexOf('const onLost')
   const restoredAt = viewerSource.indexOf('const onRestored')
   const restoredEnd = viewerSource.indexOf("canvas.addEventListener('webglcontextrestored'")
-  assert.ok(lostAt >= 0 && restoredAt > lostAt && restoredEnd > restoredAt)
+  assert.ok(lostAt !== -1 && restoredAt > lostAt && restoredEnd > restoredAt)
   const lostHandler = viewerSource.slice(lostAt, restoredAt)
   const restoredHandler = viewerSource.slice(restoredAt, restoredEnd)
   assert.match(lostHandler, /webglContextLost = true/)
@@ -166,7 +166,7 @@ test('a lost WebGL context uses the graphics-unavailable copy, a zero surface do
 
 test('user-facing copy stays in Chinese and a shown surface failure does not open the crash dialog', () => {
   for (const text of [WEBGL_UNAVAILABLE_MESSAGE, WEBGL_UNAVAILABLE_DETAIL, SURFACE_UNAVAILABLE_MESSAGE, SURFACE_UNAVAILABLE_DETAIL, WEBGL_RETRY_STAGE]) {
-    assert.match(text, /[\u4e00-\u9fff]/)
+    assert.match(text, /[\u4E00-\u9FFF]/)
   }
   assert.match(WEBGL_UNAVAILABLE_DETAIL, /显卡驱动/)
   assert.match(SURFACE_UNAVAILABLE_DETAIL, /还原窗口/)

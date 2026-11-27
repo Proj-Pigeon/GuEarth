@@ -24,20 +24,20 @@ test('traversal-like entry names never resolve to a child', () => {
     '.',
     '..',
     '../escape',
-    '..\\escape',
+    String.raw`..\escape`,
     'nested/escape',
-    'nested\\escape',
-    '..\\..\\Windows\\System32',
+    String.raw`nested\escape`,
+    String.raw`..\..\Windows\System32`,
     '../.guearth-offscreen-stolen'
   ]
-  for (const name of foreign) assert.equal(resolveOffscreenEntry(recordingsRoot, name), null, `name=${JSON.stringify(name)}`)
+  for (const name of foreign) {assert.equal(resolveOffscreenEntry(recordingsRoot, name), null, `name=${JSON.stringify(name)}`)}
 })
 
 test('absolute and prefix-foreign names are rejected', () => {
   assert.equal(resolveOffscreenEntry(recordingsRoot, resolve(recordingsRoot, 'child')), null)
   assert.equal(resolveOffscreenEntry(recordingsRoot, `${recordingsRoot}-evil`), null)
   assert.equal(resolveOffscreenEntry(recordingsRoot, '/etc/passwd'), null)
-  assert.equal(resolveOffscreenEntry(recordingsRoot, 'C:\\Windows\\System32'), null)
+  assert.equal(resolveOffscreenEntry(recordingsRoot, String.raw`C:\Windows\System32`), null)
 })
 
 test('directory entries that are symlinks never pass the sweep directory filter', (t) => {
@@ -66,9 +66,9 @@ test('the stale sweep resolves every candidate through the shared path guard', (
   assert.ok(mainSource.includes("import { resolveOffscreenEntry } from './offscreenPaths'"))
   assert.ok(mainSource.includes('async function offscreenFrameDirectoryActive(directory: string, entryName: string): Promise<boolean> {'))
   assert.ok(mainSource.includes('const path = resolveOffscreenEntry(directory, entryName)'))
-  assert.ok(mainSource.includes('if (!path) return true'))
+  assert.ok(mainSource.includes('if (!path) {return true}'))
   assert.ok(mainSource.includes('.filter((entry) => entry.isDirectory() && entry.name.startsWith(OFFSCREEN_TEMP_PREFIX))'))
-  assert.ok(mainSource.includes('if (await offscreenFrameDirectoryActive(directory, entry.name)) return'))
+  assert.ok(mainSource.includes('if (await offscreenFrameDirectoryActive(directory, entry.name)) {return}'))
   assert.ok(mainSource.includes('const path = resolveOffscreenEntry(directory, entry.name)'))
   assert.ok(!mainSource.includes('rm(join(directory, entry.name)'))
 })

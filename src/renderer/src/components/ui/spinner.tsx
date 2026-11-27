@@ -17,7 +17,7 @@ const sizeClasses = {
 
 export function Spinner({ spinning = true, size = 'md', className, children }: SpinnerProps) {
   if (!children) {
-    if (!spinning) return null
+    if (!spinning) {return null}
     return (
       <Loader2Icon
         role="status"

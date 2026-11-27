@@ -8,7 +8,7 @@ export interface TyphoonOverlayProps {
 }
 
 const ANCHOR = Cesium.Cartesian3.fromDegrees(138, 15)
-const ANCHOR_VIEW_HEIGHT = 6200000
+const ANCHOR_VIEW_HEIGHT = 6_200_000
 
 function spiralArm(startAngle: number): string {
   const cx = 170
@@ -27,7 +27,7 @@ function spiralArm(startAngle: number): string {
 
 const arms = [spiralArm(20), spiralArm(140), spiralArm(260)]
 
-const inflowArrows: Array<{ x: number; y: number; angle: number }> = [
+const inflowArrows: { x: number; y: number; angle: number }[] = [
   { x: 300, y: 96, angle: 145 },
   { x: 62, y: 122, angle: -55 },
   { x: 100, y: 286, angle: -20 },
@@ -40,7 +40,7 @@ export function TyphoonOverlay({ viewer }: TyphoonOverlayProps) {
   useEffect(() => {
     const activeViewer = viewer && !viewer.isDestroyed() ? viewer : undefined
     if (!activeViewer) {
-      if (overlayRef.current) overlayRef.current.style.display = 'none'
+      if (overlayRef.current) {overlayRef.current.style.display = 'none'}
       return
     }
     const scratch = new Cesium.Cartesian2()
@@ -49,7 +49,7 @@ export function TyphoonOverlay({ viewer }: TyphoonOverlayProps) {
 
     function frame(): void {
       const element = overlayRef.current
-      if (!activeViewer || activeViewer.isDestroyed() || !element) return
+      if (!activeViewer || activeViewer.isDestroyed() || !element) {return}
       let facing = true
       if (activeViewer.scene.mode === Cesium.SceneMode.SCENE3D) {
         activeViewer.scene.globe.ellipsoid.geodeticSurfaceNormal(ANCHOR, scratchNormal)

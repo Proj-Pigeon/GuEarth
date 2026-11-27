@@ -54,7 +54,7 @@ function sampleConversation(id, updatedAt, title, userText, summary) {
 }
 
 test('jsonCodec preserves bigints, binary payloads and rejects invalid parameters', () => {
-  const big = 9007199254740993n
+  const big = 9_007_199_254_740_993n
   assert.equal(stringifyParameters({ id: big, ok: true, empty: null }), '{"id":9007199254740993,"ok":true,"empty":null}')
   assert.equal(parseLosslessJson('{"id":9007199254740993,"small":42}').id, big)
   assert.equal(parseLosslessJson('{"id":9007199254740993,"small":42}').small, 42)
@@ -143,7 +143,7 @@ test('EoqHawdbEngine persists memories, conversations, BM25 recall and Cypher kn
     assert.deepEqual(savedList.map((item) => item.id), ['conv-2', 'conv-legacy'])
 
     const hits = engine.searchConversations('桂林漓江溶蚀', 5, 'conv-2')
-    assert.ok(hits.length >= 1)
+    assert.ok(hits.length > 0)
     assert.equal(hits[0].id, 'conv-legacy')
     assert.equal(hits[0].compressionSummary, '讨论了桂林漓江坐标与溶蚀成因')
 
@@ -187,8 +187,8 @@ test('EoqHawdbEngine falls back cleanly to memory-snapshot under restricted dire
   const dbRoot = join(baseDir, 'eoq-hawdb')
   if (process.platform !== 'win32') {
     await mkdir(join(dbRoot, 'db'), { recursive: true })
-    await chmod(join(dbRoot, 'db'), 0o500).catch(() => undefined)
-    t.onTestFinished(() => chmod(join(dbRoot, 'db'), 0o700).catch(() => undefined))
+    await chmod(join(dbRoot, 'db'), 0o500).catch(() => {})
+    t.onTestFinished(() => chmod(join(dbRoot, 'db'), 0o700).catch(() => {}))
   }
   const entries = loadKnowledgeFixtures().slice(0, 12)
 

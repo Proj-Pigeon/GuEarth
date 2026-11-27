@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { ThreadPrimitive } from '@assistant-ui/react'
 import {
   HistoryIcon,
@@ -8,11 +9,13 @@ import {
   Trash2Icon,
   XIcon
 } from 'lucide-react'
-import { Button, Checkbox, Drawer, DropdownMenu, Modal, Tooltip, type DropdownMenuEntry } from '@renderer/components/ui'
+import { Button, Checkbox, Drawer, DropdownMenu, Modal, Tooltip } from '@renderer/components/ui';
+import type { DropdownMenuEntry } from '@renderer/components/ui';
 import { useAiStore } from '@renderer/stores/ai'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
 import type { StoredAiConversationSummary } from '../../../preload'
-import EoqComposer, { type EoqSlashCommand } from './eoq/EoqComposer'
+import EoqComposer from './eoq/EoqComposer';
+import type { EoqSlashCommand } from './eoq/EoqComposer';
 import EoqIconButton from './eoq/EoqIconButton'
 import EoqMessages from './eoq/EoqMessages'
 import EoqRuntimeProvider from './eoq/EoqRuntimeProvider'
@@ -22,7 +25,7 @@ import styles from './EoqAssistant.module.css'
 function formatConversationTime(timestamp: number): string {
   const date = new Date(timestamp)
   const time = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-  if (date.toDateString() === new Date().toDateString()) return time
+  if (date.toDateString() === new Date().toDateString()) {return time}
   if (date.getFullYear() === new Date().getFullYear()) {
     return `${date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })} ${time}`
   }
@@ -76,7 +79,7 @@ export function EoqAssistant() {
     try {
       window.localStorage.setItem('guearth.eoq-drawer-width', String(width))
     } catch {
-      return
+      // Best effort, so the failure is ignored.
     }
   }, [])
 
@@ -88,7 +91,7 @@ export function EoqAssistant() {
         setDrawerWidth(clampDrawerWidth(stored, maxWidth))
       }
     } catch {
-      return
+      // Best effort, so the failure is ignored.
     }
   }, [clampDrawerWidth])
 
@@ -104,7 +107,7 @@ export function EoqAssistant() {
   }, [clampDrawerWidth])
 
   const stopDrawerResize = useCallback(() => {
-    if (!resizingRef.current) return
+    if (!resizingRef.current) {return}
     resizingRef.current = false
     document.body.style.userSelect = ''
     persistDrawerWidth(drawerWidthRef.current)
@@ -112,7 +115,7 @@ export function EoqAssistant() {
 
   useEffect(() => {
     const handleDrawerResize = (event: PointerEvent): void => {
-      if (!resizingRef.current) return
+      if (!resizingRef.current) {return}
       const maxWidth = Math.max(0, Math.floor(window.innerWidth / 3))
       setDrawerWidth(clampDrawerWidth(window.innerWidth - event.clientX, maxWidth))
     }
@@ -128,7 +131,7 @@ export function EoqAssistant() {
   }, [clampDrawerWidth, stopDrawerResize])
 
   const startDrawerResize = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return
+    if (event.button !== 0) {return}
     resizingRef.current = true
     document.body.style.userSelect = 'none'
     event.preventDefault()
@@ -146,10 +149,10 @@ export function EoqAssistant() {
       }
       const step = event.shiftKey ? 80 : 20
       let nextWidth = drawerWidthRef.current
-      if (event.key === 'ArrowLeft') nextWidth = clampDrawerWidth(drawerWidthRef.current + step)
-      if (event.key === 'ArrowRight') nextWidth = clampDrawerWidth(drawerWidthRef.current - step)
-      if (event.key === 'Home') nextWidth = drawerMinWidth
-      if (event.key === 'End') nextWidth = drawerMaxWidth
+      if (event.key === 'ArrowLeft') {nextWidth = clampDrawerWidth(drawerWidthRef.current + step)}
+      if (event.key === 'ArrowRight') {nextWidth = clampDrawerWidth(drawerWidthRef.current - step)}
+      if (event.key === 'Home') {nextWidth = drawerMinWidth}
+      if (event.key === 'End') {nextWidth = drawerMaxWidth}
       setDrawerWidth(nextWidth)
       persistDrawerWidth(nextWidth)
       event.preventDefault()
@@ -169,10 +172,10 @@ export function EoqAssistant() {
 
   const handleInterceptSend = useCallback(
     (text: string): boolean => {
-      const command = text.trim().match(/^\/([^\s]+)(?:\s+.*)?$/)?.[1].toLowerCase()
-      if (!command) return false
+      const command = (/^\/([^\s]+)(?:\s+.*)?$/.exec(text.trim()))?.[1].toLowerCase()
+      if (!command) {return false}
       const matched = agentCommands.find((item) => item.name.slice(1) === command)
-      if (!matched) return false
+      if (!matched) {return false}
       void matched.run()
       return true
     },
@@ -182,7 +185,7 @@ export function EoqAssistant() {
   const handleSubmitPrompt = useCallback(
     (prompt: string) => {
       const text = prompt.trim()
-      if (!text || isStreaming) return
+      if (!text || isStreaming) {return}
       void send(text)
     },
     [isStreaming, send]
@@ -215,8 +218,8 @@ export function EoqAssistant() {
     const target = deleteTarget
     setDeleteConfirmOpen(false)
     setDeleteTarget(null)
-    if (!target) return
-    if (deleteNoAsk) setSkipDeleteConversationConfirm(true)
+    if (!target) {return}
+    if (deleteNoAsk) {setSkipDeleteConversationConfirm(true)}
     void deleteConversation(target.id)
   }, [deleteConversation, deleteNoAsk, deleteTarget, setSkipDeleteConversationConfirm])
 

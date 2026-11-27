@@ -1,5 +1,5 @@
-import { chmodSync, copyFileSync, linkSync, lstatSync, realpathSync, renameSync, rmSync } from 'fs'
-import { basename, dirname, isAbsolute, join, resolve, sep } from 'path'
+import { chmodSync, copyFileSync, linkSync, lstatSync, realpathSync, renameSync, rmSync } from 'node:fs'
+import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path'
 
 const SAFE_ASSET_NAME = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/
 const VERSIONED_FILE_NAME = /\d+\.\d+\.\d+/
@@ -54,9 +54,9 @@ export interface CommandPlan {
 }
 
 export function canonicalHazelPlatform(platform: string): string | null {
-  if (Object.prototype.hasOwnProperty.call(HAZEL_ALIASES, platform)) return platform
+  if (Object.hasOwn(HAZEL_ALIASES, platform)) {return platform}
   for (const [guess, aliases] of Object.entries(HAZEL_ALIASES)) {
-    if (aliases.includes(platform)) return guess
+    if (aliases.includes(platform)) {return guess}
   }
   return null
 }
@@ -65,25 +65,25 @@ export function hazelPlatformForAssetName(fileName: string): string | null {
   const slash = Math.max(fileName.lastIndexOf('/'), fileName.lastIndexOf('\\'))
   const base = slash >= 0 ? fileName.slice(slash + 1) : fileName
   const dot = base.lastIndexOf('.')
-  if (dot <= 0) return null
+  if (dot <= 0) {return null}
   const extension = base.slice(dot + 1)
-  if (!HAZEL_EXTENSIONS.has(extension)) return null
+  if (!HAZEL_EXTENSIONS.has(extension)) {return null}
   const archSuffix = base.includes('arm64') || base.includes('aarch64') ? '_arm64' : ''
   return `${extension}${archSuffix}`
 }
 
 export function assetNameFromUrl(downloadUrl: string): string | null {
-  let pathname = ''
+  let pathname: string
   try {
     const parsed = new URL(downloadUrl)
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {return null}
     pathname = parsed.pathname
   } catch {
     return null
   }
   const raw = pathname.split('/').pop() ?? ''
-  if (!raw) return null
-  let name = ''
+  if (!raw) {return null}
+  let name: string
   try {
     name = decodeURIComponent(raw)
   } catch {
@@ -103,44 +103,44 @@ export function updateFeedPath(baseUrl: string, feedPlatform: string, currentVer
 }
 
 export function feedPlatformFor(kind: UpdatePackageKind, arch: UpdateArch): string | null {
-  if (kind === 'nsis' && arch === 'x64') return 'win32'
-  if (kind === 'appimage' && arch === 'x64') return 'appimage'
-  if (kind === 'appimage' && arch === 'arm64') return 'appimage_arm64'
-  if (kind === 'deb' && arch === 'x64') return 'deb'
-  if (kind === 'deb' && arch === 'arm64') return 'deb_arm64'
+  if (kind === 'nsis' && arch === 'x64') {return 'win32'}
+  if (kind === 'appimage' && arch === 'x64') {return 'appimage'}
+  if (kind === 'appimage' && arch === 'arm64') {return 'appimage_arm64'}
+  if (kind === 'deb' && arch === 'x64') {return 'deb'}
+  if (kind === 'deb' && arch === 'arm64') {return 'deb_arm64'}
   return null
 }
 
 function asArch(arch: string): UpdateArch | null {
-  if (arch === 'x64' || arch === 'arm64') return arch
+  if (arch === 'x64' || arch === 'arm64') {return arch}
   return null
 }
 
 export function resolveLinuxPackageKind(runtime: UpdateRuntime): 'appimage' | 'deb' | null {
   const override = runtime.packageKindOverride?.trim()
-  if (runtime.allowPackageKindOverride && (override === 'appimage' || override === 'deb')) return override
-  if (runtime.appImagePath && runtime.appImagePath.trim()) return 'appimage'
-  if (runtime.debInstalled) return 'deb'
+  if (runtime.allowPackageKindOverride && (override === 'appimage' || override === 'deb')) {return override}
+  if (runtime.appImagePath?.trim()) {return 'appimage'}
+  if (runtime.debInstalled) {return 'deb'}
   return null
 }
 
 export function resolveUpdateTarget(runtime: UpdateRuntime): UpdateTarget | null {
   const arch = asArch(runtime.arch)
-  if (!arch) return null
+  if (!arch) {return null}
   if (runtime.platform === 'win32') {
-    if (arch !== 'x64') return null
+    if (arch !== 'x64') {return null}
     return { kind: 'nsis', arch, feedPlatform: 'win32' }
   }
-  if (runtime.platform !== 'linux') return null
+  if (runtime.platform !== 'linux') {return null}
   const kind = resolveLinuxPackageKind(runtime)
-  if (!kind) return null
+  if (!kind) {return null}
   const feedPlatform = feedPlatformFor(kind, arch)
-  if (!feedPlatform) return null
+  if (!feedPlatform) {return null}
   return { kind, arch, feedPlatform }
 }
 
 export function isPathInsideDirectory(filePath: string, directory: string): boolean {
-  if (!filePath || !directory) return false
+  if (!filePath || !directory) {return false}
   const root = resolve(directory)
   const target = resolve(filePath)
   const prefix = root.endsWith(sep) ? root : `${root}${sep}`
@@ -148,17 +148,17 @@ export function isPathInsideDirectory(filePath: string, directory: string): bool
 }
 
 export function appImageInstallDestination(currentPath: string, assetFileName: string): string | null {
-  if (!isAbsolute(currentPath) || currentPath.includes('\0')) return null
-  if (!SAFE_ASSET_NAME.test(assetFileName)) return null
+  if (!isAbsolute(currentPath) || currentPath.includes('\0')) {return null}
+  if (!SAFE_ASSET_NAME.test(assetFileName)) {return null}
   const existingBaseName = basename(currentPath)
-  if (existingBaseName === assetFileName || !VERSIONED_FILE_NAME.test(existingBaseName)) return currentPath
+  if (existingBaseName === assetFileName || !VERSIONED_FILE_NAME.test(existingBaseName)) {return currentPath}
   return join(dirname(currentPath), assetFileName)
 }
 
 export function installAppImageFile(installerPath: string, currentAppImage: string, assetFileName: string): string {
-  if (!ABSOLUTE_PATH.test(installerPath)) throw new Error('更新包路径无效')
+  if (!ABSOLUTE_PATH.test(installerPath)) {throw new Error('更新包路径无效')}
   const destination = appImageInstallDestination(currentAppImage, assetFileName)
-  if (!destination) throw new Error('AppImage 路径无效，无法安装更新')
+  if (!destination) {throw new Error('AppImage 路径无效，无法安装更新')}
   chmodSync(installerPath, 0o755)
   const staged = join(dirname(destination), `.${basename(destination)}.update`)
   rmSync(staged, { force: true })
@@ -173,37 +173,37 @@ export function installAppImageFile(installerPath: string, currentAppImage: stri
   } catch (error) {
     rmSync(staged, { force: true })
     const reason = error instanceof Error ? error.message : String(error)
-    throw new Error(`无法替换 AppImage：${reason}`)
+    throw new Error(`无法替换 AppImage：${reason}`, { cause: error })
   }
   chmodSync(destination, 0o755)
-  if (installerPath !== destination) rmSync(installerPath, { force: true })
-  if (destination !== currentAppImage) rmSync(currentAppImage, { force: true })
+  if (installerPath !== destination) {rmSync(installerPath, { force: true })}
+  if (destination !== currentAppImage) {rmSync(currentAppImage, { force: true })}
   return destination
 }
 
 function isTrustedDebTool(filePath: string | null, name: string): filePath is string {
-  if (!filePath || !ABSOLUTE_PATH.test(filePath)) return false
+  if (!filePath || !ABSOLUTE_PATH.test(filePath)) {return false}
   return basename(filePath) === name && TRUSTED_EXECUTABLE_DIRS.includes(dirname(filePath))
 }
 
 export function findTrustedExecutable(name: string, directories: readonly string[] = TRUSTED_EXECUTABLE_DIRS): string | null {
-  if (!TRUSTED_DEB_TOOLS.has(name)) return null
+  if (!TRUSTED_DEB_TOOLS.has(name)) {return null}
   const seen = new Set<string>()
   for (const dir of directories) {
-    if (!isAbsolute(dir) || dir.includes('\0')) continue
+    if (!isAbsolute(dir) || dir.includes('\0')) {continue}
     let root: string
     try {
       root = realpathSync(dir)
     } catch {
       continue
     }
-    if (seen.has(root)) continue
+    if (seen.has(root)) {continue}
     seen.add(root)
     const candidate = join(root, name)
     try {
-      if (!lstatSync(candidate).isFile()) continue
+      if (!lstatSync(candidate).isFile()) {continue}
       const real = realpathSync(candidate)
-      if (dirname(real) !== root || basename(real) !== name) continue
+      if (dirname(real) !== root || basename(real) !== name) {continue}
       return real
     } catch {
       void 0
@@ -213,9 +213,9 @@ export function findTrustedExecutable(name: string, directories: readonly string
 }
 
 export function debInstallPlan(installerPath: string, uid: number, dpkgPath: string | null, pkexecPath: string | null): CommandPlan | null {
-  if (!ABSOLUTE_PATH.test(installerPath)) return null
-  if (!isTrustedDebTool(dpkgPath, 'dpkg')) return null
-  if (uid === 0) return { command: dpkgPath, args: ['-i', installerPath] }
-  if (!isTrustedDebTool(pkexecPath, 'pkexec')) return null
+  if (!ABSOLUTE_PATH.test(installerPath)) {return null}
+  if (!isTrustedDebTool(dpkgPath, 'dpkg')) {return null}
+  if (uid === 0) {return { command: dpkgPath, args: ['-i', installerPath] }}
+  if (!isTrustedDebTool(pkexecPath, 'pkexec')) {return null}
   return { command: pkexecPath, args: ['--disable-internal-agent', dpkgPath, '-i', installerPath] }
 }

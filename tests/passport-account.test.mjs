@@ -43,11 +43,11 @@ test('encodeBase64Url produces the 43-character unpadded installation identifier
 })
 
 test('encodeBase64Url uses the URL-safe alphabet and never emits padding', () => {
-  const encoded = encodeBase64Url(new Uint8Array([0xfb, 0xff, 0xfe, 0x00, 0x10]))
+  const encoded = encodeBase64Url(new Uint8Array([0xFB, 0xFF, 0xFE, 0x00, 0x10]))
   assert.ok(!encoded.includes('='))
   assert.ok(!encoded.includes('+'))
   assert.ok(!encoded.includes('/'))
-  assert.equal(encoded, encodeBase64Url(new Uint8Array([0xfb, 0xff, 0xfe, 0x00, 0x10])))
+  assert.equal(encoded, encodeBase64Url(new Uint8Array([0xFB, 0xFF, 0xFE, 0x00, 0x10])))
 })
 
 test('isValidInstallationId rejects every shape Passport would answer with invalid_request', () => {
@@ -62,7 +62,7 @@ test('isValidInstallationId rejects every shape Passport would answer with inval
     undefined,
     42
   ]
-  for (const value of rejected) assert.equal(isValidInstallationId(value), false, String(value))
+  for (const value of rejected) {assert.equal(isValidInstallationId(value), false, String(value))}
 })
 
 test('passportPlatform maps Electron process.platform values onto the Passport enum', () => {
@@ -252,7 +252,7 @@ test('parseDeviceAuthorization clamps absurd expiry and interval values into saf
       user_code: 'BCDF-GHJK',
       verification_uri: `${ACCOUNT_ORIGIN}/device`,
       expires_in: -5,
-      interval: 100000
+      interval: 100_000
     },
     ACCOUNT_ORIGIN
   )
@@ -385,7 +385,7 @@ test('the signed-out account snapshot never carries a profile or a pending chall
 
 test('every account phase has a user-facing label', () => {
   const phases = ['signed-out', 'creating', 'awaiting-approval', 'finalizing', 'signed-in', 'restoring', 'signing-out']
-  for (const phase of phases) assert.ok(accountPhaseLabel(phase).length > 0, phase)
+  for (const phase of phases) {assert.ok(accountPhaseLabel(phase).length > 0, phase)}
   assert.equal(accountPhaseLabel('signed-out'), '未登录')
   assert.equal(accountPhaseLabel('signed-in'), '已登录')
 })

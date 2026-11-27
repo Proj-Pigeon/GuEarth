@@ -1,4 +1,5 @@
-import { isValidElement, type ReactElement, type ReactNode } from 'react'
+import { isValidElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '@renderer/lib/utils'
 
@@ -33,7 +34,7 @@ export function Tooltip({
   className,
   children
 }: TooltipProps) {
-  if (!title) return children
+  if (!title) {return children}
 
   const triggerElement = isValidElement(children) ? children : <span>{children}</span>
 

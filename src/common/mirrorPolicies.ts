@@ -13,7 +13,7 @@ export interface ParsedPolicyMarkdown {
 }
 
 export function parsePolicyMarkdown(markdown: string, fallbackTitle: string): ParsedPolicyMarkdown {
-  const normalized = markdown.replace(/^﻿/, '').replace(/\r\n?/g, '\n').trim()
+  const normalized = markdown.replace(/^﻿/, '').replaceAll(/\r\n?/g, '\n').trim()
   const match = /^#\s+(.+?)(?:\n+([\s\S]*))?$/.exec(normalized)
   if (!match) {
     return {

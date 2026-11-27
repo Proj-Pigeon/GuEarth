@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Button, Modal, Tabs, type TabItem } from '@renderer/components/ui'
+import { Button, Modal, Tabs } from '@renderer/components/ui';
+import type { TabItem } from '@renderer/components/ui';
 import agreementMarkdown from '../../../../docs/policies/MIRROR-SERVICE-AGREEMENT.md?raw'
 import acceptableUseMarkdown from '../../../../docs/policies/ACCEPTABLE-USE-POLICY.md?raw'
-import {
-  MIRROR_POLICY_FALLBACK_TITLES,
-  parsePolicyMarkdown,
-  type MirrorPolicyId,
-  type ParsedPolicyMarkdown
-} from '../../../common/mirrorPolicies'
+import { MIRROR_POLICY_FALLBACK_TITLES, parsePolicyMarkdown } from '../../../common/mirrorPolicies';
+import type { MirrorPolicyId, ParsedPolicyMarkdown } from '../../../common/mirrorPolicies';
 import { useGlobeStore } from '@renderer/stores/globe'
 import { renderMarkdown } from '@renderer/utils/markdown'
 import styles from './MirrorPolicyModal.module.css'
@@ -36,8 +33,8 @@ export function MirrorPolicyModal(_props: MirrorPolicyModalProps) {
   const renderedNodes = useMemo(() => renderMarkdown(activePolicy.body), [activePolicy.body])
 
   useEffect(() => {
-    if (!mirrorPolicyOpen) return
-    if (policyBodyRef.current) policyBodyRef.current.scrollTop = 0
+    if (!mirrorPolicyOpen) {return}
+    if (policyBodyRef.current) {policyBodyRef.current.scrollTop = 0}
   }, [mirrorPolicyOpen, mirrorPolicyActiveId])
 
   function handleTabChange(key: string): void {

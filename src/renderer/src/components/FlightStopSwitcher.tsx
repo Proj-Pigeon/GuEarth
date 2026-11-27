@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react'
-import { Button, DropdownMenu, Separator, Tooltip, type DropdownMenuEntry } from '@renderer/components/ui'
-import { useFlightStopsStore, type FlyToExecutor } from '@renderer/stores/flightStops'
+import { Button, DropdownMenu, Separator, Tooltip } from '@renderer/components/ui';
+import type { DropdownMenuEntry } from '@renderer/components/ui';
+import { useFlightStopsStore } from '@renderer/stores/flightStops';
+import type { FlyToExecutor } from '@renderer/stores/flightStops';
 import styles from './FlightStopSwitcher.module.css'
 
 export interface FlightStopSwitcherProps {
@@ -23,7 +25,7 @@ export function FlightStopSwitcher({ flyTo }: FlightStopSwitcherProps) {
 
   const [menuOpen, setMenuOpen] = useState(false)
 
-  if (!visible) return null
+  if (!visible) {return null}
 
   function handlePrev(): void {
     setMenuOpen(false)
@@ -38,7 +40,7 @@ export function FlightStopSwitcher({ flyTo }: FlightStopSwitcherProps) {
   function handleSelect(key: string): void {
     const index = Number(key)
     setMenuOpen(false)
-    if (Number.isInteger(index)) void goTo(index, flyTo)
+    if (Number.isInteger(index)) {void goTo(index, flyTo)}
   }
 
   function handleClose(): void {

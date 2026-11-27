@@ -6,14 +6,15 @@ import type {
   AiProtocol,
   AiProviderConfig
 } from '../../preload'
-import { DEFAULT_MIRROR_ENDPOINT, mirrorModelsDevUrl, type MirrorEndpointId } from '../../common/tileMirror'
+import { DEFAULT_MIRROR_ENDPOINT, mirrorModelsDevUrl } from '../../common/tileMirror';
+import type { MirrorEndpointId } from '../../common/tileMirror';
 import { readProviderKey } from '../keyVault'
 import { readResponseText, ResponseTooLargeError } from './responseReader'
 
 const MODELS_DEV_URL = 'https://models.dev/api.json'
 const REQUEST_TIMEOUT_MS = 20_000
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024
-const MAX_PROVIDER_MODELS = 2_000
+const MAX_PROVIDER_MODELS = 2000
 const MAX_ANTHROPIC_PAGES = 100
 const modelsDevCache: { expiresAt: number; value: Record<string, unknown> | null } = { expiresAt: 0, value: null }
 let modelsDevMirrorEndpoint: MirrorEndpointId | null = null
@@ -48,25 +49,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalized(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '')
+  return value.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '')
 }
 
 function safeUrl(value: string): URL {
   const url = new URL(value.trim())
-  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('接口地址必须使用 HTTP 或 HTTPS')
+  if (!['http:', 'https:'].includes(url.protocol)) {throw new Error('接口地址必须使用 HTTP 或 HTTPS')}
   return url
 }
 
-function endpoint(baseUrl: string, protocol: AiProtocol): string {
+function endpoint(baseUrl: string): string {
   const base = safeUrl(baseUrl)
   const path = base.pathname.replace(/\/+$/, '')
-  if (protocol === 'anthropic') {
-    if (!path || path === '/') base.pathname = '/v1/models'
-    else base.pathname = `${path}/models`
-  } else {
-    if (!path || path === '/') base.pathname = '/v1/models'
-    else base.pathname = `${path}/models`
-  }
+  if (!path || path === '/') {base.pathname = '/v1/models'}
+  else {base.pathname = `${path}/models`}
   base.search = ''
   base.hash = ''
   return base.toString()
@@ -86,11 +82,11 @@ async function fetchText(url: string, init: RequestInit): Promise<string> {
       controller,
       tooLargeMessage: '模型列表响应过大'
     })
-    if (!response.ok) throw new Error(`模型列表请求失败（HTTP ${response.status}）`)
+    if (!response.ok) {throw new Error(`模型列表请求失败（HTTP ${response.status}）`)}
     return body
   } catch (error) {
-    if (error instanceof ResponseTooLargeError) throw error
-    if (timedOut || controller.signal.aborted) throw new Error('模型列表请求超时')
+    if (error instanceof ResponseTooLargeError) {throw error}
+    if (timedOut || controller.signal.aborted) {throw new Error('模型列表请求超时', { cause: error })}
     throw error instanceof Error ? error : new Error('模型列表请求失败')
   } finally {
     clearTimeout(timer)
@@ -100,25 +96,25 @@ async function fetchText(url: string, init: RequestInit): Promise<string> {
 function parseJson(body: string): Record<string, unknown> {
   try {
     const value: unknown = JSON.parse(body)
-    if (!isRecord(value)) throw new Error('响应格式错误')
+    if (!isRecord(value)) {throw new Error('响应格式错误')}
     return value
   } catch (error) {
-    if (error instanceof Error && error.message === '响应格式错误') throw error
-    throw new Error('模型列表响应不是有效 JSON')
+    if (error instanceof Error && error.message === '响应格式错误') {throw error}
+    throw new Error('模型列表响应不是有效 JSON', { cause: error })
   }
 }
 
 function modelIds(payload: Record<string, unknown>): string[] {
-  if (!Array.isArray(payload.data)) throw new Error('模型列表响应缺少 data 数组')
+  if (!Array.isArray(payload.data)) {throw new TypeError('模型列表响应缺少 data 数组')}
   const seen = new Set<string>()
   const ids: string[] = []
   for (const item of payload.data) {
-    if (!isRecord(item) || typeof item.id !== 'string') continue
+    if (!isRecord(item) || typeof item.id !== 'string') {continue}
     const id = item.id.trim().slice(0, 200)
-    if (!id || seen.has(id)) continue
+    if (!id || seen.has(id)) {continue}
     seen.add(id)
     ids.push(id)
-    if (ids.length >= MAX_PROVIDER_MODELS) break
+    if (ids.length >= MAX_PROVIDER_MODELS) {break}
   }
   return ids
 }
@@ -127,8 +123,8 @@ async function fetchProviderIds(provider: AiProviderConfig, apiKey: string): Pro
   const headers = provider.protocol === 'anthropic'
     ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
     : { Authorization: `Bearer ${apiKey}` }
-  const url = endpoint(provider.baseUrl, provider.protocol)
-  if (provider.protocol === 'openai') return modelIds(parseJson(await fetchText(url, { headers })))
+  const url = endpoint(provider.baseUrl)
+  if (provider.protocol === 'openai') {return modelIds(parseJson(await fetchText(url, { headers })))}
   const ids: string[] = []
   const seen = new Set<string>()
   const seenCursors = new Set<string>()
@@ -141,11 +137,11 @@ async function fetchProviderIds(provider: AiProviderConfig, apiKey: string): Pro
         ids.push(id)
       }
     }
-    if (payload.has_more !== true) return ids
-    if (typeof payload.last_id !== 'string' || !payload.last_id) throw new Error('Anthropic 模型列表缺少下一页游标')
-    if (seenCursors.has(payload.last_id)) throw new Error('Anthropic 模型列表分页游标未推进')
+    if (payload.has_more !== true) {return ids}
+    if (typeof payload.last_id !== 'string' || !payload.last_id) {throw new Error('Anthropic 模型列表缺少下一页游标')}
+    if (seenCursors.has(payload.last_id)) {throw new Error('Anthropic 模型列表分页游标未推进')}
     seenCursors.add(payload.last_id)
-    if (page + 1 >= MAX_ANTHROPIC_PAGES) throw new Error('Anthropic 模型列表页数超出上限')
+    if (page + 1 >= MAX_ANTHROPIC_PAGES) {throw new Error('Anthropic 模型列表页数超出上限')}
     const pageUrl = new URL(url)
     pageUrl.searchParams.set('limit', '1000')
     pageUrl.searchParams.set('after_id', payload.last_id)
@@ -155,7 +151,7 @@ async function fetchProviderIds(provider: AiProviderConfig, apiKey: string): Pro
 }
 
 async function modelsDev(): Promise<Record<string, unknown>> {
-  if (modelsDevCache.value && modelsDevCache.expiresAt > Date.now()) return modelsDevCache.value
+  if (modelsDevCache.value && modelsDevCache.expiresAt > Date.now()) {return modelsDevCache.value}
   let payload: Record<string, unknown>
   if (modelsDevMirrorEndpoint) {
     try {
@@ -173,10 +169,10 @@ async function modelsDev(): Promise<Record<string, unknown>> {
 
 function providersFromCatalog(payload: Record<string, unknown>): ProviderMetadata[] {
   return Object.entries(payload).flatMap(([id, value]): ProviderMetadata[] => {
-    if (!isRecord(value) || !isRecord(value.models)) return []
+    if (!isRecord(value) || !isRecord(value.models)) {return []}
     const models = Object.fromEntries(Object.entries(value.models).flatMap(([modelId, model]) => {
-      if (!isRecord(model)) return []
-      return [[modelId, model as ModelMetadata]]
+      if (!isRecord(model)) {return []}
+      return [[modelId, model]]
     }))
     return [{ id, name: typeof value.name === 'string' ? value.name : id, api: typeof value.api === 'string' ? value.api : undefined, models }]
   })
@@ -187,15 +183,15 @@ function providerCandidates(provider: AiProviderConfig, catalogs: ProviderMetada
   let host = ''
   try { host = safeUrl(provider.baseUrl).hostname.toLowerCase() } catch { return [] }
   const matches = catalogs.filter((catalog) => {
-    if (providerTokens.has(normalized(catalog.id)) || providerTokens.has(normalized(catalog.name))) return true
-    if (!catalog.api) return false
+    if (providerTokens.has(normalized(catalog.id)) || providerTokens.has(normalized(catalog.name))) {return true}
+    if (!catalog.api) {return false}
     try { return new URL(catalog.api).hostname.toLowerCase() === host } catch { return false }
   })
   return matches
 }
 
 function effortLevel(options: unknown): { thinking: boolean; thinkingLevel: 'low' | 'medium' | 'high'; note?: string } {
-  if (!Array.isArray(options)) return { thinking: false, thinkingLevel: 'medium' }
+  if (!Array.isArray(options)) {return { thinking: false, thinkingLevel: 'medium' }}
   const effort = options.find((item): item is { type: string; values?: unknown[] } => isRecord(item) && item.type === 'effort')
   if (!effort || !Array.isArray(effort.values)) {
     return { thinking: false, thinkingLevel: 'medium', note: '元数据仅声明开关或预算控制，当前协议未自动启用思考参数' }
@@ -203,7 +199,7 @@ function effortLevel(options: unknown): { thinking: boolean; thinkingLevel: 'low
   const values = effort.values.filter((value): value is string => typeof value === 'string').map((value) => value.toLowerCase())
   const rank: Record<string, number> = { none: 0, minimal: 1, low: 2, medium: 3, high: 4, xhigh: 5, max: 6 }
   const supported = values.filter((value) => value !== 'none' && value !== 'default' && value in rank)
-  if (!supported.length) return { thinking: false, thinkingLevel: 'medium', note: '元数据没有可用的思考等级' }
+  if (supported.length === 0) {return { thinking: false, thinkingLevel: 'medium', note: '元数据没有可用的思考等级' }}
   const selected = supported.includes('high') ? 'high' : supported.reduce((best, value) => rank[value] > rank[best] ? value : best, supported[0])
   return { thinking: true, thinkingLevel: selected === 'low' || selected === 'minimal' ? 'low' : selected === 'medium' ? 'medium' : 'high' }
 }
@@ -226,7 +222,7 @@ function metadataSignature(metadata: ModelMetadata): string {
   const effort = effortLevel(metadata.reasoning_options)
   return JSON.stringify({
     name: typeof metadata.name === 'string' ? metadata.name.trim() : '',
-    context: Math.min(2_000_000, Math.max(4_096, Math.round(limit))),
+    context: Math.min(2_000_000, Math.max(4096, Math.round(limit))),
     vision: modalities.includes('image'),
     thinking: metadata.reasoning === true && effort.thinking,
     level: effort.thinkingLevel
@@ -237,11 +233,11 @@ function resolveAmbiguous(matches: CatalogMatch[]): CatalogMatch | null {
   const labs = new Set(matches.flatMap((match) => typeof match.metadata.canonical_model_id === 'string' && match.metadata.canonical_model_id
     ? [match.metadata.canonical_model_id.split('/')[0].toLowerCase()]
     : []))
-  if (labs.size > 1) return null
+  if (labs.size > 1) {return null}
   if (labs.size === 1) {
     const lab = [...labs][0]
     const official = matches.find((match) => normalized(match.catalog.id) === normalized(lab))
-    if (official) return official
+    if (official) {return official}
   }
   const signatures = new Set(matches.map((match) => metadataSignature(match.metadata)))
   return signatures.size === 1 ? matches[0] : null
@@ -258,16 +254,16 @@ function candidateScore(match: CatalogMatch): [number, number, number, number] {
 }
 
 function bestEffortMatch(result: MetadataMatch): MetadataMatch {
-  if (!result.candidates?.length) return result
+  if (!result.candidates?.length) {return result}
   const labs = new Set(result.candidates.flatMap((match) => typeof match.metadata.canonical_model_id === 'string' && match.metadata.canonical_model_id
     ? [match.metadata.canonical_model_id.split('/')[0].toLowerCase()]
     : []))
-  if (labs.size > 1) return result
+  if (labs.size > 1) {return result}
   const candidate = [...result.candidates].sort((a, b) => {
     const left = candidateScore(a)
     const right = candidateScore(b)
     for (let index = 0; index < left.length; index += 1) {
-      if (left[index] !== right[index]) return right[index] - left[index]
+      if (left[index] !== right[index]) {return right[index] - left[index]}
     }
     return 0
   })[0]
@@ -277,22 +273,22 @@ function bestEffortMatch(result: MetadataMatch): MetadataMatch {
 function matchMetadata(id: string, provider: AiProviderConfig, catalogs: ProviderMetadata[]): MetadataMatch {
   const candidates = providerCandidates(provider, catalogs)
   const direct = candidates.flatMap((catalog) => catalog.models[id] ? [{ catalog, metadata: catalog.models[id] }] : [])
-  if (direct.length === 1) return direct[0]
+  if (direct.length === 1) {return direct[0]}
   if (direct.length > 1) {
     const resolved = resolveAmbiguous(direct)
     return resolved ?? { note: '多个供应商元数据均匹配，无法安全确定来源', conflict: true, candidates: direct }
   }
   const global = catalogs.flatMap((catalog) => catalog.models[id] ? [{ catalog, metadata: catalog.models[id] }] : [])
-  if (global.length === 1) return global[0]
+  if (global.length === 1) {return global[0]}
   if (global.length > 1) {
     const resolved = resolveAmbiguous(global)
     return resolved ?? { note: '多个供应商元数据均匹配，无法安全确定来源', conflict: true, candidates: global }
   }
   const canonical = catalogs.flatMap((catalog) => Object.values(catalog.models).flatMap((metadata) => {
-    if (typeof metadata.canonical_model_id === 'string' && normalized(metadata.canonical_model_id) === normalized(`${catalog.id}/${id}`)) return [{ catalog, metadata }]
+    if (typeof metadata.canonical_model_id === 'string' && normalized(metadata.canonical_model_id) === normalized(`${catalog.id}/${id}`)) {return [{ catalog, metadata }]}
     return []
   }))
-  if (canonical.length === 1) return canonical[0]
+  if (canonical.length === 1) {return canonical[0]}
   if (canonical.length > 1) {
     const resolved = resolveAmbiguous(canonical)
     return resolved ?? { note: '多个供应商元数据均匹配，无法安全确定来源', conflict: true, candidates: canonical }
@@ -302,16 +298,16 @@ function matchMetadata(id: string, provider: AiProviderConfig, catalogs: Provide
 
 function metadataFor(id: string, provider: AiProviderConfig, catalogs: ProviderMetadata[], modelGroupCompat: boolean): MetadataMatch {
   const direct = matchMetadata(id, provider, catalogs)
-  if (direct.metadata) return direct
-  if (direct.conflict) return modelGroupCompat ? bestEffortMatch(direct) : direct
-  if (!modelGroupCompat) return direct
+  if (direct.metadata) {return direct}
+  if (direct.conflict) {return modelGroupCompat ? bestEffortMatch(direct) : direct}
+  if (!modelGroupCompat) {return direct}
   const slash = id.indexOf('/')
-  if (slash < 0) return direct
+  if (slash === -1) {return direct}
   const grouped = id.slice(slash + 1).trim()
-  if (!grouped) return direct
+  if (!grouped) {return direct}
   const result = matchMetadata(grouped, provider, catalogs)
-  if (result.metadata) return result
-  if (result.conflict) return bestEffortMatch(result)
+  if (result.metadata) {return result}
+  if (result.conflict) {return bestEffortMatch(result)}
   return { note: result.note ? `模型组兼容：${result.note}` : '模型组兼容未找到匹配' }
 }
 
@@ -324,7 +320,7 @@ function toRow(id: string, metadata: ModelMetadata | undefined, note: string | u
   return {
     id,
     label: typeof metadata?.name === 'string' && metadata.name.trim() ? metadata.name.trim().slice(0, 80) : id,
-    contextWindow: Math.min(2_000_000, Math.max(4_096, Math.round(limit))),
+    contextWindow: Math.min(2_000_000, Math.max(4096, Math.round(limit))),
     streaming: true,
     vision: modalities.includes('image'),
     thinking: reasoning && (provider.protocol === 'anthropic' || !effort.note) ? effort.thinking : false,
@@ -337,12 +333,12 @@ function toRow(id: string, metadata: ModelMetadata | undefined, note: string | u
 }
 
 function validateRequest(value: unknown): AiModelImportRequest {
-  if (!isRecord(value)) throw new Error('无效的模型导入请求')
-  if (!['openai', 'anthropic'].includes(value.protocol as string)) throw new Error('该协议不支持自动导入模型')
+  if (!isRecord(value)) {throw new Error('无效的模型导入请求')}
+  if (!['openai', 'anthropic'].includes(value.protocol as string)) {throw new Error('该协议不支持自动导入模型')}
   const id = typeof value.id === 'string' ? value.id.trim() : ''
   const name = typeof value.name === 'string' ? value.name.trim() : ''
   const baseUrl = typeof value.baseUrl === 'string' ? value.baseUrl.trim() : ''
-  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(id) || !name || !baseUrl) throw new Error('供应商信息不完整')
+  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(id) || !name || !baseUrl) {throw new Error('供应商信息不完整')}
   safeUrl(baseUrl)
   const ids = Array.isArray(value.ids)
     ? [...new Set(value.ids.flatMap((item): string[] => typeof item === 'string' && item.trim() ? [item.trim().slice(0, 200)] : []))].slice(0, MAX_PROVIDER_MODELS)
@@ -365,15 +361,15 @@ export async function importModels(value: unknown): Promise<AiModelImportResult>
     name: request.name,
     protocol: request.protocol,
     baseUrl: request.baseUrl,
-    models: request.models as AiProviderConfig['models']
+    models: request.models
   }
-  const idsPromise = request.ids !== undefined
-    ? Promise.resolve(request.ids)
-    : (() => {
+  const idsPromise = request.ids === undefined
+    ? (() => {
         const apiKey = readProviderKey(`ai-${provider.id}`)
-        if (!apiKey) return Promise.reject(new Error(`未配置「${provider.name}」的 API Key，请先保存 API Key`))
+        if (!apiKey) {return Promise.reject(new Error(`未配置「${provider.name}」的 API Key，请先保存 API Key`))}
         return fetchProviderIds(provider, apiKey)
       })()
+    : Promise.resolve(request.ids)
   const [ids, catalog] = await Promise.all([idsPromise, modelsDev()])
   const catalogs = providersFromCatalog(catalog)
   const rows = ids.map((id) => {

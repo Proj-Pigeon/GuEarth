@@ -3,7 +3,7 @@ export type PlateBoundaryKind = 'divergent' | 'convergent' | 'transform'
 export interface PlateBoundary {
   name: string
   kind: PlateBoundaryKind
-  path: Array<[number, number]>
+  path: [number, number][]
   summary: string
 }
 
@@ -206,8 +206,9 @@ export function nearestBoundary(lon: number, lat: number): { boundary: PlateBoun
       const dLon = (pointLon - lon) * toRad
       const meanLat = ((pointLat + lat) / 2) * toRad
       const x = dLon * Math.cos(meanLat)
+      // oxlint-disable-next-line unicorn/prefer-modern-math-apis -- keeps the equirectangular distance formula exactly
       const distance = radiusKm * Math.sqrt(x * x + dLat * dLat)
-      if (distance < best.distanceKm) best = { boundary, distanceKm: distance }
+      if (distance < best.distanceKm) {best = { boundary, distanceKm: distance }}
     }
   }
   return best

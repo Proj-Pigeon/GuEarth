@@ -23,10 +23,10 @@ const alertStyles: Record<AlertType, string> = {
 }
 
 function AlertIcon({ type }: { type: AlertType }) {
-  if (type === 'info') return <InfoIcon className="mt-0.5 size-4 shrink-0 text-info" aria-hidden="true" />
-  if (type === 'success') return <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
-  if (type === 'warning') return <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
-  if (type === 'error') return <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
+  if (type === 'info') {return <InfoIcon className="mt-0.5 size-4 shrink-0 text-info" aria-hidden="true" />}
+  if (type === 'success') {return <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />}
+  if (type === 'warning') {return <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />}
+  if (type === 'error') {return <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />}
   return <InfoIcon className="mt-0.5 size-4 shrink-0 text-ink-secondary" aria-hidden="true" />
 }
 

@@ -1,4 +1,5 @@
-import { memo, type FC } from 'react'
+import { memo } from 'react';
+import type { FC } from 'react';
 import { useMessagePartText } from '@assistant-ui/react'
 import StreamingMarkdown from '../StreamingMarkdown'
 

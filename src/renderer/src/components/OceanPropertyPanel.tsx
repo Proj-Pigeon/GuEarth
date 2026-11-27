@@ -1,14 +1,15 @@
 import { useMemo } from 'react'
 import { XIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui'
-import LineChart, { type ChartSeries } from './charts/LineChart'
+import LineChart from './charts/LineChart';
+import type { ChartSeries } from './charts/LineChart';
 import styles from './OceanPropertyPanel.module.css'
 
 export interface OceanPropertyPanelProps {
   onClose: () => void
 }
 
-const temperatureStops: Array<[number, number]> = [
+const temperatureStops: [number, number][] = [
   [-60, 2.5],
   [-50, 4.5],
   [-40, 9],
@@ -24,7 +25,7 @@ const temperatureStops: Array<[number, number]> = [
   [60, 8]
 ]
 
-const salinityStops: Array<[number, number]> = [
+const salinityStops: [number, number][] = [
   [-60, 33.6],
   [-50, 33.9],
   [-40, 34.4],

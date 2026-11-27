@@ -73,7 +73,7 @@ export function contextOptionsForAttempt(attempt: WebGlContextAttempt): WebGlCon
 }
 
 export function errorText(error: unknown): string {
-  if (error instanceof Error) return error.message ? `${error.name}: ${error.message}` : error.name
+  if (error instanceof Error) {return error.message ? `${error.name}: ${error.message}` : error.name}
   return typeof error === 'string' ? error : ''
 }
 
@@ -91,7 +91,7 @@ export function isContextLostError(error: unknown): boolean {
 }
 
 export function classifyRenderFault(error: unknown, contextLost: boolean): RenderFaultKind {
-  if (contextLost || isZeroFramebufferError(error) || isContextLostError(error)) return 'recover'
+  if (contextLost || isZeroFramebufferError(error) || isContextLostError(error)) {return 'recover'}
   return 'report'
 }
 
@@ -100,7 +100,7 @@ export function shouldStopRenderLoop(kind: RenderFaultKind, consecutiveFaults: n
 }
 
 export function surfaceFailureCopy(contextLost: boolean): { message: string; detail: string } {
-  if (contextLost) return { message: WEBGL_UNAVAILABLE_MESSAGE, detail: WEBGL_UNAVAILABLE_DETAIL }
+  if (contextLost) {return { message: WEBGL_UNAVAILABLE_MESSAGE, detail: WEBGL_UNAVAILABLE_DETAIL }}
   return { message: SURFACE_UNAVAILABLE_MESSAGE, detail: SURFACE_UNAVAILABLE_DETAIL }
 }
 
@@ -109,9 +109,9 @@ export function surfaceIsRenderable(size: SurfaceSize): boolean {
 }
 
 export function decideRenderFrame(size: SurfaceSize, recoveryAttempted: boolean): RenderFrameDecision {
-  if (size.clientWidth < 1 || size.clientHeight < 1) return { action: 'tick', reason: 'awaiting-layout' }
-  if (size.drawingBufferWidth >= 1 && size.drawingBufferHeight >= 1) return { action: 'render' }
-  if (!recoveryAttempted) return { action: 'recover-resize' }
+  if (size.clientWidth < 1 || size.clientHeight < 1) {return { action: 'tick', reason: 'awaiting-layout' }}
+  if (size.drawingBufferWidth >= 1 && size.drawingBufferHeight >= 1) {return { action: 'render' }}
+  if (!recoveryAttempted) {return { action: 'recover-resize' }}
   return { action: 'tick', reason: 'buffer-missing' }
 }
 
@@ -125,9 +125,9 @@ export function advanceBufferGap(state: BufferGapState, kind: SurfaceFrameKind, 
     state.since = 0
     return 'ok'
   }
-  if (!state.since) state.since = now
-  if (state.reported) return 'waiting'
-  if (now - state.since < limitMs) return 'waiting'
+  if (!state.since) {state.since = now}
+  if (state.reported) {return 'waiting'}
+  if (now - state.since < limitMs) {return 'waiting'}
   state.reported = true
   return 'report'
 }
@@ -140,7 +140,7 @@ export function backingStoreSize(clientWidth: number, clientHeight: number, pixe
 }
 
 export function nudgedCanvasSize(currentWidth: number, currentHeight: number, targetWidth: number, targetHeight: number): { width: number; height: number } {
-  if (currentWidth === targetWidth && currentHeight === targetHeight) return { width: targetWidth + 1, height: targetHeight }
+  if (currentWidth === targetWidth && currentHeight === targetHeight) {return { width: targetWidth + 1, height: targetHeight }}
   return { width: targetWidth, height: targetHeight }
 }
 
@@ -155,7 +155,7 @@ export interface GlRendererSource {
 }
 
 export function glRendererName(gl: GlRendererSource | null): string {
-  if (!gl) return ''
+  if (!gl) {return ''}
   try {
     const info = gl.getExtension('WEBGL_debug_renderer_info')
     const value = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)

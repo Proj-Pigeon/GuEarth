@@ -2,17 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { SaveIcon, Trash2Icon } from 'lucide-react'
 import { Alert, Button, PasswordInput, Input, Segmented, Select, Switch, Tag, useToast } from '@renderer/components/ui'
 import { credentialOnlyProviders, providerCatalog, useGlobeStore } from '@renderer/stores/globe'
-import { networkProxyMode, normalizeNetworkProxy, type NetworkProxyMode } from '../../../../common/networkProxy'
-import {
-  mirrorEndpointLabel,
-  mirrorEndpointShortLabel,
-  type MirrorEndpointPreference
-} from '../../../../common/tileMirror'
-import {
-  normalizeTouchInteractionMode,
-  touchInteractionModes,
-  type TouchInteractionMode
-} from '../../../../common/touchInteraction'
+import { networkProxyMode, normalizeNetworkProxy } from '../../../../common/networkProxy';
+import type { NetworkProxyMode } from '../../../../common/networkProxy';
+import { mirrorEndpointLabel, mirrorEndpointShortLabel } from '../../../../common/tileMirror';
+import type { MirrorEndpointPreference } from '../../../../common/tileMirror';
+import { normalizeTouchInteractionMode, touchInteractionModes } from '../../../../common/touchInteraction';
+import type { TouchInteractionMode } from '../../../../common/touchInteraction';
 import styles from './MapSettings.module.css'
 
 export interface MapSettingsProps {}
@@ -36,13 +31,13 @@ const touchInteractionModeOptions = touchInteractionModes.map((mode) => ({
   label: touchInteractionModeLabels[mode]
 }))
 
-const proxyModeOptions: Array<{ value: NetworkProxyMode; label: string }> = [
+const proxyModeOptions: { value: NetworkProxyMode; label: string }[] = [
   { value: 'system', label: '跟随系统' },
   { value: 'direct', label: '直连' },
   { value: 'custom', label: '自定义' }
 ]
 
-const mirrorSourceOptions: Array<{ value: MirrorEndpointPreference; label: string }> = [
+const mirrorSourceOptions: { value: MirrorEndpointPreference; label: string }[] = [
   { value: 'auto', label: '自动匹配' },
   { value: 'edgeone', label: 'EdgeOne' },
   { value: 'cloudflare', label: 'Cloudflare' }
@@ -84,13 +79,13 @@ export function MapSettings(_props: MapSettingsProps) {
   const [proxyTestResult, setProxyTestResult] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
-    if (typeof window.guEarth?.tiles?.getMirrorStatus !== 'function') return
+    if (typeof window.guEarth?.tiles?.getMirrorStatus !== 'function') {return}
     void window.guEarth.tiles
       .getMirrorStatus()
       .then((status) => {
         applyTileMirrorStatus(status)
       })
-      .catch(() => undefined)
+      .catch(() => {})
   }, [applyTileMirrorStatus])
 
   useEffect(() => {
@@ -164,14 +159,14 @@ export function MapSettings(_props: MapSettingsProps) {
   const proxyApplyEnabled = normalizedProxyDraft !== '' && normalizedProxyDraft !== networkProxy
 
   function handleCredentialProviderChange(nextId: string | undefined): void {
-    if (!nextId) return
+    if (!nextId) {return}
     setCredentialProviderId(nextId)
     setCredentialDraft('')
     setCredentialSkDraft('')
   }
 
   async function reprobeMirrorEndpoints(): Promise<void> {
-    if (mirrorProbingEndpoints || typeof window.guEarth?.tiles?.probeMirrorEndpoints !== 'function') return
+    if (mirrorProbingEndpoints || typeof window.guEarth?.tiles?.probeMirrorEndpoints !== 'function') {return}
     try {
       const status = await window.guEarth.tiles.probeMirrorEndpoints()
       applyTileMirrorStatus(status)
@@ -193,7 +188,7 @@ export function MapSettings(_props: MapSettingsProps) {
   }
 
   async function retryTileMirror(): Promise<void> {
-    if (typeof window.guEarth?.tiles?.resetMirrorFallback !== 'function') return
+    if (typeof window.guEarth?.tiles?.resetMirrorFallback !== 'function') {return}
     try {
       const status = await window.guEarth.tiles.resetMirrorFallback()
       applyTileMirrorStatus(status)
@@ -215,7 +210,7 @@ export function MapSettings(_props: MapSettingsProps) {
     const id = credentialProviderId
     const value = credentialDraft.trim()
     const sk = credentialSkDraft.trim()
-    if (!id || !value || (requiresSecurityKey && !sk)) return
+    if (!id || !value || (requiresSecurityKey && !sk)) {return}
     const touchesSecurityKey = sk !== '' || id === 'amap'
     try {
       const status = await window.guEarth.settings.setProviderApiKey(id, value)
@@ -242,7 +237,7 @@ export function MapSettings(_props: MapSettingsProps) {
 
   async function clearCredential(): Promise<void> {
     const id = credentialProviderId
-    if (!id) return
+    if (!id) {return}
     try {
       const status = await window.guEarth.settings.clearProviderApiKey(id)
       setCredentialStatus(id, status)
@@ -266,12 +261,12 @@ export function MapSettings(_props: MapSettingsProps) {
   }
 
   function applyProxy(): void {
-    if (!proxyApplyEnabled) return
+    if (!proxyApplyEnabled) {return}
     setNetworkProxy(normalizedProxyDraft)
   }
 
   async function testProxy(): Promise<void> {
-    if (proxyTesting) return
+    if (proxyTesting) {return}
     if (proxyModeView === 'custom' && normalizedProxyDraft === '') {
       setProxyTestResult({ ok: false, text: '请输入有效的代理地址' })
       return

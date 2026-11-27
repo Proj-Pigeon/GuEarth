@@ -57,16 +57,16 @@ export function exaggeratedSurfaceHeightM(groundM: number, verticalExaggeration:
 }
 
 export function transectHops(sampleCount: number, maxHops: number): number[] {
-  if (sampleCount <= 0) return []
+  if (sampleCount <= 0) {return []}
   const stride = Math.max(1, Math.ceil(sampleCount / Math.max(1, maxHops)))
   const hops: number[] = []
-  for (let index = sampleCount - 1; index >= 0; index -= stride) hops.push(index)
-  if (hops[hops.length - 1] !== 0) hops.push(0)
+  for (let index = sampleCount - 1; index >= 0; index -= stride) {hops.push(index)}
+  if (hops[hops.length - 1] !== 0) {hops.push(0)}
   return hops
 }
 
 export function planTransectAltitudes(surfaceHeightsM: number[], clearanceM: number, minimumM: number, requestedM?: number): number[] {
-  if (surfaceHeightsM.length === 0) return []
+  if (surfaceHeightsM.length === 0) {return []}
   const floorAt = (surfaceM: number): number => {
     const floor = Math.max(surfaceM + clearanceM, minimumM)
     return requestedM === undefined ? floor : Math.max(floor, requestedM)
@@ -75,7 +75,7 @@ export function planTransectAltitudes(surfaceHeightsM: number[], clearanceM: num
     let max = surface
     for (let offset = -2; offset <= 2; offset += 1) {
       const neighbor = surfaceHeightsM[index + offset]
-      if (neighbor !== undefined) max = Math.max(max, neighbor)
+      if (neighbor !== undefined) {max = Math.max(max, neighbor)}
     }
     return max
   })
@@ -99,7 +99,7 @@ export function planTransectAltitudes(surfaceHeightsM: number[], clearanceM: num
 export const GROUND_PROFILE_PLAUSIBLE_RATIO = 0.7
 
 export function groundProfileImplausible(heights: number[], expectedMaxGroundM?: number): boolean {
-  if (expectedMaxGroundM === undefined || !Number.isFinite(expectedMaxGroundM) || expectedMaxGroundM <= 0) return false
-  if (heights.length === 0) return false
+  if (expectedMaxGroundM === undefined || !Number.isFinite(expectedMaxGroundM) || expectedMaxGroundM <= 0) {return false}
+  if (heights.length === 0) {return false}
   return Math.max(...heights) < expectedMaxGroundM * GROUND_PROFILE_PLAUSIBLE_RATIO
 }

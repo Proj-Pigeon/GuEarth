@@ -8,7 +8,8 @@ import { storageChildPath } from '../../storagePath'
 import { conversationSummary, MAX_CONVERSATIONS, normalizeConversation } from '../chatHistoryStore'
 import type { KnowledgeEntry, KnowledgeMatch } from '../knowledge'
 import { MAX_MEMORIES, MAX_MEMORY_CONTENT_LENGTH, normalizeMemory } from '../memoryStore'
-import { HawdbDatabase, HawdbError, HawdbLibrary } from './ffi'
+import type { HawdbDatabase} from './ffi';
+import { HawdbError, HawdbLibrary } from './ffi'
 import {
   buildConversationSearchText,
   buildConversationSnippet,
@@ -55,14 +56,14 @@ async function readJsonSafe(path: string): Promise<unknown> {
 }
 
 async function loadLegacyMemories(path?: string): Promise<AgentMemory[]> {
-  if (!path || !existsSync(path)) return []
+  if (!path || !existsSync(path)) {return []}
   const parsed = await readJsonSafe(path)
-  if (!Array.isArray(parsed)) return []
+  if (!Array.isArray(parsed)) {return []}
   const seen = new Set<string>()
   const memories: AgentMemory[] = []
   for (const item of parsed) {
     const normalized = normalizeMemory(item)
-    if (!normalized || seen.has(normalized.id)) continue
+    if (!normalized || seen.has(normalized.id)) {continue}
     seen.add(normalized.id)
     memories.push(normalized)
   }
@@ -70,7 +71,7 @@ async function loadLegacyMemories(path?: string): Promise<AgentMemory[]> {
 }
 
 async function loadLegacyConversations(path?: string): Promise<StoredAiConversation[]> {
-  if (!path) return []
+  if (!path) {return []}
   const directory = `${path}.d`
   const byId = new Map<string, StoredAiConversation>()
   let indexValid = false
@@ -80,12 +81,12 @@ async function loadLegacyConversations(path?: string): Promise<StoredAiConversat
     if (isRecord(indexDoc) && Array.isArray(indexDoc.conversations)) {
       indexValid = true
       for (const entry of indexDoc.conversations) {
-        if (!isRecord(entry) || typeof entry.file !== 'string' || !entry.file) continue
+        if (!isRecord(entry) || typeof entry.file !== 'string' || !entry.file) {continue}
         try {
           const filePath = storageChildPath(directory, entry.file)
           const parsed = await readJsonSafe(filePath)
           const normalized = normalizeConversation(parsed)
-          if (normalized) byId.set(normalized.id, normalized)
+          if (normalized) {byId.set(normalized.id, normalized)}
         } catch {
           continue
         }
@@ -97,7 +98,7 @@ async function loadLegacyConversations(path?: string): Promise<StoredAiConversat
     if (Array.isArray(parsed)) {
       for (const item of parsed) {
         const normalized = normalizeConversation(item)
-        if (normalized) byId.set(normalized.id, normalized)
+        if (normalized) {byId.set(normalized.id, normalized)}
       }
     }
   }
@@ -107,15 +108,15 @@ async function loadLegacyConversations(path?: string): Promise<StoredAiConversat
 }
 
 async function loadSnapshot(path: string): Promise<SnapshotDocument | null> {
-  if (!existsSync(path)) return null
+  if (!existsSync(path)) {return null}
   const parsed = await readJsonSafe(path)
-  if (!isRecord(parsed)) return null
+  if (!isRecord(parsed)) {return null}
   const memories: AgentMemory[] = []
   const seenMemories = new Set<string>()
   if (Array.isArray(parsed.memories)) {
     for (const item of parsed.memories) {
       const normalized = normalizeMemory(item)
-      if (!normalized || seenMemories.has(normalized.id)) continue
+      if (!normalized || seenMemories.has(normalized.id)) {continue}
       seenMemories.add(normalized.id)
       memories.push(normalized)
     }
@@ -125,7 +126,7 @@ async function loadSnapshot(path: string): Promise<SnapshotDocument | null> {
   if (Array.isArray(parsed.conversations)) {
     for (const item of parsed.conversations) {
       const normalized = normalizeConversation(item)
-      if (!normalized || seenConversations.has(normalized.id)) continue
+      if (!normalized || seenConversations.has(normalized.id)) {continue}
       seenConversations.add(normalized.id)
       conversations.push(normalized)
     }
@@ -141,7 +142,7 @@ async function loadSnapshot(path: string): Promise<SnapshotDocument | null> {
 
 function fieldMatchCount(value: string, terms: string[]): number {
   const normalized = normalizeLookupText(value)
-  if (!normalized) return 0
+  if (!normalized) {return 0}
   return terms.reduce((score, term) => score + (normalized.includes(term) ? 1 : 0), 0)
 }
 
@@ -158,10 +159,10 @@ function scoreEntryFields(entry: KnowledgeEntry, terms: string[], module?: strin
     boost += 25
     matchedFields.push('module')
   }
-  if (nameScore) matchedFields.push('name')
-  if (aliasScore) matchedFields.push('aliases')
-  if (keywordScore) matchedFields.push('keywords')
-  if (contentScore) matchedFields.push('content')
+  if (nameScore) {matchedFields.push('name')}
+  if (aliasScore) {matchedFields.push('aliases')}
+  if (keywordScore) {matchedFields.push('keywords')}
+  if (contentScore) {matchedFields.push('content')}
   return { boost, matchedFields }
 }
 
@@ -192,10 +193,10 @@ export class EoqHawdbEngine {
   private dbRoot = ''
   private hawdbVersion = ''
   private formatVersion = 0
-  private knowledgeById = new Map<string, KnowledgeEntry>()
+  private readonly knowledgeById = new Map<string, KnowledgeEntry>()
 
   private requireDb(): HawdbDatabase {
-    if (!this.db) throw new HawdbError('not_open', 'HawDB 引擎尚未初始化')
+    if (!this.db) {throw new HawdbError('not_open', 'HawDB 引擎尚未初始化')}
     return this.db
   }
 
@@ -216,10 +217,10 @@ export class EoqHawdbEngine {
   }
 
   private insertMemories(memories: AgentMemory[]): void {
-    if (!memories.length) return
+    if (memories.length === 0) {return}
     const existingIds = new Set(this.listMemories().map((item) => item.id))
     const toInsert = memories.filter((item) => !existingIds.has(item.id)).slice(0, Math.max(0, MAX_MEMORIES - existingIds.size))
-    if (!toInsert.length) return
+    if (toInsert.length === 0) {return}
     this.requireDb().transaction((tx) => {
       for (const memory of toInsert) {
         tx.querySQL(
@@ -231,10 +232,10 @@ export class EoqHawdbEngine {
   }
 
   private insertConversations(conversations: StoredAiConversation[]): void {
-    if (!conversations.length) return
+    if (conversations.length === 0) {return}
     const existingIds = new Set(this.listConversations().map((item) => item.id))
     const toInsert = conversations.filter((item) => !existingIds.has(item.id))
-    if (!toInsert.length) return
+    if (toInsert.length === 0) {return}
     this.requireDb().transaction((tx) => {
       for (const conversation of toInsert) {
         tx.querySQL(
@@ -256,7 +257,7 @@ export class EoqHawdbEngine {
   private trimConversations(): void {
     const db = this.requireDb()
     const rows = db.querySQL('SELECT id FROM eoq_conversations ORDER BY updated_at DESC, id ASC').dicts()
-    if (rows.length <= MAX_CONVERSATIONS) return
+    if (rows.length <= MAX_CONVERSATIONS) {return}
     const staleIds = rows.slice(MAX_CONVERSATIONS).map((row) => String(row.id))
     db.transaction((tx) => {
       for (const id of staleIds) {
@@ -271,10 +272,10 @@ export class EoqHawdbEngine {
       .dicts()
     const list: StoredAiConversation[] = []
     for (const row of rows) {
-      if (typeof row.payload_json !== 'string') continue
+      if (typeof row.payload_json !== 'string') {continue}
       try {
         const normalized = normalizeConversation(JSON.parse(row.payload_json))
-        if (normalized) list.push(normalized)
+        if (normalized) {list.push(normalized)}
       } catch {
         continue
       }
@@ -283,7 +284,7 @@ export class EoqHawdbEngine {
   }
 
   private async persistSnapshotIfNeeded(): Promise<void> {
-    if (this.storageMode !== 'memory-snapshot') return
+    if (this.storageMode !== 'memory-snapshot') {return}
     const doc: SnapshotDocument = {
       version: 1,
       memories: this.listMemories(),
@@ -355,7 +356,7 @@ export class EoqHawdbEngine {
     await mkdir(this.dbRoot, { recursive: true })
     const lib = new HawdbLibrary(payload.libraryPath)
     let db: HawdbDatabase
-    let dbOwned = false
+    let dbOwned: boolean
     if (process.platform === 'win32') {
       db = lib.openInMemory()
       dbOwned = true
@@ -369,7 +370,7 @@ export class EoqHawdbEngine {
       this.storageMode = 'memory-snapshot'
     } else {
       let diskDb: HawdbDatabase | null = null
-      let schemaReady = false
+      let schemaReady: boolean
       try {
         diskDb = lib.open(join(this.dbRoot, 'db'), { durability: 'sync_on_every_write' })
         ensureEoqSchema(diskDb)
@@ -477,10 +478,10 @@ export class EoqHawdbEngine {
 
   async addMemory(content: string, source: AgentMemory['source']): Promise<AgentMemory> {
     const trimmed = typeof content === 'string' ? content.trim().slice(0, MAX_MEMORY_CONTENT_LENGTH) : ''
-    if (!trimmed) throw new Error('记忆内容不能为空')
+    if (!trimmed) {throw new Error('记忆内容不能为空')}
     const db = this.requireDb()
     const count = Number(db.querySQL('SELECT COUNT(*) AS cnt FROM eoq_memories').dicts()[0]?.cnt ?? 0)
-    if (count >= MAX_MEMORIES) throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)
+    if (count >= MAX_MEMORIES) {throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)}
     const memory: AgentMemory = {
       id: `m${randomUUID()}`,
       content: trimmed,
@@ -509,7 +510,7 @@ export class EoqHawdbEngine {
   async deleteMemory(id: string): Promise<boolean> {
     const db = this.requireDb()
     const existing = db.querySQL('SELECT id, content, source, created_at FROM eoq_memories WHERE id = $1', [id]).dicts()
-    if (!existing.length) return false
+    if (existing.length === 0) {return false}
     db.querySQL('DELETE FROM eoq_memories WHERE id = $1', [id])
     try {
       await this.persistSnapshotIfNeeded()
@@ -534,7 +535,7 @@ export class EoqHawdbEngine {
 
   recallMemories(query: string, limit = 8): MemoryRecallMatch[] {
     const cleanQuery = query.trim().slice(0, MAX_QUERY_LENGTH)
-    if (!cleanQuery) return []
+    if (!cleanQuery) {return []}
     const topK = Math.min(20, Math.max(1, Math.round(limit)))
     try {
       const rows = this.requireDb()
@@ -579,13 +580,13 @@ export class EoqHawdbEngine {
     const rows = this.requireDb()
       .querySQL('SELECT payload_json FROM eoq_conversations WHERE id = $1', [id])
       .dicts()
-    if (!rows.length || typeof rows[0].payload_json !== 'string') return null
+    if (rows.length === 0 || typeof rows[0].payload_json !== 'string') {return null}
     return normalizeConversation(JSON.parse(rows[0].payload_json))
   }
 
   async saveConversation(value: unknown): Promise<StoredAiConversationSummary[]> {
     const conversation = normalizeConversation(value)
-    if (!conversation) throw new Error('无效的会话数据')
+    if (!conversation) {throw new Error('无效的会话数据')}
     const db = this.requireDb()
     const searchText = buildConversationSearchText(conversation)
     const payloadJson = JSON.stringify(conversation)
@@ -609,7 +610,7 @@ export class EoqHawdbEngine {
 
   searchConversations(query: string, limit = 5, excludeId?: string): ConversationSearchHit[] {
     const cleanQuery = query.trim().slice(0, MAX_QUERY_LENGTH)
-    if (!cleanQuery) return []
+    if (!cleanQuery) {return []}
     const cappedLimit = Math.min(10, Math.max(1, Math.round(limit)))
     const fetchLimit = cappedLimit + (excludeId ? 2 : 0)
     const hits: ConversationSearchHit[] = []
@@ -622,11 +623,11 @@ export class EoqHawdbEngine {
         .dicts()
       for (const row of rows) {
         const id = String(row.id)
-        if (excludeId && id === excludeId) continue
-        if (typeof row.payload_json !== 'string') continue
+        if (excludeId && id === excludeId) {continue}
+        if (typeof row.payload_json !== 'string') {continue}
         try {
           const conversation = normalizeConversation(JSON.parse(row.payload_json))
-          if (!conversation) continue
+          if (!conversation) {continue}
           hits.push({
             id: conversation.id,
             title: conversation.title,
@@ -638,9 +639,9 @@ export class EoqHawdbEngine {
         } catch {
           continue
         }
-        if (hits.length >= cappedLimit) break
+        if (hits.length >= cappedLimit) {break}
       }
-      if (hits.length > 0) return hits
+      if (hits.length > 0) {return hits}
     } catch {
       void 0
     }
@@ -676,7 +677,7 @@ export class EoqHawdbEngine {
       const related: KnowledgeRelatedConcept[] = []
       for (const row of rows) {
         const id = String(row.id ?? '')
-        if (!id || id === conceptId || seen.has(id)) continue
+        if (!id || id === conceptId || seen.has(id)) {continue}
         seen.add(id)
         related.push({
           id,
@@ -688,7 +689,7 @@ export class EoqHawdbEngine {
       }
       return related
         .sort((left, right) => {
-          if (left.relation !== right.relation) return left.relation === 'contrasts_with' ? -1 : 1
+          if (left.relation !== right.relation) {return left.relation === 'contrasts_with' ? -1 : 1}
           return left.name.localeCompare(right.name, 'zh-CN')
         })
         .slice(0, MAX_RELATED_CONCEPTS)
@@ -699,7 +700,7 @@ export class EoqHawdbEngine {
 
   retrieveKnowledge(query: string, module?: string, topK = DEFAULT_TOP_K): KnowledgeSearchResult {
     const cleanQuery = query.trim().slice(0, MAX_QUERY_LENGTH)
-    if (!cleanQuery) return { query: '', matches: [], total: 0 }
+    if (!cleanQuery) {return { query: '', matches: [], total: 0 }}
     const limit = Math.min(MAX_TOP_K, Math.max(1, Math.round(topK)))
     const terms = extractQueryTerms(cleanQuery)
     const bm25Scores = new Map<string, number>()
@@ -716,15 +717,15 @@ export class EoqHawdbEngine {
     } catch {
       void 0
     }
-    const ranked: Array<{ entry: KnowledgeEntry; score: number; matchedFields: string[] }> = []
+    const ranked: { entry: KnowledgeEntry; score: number; matchedFields: string[] }[] = []
     for (const entry of this.knowledgeById.values()) {
-      if (entry.status === 'deprecated') continue
+      if (entry.status === 'deprecated') {continue}
       const bm25 = bm25Scores.get(entry.id) ?? 0
       const { boost, matchedFields } = scoreEntryFields(entry, terms, module)
       const combinedScore = Math.round((bm25 * 15 + boost) * 100) / 100
-      if (combinedScore <= 0) continue
+      if (combinedScore <= 0) {continue}
       const fields = [...matchedFields]
-      if (bm25 > 0 && !fields.includes('bm25')) fields.push('bm25')
+      if (bm25 > 0 && !fields.includes('bm25')) {fields.push('bm25')}
       ranked.push({ entry, score: combinedScore, matchedFields: fields })
     }
     ranked.sort((left, right) => right.score - left.score || left.entry.name.localeCompare(right.entry.name, 'zh-CN'))

@@ -26,7 +26,7 @@ function loadTester(respond, key = 'secret-key') {
   const requests = []
   const captures = []
   const dependencies = new Map([
-    ['crypto', { randomUUID }],
+    ['node:crypto', { randomUUID }],
     ['electron', { net: { fetch: async (url, options) => { requests.push({ url, options }); return respond(url, options) } } }],
     ['../../common/aiTelemetry', aiTelemetryApi],
     ['../keyVault', { readProviderKey: () => key }],
@@ -36,7 +36,7 @@ function loadTester(respond, key = 'secret-key') {
   const load = compileFunction(`${outputText}\nreturn { testModel: exports.testModel }`, ['require', 'exports'])
   const api = load((id) => {
     const dependency = dependencies.get(id)
-    if (!dependency) throw new Error(`Unexpected module dependency: ${id}`)
+    if (!dependency) {throw new Error(`Unexpected module dependency: ${id}`)}
     return dependency
   }, {})
   return { ...api, requests, captures }

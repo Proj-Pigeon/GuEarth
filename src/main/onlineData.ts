@@ -1,5 +1,5 @@
-import { createHash } from 'crypto'
-import { join } from 'path'
+import { createHash } from 'node:crypto'
+import { join } from 'node:path'
 import type { EarthquakeFeed } from '../preload'
 import type { OnlineDataSnapshot, TyphoonFeed } from '../common/onlineData'
 import { loadEarthquakeFeed } from './datasets'
@@ -29,14 +29,14 @@ async function loadTyphoons(signal: AbortSignal): Promise<TyphoonSnapshot> {
   let cached: TyphoonFeed | null = null
   try {
     const credentials = getQWeatherCredentials()
-    if (!credentials) return { typhoons: null, typhoonError: '', typhoonConfigured: false, typhoonStatus: 'unconfigured' }
+    if (!credentials) {return { typhoons: null, typhoonError: '', typhoonConfigured: false, typhoonStatus: 'unconfigured' }}
     const hostId = createHash('sha256').update(credentials.apiHost).digest('hex').slice(0, 16)
     const cachePath = join(dataPath, `typhoons-${hostId}.json`)
     cached = parseCachedTyphoons(await readJson(cachePath).catch(() => null))
     signal.throwIfAborted()
     const typhoons = await fetchTyphoonFeed(credentials, signal)
     signal.throwIfAborted()
-    await writeJson(cachePath, typhoons).catch(() => undefined)
+    await writeJson(cachePath, typhoons).catch(() => {})
     return { typhoons, typhoonError: '', typhoonConfigured: true, typhoonStatus: 'ready' }
   } catch (error) {
     return { typhoons: cached, typhoonError: error instanceof Error ? error.message : '台风数据获取失败', typhoonConfigured: true, typhoonStatus: 'error' }
@@ -51,13 +51,13 @@ export function invalidateTyphoons(configured: boolean): void {
 }
 
 export function ensureTyphoons(retry = false): Promise<OnlineDataSnapshot> {
-  if (typhoonRequest) return typhoonRequest
-  if (snapshot.typhoonStatus !== 'pending' && !(retry && snapshot.typhoonStatus === 'error')) return Promise.resolve(snapshot)
+  if (typhoonRequest) {return typhoonRequest}
+  if (snapshot.typhoonStatus !== 'pending' && !(retry && snapshot.typhoonStatus === 'error')) {return Promise.resolve(snapshot)}
   const controller = new AbortController()
   typhoonController = controller
   publish({ typhoonStatus: 'loading' })
   const request = loadTyphoons(controller.signal).then((typhoons) => {
-    if (!controller.signal.aborted) publish(typhoons)
+    if (!controller.signal.aborted) {publish(typhoons)}
     return snapshot
   }).finally(() => {
     if (typhoonRequest === request) {
@@ -83,19 +83,19 @@ export function startOnlineData(userDataPath: string, listener: (snapshot: Onlin
 }
 
 export async function getOnlineData(): Promise<OnlineDataSnapshot> {
-  if (!startupData) throw new Error('在线数据尚未初始化')
+  if (!startupData) {throw new Error('在线数据尚未初始化')}
   await startupData
   return snapshot
 }
 
 export async function getStartupEarthquakes(): Promise<EarthquakeFeed> {
   const data = await getOnlineData()
-  if (!data.earthquakes) throw new Error(data.earthquakeError)
+  if (!data.earthquakes) {throw new Error(data.earthquakeError)}
   return data.earthquakes
 }
 
 export function refreshEarthquakes(): Promise<EarthquakeFeed> {
-  if (earthquakeRequest) return earthquakeRequest
+  if (earthquakeRequest) {return earthquakeRequest}
   const request = loadEarthquakeFeed().then((earthquakes) => {
     publish({ earthquakes, earthquakeError: earthquakes.stale ? '地震数据更新失败，暂显示上次数据' : '' })
     return earthquakes
@@ -103,7 +103,7 @@ export function refreshEarthquakes(): Promise<EarthquakeFeed> {
     publish({ earthquakeError: '地震数据更新失败，请检查网络后重试' })
     throw error instanceof Error ? error : new Error('地震数据更新失败，请检查网络后重试')
   }).finally(() => {
-    if (earthquakeRequest === request) earthquakeRequest = null
+    if (earthquakeRequest === request) {earthquakeRequest = null}
   })
   earthquakeRequest = request
   return request

@@ -5,9 +5,9 @@ const RELIEF_BEARING_COUNT = 8
 const GENTLE_SLOPE_RAD = (6 * Math.PI) / 180
 const STEEP_SLOPE_RAD = (26 * Math.PI) / 180
 const FRAME_WIDTH_FACTOR = 2.5
-const MAX_RELIEF_FRAMING_CLEARANCE_M = 12000
+const MAX_RELIEF_FRAMING_CLEARANCE_M = 12_000
 const DEFAULT_FOVY_RAD = Math.PI / 3
-const EARTH_RADIUS_M = 6378137
+const EARTH_RADIUS_M = 6_378_137
 
 export const FLIGHT_ARRIVAL_PITCH_RAD = -Math.PI / 2
 export const FLIGHT_DEFAULT_FOVY_RAD = DEFAULT_FOVY_RAD
@@ -51,7 +51,7 @@ function smoothstep(edge0: number, edge1: number, value: number): number {
 }
 
 function usableFovY(fovYRadians: number): number {
-  if (Number.isFinite(fovYRadians) && fovYRadians > 0.2 && fovYRadians < Math.PI - 0.2) return fovYRadians
+  if (Number.isFinite(fovYRadians) && fovYRadians > 0.2 && fovYRadians < Math.PI - 0.2) {return fovYRadians}
   return DEFAULT_FOVY_RAD
 }
 
@@ -60,8 +60,8 @@ function depressionRadians(pitchRadians: number): number {
   return Math.min(Math.PI / 2, Math.max(0.2, pitch))
 }
 
-export function flightReliefOffsets(): Array<{ distanceM: number; bearingRad: number }> {
-  const offsets: Array<{ distanceM: number; bearingRad: number }> = []
+export function flightReliefOffsets(): { distanceM: number; bearingRad: number }[] {
+  const offsets: { distanceM: number; bearingRad: number }[] = []
   for (const distanceM of RELIEF_RING_RADII_M) {
     for (let index = 0; index < RELIEF_BEARING_COUNT; index += 1) {
       offsets.push({ distanceM, bearingRad: (2 * Math.PI * index) / RELIEF_BEARING_COUNT })
@@ -87,7 +87,7 @@ export function planFlightCameraHeight(input: FlightFramingInput): number {
   const tanHalf = Math.tan(usableFovY(input.fovYRadians) / 2)
   const pitchScale = 1 / Math.sin(depressionRadians(input.pitchRadians))
   for (const sample of input.relief) {
-    if (!Number.isFinite(sample.groundM) || !Number.isFinite(sample.distanceM) || sample.distanceM <= 0) continue
+    if (!Number.isFinite(sample.groundM) || !Number.isFinite(sample.distanceM) || sample.distanceM <= 0) {continue}
     const surface = exaggeratedFlightGroundM(sample.groundM, input.verticalExaggeration, input.relativeHeightM)
     maxSurface = Math.max(maxSurface, surface)
     const rise = Math.abs(surface - center)

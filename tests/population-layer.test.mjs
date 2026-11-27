@@ -34,7 +34,7 @@ test('densityColor maps values to the correct bins', () => {
   assert.equal(densityColor(200), densityBins[4].color)
   assert.equal(densityColor(400), densityBins[5].color)
   assert.equal(densityColor(800), densityBins[6].color)
-  assert.equal(densityColor(20000), densityBins[6].color)
+  assert.equal(densityColor(20_000), densityBins[6].color)
 })
 
 test('province census table is complete and internally consistent', () => {
@@ -47,17 +47,17 @@ test('province census table is complete and internally consistent', () => {
     assert.ok(province.urbanizationPct === null || (province.urbanizationPct > 0 && province.urbanizationPct <= 100))
     assert.ok(['east', 'west', 'cross'].includes(province.huSide))
   }
-  const westNames = ['内蒙古自治区', '宁夏回族自治区', '甘肃省', '青海省', '新疆维吾尔自治区', '西藏自治区']
-  const crossNames = ['四川省', '云南省', '陕西省']
+  const westNames = new Set(['内蒙古自治区', '宁夏回族自治区', '甘肃省', '青海省', '新疆维吾尔自治区', '西藏自治区'])
+  const crossNames = new Set(['四川省', '云南省', '陕西省'])
   for (const province of provincePopulation) {
-    assert.equal(westNames.includes(province.name), province.huSide === 'west')
-    assert.equal(crossNames.includes(province.name), province.huSide === 'cross')
+    assert.equal(westNames.has(province.name), province.huSide === 'west')
+    assert.equal(crossNames.has(province.name), province.huSide === 'cross')
   }
 })
 
 test('density matches population divided by area and ranks follow the order', () => {
   const guangdong = provincePopulation.find((province) => province.name === '广东省')
-  assert.ok(Math.abs(densityOf(guangdong) - 12601.25 / 17.97) < 0.01)
+  assert.ok(Math.abs(densityOf(guangdong) - 12_601.25 / 17.97) < 0.01)
   assert.equal(populationRank('广东省'), 1)
   assert.equal(populationRank('澳门特别行政区'), 34)
   assert.equal(densityRank('澳门特别行政区'), 1)
@@ -78,9 +78,9 @@ test('2020 pyramid matches census yearbook column totals', () => {
   assert.equal(pyramid2020.female.length, 17)
   const maleTotal = pyramid2020.male.reduce((sum, value) => sum + value, 0)
   const femaleTotal = pyramid2020.female.reduce((sum, value) => sum + value, 0)
-  assert.ok(Math.abs(maleTotal - 72141.64) < 1)
-  assert.ok(Math.abs(femaleTotal - 68836.23) < 1)
-  assert.ok(Math.abs(maleTotal + femaleTotal - 140977.87) < 2)
+  assert.ok(Math.abs(maleTotal - 72_141.64) < 1)
+  assert.ok(Math.abs(femaleTotal - 68_836.23) < 1)
+  assert.ok(Math.abs(maleTotal + femaleTotal - 140_977.87) < 2)
 })
 
 test('census age structure rows sum to 100 percent', () => {
@@ -94,7 +94,7 @@ test('census age structure rows sum to 100 percent', () => {
 
 test('national population and urbanization series are sane', () => {
   assert.deepEqual(nationalPopulation.map((row) => row.year), [1953, 1964, 1982, 1990, 2000, 2010, 2020])
-  for (const row of nationalPopulation) assert.ok(row.populationWan > 50000 && row.populationWan < 150000)
+  for (const row of nationalPopulation) {assert.ok(row.populationWan > 50_000 && row.populationWan < 150_000)}
   assert.equal(urbanizationSeries[0][0], 1949)
   for (const [year, pct] of urbanizationSeries) {
     assert.ok(year >= 1949 && year <= 2023)

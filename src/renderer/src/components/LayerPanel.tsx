@@ -1,4 +1,5 @@
-import { useMemo, useState, type MouseEvent } from 'react'
+import { useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
 import { MoreHorizontalIcon, RotateCwIcon, XIcon } from 'lucide-react'
 import {
   Accordion,
@@ -14,13 +15,8 @@ import {
   Switch,
   Tooltip
 } from '@renderer/components/ui'
-import {
-  basemapCategories,
-  providerCatalog,
-  terrainCatalog,
-  type LayerMeta,
-  type ProviderMeta
-} from '@renderer/stores/globe'
+import { basemapCategories, providerCatalog, terrainCatalog } from '@renderer/stores/globe';
+import type { LayerMeta, ProviderMeta } from '@renderer/stores/globe';
 import styles from './LayerPanel.module.css'
 
 export interface LayerPanelProps {
@@ -119,7 +115,7 @@ export function LayerPanel({
 
   function handleSettingsOpacity(value: number): void {
     const layer = settingsCategory?.activeLayer
-    if (layer) onOpacity(layer.id, value / 100)
+    if (layer) {onOpacity(layer.id, value / 100)}
   }
 
   return (
@@ -207,7 +203,7 @@ export function LayerPanel({
             options={terrainSelectOptions}
             aria-label="选择 3D 地形"
             onChange={(value) => {
-              if (value) onTerrain(value)
+              if (value) {onTerrain(value)}
             }}
           />
           {terrainDegraded && (

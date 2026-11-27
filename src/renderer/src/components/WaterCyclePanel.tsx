@@ -26,7 +26,7 @@ export function WaterCyclePanel({ viewer, onClose }: WaterCyclePanelProps) {
   playingRef.current = playing
 
   useEffect(() => {
-    if (!playing) return
+    if (!playing) {return}
     const timer = setInterval(() => {
       setAnimationStep((prev) => (prev + 1) % (STEPS.length + 1))
     }, 1600)
@@ -36,15 +36,15 @@ export function WaterCyclePanel({ viewer, onClose }: WaterCyclePanelProps) {
   }, [playing])
 
   useEffect(() => {
-    if (!playingRef.current) return
+    if (!playingRef.current) {return}
     if (viewer && !viewer.isDestroyed()) {
-      viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(128, 22, 7200000), duration: 1.2 })
+      viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(128, 22, 7_200_000), duration: 1.2 })
     }
   }, [viewer])
 
   function stepActive(step: number): boolean {
-    if (animationStep === 0) return false
-    if (animationStep === 4) return true
+    if (animationStep === 0) {return false}
+    if (animationStep === 4) {return true}
     return animationStep >= step
   }
 

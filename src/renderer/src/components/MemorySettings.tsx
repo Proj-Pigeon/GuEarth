@@ -31,19 +31,19 @@ export function MemorySettings({ active }: MemorySettingsProps) {
   const sortedMemories = useMemo(() => [...memories].reverse(), [memories])
 
   useEffect(() => {
-    if (!active) return
+    if (!active) {return}
     let cancelled = false
     setLoading(true)
     window.guEarth.ai.memory
       .list()
       .then((list) => {
-        if (!cancelled) setMemories(list)
+        if (!cancelled) {setMemories(list)}
       })
       .catch(() => {
-        if (!cancelled) toast.error('无法读取记忆列表，请重试')
+        if (!cancelled) {toast.error('无法读取记忆列表，请重试')}
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {setLoading(false)}
       })
     return () => {
       cancelled = true
@@ -52,7 +52,7 @@ export function MemorySettings({ active }: MemorySettingsProps) {
 
   async function addMemory(): Promise<void> {
     const content = draft.trim()
-    if (!content || adding) return
+    if (!content || adding) {return}
     setAdding(true)
     try {
       const next = await window.guEarth.ai.memory.add(content)
@@ -77,7 +77,7 @@ export function MemorySettings({ active }: MemorySettingsProps) {
   }
 
   async function toggleEnabled(value: boolean): Promise<void> {
-    if (switchBusy) return
+    if (switchBusy) {return}
     setSwitchBusy(true)
     try {
       await setMemoryEnabled(value)

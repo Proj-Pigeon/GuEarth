@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { useMemo, useRef, useState } from 'react';
+import type { DragEvent, KeyboardEvent, ReactNode } from 'react';
 import {
   ChevronRightIcon,
   FolderIcon,
@@ -24,9 +25,11 @@ import {
   useConfirm,
   useToast
 } from '@renderer/components/ui'
-import { flattenVisibleTree, resolveTreeKeyAction, type TreeNavNode } from '@renderer/lib/treeNavigation'
+import { flattenVisibleTree, resolveTreeKeyAction } from '@renderer/lib/treeNavigation';
+import type { TreeNavNode } from '@renderer/lib/treeNavigation';
 import type { AnnotationEntry } from '../../../preload'
-import { useDrawingStore, type DrawnShape } from '@renderer/stores/drawing'
+import { useDrawingStore } from '@renderer/stores/drawing';
+import type { DrawnShape } from '@renderer/stores/drawing';
 import styles from './AnnotationPanel.module.css'
 
 export interface AnnotationPanelProps {
@@ -61,10 +64,10 @@ const kindLabels: Record<DrawnShape['kind'], string> = {
 }
 
 function renderKindIcon(kind: DrawnShape['kind']): ReactNode {
-  if (kind === 'point') return <MapPinIcon className={styles.rowIcon} />
-  if (kind === 'polyline') return <WaypointsIcon className={styles.rowIcon} />
-  if (kind === 'polygon') return <PentagonIcon className={styles.rowIcon} />
-  if (kind === 'arrow') return <MoveUpRightIcon className={styles.rowIcon} />
+  if (kind === 'point') {return <MapPinIcon className={styles.rowIcon} />}
+  if (kind === 'polyline') {return <WaypointsIcon className={styles.rowIcon} />}
+  if (kind === 'polygon') {return <PentagonIcon className={styles.rowIcon} />}
+  if (kind === 'arrow') {return <MoveUpRightIcon className={styles.rowIcon} />}
   return <TypeIcon className={styles.rowIcon} />
 }
 
@@ -176,7 +179,7 @@ export function AnnotationPanel({
 
   function saveFolder(): void {
     const name = folderName.trim()
-    if (!name) return
+    if (!name) {return}
     if (folderDialogMode === 'create') {
       const id = addFolder(name, folderTargetId)
       if (!id) {
@@ -227,8 +230,8 @@ export function AnnotationPanel({
     const rect = event.currentTarget.getBoundingClientRect()
     const ratio = (event.clientY - rect.top) / Math.max(1, rect.height)
     if (node.nodeType === 'folder') {
-      if (ratio < 0.28) return 'before'
-      if (ratio > 0.72) return 'after'
+      if (ratio < 0.28) {return 'before'}
+      if (ratio > 0.72) {return 'after'}
       return 'inside'
     }
     return ratio < 0.5 ? 'before' : 'after'
@@ -241,7 +244,7 @@ export function AnnotationPanel({
     const placement = resolvePlacement(event, node)
     setDraggingId(null)
     setDropHint(null)
-    if (!sourceId || sourceId === node.entryId) return
+    if (!sourceId || sourceId === node.entryId) {return}
     if (!moveEntry(sourceId, node.entryId, placement)) {
       toast.warning('无法移动到这里，文件夹最多嵌套 5 层')
       return
@@ -252,7 +255,7 @@ export function AnnotationPanel({
   }
 
   function dropAtTopLevel(): void {
-    if (draggingId) moveEntry(draggingId, null, 'inside')
+    if (draggingId) {moveEntry(draggingId, null, 'inside')}
     setDraggingId(null)
     setDropHint(null)
   }
@@ -260,12 +263,12 @@ export function AnnotationPanel({
   function selectNode(node: AnnotationTreeNode): void {
     setSelectedEntryKey(node.key)
     setFocusedKey(node.key)
-    if (node.nodeType === 'shape') onFly(node.entryId)
-    else toggleExpand(node.key)
+    if (node.nodeType === 'shape') {onFly(node.entryId)}
+    else {toggleExpand(node.key)}
   }
 
   function handleTreeKeyDown(event: KeyboardEvent<HTMLDivElement>, node: AnnotationTreeNode): void {
-    if (event.target !== event.currentTarget) return
+    if (event.target !== event.currentTarget) {return}
     const action = resolveTreeKeyAction(event.key, node.key, visibleItems, expandedSet)
     if (
       action ||
@@ -278,7 +281,7 @@ export function AnnotationPanel({
     ) {
       event.preventDefault()
     }
-    if (!action) return
+    if (!action) {return}
     if (action.type === 'focus') {
       focusTreeItem(action.key)
     } else if (action.type === 'expand') {
@@ -303,8 +306,8 @@ export function AnnotationPanel({
         <div
           key={node.key}
           ref={(element) => {
-            if (element) treeItemRefs.current.set(node.key, element)
-            else treeItemRefs.current.delete(node.key)
+            if (element) {treeItemRefs.current.set(node.key, element)}
+            else {treeItemRefs.current.delete(node.key)}
           }}
           role="treeitem"
           aria-level={depth + 1}
@@ -316,7 +319,7 @@ export function AnnotationPanel({
           tabIndex={node.key === rovingKey ? 0 : -1}
           className={styles.treeNodeWrap}
           onFocus={(event) => {
-            if (event.target === event.currentTarget) setFocusedKey(node.key)
+            if (event.target === event.currentTarget) {setFocusedKey(node.key)}
           }}
           onKeyDown={(event) => handleTreeKeyDown(event, node)}
         >
@@ -343,7 +346,7 @@ export function AnnotationPanel({
               setDropHint(null)
             }}
             onDragOver={(event) => {
-              if (!draggingId || draggingId === node.entryId) return
+              if (!draggingId || draggingId === node.entryId) {return}
               event.preventDefault()
               event.stopPropagation()
               setDropHint({ key: node.key, placement: resolvePlacement(event, node) })

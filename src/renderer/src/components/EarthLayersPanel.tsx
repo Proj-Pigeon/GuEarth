@@ -60,9 +60,9 @@ const layers: Record<LayerId, LayerMeta> = {
   }
 }
 
-const layerEntries = Object.entries(layers) as Array<[LayerId, LayerMeta]>
+const layerEntries = Object.entries(layers) as [LayerId, LayerMeta][]
 
-const arcs: Array<{ id: LayerId; r: number }> = [
+const arcs: { id: LayerId; r: number }[] = [
   { id: 'inner-core', r: 40 },
   { id: 'outer-core', r: 86 },
   { id: 'mantle', r: 138 },
@@ -71,7 +71,7 @@ const arcs: Array<{ id: LayerId; r: number }> = [
 
 const reversedArcs = [...arcs].reverse()
 
-const callouts: Array<{ id: LayerId; x: number; y: number; anchorX: number; anchorY: number; side: 'left' | 'right' }> = [
+const callouts: { id: LayerId; x: number; y: number; anchorX: number; anchorY: number; side: 'left' | 'right' }[] = [
   { id: 'crust', x: 44, y: 40, anchorX: 100, anchorY: 40, side: 'left' },
   { id: 'mantle', x: 40, y: 96, anchorX: 82, anchorY: 118, side: 'left' },
   { id: 'outer-core', x: 306, y: 84, anchorX: 262, anchorY: 116, side: 'right' },

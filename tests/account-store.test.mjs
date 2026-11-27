@@ -28,12 +28,12 @@ export function isTelemetryUserIdentified() {
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier === '../posthog' || specifier.endsWith('/posthog')) return { url: posthogStubUrl, shortCircuit: true }
-    if (specifier.startsWith('@renderer/')) return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)
+    if (specifier === '../posthog' || specifier.endsWith('/posthog')) {return { url: posthogStubUrl, shortCircuit: true }}
+    if (specifier.startsWith('@renderer/')) {return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)}
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
       throw error
     }
   }
@@ -69,7 +69,7 @@ globalThis.window = {
 }
 
 function emit(state) {
-  for (const listener of listeners) listener(state)
+  for (const listener of listeners) {listener(state)}
 }
 
 function profileOf(overrides = {}) {

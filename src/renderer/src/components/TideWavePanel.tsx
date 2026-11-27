@@ -21,7 +21,7 @@ const tideModeOptions = [
   { value: 'neap', label: '小潮（上下弦）' }
 ]
 
-const waveParticles: Array<{ cx: number; cy: number; r: number; delay: number }> = [
+const waveParticles: { cx: number; cy: number; r: number; delay: number }[] = [
   { cx: 62, cy: 100, r: 7, delay: 0 },
   { cx: 122, cy: 100, r: 7, delay: -0.7 },
   { cx: 182, cy: 100, r: 7, delay: -1.4 },

@@ -49,7 +49,7 @@ export function resolveTreeKeyAction(
   expandedKeys: ReadonlySet<string>
 ): TreeKeyAction {
   const index = visibleItems.findIndex((item) => item.key === currentKey)
-  if (index < 0) return null
+  if (index === -1) {return null}
   const current = visibleItems[index]
 
   if (key === 'ArrowDown') {
@@ -69,8 +69,8 @@ export function resolveTreeKeyAction(
     return last && last.key !== currentKey ? { type: 'focus', key: last.key } : null
   }
   if (key === 'ArrowRight') {
-    if (!current.isFolder) return null
-    if (!expandedKeys.has(current.key)) return { type: 'expand', key: current.key }
+    if (!current.isFolder) {return null}
+    if (!expandedKeys.has(current.key)) {return { type: 'expand', key: current.key }}
     const firstChild = visibleItems[index + 1]
     if (firstChild && firstChild.parentKey === current.key) {
       return { type: 'focus', key: firstChild.key }

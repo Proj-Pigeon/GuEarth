@@ -68,7 +68,7 @@ export const useFailureStore = create<FailureStore>()(
     },
     clearFailure(scope: FailureScope): void {
       const current = get().notices
-      if (!current[scope]) return
+      if (!current[scope]) {return}
       const notices = { ...current }
       delete notices[scope]
       set({
@@ -85,7 +85,7 @@ export const useFailureStore = create<FailureStore>()(
     },
     takeDegradations(): DegradeNotice[] {
       const pending = get().degradations
-      if (pending.length) set({ degradations: [] })
+      if (pending.length > 0) {set({ degradations: [] })}
       return pending
     },
     registerRetry(scope: FailureScope, handler: () => Promise<void>): void {
@@ -93,7 +93,7 @@ export const useFailureStore = create<FailureStore>()(
     },
     async retry(scope: FailureScope): Promise<void> {
       const handler = retryHandlers.get(scope)
-      if (!handler || get().retrying[scope]) return
+      if (!handler || get().retrying[scope]) {return}
       set((state) => ({
         retrying: { ...state.retrying, [scope]: true }
       }))

@@ -165,7 +165,7 @@ export function beltRingDegrees(spec: PressureBeltSpec, month: number): number[]
   const south = Math.max(-89.5, center - spec.halfWidth)
   const north = Math.min(89.5, center + spec.halfWidth)
   const ring: number[] = []
-  for (let lon = -180; lon <= 180; lon += 30) ring.push(lon, south)
-  for (let lon = 180; lon >= -180; lon -= 30) ring.push(lon, north)
+  for (let lon = -180; lon <= 180; lon += 30) {ring.push(lon, south)}
+  for (let lon = 180; lon >= -180; lon -= 30) {ring.push(lon, north)}
   return ring
 }

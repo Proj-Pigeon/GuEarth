@@ -46,13 +46,13 @@ test('agricultural category palette is complete with unique colors', () => {
   assert.deepEqual(AGRI_CATEGORY_META.map((meta) => meta.id), ['grain', 'cotton', 'sugarcane', 'beet'])
   const colors = new Set(AGRI_CATEGORY_META.map((meta) => meta.color))
   assert.equal(colors.size, AGRI_CATEGORY_META.length)
-  for (const color of colors) assert.match(color, /^#[0-9a-fA-F]{6}$/)
+  for (const color of colors) {assert.match(color, /^#[0-9a-fA-F]{6}$/)}
   assert.equal(agriCategoryOf('grain'), AGRI_CATEGORY_META[0])
 })
 
 test('industrial bases: four canonical bases with valid geometry and pillars', () => {
   assert.deepEqual(
-    [...industrialBases.map((base) => base.name)].sort(),
+    industrialBases.map((base) => base.name).sort(),
     ['京津唐综合性工业基地', '沪宁杭综合性工业基地', '珠三角轻工业基地', '辽中南重工业基地'].sort()
   )
   const colors = new Set(industrialBases.map((base) => base.color))
@@ -84,6 +84,6 @@ test('industrial transfer flows: endpoints in bounds and paths usable', () => {
 test('fact arrays are non-empty and informative', () => {
   for (const facts of [agriFacts, industrialTransferFacts]) {
     assert.ok(facts.length >= 3)
-    for (const fact of facts) assert.ok(fact.length >= 12)
+    for (const fact of facts) {assert.ok(fact.length >= 12)}
   }
 })

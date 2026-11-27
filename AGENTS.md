@@ -95,11 +95,11 @@ npm run dev        # electron-vite dev server + app
 npm run build      # production build
 npm run fetch:ffmpeg   # pinned LGPL FFmpeg for Windows or Linux into resources/bin
 npm run build:linux    # AppImage + deb for Linux x64 and arm64
-npm run check      # vp check: type checks (lint and format are off for now), run by CI
+npm run check      # vp check: lint and type checks (format is off for now), run by CI
 npm test           # Vitest unit tests through Vite+ (tests/*.test.mjs), run by CI
 ```
 
-Vite+ config lives in `vite.config.mts`, on top of the `@liangmi/vp-config` preset. Import test APIs from `vite-plus/test`, not `vitest`.
+Vite+ config lives in `vite.config.mts`, on top of the `@liangmi/vp-config` preset. Rules that don't fit GuEarth are turned off there with a reason. Disable a rule inline only with `// oxlint-disable-next-line <rule> -- <reason>`. Import test APIs from `vite-plus/test`, not `vitest`.
 
 Vitest uses native Node.js imports (`experimental.viteModuleRunner: false` in `vite.config.mts`), so the `module.registerHooks` fixtures in the tests can load React components and simulate filesystem failures.
 

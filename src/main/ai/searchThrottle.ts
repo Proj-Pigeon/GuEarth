@@ -1,5 +1,5 @@
 export function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => { setTimeout(resolve, ms) })
 }
 
 export interface SearchThrottle {
@@ -13,12 +13,12 @@ export function createSearchThrottle(minIntervalMs: number): SearchThrottle {
     run: <T>(task: () => Promise<T>, isSuperseded?: () => boolean): Promise<T | null> => {
       const scheduled: Promise<T | null> = tail.then(async (): Promise<T | null> => {
         const wait = lastStartedAt + minIntervalMs - Date.now()
-        if (wait > 0) await delay(wait)
-        if (isSuperseded?.()) return null
+        if (wait > 0) {await delay(wait)}
+        if (isSuperseded?.()) {return null}
         lastStartedAt = Date.now()
         return task()
       })
-      tail = scheduled.catch(() => undefined)
+      tail = scheduled.catch(() => {})
       return scheduled
     }
   }

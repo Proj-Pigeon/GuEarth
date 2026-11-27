@@ -22,7 +22,7 @@ export function aggregatePois(target: PoiAggregation, pois: readonly PoiSample[]
   for (const poi of pois) {
     target.fetched += 1
     const code = poiBigCategory(poi)
-    if (!code) continue
+    if (!code) {continue}
     target.counts.set(code, (target.counts.get(code) ?? 0) + 1)
     target.sampled += 1
   }

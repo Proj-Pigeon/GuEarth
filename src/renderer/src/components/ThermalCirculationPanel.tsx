@@ -26,7 +26,7 @@ interface GroundShape {
 interface SceneConfig {
   grounds: GroundShape[]
   arrows: FlowArrow[]
-  placeLabels: Array<{ text: string; at: [number, number] }>
+  placeLabels: { text: string; at: [number, number] }[]
   caption: string
 }
 
@@ -45,7 +45,7 @@ const periodOptions = [
   { value: 'night', label: '夜晚' }
 ]
 
-const BUILDINGS: Array<[number, number, number]> = [
+const BUILDINGS: [number, number, number][] = [
   [128, 24, 14],
   [144, 34, 12],
   [160, 20, 16],
@@ -53,7 +53,7 @@ const BUILDINGS: Array<[number, number, number]> = [
   [188, 16, 11]
 ]
 
-const SUBURB_HOUSES: Array<[number, number]> = [
+const SUBURB_HOUSES: [number, number][] = [
   [30, 6],
   [46, 8],
   [248, 7],
@@ -160,8 +160,8 @@ export function ThermalCirculationPanel({ onClose }: ThermalCirculationPanelProp
   const [period, setPeriod] = useState<Period>('day')
 
   const sceneConfig = useMemo<SceneConfig>(() => {
-    if (scene === 'sea-land') return seaLandConfig(period)
-    if (scene === 'valley') return valleyConfig(period)
+    if (scene === 'sea-land') {return seaLandConfig(period)}
+    if (scene === 'valley') {return valleyConfig(period)}
     return urbanConfig()
   }, [scene, period])
 

@@ -13,7 +13,7 @@ interface CardScratch {
   toCamera: Cesium.Cartesian3
 }
 
-const ANCHOR_VIEW_HEIGHT = 9000000
+const ANCHOR_VIEW_HEIGHT = 9_000_000
 const eastAnchor = Cesium.Cartesian3.fromDegrees(119.5, 33)
 const westAnchor = Cesium.Cartesian3.fromDegrees(96, 37.5)
 
@@ -23,7 +23,7 @@ function updateCard(
   anchor: Cesium.Cartesian3,
   scratch: CardScratch
 ): void {
-  if (!element) return
+  if (!element) {return}
   let facing = true
   if (current.scene.mode === Cesium.SceneMode.SCENE3D) {
     current.scene.globe.ellipsoid.geodeticSurfaceNormal(anchor, scratch.normal)
@@ -50,8 +50,8 @@ export function HuLineOverlay({ viewer }: HuLineOverlayProps) {
   useEffect(() => {
     const activeViewer = viewer && !viewer.isDestroyed() ? viewer : undefined
     if (!activeViewer) {
-      if (eastRef.current) eastRef.current.style.display = 'none'
-      if (westRef.current) westRef.current.style.display = 'none'
+      if (eastRef.current) {eastRef.current.style.display = 'none'}
+      if (westRef.current) {westRef.current.style.display = 'none'}
       return
     }
     const eastScratch: CardScratch = {
@@ -66,7 +66,7 @@ export function HuLineOverlay({ viewer }: HuLineOverlayProps) {
     }
 
     function frame(): void {
-      if (!activeViewer || activeViewer.isDestroyed()) return
+      if (!activeViewer || activeViewer.isDestroyed()) {return}
       updateCard(activeViewer, eastRef.current, eastAnchor, eastScratch)
       updateCard(activeViewer, westRef.current, westAnchor, westScratch)
     }

@@ -48,13 +48,13 @@ export function selectAccountLoginInProgress(state: Pick<AccountStoreState, 'pha
 }
 
 export function selectAccountRemainingSeconds(state: Pick<AccountStoreState, 'challengeExpiresAt'>): number {
-  if (!state.challengeExpiresAt) return 0
+  if (!state.challengeExpiresAt) {return 0}
   return Math.max(0, Math.ceil((state.challengeExpiresAt - Date.now()) / 1000))
 }
 
 export function selectAccountDisplayName(state: Pick<AccountStoreState, 'profile'>): string {
   const current = state.profile
-  if (!current) return ''
+  if (!current) {return ''}
   return current.name || current.username || current.sub
 }
 
@@ -106,17 +106,17 @@ function syncIdentity(currentPhase: AccountPhase, currentProfile: AccountProfile
   const nextSub = currentPhase === 'signed-in' ? currentProfile?.sub.trim() ?? '' : ''
 
   if (!isTelemetryEnabled()) {
-    if (identifiedSub || isTelemetryUserIdentified()) resetTelemetryIdentity()
+    if (identifiedSub || isTelemetryUserIdentified()) {resetTelemetryIdentity()}
     identifiedSub = null
     return
   }
 
   if (nextSub) {
-    if (identifiedSub && nextSub !== identifiedSub) resetTelemetryIdentity()
+    if (identifiedSub && nextSub !== identifiedSub) {resetTelemetryIdentity()}
     if (nextSub !== identifiedSub || !isTelemetryUserIdentified()) {
       const personProperties: Record<string, string> = {}
-      if (currentProfile?.email) personProperties.email = currentProfile.email
-      if (currentProfile?.name) personProperties.name = currentProfile.name
+      if (currentProfile?.email) {personProperties.email = currentProfile.email}
+      if (currentProfile?.name) {personProperties.name = currentProfile.name}
       identifyTelemetryUser(nextSub, personProperties)
       identifiedSub = nextSub
     }
@@ -150,12 +150,12 @@ function applyAccountSnapshot(state: AccountState): void {
 export const useAccountStore = create<AccountStore>()(
   subscribeWithSelector((set, get) => {
     async function run(task: () => Promise<AccountState>): Promise<void> {
-      if (get().busy) return
+      if (get().busy) {return}
       set({ busy: true })
       try {
         applyAccountSnapshot(await task())
-      } catch (caught) {
-        set({ error: ipcErrorMessage(caught) })
+      } catch (error) {
+        set({ error: ipcErrorMessage(error) })
       } finally {
         set({ busy: false })
       }
@@ -164,7 +164,7 @@ export const useAccountStore = create<AccountStore>()(
     return {
       ...createInitialAccountState(),
       async hydrate(): Promise<void> {
-        if (bound) return
+        if (bound) {return}
         bound = true
         unsubscribePrivacy = onPrivacySettingsChange(() => {
           const current = get()
@@ -178,16 +178,16 @@ export const useAccountStore = create<AccountStore>()(
         }
       },
       async login(): Promise<void> {
-        if (get().loginInProgress) return
+        if (get().loginInProgress) {return}
         await run(() => window.guEarth.account.login())
       },
       async cancelLogin(): Promise<void> {
-        if (get().canceling) return
+        if (get().canceling) {return}
         set({ canceling: true })
         try {
           applyAccountSnapshot(await window.guEarth.account.cancelLogin())
-        } catch (caught) {
-          set({ error: ipcErrorMessage(caught) })
+        } catch (error) {
+          set({ error: ipcErrorMessage(error) })
         } finally {
           set({ canceling: false })
         }

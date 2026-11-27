@@ -43,7 +43,7 @@ export const mirrorEndpoints: Record<MirrorEndpointId, MirrorEndpointMeta> = {
   }
 }
 
-export const MIRROR_ENDPOINT_PROBE_TIMEOUT_MS = 5_000
+export const MIRROR_ENDPOINT_PROBE_TIMEOUT_MS = 5000
 
 export function isMirrorEndpointId(value: unknown): value is MirrorEndpointId {
   return value === 'edgeone' || value === 'cloudflare'
@@ -96,8 +96,8 @@ export function selectBestMirrorEndpoint(
   const reachable = probes
     .filter((probe) => probe.ok && typeof probe.latencyMs === 'number' && Number.isFinite(probe.latencyMs))
     .sort((a, b) => {
-      const diff = (a.latencyMs as number) - (b.latencyMs as number)
-      if (diff !== 0) return diff
+      const diff = a.latencyMs! - b.latencyMs!
+      if (diff !== 0) {return diff}
       return mirrorEndpointIds.indexOf(a.endpoint) - mirrorEndpointIds.indexOf(b.endpoint)
     })
   return reachable[0]?.endpoint ?? fallback
@@ -142,8 +142,8 @@ export function withinMirrorSatelliteDetail(longitude: number, latitude: number)
 }
 
 export function isValidTileCoordinate(level: number, x: number, y: number, maxLevel: number): boolean {
-  if (!Number.isInteger(level) || !Number.isInteger(x) || !Number.isInteger(y)) return false
-  if (level < 0 || level > maxLevel || x < 0 || y < 0) return false
+  if (!Number.isInteger(level) || !Number.isInteger(x) || !Number.isInteger(y)) {return false}
+  if (level < 0 || level > maxLevel || x < 0 || y < 0) {return false}
   const span = 2 ** level
   return x < span && y < span
 }
@@ -157,13 +157,13 @@ export function mirrorTileUrl(
   endpoint: MirrorEndpointId = DEFAULT_MIRROR_ENDPOINT
 ): string | undefined {
   const maxLevel = mirrorMaxZoomByProvider[providerId]
-  if (maxLevel === undefined || !isValidTileCoordinate(level, x, y, maxLevel)) return undefined
+  if (maxLevel === undefined || !isValidTileCoordinate(level, x, y, maxLevel)) {return undefined}
   const baseUrl = mirrorBaseUrl(endpoint)
-  if (providerId === 'osm') return `${baseUrl}/tiles/osm/${level}/${x}/${y}.png`
-  if (providerId === 'esri-imagery') return `${baseUrl}/tiles/esri/${level}/${y}/${x}`
-  if (providerId === 'opentopomap') return `${baseUrl}/tiles/opentopo/${level}/${x}/${y}.png`
+  if (providerId === 'osm') {return `${baseUrl}/tiles/osm/${level}/${x}/${y}.png`}
+  if (providerId === 'esri-imagery') {return `${baseUrl}/tiles/esri/${level}/${y}/${x}`}
+  if (providerId === 'opentopomap') {return `${baseUrl}/tiles/opentopo/${level}/${x}/${y}.png`}
   if (providerId === 'viirs-night') {
-    if (typeof granuleDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(granuleDate)) return undefined
+    if (typeof granuleDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(granuleDate)) {return undefined}
     return `${baseUrl}/tiles/viirs/${granuleDate}/${level}/${y}/${x}.jpeg`
   }
   return undefined
@@ -214,7 +214,7 @@ export function isTileMirrorMode(value: unknown): value is TileMirrorMode {
 }
 
 export function normalizeTileMirrorMode(value: unknown, legacyEnabled?: unknown): TileMirrorMode {
-  if (isTileMirrorMode(value)) return value
+  if (isTileMirrorMode(value)) {return value}
   return legacyEnabled === true ? 'on' : 'auto'
 }
 
@@ -246,8 +246,8 @@ export function originProbeReachable(status: number): boolean {
 }
 
 export function isMirrorCoverageNotFound(status: number, headers: Pick<Headers, 'get'>): boolean {
-  if (status !== 404) return false
-  if (headers.get('x-proxy-upstream')) return true
+  if (status !== 404) {return false}
+  if (headers.get('x-proxy-upstream')) {return true}
   const contentType = headers.get('content-type') ?? ''
   return contentType.toLowerCase().includes('application/json')
 }
@@ -267,7 +267,7 @@ export class TileMirrorRouter {
 
   private isMirrorFallbackActive(providerId: string): boolean {
     const until = this.mirrorFallbackUntil.get(providerId)
-    if (until === undefined) return false
+    if (until === undefined) {return false}
     if (this.now() >= until) {
       this.mirrorFallbackUntil.delete(providerId)
       this.mirrorFailures.delete(providerId)
@@ -289,8 +289,8 @@ export class TileMirrorRouter {
   }
 
   sourceFor(providerId: string): TileSource {
-    if (this.mode === 'off') return 'origin'
-    if (this.mode === 'on') return this.isMirrorFallbackActive(providerId) ? 'origin' : 'mirror'
+    if (this.mode === 'off') {return 'origin'}
+    if (this.mode === 'on') {return this.isMirrorFallbackActive(providerId) ? 'origin' : 'mirror'}
     return this.reachability.get(providerId) === 'blocked' ? 'mirror' : 'origin'
   }
 
@@ -299,7 +299,7 @@ export class TileMirrorRouter {
   }
 
   fallenBackProviders(providerIds: readonly string[]): string[] {
-    if (this.mode !== 'on') return []
+    if (this.mode !== 'on') {return []}
     return providerIds.filter((providerId) => this.isMirrorFallbackActive(providerId))
   }
 
@@ -309,8 +309,8 @@ export class TileMirrorRouter {
 
   noteOriginSuccess(providerId: string): boolean {
     this.originFailures.set(providerId, 0)
-    if (this.mode !== 'auto') return false
-    if (this.reachability.get(providerId) !== 'blocked') return false
+    if (this.mode !== 'auto') {return false}
+    if (this.reachability.get(providerId) !== 'blocked') {return false}
     this.reachability.set(providerId, 'reachable')
     return true
   }
@@ -318,9 +318,9 @@ export class TileMirrorRouter {
   noteOriginFailure(providerId: string): boolean {
     const failures = (this.originFailures.get(providerId) ?? 0) + 1
     this.originFailures.set(providerId, failures)
-    if (this.mode !== 'auto') return false
-    if (failures < ORIGIN_FAILURES_BEFORE_MIRROR) return false
-    if (this.reachability.get(providerId) === 'blocked') return false
+    if (this.mode !== 'auto') {return false}
+    if (failures < ORIGIN_FAILURES_BEFORE_MIRROR) {return false}
+    if (this.reachability.get(providerId) === 'blocked') {return false}
     this.reachability.set(providerId, 'blocked')
     this.mirrorFailures.set(providerId, 0)
     return true
@@ -332,12 +332,12 @@ export class TileMirrorRouter {
     const next: OriginReachability = reachable ? 'reachable' : 'blocked'
     const previous = this.reachability.get(providerId) ?? 'unknown'
     this.reachability.set(providerId, next)
-    if (this.mode !== 'auto') return false
+    if (this.mode !== 'auto') {return false}
     return previous !== next
   }
 
   nextMirrorFallbackExpiryAt(): number | null {
-    if (this.mode !== 'on') return null
+    if (this.mode !== 'on') {return null}
     let earliest: number | null = null
     const current = this.now()
     for (const [providerId, until] of [...this.mirrorFallbackUntil.entries()]) {
@@ -345,43 +345,43 @@ export class TileMirrorRouter {
         this.mirrorFallbackUntil.delete(providerId)
         continue
       }
-      if (earliest === null || until < earliest) earliest = until
+      if (earliest === null || until < earliest) {earliest = until}
     }
     return earliest
   }
 
   noteMirrorSuccess(providerId: string, expectedGeneration?: number): void {
-    if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) return
+    if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) {return}
     this.mirrorFailures.set(providerId, 0)
     this.mirrorFallbackUntil.delete(providerId)
   }
 
   recordMirrorFailure(providerId: string, expectedGeneration?: number): boolean {
-    if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) return false
+    if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) {return false}
     if (this.mode === 'on') {
-      if (this.isMirrorFallbackActive(providerId)) return false
+      if (this.isMirrorFallbackActive(providerId)) {return false}
     } else if (this.mode === 'auto') {
-      if (this.reachability.get(providerId) !== 'blocked') return false
+      if (this.reachability.get(providerId) !== 'blocked') {return false}
     } else {
       return false
     }
     const failures = (this.mirrorFailures.get(providerId) ?? 0) + 1
     this.mirrorFailures.set(providerId, failures)
-    if (failures < MIRROR_FAILURES_BEFORE_FALLBACK) return false
+    if (failures < MIRROR_FAILURES_BEFORE_FALLBACK) {return false}
     this.mirrorFailures.set(providerId, 0)
     return true
   }
 
   commitMirrorFallback(providerId: string, expectedGeneration?: number): boolean {
-    if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) return false
+    if (expectedGeneration !== undefined && expectedGeneration !== this.modeGeneration) {return false}
     if (this.mode === 'on') {
-      if (this.isMirrorFallbackActive(providerId)) return false
+      if (this.isMirrorFallbackActive(providerId)) {return false}
       this.mirrorFailures.set(providerId, 0)
       this.mirrorFallbackUntil.set(providerId, this.now() + MIRROR_FALLBACK_COOLDOWN_MS)
       return true
     }
-    if (this.mode !== 'auto') return false
-    if (this.reachability.get(providerId) !== 'blocked') return false
+    if (this.mode !== 'auto') {return false}
+    if (this.reachability.get(providerId) !== 'blocked') {return false}
     this.mirrorFailures.set(providerId, 0)
     this.originFailures.set(providerId, 0)
     this.reachability.set(providerId, 'reachable')
@@ -389,7 +389,7 @@ export class TileMirrorRouter {
   }
 
   noteMirrorFailure(providerId: string, expectedGeneration?: number): boolean {
-    if (!this.recordMirrorFailure(providerId, expectedGeneration)) return false
+    if (!this.recordMirrorFailure(providerId, expectedGeneration)) {return false}
     return this.commitMirrorFallback(providerId, expectedGeneration)
   }
 
@@ -402,7 +402,7 @@ export class TileMirrorRouter {
     }
     let hadFallback = false
     for (const id of [...this.mirrorFallbackUntil.keys()]) {
-      if (this.isMirrorFallbackActive(id)) hadFallback = true
+      if (this.isMirrorFallbackActive(id)) {hadFallback = true}
     }
     this.mirrorFailures.clear()
     this.mirrorFallbackUntil.clear()
@@ -424,7 +424,7 @@ export class MirrorEndpointManager {
 
   private isEndpointFailed(endpoint: MirrorEndpointId): boolean {
     const until = this.failedUntil.get(endpoint)
-    if (until === undefined) return false
+    if (until === undefined) {return false}
     if (this.now() >= until) {
       this.failedUntil.delete(endpoint)
       this.failedAt.delete(endpoint)
@@ -468,11 +468,11 @@ export class MirrorEndpointManager {
     this.preference = preference
     this.failedUntil.clear()
     this.failedAt.clear()
-    if (preference !== 'auto') {
-      this.active = preference
-    } else {
+    if (preference === 'auto') {
       const probes = this.getProbeResults()
-      if (probes.length > 0) this.active = selectBestMirrorEndpoint(probes, this.active)
+      if (probes.length > 0) {this.active = selectBestMirrorEndpoint(probes, this.active)}
+    } else {
+      this.active = preference
     }
     return this.active !== previousActive
   }
@@ -509,13 +509,13 @@ export class MirrorEndpointManager {
   }
 
   tryFailover(failedEndpoint: MirrorEndpointId): MirrorEndpointId | null {
-    if (this.preference !== 'auto') return null
-    if (this.active !== failedEndpoint) return null
+    if (this.preference !== 'auto') {return null}
+    if (this.active !== failedEndpoint) {return null}
     const now = this.now()
     this.failedUntil.set(failedEndpoint, now + MIRROR_FALLBACK_COOLDOWN_MS)
     this.failedAt.set(failedEndpoint, now)
     const candidate = alternateMirrorEndpoint(failedEndpoint)
-    if (this.isEndpointFailed(candidate)) return null
+    if (this.isEndpointFailed(candidate)) {return null}
     this.active = candidate
     return candidate
   }

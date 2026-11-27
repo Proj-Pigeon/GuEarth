@@ -33,7 +33,7 @@ export function MonthDayPicker({
   const days = Array.from({ length: daysInMonth }, (_, index) => index + 1)
 
   function handleOpenChange(nextOpen: boolean): void {
-    if (nextOpen) setViewMonth(selectedMonth)
+    if (nextOpen) {setViewMonth(selectedMonth)}
     setOpen(nextOpen)
   }
 

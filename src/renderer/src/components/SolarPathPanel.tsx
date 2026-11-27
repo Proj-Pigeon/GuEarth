@@ -3,15 +3,8 @@ import { PauseIcon, PlayIcon, XIcon } from 'lucide-react'
 import { Button, MonthDayPicker, Slider } from '@renderer/components/ui'
 import { useVisibleAnimation } from '@renderer/composables/useVisibleAnimation'
 import { useSolarStore } from '@renderer/stores/solar'
-import {
-  dayLength,
-  declinationForDate,
-  formatClock,
-  horizonCrossingsDeg,
-  noonAltitudeDeg,
-  solarHorizontalPositionDeg,
-  type DayState
-} from '@renderer/thematic/solarMath'
+import { dayLength, declinationForDate, formatClock, horizonCrossingsDeg, noonAltitudeDeg, solarHorizontalPositionDeg } from '@renderer/thematic/solarMath';
+import type { DayState } from '@renderer/thematic/solarMath';
 import styles from './SolarPathPanel.module.css'
 
 export interface SolarPathPanelProps {
@@ -47,7 +40,7 @@ function polarPoint(azimuthDeg: number, altitudeDeg: number): { x: number; y: nu
 function directionText(azimuthDeg: number): string {
   const sector = Math.round(azimuthDeg / 45) % 8
   const offset = Math.round(azimuthDeg - sector * 45)
-  if (offset === 0) return sector % 2 === 0 ? `正${DIRECTION_NAMES[sector]}` : DIRECTION_NAMES[sector]
+  if (offset === 0) {return sector % 2 === 0 ? `正${DIRECTION_NAMES[sector]}` : DIRECTION_NAMES[sector]}
   return offset > 0
     ? `${DIRECTION_NAMES[sector]}偏${DIRECTION_NAMES[(sector + 1) % 8]}${offset}°`
     : `${DIRECTION_NAMES[sector]}偏${DIRECTION_NAMES[(sector + 7) % 8]}${-offset}°`
@@ -78,13 +71,13 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
   const sunNow = useMemo(() => solarHorizontalPositionDeg(latitude, declination, localHour), [latitude, declination, localHour])
 
   const pathPoints = useMemo(() => {
-    if (length.state === 'polar-night') return ''
-    const points: Array<{ x: number; y: number }> = []
+    if (length.state === 'polar-night') {return ''}
+    const points: { x: number; y: number }[] = []
     for (let t = 0; t <= 24.001; t += 0.1) {
       const position = solarHorizontalPositionDeg(latitude, declination, t)
-      if (position.altitudeDeg > 0.3) points.push(polarPoint(position.azimuthDeg, position.altitudeDeg))
+      if (position.altitudeDeg > 0.3) {points.push(polarPoint(position.azimuthDeg, position.altitudeDeg))}
     }
-    if (length.state === 'polar-day' && points.length > 1) points.push(points[0])
+    if (length.state === 'polar-day' && points.length > 1) {points.push(points[0])}
     return points.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ')
   }, [length.state, latitude, declination])
 
@@ -112,7 +105,7 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
   )
 
   const noonSkyText = useMemo(() => {
-    if (noonPosition.altitudeDeg > 89) return '太阳位于天顶'
+    if (noonPosition.altitudeDeg > 89) {return '太阳位于天顶'}
     return noonPosition.azimuthDeg <= 22.5 || noonPosition.azimuthDeg >= 337.5
       ? '正午太阳位于正北天空'
       : '正午太阳位于正南天空'
@@ -120,13 +113,13 @@ export function SolarPathPanel({ onClose }: SolarPathPanelProps) {
 
   const stateText = useMemo(() => {
     const state: DayState = length.state
-    if (state === 'polar-day') return '当日极昼：太阳整日不落，轨迹为完整圆环'
-    if (state === 'polar-night') return '当日极夜：太阳始终位于地平圈以下，无视运动轨迹'
+    if (state === 'polar-day') {return '当日极昼：太阳整日不落，轨迹为完整圆环'}
+    if (state === 'polar-night') {return '当日极夜：太阳始终位于地平圈以下，无视运动轨迹'}
     return ''
   }, [length.state])
 
   useVisibleAnimation(isPlaying, (dt) => {
-    if (dt > 0) setLocalHour((prev) => (prev + dt * LOCAL_HOURS_PER_SECOND) % 24)
+    if (dt > 0) {setLocalHour((prev) => (prev + dt * LOCAL_HOURS_PER_SECOND) % 24)}
   })
 
   return (

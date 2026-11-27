@@ -4,14 +4,10 @@ import { Button, Select } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
 import { useGlobeStore } from '@renderer/stores/globe'
 import type { PoiStatisticsResult } from '../../../preload'
-import {
-  CENTRAL_PLACE_CASES,
-  CITY_TIER_META,
-  centralPlaceFacts,
-  urbanCities,
-  type CentralPlaceCase
-} from '@renderer/thematic/urbanCities'
-import BarChart, { type BarSeries } from './charts/BarChart'
+import { CENTRAL_PLACE_CASES, CITY_TIER_META, centralPlaceFacts, urbanCities } from '@renderer/thematic/urbanCities';
+import type { CentralPlaceCase } from '@renderer/thematic/urbanCities';
+import BarChart from './charts/BarChart';
+import type { BarSeries } from './charts/BarChart';
 import styles from './CitiesPanel.module.css'
 
 export interface CitiesPanelProps {
@@ -40,21 +36,21 @@ export function CitiesPanel({ onClose }: CitiesPanelProps) {
   const [statusText, setStatusText] = useState('')
   const requestSeqRef = useRef(0)
 
-  useEffect(() => {
-    return () => {
+  useEffect(() => 
+    () => {
       requestSeqRef.current += 1
     }
-  }, [])
+  , [])
 
   function selectCase(tier: 'high' | 'low', name: string): void {
     const item = CENTRAL_PLACE_CASES.find((candidate) => candidate.name === name)
-    if (!item) return
+    if (!item) {return}
     requestSeqRef.current += 1
     if (tier === 'high') {
-      if (item.name === selectedLow.name) setSelectedLow(selectedHigh)
+      if (item.name === selectedLow.name) {setSelectedLow(selectedHigh)}
       setSelectedHigh(item)
     } else {
-      if (item.name === selectedHigh.name) setSelectedHigh(selectedLow)
+      if (item.name === selectedHigh.name) {setSelectedHigh(selectedLow)}
       setSelectedLow(item)
     }
     setRunning(false)
@@ -64,7 +60,7 @@ export function CitiesPanel({ onClose }: CitiesPanelProps) {
   }
 
   async function runVerification(): Promise<void> {
-    if (running) return
+    if (running) {return}
     requestSeqRef.current += 1
     const seq = requestSeqRef.current
     setRunning(true)
@@ -86,7 +82,7 @@ export function CitiesPanel({ onClose }: CitiesPanelProps) {
           maxSamples: 400
         })
       ])
-      if (requestSeqRef.current !== seq) return
+      if (requestSeqRef.current !== seq) {return}
       setHighResult(high)
       setLowResult(low)
       if (high.error || low.error) {
@@ -103,17 +99,17 @@ export function CitiesPanel({ onClose }: CitiesPanelProps) {
         }`
       )
     } catch (error) {
-      if (requestSeqRef.current !== seq) return
+      if (requestSeqRef.current !== seq) {return}
       setStatusText(error instanceof Error ? error.message : '数据请求失败，请重试')
     } finally {
-      if (requestSeqRef.current === seq) setRunning(false)
+      if (requestSeqRef.current === seq) {setRunning(false)}
     }
   }
 
   const topCategories = useMemo(() => {
     const union = new Map<string, string>()
-    for (const item of highResult?.categories ?? []) union.set(item.code, item.label)
-    for (const item of lowResult?.categories ?? []) union.set(item.code, item.label)
+    for (const item of highResult?.categories ?? []) {union.set(item.code, item.label)}
+    for (const item of lowResult?.categories ?? []) {union.set(item.code, item.label)}
     const rank = (code: string, result: PoiStatisticsResult | null): number =>
       result?.categories.find((item) => item.code === code)?.count ?? 0
     return [...union.entries()]
@@ -177,7 +173,7 @@ export function CitiesPanel({ onClose }: CitiesPanelProps) {
           className={styles.caseSelect}
           options={caseOptions}
           onChange={(value) => {
-            if (value) selectCase('high', String(value))
+            if (value) {selectCase('high', String(value))}
           }}
         />
         <span className={styles.vs}>vs</span>
@@ -187,7 +183,7 @@ export function CitiesPanel({ onClose }: CitiesPanelProps) {
           className={styles.caseSelect}
           options={caseOptions}
           onChange={(value) => {
-            if (value) selectCase('low', String(value))
+            if (value) {selectCase('low', String(value))}
           }}
         />
       </div>

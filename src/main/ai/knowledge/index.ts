@@ -60,17 +60,17 @@ const DEFAULT_TOP_K = 3
 const MAX_TOP_K = 5
 
 function normalize(value: string): string {
-  return value.toLocaleLowerCase('zh-CN').replace(/[\s，。；：、“”‘’！？（）()、/\\|·_-]+/g, '')
+  return value.toLocaleLowerCase('zh-CN').replaceAll(/[\s，。；：、“”‘’！？（）()、/\\|·_-]+/g, '')
 }
 
 function queryTerms(query: string): string[] {
   const normalized = normalize(query)
   const terms = new Set<string>()
-  if (normalized) terms.add(normalized)
+  if (normalized) {terms.add(normalized)}
   const words = query.toLocaleLowerCase('zh-CN').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
-  for (const word of words) terms.add(normalize(word))
-  const cjk = normalized.replace(/[^\u3400-\u9fff]/g, '')
-  for (let index = 0; index < cjk.length - 1; index += 1) terms.add(cjk.slice(index, index + 2))
+  for (const word of words) {terms.add(normalize(word))}
+  const cjk = normalized.replaceAll(/[^\u3400-\u9FFF]/g, '')
+  for (let index = 0; index < cjk.length - 1; index += 1) {terms.add(cjk.slice(index, index + 2))}
   return [...terms].filter((term) => term.length > 0)
 }
 
@@ -92,10 +92,10 @@ function scoreEntry(entry: KnowledgeEntry, terms: string[], module?: string): { 
     score += 25
     matchedFields.push('module')
   }
-  if (nameScore) matchedFields.push('name')
-  if (aliasScore) matchedFields.push('aliases')
-  if (keywordScore) matchedFields.push('keywords')
-  if (contentScore) matchedFields.push('content')
+  if (nameScore) {matchedFields.push('name')}
+  if (aliasScore) {matchedFields.push('aliases')}
+  if (keywordScore) {matchedFields.push('keywords')}
+  if (contentScore) {matchedFields.push('content')}
   return { score, matchedFields }
 }
 
@@ -121,7 +121,7 @@ function toMatch(entry: KnowledgeEntry, score: number, matchedFields: string[]):
 
 export function retrieveKnowledge(query: string, module?: string, topK = DEFAULT_TOP_K): { query: string; matches: KnowledgeMatch[]; total: number } {
   const cleanQuery = query.trim().slice(0, MAX_QUERY_LENGTH)
-  if (!cleanQuery) return { query: '', matches: [], total: 0 }
+  if (!cleanQuery) {return { query: '', matches: [], total: 0 }}
   const terms = queryTerms(cleanQuery)
   const limit = Math.min(MAX_TOP_K, Math.max(1, Math.round(topK)))
   const ranked = knowledgeEntries

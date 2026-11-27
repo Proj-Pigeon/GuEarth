@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Modal, Switch, Tag, useToast } from '@renderer/components/ui'
-import { PRIVACY_DISCLOSURES, privacyDisclosureFor, type PrivacySettingKey } from '../../../../common/privacy'
+import { PRIVACY_DISCLOSURES, privacyDisclosureFor } from '../../../../common/privacy';
+import type { PrivacySettingKey } from '../../../../common/privacy';
 import { usePrivacyStore } from '@renderer/stores/privacy'
 import styles from './PrivacySettings.module.css'
 
@@ -26,13 +27,13 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
   }, [hydrate])
 
   function isEnabled(key: PrivacySettingKey): boolean {
-    if (key === 'errorReportingEnabled') return errorReportingEnabled
-    if (key === 'telemetryEnabled') return telemetryEnabled
+    if (key === 'errorReportingEnabled') {return errorReportingEnabled}
+    if (key === 'telemetryEnabled') {return telemetryEnabled}
     return aiTelemetryEnabled
   }
 
   async function handleSwitchChange(key: PrivacySettingKey, checked: boolean): Promise<void> {
-    if (!hydrated || savingKey || confirmLoading) return
+    if (!hydrated || savingKey || confirmLoading) {return}
     if (checked) {
       setPendingKey(key)
       return
@@ -40,21 +41,21 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
     setSavingKey(key)
     try {
       const saved = await setPrivacySetting(key, false)
-      if (saved) toast.success(`已关闭“${privacyDisclosureFor(key).title}”`)
-      else toast.error('隐私设置保存失败，请重试')
+      if (saved) {toast.success(`已关闭“${privacyDisclosureFor(key).title}”`)}
+      else {toast.error('隐私设置保存失败，请重试')}
     } finally {
       setSavingKey(null)
     }
   }
 
   function cancelEnable(): void {
-    if (confirmLoading) return
+    if (confirmLoading) {return}
     setPendingKey(null)
   }
 
   async function confirmEnable(): Promise<void> {
     const key = pendingKey
-    if (!key || confirmLoading) return
+    if (!key || confirmLoading) {return}
     setConfirmLoading(true)
     try {
       const saved = await setPrivacySetting(key, true)

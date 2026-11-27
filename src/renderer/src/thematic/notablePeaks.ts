@@ -121,7 +121,7 @@ export function findPeaksNear(longitude: number, latitude: number, radiusKm: num
   const matches: PeakNearMatch[] = []
   for (const peak of notablePeaks) {
     const distanceKm = greatCircleKm(longitude, latitude, peak.longitude, peak.latitude)
-    if (distanceKm > radiusKm) continue
+    if (distanceKm > radiusKm) {continue}
     matches.push({ ...peak, distanceKm: Math.round(distanceKm * 10) / 10, bearingDeg: Math.round(bearingDeg(longitude, latitude, peak.longitude, peak.latitude) * 10) / 10 })
   }
   return matches.sort((a, b) => b.elevationM - a.elevationM)

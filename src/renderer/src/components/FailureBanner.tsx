@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { RotateCwIcon, XIcon } from 'lucide-react'
 import { Alert, Button, Tooltip, useToast } from '@renderer/components/ui'
-import { useFailureStore, type FailureNotice } from '@renderer/stores/failure'
+import { useFailureStore } from '@renderer/stores/failure';
+import type { FailureNotice } from '@renderer/stores/failure';
 import styles from './FailureBanner.module.css'
 
 export interface FailureBannerProps {}
@@ -20,14 +21,14 @@ export function FailureBanner(_props: FailureBannerProps) {
   const clearFailure = useFailureStore((state) => state.clearFailure)
 
   useEffect(() => {
-    if (!degradationCount) return
+    if (!degradationCount) {return}
     for (const notice of takeDegradations()) {
       toast.warning(notice.message, 6)
     }
   }, [degradationCount, takeDegradations, toast])
 
   const bannerNotices = active.filter((notice) => notice.scope !== 'webgl')
-  if (!bannerNotices.length) return null
+  if (bannerNotices.length === 0) {return null}
 
   return (
     <div className={styles.failureBanner}>

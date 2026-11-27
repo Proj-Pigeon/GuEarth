@@ -21,11 +21,11 @@ import {
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier.startsWith('@renderer/')) return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)
+    if (specifier.startsWith('@renderer/')) {return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)}
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
       throw error
     }
   }
@@ -171,7 +171,7 @@ test('privacy store persists changes and fails closed on IPC update errors', asy
       settings: {
         get: async () => ({ ...stored }),
         update: async (patch) => {
-          if (failUpdate) throw new Error('disk full')
+          if (failUpdate) {throw new Error('disk full')}
           stored = { ...stored, ...patch }
           return { ...stored }
         }
@@ -223,7 +223,7 @@ test('privacy store keeps error reporting disabled on hydrate failure and allows
     guEarth: {
       settings: {
         get: async () => {
-          if (failGet) throw new Error('ipc unavailable')
+          if (failGet) {throw new Error('ipc unavailable')}
           return { ...stored }
         },
         update: async (patch) => {
@@ -314,7 +314,7 @@ test('gated log record exporter suppresses queued BatchLogRecordProcessor logs a
   let shutdownCalled = 0
   const baseExporter = {
     export(logs, resultCallback) {
-      for (const record of logs) exportedBodies.push(record.body)
+      for (const record of logs) {exportedBodies.push(record.body)}
       resultCallback({ code: 0 })
     },
     async forceFlush() {},

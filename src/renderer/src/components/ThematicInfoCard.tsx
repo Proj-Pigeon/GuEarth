@@ -15,10 +15,10 @@ export function ThematicInfoCard(_props: ThematicInfoCardProps) {
   const isLayerPanelOpen = useGlobeStore((state) => state.isLayerPanelOpen)
   const setLayerPanelOpen = useGlobeStore((state) => state.setLayerPanelOpen)
 
-  if (!focused) return null
+  if (!focused) {return null}
 
   function explainWithAi(): void {
-    if (!focused) return
+    if (!focused) {return}
     setAiPanelOpen(true)
     void sendAi(
       `请结合「${focused.layerName}」图层，讲解${focused.name}的成因、分布规律及其对地理环境的影响。参考信息：${focused.summary}`

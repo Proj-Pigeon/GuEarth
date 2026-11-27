@@ -14,10 +14,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function normalizeMemory(value: unknown): AgentMemory | null {
-  if (!isRecord(value)) return null
+  if (!isRecord(value)) {return null}
   const id = typeof value.id === 'string' ? value.id.trim() : ''
   const content = typeof value.content === 'string' ? value.content.trim().slice(0, MAX_MEMORY_CONTENT_LENGTH) : ''
-  if (!ID_PATTERN.test(id) || !content) return null
+  if (!ID_PATTERN.test(id) || !content) {return null}
   return {
     id,
     content,
@@ -31,7 +31,7 @@ export class AiMemoryStore {
   private memories: AgentMemory[] = []
   private hawdb: EoqHawdbClient | null = null
 
-  private enqueue = serialQueue()
+  private readonly enqueue = serialQueue()
 
   async init(path: string): Promise<void> {
     this.path = path
@@ -51,7 +51,7 @@ export class AiMemoryStore {
       const seen = new Set<string>()
       const memories: AgentMemory[] = []
       for (const memory of list) {
-        if (!memory || seen.has(memory.id)) continue
+        if (!memory || seen.has(memory.id)) {continue}
         seen.add(memory.id)
         memories.push(memory)
       }
@@ -67,7 +67,7 @@ export class AiMemoryStore {
 
   private assertBackend(): 'hawdb' | 'json' {
     if (this.hawdb) {
-      if (!this.hawdb.isReady()) throw new Error('EOQ HawDB 后端不可用，请重启应用后重试')
+      if (!this.hawdb.isReady()) {throw new Error('EOQ HawDB 后端不可用，请重启应用后重试')}
       return 'hawdb'
     }
     return 'json'
@@ -81,8 +81,8 @@ export class AiMemoryStore {
         return memory
       }
       const trimmed = typeof content === 'string' ? content.trim().slice(0, MAX_MEMORY_CONTENT_LENGTH) : ''
-      if (!trimmed) throw new Error('记忆内容不能为空')
-      if (this.memories.length >= MAX_MEMORIES) throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)
+      if (!trimmed) {throw new Error('记忆内容不能为空')}
+      if (this.memories.length >= MAX_MEMORIES) {throw new Error(`记忆已达上限（${MAX_MEMORIES} 条），请先删除部分记忆`)}
       const memory: AgentMemory = {
         id: `m${randomUUID()}`,
         content: trimmed,
@@ -100,11 +100,11 @@ export class AiMemoryStore {
     return this.enqueue(async () => {
       if (this.assertBackend() === 'hawdb') {
         const deleted = await this.hawdb!.deleteMemory(id)
-        if (deleted) this.memories = this.memories.filter((memory) => memory.id !== id)
+        if (deleted) {this.memories = this.memories.filter((memory) => memory.id !== id)}
         return deleted
       }
       const next = this.memories.filter((memory) => memory.id !== id)
-      if (next.length === this.memories.length) return false
+      if (next.length === this.memories.length) {return false}
       await writeJson(this.path, next)
       this.memories = next
       return true
@@ -113,7 +113,7 @@ export class AiMemoryStore {
 
   async recall(query: string, limit = 8): Promise<MemoryRecallMatch[]> {
     const clean = typeof query === 'string' ? query.trim() : ''
-    if (!clean) return []
+    if (!clean) {return []}
     if (this.assertBackend() === 'hawdb') {
       return this.hawdb!.recallMemories(clean, limit)
     }

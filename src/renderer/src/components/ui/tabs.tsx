@@ -19,7 +19,7 @@ export function Tabs({ activeKey, items, className, onChange }: TabsProps) {
     <BaseTabs.Root
       value={activeKey}
       onValueChange={(next) => {
-        if (typeof next === 'string') onChange?.(next)
+        if (typeof next === 'string') {onChange?.(next)}
       }}
       className={cn('w-full', className)}
     >

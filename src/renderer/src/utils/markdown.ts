@@ -1,5 +1,6 @@
 import MarkdownIt from 'markdown-it'
-import { cloneElement, createElement, isValidElement, type ReactNode } from 'react'
+import { cloneElement, createElement, isValidElement } from 'react';
+import type { ReactNode } from 'react';
 
 const SAFE_LINK_PATTERN = /^(https?:\/\/|mailto:)/i
 const SAFE_IMAGE_PATTERN = /^https?:\/\//i
@@ -23,19 +24,19 @@ function tokenAttributes(token: MarkdownToken): Record<string, unknown> {
   const attributes: Record<string, unknown> = {}
   if (token.tag === 'a') {
     const href = tokenAttribute(token, 'href')
-    if (href && SAFE_LINK_PATTERN.test(href)) attributes.href = href
+    if (href && SAFE_LINK_PATTERN.test(href)) {attributes.href = href}
     attributes.target = '_blank'
     attributes.rel = 'noopener noreferrer'
     const title = tokenAttribute(token, 'title')
-    if (title) attributes.title = title
+    if (title) {attributes.title = title}
   }
   if (token.tag === 'ol') {
     const start = tokenAttribute(token, 'start')
-    if (start && /^\d{1,9}$/.test(start)) attributes.start = Number(start)
+    if (start && /^\d{1,9}$/.test(start)) {attributes.start = Number(start)}
   }
   if (token.tag === 'th' || token.tag === 'td') {
     const alignment = /^text-align:(left|center|right)$/.exec(tokenAttribute(token, 'style') ?? '')
-    if (alignment) attributes.style = { textAlign: alignment[1] }
+    if (alignment) {attributes.style = { textAlign: alignment[1] }}
   }
   return attributes
 }
@@ -94,7 +95,7 @@ function renderTokens(tokens: MarkdownToken[], keyState: { seq: number } = { seq
       if (src && SAFE_IMAGE_PATTERN.test(src)) {
         const title = tokenAttribute(token, 'title')
         const props: Record<string, unknown> = { key: `md-${keyState.seq++}`, src, alt }
-        if (title) props.title = title
+        if (title) {props.title = title}
         children.push(createElement('img', props))
       } else {
         children.push(alt)
@@ -122,9 +123,9 @@ export function renderMarkdown(text: string): ReactNode[] {
 function hasRenderableNodes(nodes: ReactNode[]): boolean {
   for (const child of nodes) {
     if (typeof child === 'string') {
-      if (child.trim().length > 0) return true
+      if (child.trim().length > 0) {return true}
     } else if (Array.isArray(child)) {
-      if (hasRenderableNodes(child)) return true
+      if (hasRenderableNodes(child)) {return true}
     } else if (child !== null && child !== undefined && typeof child !== 'boolean') {
       return true
     }
@@ -136,7 +137,7 @@ export function tryRenderMarkdown(
   text: string,
   render: (input: string) => ReactNode[] = renderMarkdown
 ): ReactNode[] | null {
-  if (!text.trim()) return null
+  if (!text.trim()) {return null}
   try {
     const nodes = render(text)
     return hasRenderableNodes(nodes) ? nodes : null
@@ -145,7 +146,7 @@ export function tryRenderMarkdown(
   }
 }
 
-const streamingTokenPattern = /(\s+|[\u3400-\u9fff\uf900-\ufaff]|[^\s\p{P}\p{S}\u3400-\u9fff\uf900-\ufaff]+(?:[._'-][^\s\p{P}\p{S}\u3400-\u9fff\uf900-\ufaff]+)*|[\p{P}\p{S}])/gu
+const streamingTokenPattern = /(\s+|[\u3400-\u9FFF\uF900-\uFAFF]|[^\s\p{P}\p{S}\u3400-\u9FFF\uF900-\uFAFF]+(?:[._'-][^\s\p{P}\p{S}\u3400-\u9FFF\uF900-\uFAFF]+)*|[\p{P}\p{S}])/gu
 const wordPattern = /[\p{L}\p{N}]/u
 const nonStreamingTags = new Set(['pre', 'code'])
 const streamingTailTokens = 6
@@ -194,14 +195,14 @@ interface StreamingState {
 }
 
 function normalizeChildren(children: ReactNode): ReactNode[] {
-  if (children === null || children === undefined || typeof children === 'boolean') return []
+  if (children === null || children === undefined || typeof children === 'boolean') {return []}
   return Array.isArray(children) ? children : [children]
 }
 
 function collectStreamingTokens(children: ReactNode[], tokens: StreamingTokenMeta[], offset = { value: 0 }, insideCode = false): void {
   for (const child of children) {
     if (typeof child === 'string') {
-      if (insideCode) continue
+      if (insideCode) {continue}
       for (const piece of child.match(streamingTokenPattern) ?? [child]) {
         if (!/^\s+$/.test(piece)) {
           tokens.push({ position: offset.value, word: wordPattern.test(piece) })
@@ -239,7 +240,7 @@ function updateStreamingDelays(text: string, tokens: StreamingTokenMeta[], tailS
   const stepMs = newlyAdded.length > 1 ? Math.min(maxTokenStepMs, Math.floor(maxBatchStaggerMs / newlyAdded.length)) : 0
   newlyAdded.forEach((token, index) => {
     const delay = index * stepMs
-    if (delay > 0) delayState.delays.set(token.position, delay)
+    if (delay > 0) {delayState.delays.set(token.position, delay)}
   })
   delayState.seenCount = total
   delayState.lastText = text
@@ -260,7 +261,7 @@ function wrapStreamingTokens(children: ReactNode[], state: StreamingState, insid
         const position = state.position
         state.position += 1
         const isSpace = /^\s+$/.test(piece)
-        if (!isSpace && position === state.lastTokenPosition) containsLastToken = true
+        if (!isSpace && position === state.lastTokenPosition) {containsLastToken = true}
         if (isSpace || position < state.windowStart) {
           plain += piece
           continue
@@ -273,10 +274,10 @@ function wrapStreamingTokens(children: ReactNode[], state: StreamingState, insid
         const tokenClass = isFreshWord ? 'stream-token stream-token-fresh' : 'stream-token'
         const delay = state.delays?.get(position)
         const props: Record<string, unknown> = { key: `stream-token-${position}`, className: tokenClass }
-        if (delay) props.style = { animationDelay: `${delay}ms` }
+        if (delay) {props.style = { animationDelay: `${delay}ms` }}
         result.push(createElement('span', props, piece))
       }
-      if (plain) result.push(plain)
+      if (plain) {result.push(plain)}
     } else if (Array.isArray(child)) {
       result.push(...wrapStreamingTokens(child, state, insideCode))
     } else if (isValidElement<{ children?: ReactNode }>(child)) {
@@ -287,6 +288,7 @@ function wrapStreamingTokens(children: ReactNode[], state: StreamingState, insid
           state,
           insideCode || (typeof child.type === 'string' && nonStreamingTags.has(child.type))
         )
+        // oxlint-disable-next-line react/no-clone-element -- wraps nested Markdown nodes without knowing their component
         result.push(cloneElement(child, undefined, ...wrappedNested))
       } else {
         result.push(child)

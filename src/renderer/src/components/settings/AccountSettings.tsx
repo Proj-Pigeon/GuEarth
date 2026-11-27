@@ -35,7 +35,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
   const awaitingApproval = phase === 'awaiting-approval' || phase === 'finalizing'
 
   useEffect(() => {
-    if (!awaitingApproval) return
+    if (!awaitingApproval) {return}
     setNow(Date.now())
     const ticker = setInterval(() => {
       setNow(Date.now())
@@ -43,23 +43,24 @@ export function AccountSettings(_props: AccountSettingsProps) {
     return () => clearInterval(ticker)
   }, [awaitingApproval])
 
-  useEffect(() => {
-    return () => {
-      if (copiedTimerRef.current !== undefined) clearTimeout(copiedTimerRef.current)
+  useEffect(() => 
+    () => {
+      if (copiedTimerRef.current !== undefined) {clearTimeout(copiedTimerRef.current)}
     }
-  }, [])
+  , [])
 
   const remainingSeconds = challengeExpiresAt ? Math.max(0, Math.ceil((challengeExpiresAt - now) / 1000)) : 0
   const remainingText = `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, '0')}`
   const challengeExpired = phase === 'awaiting-approval' && remainingSeconds <= 0
 
   const displayName = storeDisplayName || '未命名账户'
-  const avatarInitial = Array.from(displayName)[0]?.toUpperCase() || 'U'
+  // oxlint-disable-next-line typescript/no-misused-spread -- spreading splits by code point, so the initial keeps surrogate pairs whole
+  const avatarInitial = [...displayName][0]?.toUpperCase() || 'U'
   const emailText = profile?.email || profile?.username || ''
   const loginLoading = phase === 'creating' || phase === 'restoring'
 
   async function copyUserCode(): Promise<void> {
-    if (!userCode) return
+    if (!userCode) {return}
     try {
       await navigator.clipboard.writeText(userCode)
     } catch {
@@ -67,7 +68,7 @@ export function AccountSettings(_props: AccountSettingsProps) {
       return
     }
     setCopied(true)
-    if (copiedTimerRef.current !== undefined) clearTimeout(copiedTimerRef.current)
+    if (copiedTimerRef.current !== undefined) {clearTimeout(copiedTimerRef.current)}
     copiedTimerRef.current = setTimeout(() => {
       setCopied(false)
       copiedTimerRef.current = undefined

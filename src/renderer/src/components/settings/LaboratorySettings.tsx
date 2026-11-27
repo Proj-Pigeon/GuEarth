@@ -14,12 +14,8 @@ import {
   useToast
 } from '@renderer/components/ui'
 import { useOnlineDataStore } from '@renderer/stores/onlineData'
-import {
-  normalizeQWeatherHost,
-  validateQWeatherApiKey,
-  type LaboratoryProvider,
-  type LaboratoryProviderInput
-} from '../../../../common/onlineData'
+import { normalizeQWeatherHost, validateQWeatherApiKey } from '../../../../common/onlineData';
+import type { LaboratoryProvider, LaboratoryProviderInput } from '../../../../common/onlineData';
 import styles from './LaboratorySettings.module.css'
 
 export interface LaboratorySettingsProps {
@@ -62,7 +58,7 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
 
   const busy = operation !== null
   const provider = providers.find((item) => item.provider === 'qweather')
-  const providerIssue = !provider?.configured ? '配置异常，请重新填写' : snapshot?.typhoonError || ''
+  const providerIssue = provider?.configured ? snapshot?.typhoonError || '' : '配置异常，请重新填写'
   const keyRequired = !editing || !provider?.configured
   const actionsDisabled = busy || editorOpen || removeOpen
 
@@ -83,7 +79,7 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
   }, [])
 
   const loadProviders = useCallback(async (): Promise<void> => {
-    if (actionsDisabledRef.current) return
+    if (actionsDisabledRef.current) {return}
     setOperation('load')
     setLoadError('')
     try {
@@ -98,29 +94,29 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
   }, [])
 
   const closeDialogs = useCallback(() => {
-    if (busyRef.current) return
+    if (busyRef.current) {return}
     setEditorOpen(false)
     setRemoveOpen(false)
     clearDraft()
   }, [clearDraft])
 
   useEffect(() => {
-    if (active && !loadedRef.current) void loadProviders()
-    if (!active) closeDialogs()
+    if (active && !loadedRef.current) {void loadProviders()}
+    if (!active) {closeDialogs()}
   }, [active, loadProviders, closeDialogs])
 
   useEffect(() => {
     onBusyChangeRef.current?.(operation === 'save' || operation === 'remove')
   }, [operation])
 
-  useEffect(() => {
-    return () => {
+  useEffect(() => 
+    () => {
       onBusyChangeRef.current?.(false)
     }
-  }, [])
+  , [])
 
   function openEditor(edit: boolean): void {
-    if (actionsDisabled || !loaded || (edit ? !provider : Boolean(provider))) return
+    if (actionsDisabled || !loaded || (edit ? !provider : Boolean(provider))) {return}
     clearDraft()
     setEditing(edit)
     setDraft({
@@ -131,19 +127,19 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
   }
 
   async function saveProvider(): Promise<void> {
-    if (busy || !editorOpen || (!editing && provider)) return
+    if (busy || !editorOpen || (!editing && provider)) {return}
     let nextHostError = ''
     let nextKeyError = ''
     const rawKey = draft.apiKey.trim()
     let apiKey = ''
-    if (!rawKey) {
-      nextKeyError = keyRequired ? '请输入 API Key' : ''
-    } else {
+    if (rawKey) {
       try {
         apiKey = validateQWeatherApiKey(rawKey)
       } catch (error) {
         nextKeyError = error instanceof Error ? error.message : '请输入有效的 API Key'
       }
+    } else {
+      nextKeyError = keyRequired ? '请输入 API Key' : ''
     }
     let apiHost = ''
     try {
@@ -153,9 +149,9 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
     }
     setHostError(nextHostError)
     setKeyError(nextKeyError)
-    if (nextHostError || nextKeyError) return
+    if (nextHostError || nextKeyError) {return}
     const input: LaboratoryProviderInput = { category: draft.category, provider: draft.provider, apiHost }
-    if (apiKey) input.apiKey = apiKey
+    if (apiKey) {input.apiKey = apiKey}
     setOperation('save')
     setOperationError('')
     try {
@@ -172,13 +168,13 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
   }
 
   function confirmRemove(): void {
-    if (actionsDisabled || !provider) return
+    if (actionsDisabled || !provider) {return}
     setOperationError('')
     setRemoveOpen(true)
   }
 
   async function removeProvider(): Promise<void> {
-    if (busy || !removeOpen || !provider) return
+    if (busy || !removeOpen || !provider) {return}
     setOperation('remove')
     setOperationError('')
     try {
@@ -310,7 +306,7 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
               options={CATEGORY_OPTIONS}
               aria-label="数据源类型"
               onChange={(value) => {
-                if (value) setDraft((prev) => ({ ...prev, category: value }))
+                if (value) {setDraft((prev) => ({ ...prev, category: value }))}
               }}
             />
           </div>
@@ -322,7 +318,7 @@ export function LaboratorySettings({ active, onBusyChange }: LaboratorySettingsP
               options={PROVIDER_OPTIONS}
               aria-label="数据源平台"
               onChange={(value) => {
-                if (value) setDraft((prev) => ({ ...prev, provider: value }))
+                if (value) {setDraft((prev) => ({ ...prev, provider: value }))}
               }}
             />
           </div>

@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { RotateCwIcon } from 'lucide-react'
 import { Alert, Button, Modal, Spinner, useConfirm, useToast } from '@renderer/components/ui'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 import { isLikelyMainlandChinaEnv } from '../../common/tileMirror'
 import type { PlaceSuggestion } from '../../preload'
-import { registerGlobeTools, type GlobeToolsBridge } from '@renderer/ai/registerGlobeTools'
+import { registerGlobeTools } from '@renderer/ai/registerGlobeTools';
+import type { GlobeToolsBridge } from '@renderer/ai/registerGlobeTools';
 import { useCesiumViewer } from '@renderer/composables/useCesiumViewer'
 import { useDrawing } from '@renderer/composables/useDrawing'
 import { useScenePlayer } from '@renderer/composables/useScenePlayer'
@@ -18,7 +20,8 @@ import { useAiStore } from '@renderer/stores/ai'
 import { useAtmosphereStore } from '@renderer/stores/atmosphere'
 import { thematicLayerCatalog, useClimateStore } from '@renderer/stores/climate'
 import { useDecisionStore } from '@renderer/stores/decision'
-import { useDrawingStore, type DrawTool } from '@renderer/stores/drawing'
+import { useDrawingStore } from '@renderer/stores/drawing';
+import type { DrawTool } from '@renderer/stores/drawing';
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useFailureStore } from '@renderer/stores/failure'
 import { useGlobeStore } from '@renderer/stores/globe'
@@ -39,7 +42,8 @@ import AtmosphereLayersPanel from '@renderer/components/AtmosphereLayersPanel'
 import CameraStatus from '@renderer/components/CameraStatus'
 import CitiesPanel from '@renderer/components/CitiesPanel'
 import CrashDialog from '@renderer/components/CrashDialog'
-import DrawingEditToolbar, { type DrawnShapeStylePatch } from '@renderer/components/DrawingEditToolbar'
+import DrawingEditToolbar from '@renderer/components/DrawingEditToolbar';
+import type { DrawnShapeStylePatch } from '@renderer/components/DrawingEditToolbar';
 import DrawingTouchBar from '@renderer/components/DrawingTouchBar'
 import EarthLayersPanel from '@renderer/components/EarthLayersPanel'
 import EnsoPanel from '@renderer/components/EnsoPanel'
@@ -47,7 +51,8 @@ import EnvironmentPanel from '@renderer/components/EnvironmentPanel'
 import EoqAssistant from '@renderer/components/EoqAssistant'
 import ExogenicPanel from '@renderer/components/ExogenicPanel'
 import FailureBanner from '@renderer/components/FailureBanner'
-import FirstUseGuide, { type FirstUseGuideHandle } from '@renderer/components/FirstUseGuide'
+import FirstUseGuide from '@renderer/components/FirstUseGuide';
+import type { FirstUseGuideHandle } from '@renderer/components/FirstUseGuide';
 import FlightStopSwitcher from '@renderer/components/FlightStopSwitcher'
 import FoldFaultPanel from '@renderer/components/FoldFaultPanel'
 import FrontalCyclone from '@renderer/components/FrontalCyclone'
@@ -66,7 +71,8 @@ import PlaceSearchBox from '@renderer/components/PlaceSearchBox'
 import PopulationPanel from '@renderer/components/PopulationPanel'
 import RiverLandformPanel from '@renderer/components/RiverLandformPanel'
 import RotationSpeedPanel from '@renderer/components/RotationSpeedPanel'
-import SceneBookmarksPanel, { type SceneEditPayload } from '@renderer/components/SceneBookmarksPanel'
+import SceneBookmarksPanel from '@renderer/components/SceneBookmarksPanel';
+import type { SceneEditPayload } from '@renderer/components/SceneBookmarksPanel';
 import ScenePlayerOverlay from '@renderer/components/ScenePlayerOverlay'
 import SettingsModal from '@renderer/components/SettingsModal'
 import SolarPathPanel from '@renderer/components/SolarPathPanel'
@@ -181,7 +187,7 @@ export function App() {
     () => shapes.find((shape) => shape.id === selectedShapeId) ?? null,
     [selectedShapeId, shapes]
   )
-  const levelSwitcherVisible = isGlobeReady && camera.height < 5000000
+  const levelSwitcherVisible = isGlobeReady && camera.height < 5_000_000
   const showGlobeLoading = !isGlobeReady || onlineDataLoading || Boolean(webglNotice)
   const globeLoadingText = webglNotice
     ? webglNotice.message
@@ -209,9 +215,8 @@ export function App() {
     zonationPanel !== null ||
     activeTool === 'timezone'
 
-  const drawHint = !activeTool
-    ? ''
-    : activeTool === 'timezone'
+  const drawHint = activeTool
+    ? activeTool === 'timezone'
       ? touchInteractionActive
         ? '点按选取两个地点对比地方时 · 用下方按钮退出'
         : '单击选取两个地点对比地方时 · Esc 退出'
@@ -230,10 +235,11 @@ export function App() {
             : touchInteractionActive
               ? '点按加点 · 用下方按钮撤销或完成'
               : '单击加点 · 双击或右键完成 · Esc 取消'
+    : ''
 
   const handleGlobeContextMenu = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
-      if (!touchInteractionActive) return
+      if (!touchInteractionActive) {return}
       event.preventDefault()
     },
     [touchInteractionActive]
@@ -256,22 +262,22 @@ export function App() {
   const closeAllTeachingFeatures = useCallback(() => {
     closeAllTeachingPanels()
     const climate = useClimateStore.getState()
-    for (const layer of thematicLayerCatalog) climate.setOverlay(layer.id, false)
+    for (const layer of thematicLayerCatalog) {climate.setOverlay(layer.id, false)}
   }, [closeAllTeachingPanels])
 
   useEffect(() => {
-    if (!nightBasemapActive) return
+    if (!nightBasemapActive) {return}
     closeAllTeachingFeatures()
     setIsLabOpen(false)
   }, [closeAllTeachingFeatures, nightBasemapActive])
 
   const ensureRecordingDirectory = useCallback(async (): Promise<boolean> => {
     try {
-      if (await window.guEarth.recordings.getDirectory()) return true
+      if (await window.guEarth.recordings.getDirectory()) {return true}
     } catch {
       setRecordingDirectoryDialogError('暂时无法检查视频保存文件夹，请重新选择')
     }
-    if (recordingDirectoryResolverRef.current) return false
+    if (recordingDirectoryResolverRef.current) {return false}
     setRecordingDirectoryDialogError('')
     setRecordingDirectoryDialogOpen(true)
     return new Promise((resolve) => {
@@ -343,8 +349,8 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    if (!settingsHydrated) return
-    if (mirrorConsentPrompted || mirrorConsentOpen) return
+    if (!settingsHydrated) {return}
+    if (mirrorConsentPrompted || mirrorConsentOpen) {return}
     const timeZone = (() => {
       try {
         return Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -360,7 +366,7 @@ export function App() {
       useGlobeStore.getState().openMirrorConsent('slow')
       return
     }
-    if (isGlobeReady) return
+    if (isGlobeReady) {return}
     const timer = window.setTimeout(() => {
       const current = useGlobeStore.getState()
       if (!current.mirrorConsentPrompted && !current.mirrorConsentOpen && !current.isGlobeReady) {
@@ -384,11 +390,11 @@ export function App() {
     void (async () => {
       try {
         const installedFonts = await window.guEarth.system.fonts()
-        if (cancelled) return
+        if (cancelled) {return}
         const existingFonts = useDrawingStore.getState().shapes.map((shape) => shape.fontFamily)
         setSystemFonts([...new Set([...installedFonts, ...existingFonts])].sort((first, second) => first.localeCompare(second)))
       } catch {
-        if (!cancelled) setSystemFonts(DEFAULT_SYSTEM_FONTS)
+        if (!cancelled) {setSystemFonts(DEFAULT_SYSTEM_FONTS)}
       }
     })()
     return () => {
@@ -410,8 +416,8 @@ export function App() {
     const settingsWindow = useSettingsWindowStore.getState()
     settingsWindow.close()
     useAiStore.getState().setPanelOpen(false)
-    if (step === 6) settingsWindow.open('map')
-    if (step === 8) settingsWindow.open('ai')
+    if (step === 6) {settingsWindow.open('map')}
+    if (step === 8) {settingsWindow.open('ai')}
   }, [])
 
   const handleRestartGuide = useCallback(() => {
@@ -427,13 +433,13 @@ export function App() {
   }, [])
 
   const handleHome = useCallback(() => {
-    void flyTo(105, 35, 15000000)
+    void flyTo(105, 35, 15_000_000)
   }, [flyTo])
 
   const handleRetry = useCallback(() => {
     const failureStore = useFailureStore.getState()
     for (const notice of failureStore.active) {
-      if (notice.retryable) void failureStore.retry(notice.scope)
+      if (notice.retryable) {void failureStore.retry(notice.scope)}
     }
   }, [])
 
@@ -475,7 +481,7 @@ export function App() {
         const scenesStore = useScenesStore.getState()
         await scenesStore.addScene(scene)
         const nextState = useScenesStore.getState()
-        if (!nextState.saveError) captureTelemetryEvent('scene_saved', { scene_count: nextState.scenes.length })
+        if (!nextState.saveError) {captureTelemetryEvent('scene_saved', { scene_count: nextState.scenes.length })}
       } catch (error) {
         toast.warning(error instanceof Error ? error.message : '地球尚未就绪，暂时无法保存场景')
       }
@@ -486,7 +492,7 @@ export function App() {
   const handlePreviewScene = useCallback(
     (id: string) => {
       const scene = useScenesStore.getState().scenes.find((item) => item.id === id)
-      if (scene) void scenePlayer.previewScene(scene)
+      if (scene) {void scenePlayer.previewScene(scene)}
     },
     [scenePlayer]
   )
@@ -506,7 +512,7 @@ export function App() {
   const handlePlayScenes = useCallback(
     (mode: 'manual' | 'auto') => {
       const currentScenes = useScenesStore.getState().scenes
-      if (!currentScenes.length) return
+      if (currentScenes.length === 0) {return}
       const drawingStore = useDrawingStore.getState()
       drawingStore.setActiveTool(null)
       drawingStore.setSelectedShapeId(null)
@@ -545,19 +551,19 @@ export function App() {
   const handleFlyShape = useCallback(
     (id: string) => {
       const shape = useDrawingStore.getState().shapes.find((item) => item.id === id)
-      if (shape) flyToShape(shape)
+      if (shape) {flyToShape(shape)}
     },
     [flyToShape]
   )
 
   const updateSelectedShape = useCallback((changes: DrawnShapeStylePatch) => {
     const id = useDrawingStore.getState().selectedShapeId
-    if (id) useDrawingStore.getState().updateShape(id, changes)
+    if (id) {useDrawingStore.getState().updateShape(id, changes)}
   }, [])
 
   const deleteSelectedShape = useCallback(() => {
     const id = useDrawingStore.getState().selectedShapeId
-    if (id) useDrawingStore.getState().removeShape(id)
+    if (id) {useDrawingStore.getState().removeShape(id)}
   }, [])
 
   return (
@@ -600,11 +606,11 @@ export function App() {
       <CrashDialog />
       {thematicOverlays['wind-particles'] && <WindParticles viewer={viewer} />}
       {thematicOverlays['frontal-cyclone'] && <FrontalCyclone viewer={viewer} />}
-      {thematicOverlays['typhoon'] &&
+      {thematicOverlays.typhoon &&
         (onlineSnapshot?.typhoonConfigured === false || typhoonMode === 'history') && (
           <TyphoonOverlay viewer={viewer} />
         )}
-      {thematicOverlays['enso'] && <WalkerCirculationOverlay viewer={viewer} phase={ensoPhase} />}
+      {thematicOverlays.enso && <WalkerCirculationOverlay viewer={viewer} phase={ensoPhase} />}
       {thematicOverlays['hu-line'] && <HuLineOverlay viewer={viewer} />}
 
       {!isPresenting && (
@@ -671,7 +677,7 @@ export function App() {
           {atmospherePanel === 'layers' && (
             <AtmosphereLayersPanel onClose={() => useAtmosphereStore.getState().setPanel(null)} />
           )}
-          {thematicOverlays['enso'] && (
+          {thematicOverlays.enso && (
             <EnsoPanel onClose={() => useClimateStore.getState().setOverlay('enso', false)} />
           )}
           {hydrologyPanel === 'water-cycle' && (

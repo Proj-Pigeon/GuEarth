@@ -26,7 +26,7 @@ export function RadioGroup({
       disabled={disabled}
       aria-label={ariaLabel}
       onValueChange={(next) => {
-        if (typeof next === 'string') onChange?.(next)
+        if (typeof next === 'string') {onChange?.(next)}
       }}
       className={cn('flex flex-col gap-2', className)}
     >
@@ -89,7 +89,7 @@ export function RadioDot({
       disabled={disabled}
       onClick={(event) => {
         onClick?.(event)
-        if (!checked) onChange?.()
+        if (!checked) {onChange?.()}
       }}
       className={cn(
         'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border-strong bg-elevated p-0 transition-colors duration-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-45',

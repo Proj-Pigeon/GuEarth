@@ -26,7 +26,7 @@ export function Slider({
   onChange
 }: SliderProps) {
   const markEntries = useMemo(() => {
-    if (!marks) return []
+    if (!marks) {return []}
     const span = max - min || 1
     return Object.entries(marks).map(([key, label]) => {
       const numeric = Number(key)
@@ -44,7 +44,7 @@ export function Slider({
       disabled={disabled}
       onValueChange={(next) => {
         const numeric = Array.isArray(next) ? next[0] : next
-        if (typeof numeric === 'number') onChange?.(numeric)
+        if (typeof numeric === 'number') {onChange?.(numeric)}
       }}
       className={cn('w-full select-none', markEntries.length > 0 && 'pb-4', className)}
     >

@@ -18,7 +18,7 @@ export function DrawingTouchBar({
   onUndo,
   onFinish
 }: DrawingTouchBarProps) {
-  if (!activeTool) return null
+  if (!activeTool) {return null}
 
   const canUndo = activeTool === 'line' || activeTool === 'polygon' || activeTool === 'arrow'
   const canFinish = activeTool === 'line' || activeTool === 'polygon'

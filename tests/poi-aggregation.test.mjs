@@ -7,7 +7,7 @@ registerHooks({
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
       throw error
     }
   }
@@ -31,11 +31,11 @@ test('aggregatePois counts every fetched poi but classifies only valid typecodes
     { name: 'd', type: '餐饮服务;中餐厅' },
     { name: 'e' },
     { name: 'f', typecode: '999999' },
-    { name: 'g', typecode: 50118 }
+    { name: 'g', typecode: 50_118 }
   ])
   assert.equal(aggregation.fetched, 7)
   assert.equal(aggregation.sampled, 3)
-  assert.deepEqual([...aggregation.counts.entries()].sort(), [['05', 2], ['06', 1]])
+  assert.deepEqual([...aggregation.counts.entries()].sort(([a], [b]) => a.localeCompare(b)), [['05', 2], ['06', 1]])
 })
 
 test('aggregatePois accumulates across paginated responses', () => {

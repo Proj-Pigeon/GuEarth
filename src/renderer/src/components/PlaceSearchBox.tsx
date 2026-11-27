@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { ChevronDownIcon, Loader2Icon, SearchIcon, XIcon } from 'lucide-react'
-import { Button, DropdownMenu, type DropdownMenuEntry } from '@renderer/components/ui'
+import { Button, DropdownMenu } from '@renderer/components/ui';
+import type { DropdownMenuEntry } from '@renderer/components/ui';
 import { useGlobeStore } from '@renderer/stores/globe'
 import { useFailureStore } from '@renderer/stores/failure'
 import type { PlaceSearchProvider, PlaceSuggestion } from '../../../preload'
@@ -22,7 +23,7 @@ interface PlaceOption {
   place?: PlaceSuggestion
 }
 
-const providerDefinitions: Array<{ id: PlaceSearchProvider; name: string }> = [
+const providerDefinitions: { id: PlaceSearchProvider; name: string }[] = [
   { id: 'amap', name: '高德' },
   { id: 'baidu', name: '百度' }
 ]
@@ -31,7 +32,7 @@ function regionText(place: PlaceSuggestion): string {
   const region = [place.province, place.city, place.district]
     .filter((part) => part && part !== place.name)
     .join(' · ')
-  return [region, place.address].filter((part) => part).join(' · ')
+  return [region, place.address].filter(Boolean).join(' · ')
 }
 
 function providerName(id?: PlaceSearchProvider): string {
@@ -105,7 +106,7 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
       }
       const retryLast = (): void => {
         const query = lastQueryRef.current.trim()
-        if (query) void search(query)
+        if (query) {void search(query)}
       }
       setOptions([
         {
@@ -125,14 +126,14 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
         }
         return
       }
-      if (seq !== requestSeqRef.current) return
-      if (result.superseded) return
+      if (seq !== requestSeqRef.current) {return}
+      if (result.superseded) {return}
       if (result.fellBackFrom) {
         reportDegrade(`${providerName(result.fellBackFrom)}不可用，已改用${providerName(result.source)}`)
       }
       if (result.error) {
         setOptions([statusOption(result.error, true, retryLast)])
-      } else if (!result.places.length) {
+      } else if (result.places.length === 0) {
         setOptions([
           statusOption(result.note ?? '没有找到匹配的地点，可换个说法或切换搜索源', false)
         ])
@@ -148,34 +149,34 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
     const previousProvider = previousRef.current.providerId
     previousRef.current = { text: keyword, providerId }
 
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    if (debounceTimerRef.current) {clearTimeout(debounceTimerRef.current)}
     requestSeqRef.current += 1
     setOptions([])
     if (suppressWatchRef.current) {
       suppressWatchRef.current = false
-      if (providerId === previousProvider && keyword !== previousText) return
+      if (providerId === previousProvider && keyword !== previousText) {return}
     }
     const query = keyword.trim()
-    if (!query) return
+    if (!query) {return}
     debounceTimerRef.current = setTimeout(() => {
       void search(query)
     }, 300)
   }, [keyword, providerId, credentialUpdatedAt, search])
 
   useEffect(() => {
-    if (!showProviderSelect) setProviderMenuOpen(false)
+    if (!showProviderSelect) {setProviderMenuOpen(false)}
   }, [showProviderSelect])
 
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+  useEffect(() => 
+    () => {
+      if (debounceTimerRef.current) {clearTimeout(debounceTimerRef.current)}
       requestSeqRef.current += 1
     }
-  }, [])
+  , [])
 
   function handleSelectOption(option: PlaceOption): void {
-    if (!option.place) return
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    if (!option.place) {return}
+    if (debounceTimerRef.current) {clearTimeout(debounceTimerRef.current)}
     requestSeqRef.current += 1
     suppressWatchRef.current = keyword !== option.place.name
     setKeyword(option.place.name)
@@ -185,8 +186,8 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
   }
 
   function handleProviderSelect(key: string): void {
-    if (key !== 'amap' && key !== 'baidu') return
-    if (!availableProviders.some((item) => item.id === key)) return
+    if (key !== 'amap' && key !== 'baidu') {return}
+    if (!availableProviders.some((item) => item.id === key)) {return}
     setPreferredProvider(key)
     setProviderMenuOpen(false)
     requestAnimationFrame(() => {
@@ -262,7 +263,7 @@ export function PlaceSearchBox({ onSelect }: PlaceSearchBoxProps) {
                 aria-expanded={providerMenuOpen}
                 onMouseDown={(event) => event.stopPropagation()}
                 onKeyDown={(event) => {
-                  if (event.key === 'Escape') setProviderMenuOpen(false)
+                  if (event.key === 'Escape') {setProviderMenuOpen(false)}
                 }}
               >
                 <span>{provider?.name}</span>

@@ -49,7 +49,7 @@ test('AI recording scripts can set the thematic state per step', () => {
 })
 
 test('an omitted or null transportYear falls back to the current year instead of clamping to the start', () => {
-  assert.ok(appSource.includes("if (value === null || value === undefined || value === '') return undefined"))
+  assert.ok(appSource.includes("if (value === null || value === undefined || value === '') {return undefined}"))
   assert.ok(appSource.includes('const requestedYear = optionalFiniteNumber(record.transportYear)'))
   assert.ok(appSource.includes('const transportYear = requestedYear === undefined ? transportStore.year : Math.round(Math.min(HSR_END_YEAR, Math.max(HSR_START_YEAR, requestedYear)))'))
   assert.ok(!appSource.includes('const requestedYear = Number(record.transportYear)'))

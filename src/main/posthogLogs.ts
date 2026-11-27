@@ -1,6 +1,7 @@
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http'
 import { resourceFromAttributes } from '@opentelemetry/resources'
-import { BatchLogRecordProcessor, LoggerProvider, type LogRecordExporter } from '@opentelemetry/sdk-logs'
+import { BatchLogRecordProcessor, LoggerProvider } from '@opentelemetry/sdk-logs';
+import type { LogRecordExporter } from '@opentelemetry/sdk-logs';
 
 const viteEnv = import.meta.env as Partial<ImportMetaEnv> | undefined
 const projectToken = (viteEnv ? import.meta.env.VITE_POSTHOG_PROJECT_TOKEN : undefined) || process.env.VITE_POSTHOG_PROJECT_TOKEN
@@ -20,13 +21,14 @@ export function createGatedLogRecordExporter(
   return {
     export(logs, resultCallback) {
       if (!isEnabled()) {
+        // oxlint-disable-next-line typescript/no-unsafe-enum-assignment -- 0 is `ExportResultCode.SUCCESS`, and `@opentelemetry/core` is not a direct dependency
         resultCallback({ code: 0 })
         return
       }
       exporter.export(logs, resultCallback)
     },
     forceFlush() {
-      if (!isEnabled()) return Promise.resolve()
+      if (!isEnabled()) {return Promise.resolve()}
       return exporter.forceFlush()
     },
     shutdown() {
@@ -36,12 +38,12 @@ export function createGatedLogRecordExporter(
 }
 
 function ensureLogger(): ReturnType<LoggerProvider['getLogger']> | null {
-  if (!posthogLogsEnabled) return null
-  if (posthogLogger) return posthogLogger
+  if (!posthogLogsEnabled) {return null}
+  if (posthogLogger) {return posthogLogger}
   if (!projectToken || !host) {
     if (!missingWarned && isDev) {
       missingWarned = true
-      const missingConfiguration = !projectToken ? 'VITE_POSTHOG_PROJECT_TOKEN' : 'VITE_POSTHOG_HOST'
+      const missingConfiguration = projectToken ? 'VITE_POSTHOG_HOST' : 'VITE_POSTHOG_PROJECT_TOKEN'
       console.warn(`${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`)
     }
     return null
@@ -65,7 +67,7 @@ function ensureLogger(): ReturnType<LoggerProvider['getLogger']> | null {
     activeExporterController = controller
     posthogLogger = provider.getLogger('guearth.posthog')
   } catch (error) {
-    if (isDev) console.warn('PostHog log export could not be initialized', error)
+    if (isDev) {console.warn('PostHog log export could not be initialized', error)}
   }
   return posthogLogger
 }
@@ -80,7 +82,7 @@ export function setPosthogLogsEnabled(enabled: boolean): void {
     const activeProvider = provider
     provider = null
     posthogLogger = null
-    if (activeProvider) void activeProvider.shutdown().catch(() => undefined)
+    if (activeProvider) {void activeProvider.shutdown().catch(() => {})}
     return
   }
   ensureLogger()
@@ -92,18 +94,18 @@ export function capturePosthogLog(
   attributes?: Record<string, string | number | boolean>
 ): void {
   const activeLogger = ensureLogger()
-  if (!activeLogger) return
+  if (!activeLogger) {return}
   try {
     activeLogger.emit({ severityText, body, attributes })
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   }
 }
 
 export async function shutdownPosthogLogs(): Promise<void> {
   const activeProvider = provider
   const controller = activeExporterController
-  if (!activeProvider) return
+  if (!activeProvider) {return}
   provider = null
   posthogLogger = null
   activeExporterController = null
@@ -112,14 +114,14 @@ export async function shutdownPosthogLogs(): Promise<void> {
     await Promise.race([
       activeProvider.shutdown(),
       new Promise<void>((resolve) => {
-        timeout = setTimeout(resolve, 1_000)
+        timeout = setTimeout(resolve, 1000)
         timeout.unref()
       })
     ])
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   } finally {
-    if (controller) controller.active = false
-    if (timeout) clearTimeout(timeout)
+    if (controller) {controller.active = false}
+    if (timeout) {clearTimeout(timeout)}
   }
 }

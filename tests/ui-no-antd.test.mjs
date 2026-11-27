@@ -15,8 +15,8 @@ const FORBIDDEN_PATTERNS = [
 function collectSourceFiles(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name)
-    if (entry.isDirectory()) collectSourceFiles(full, out)
-    else if (/\.(ts|tsx|css|html)$/.test(entry.name)) out.push(full)
+    if (entry.isDirectory()) {collectSourceFiles(full, out)}
+    else if (/\.(ts|tsx|css|html)$/.test(entry.name)) {out.push(full)}
   }
   return out
 }

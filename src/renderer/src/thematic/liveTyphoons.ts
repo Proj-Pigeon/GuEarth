@@ -38,7 +38,7 @@ function orderedPoints(points: StormPoint[]): StormPoint[] {
 function pointProperties(storm: LiveStorm, point: StormPoint, kind: '实况' | '预报' | '最新中心', feed: TyphoonFeed, cached: boolean): Cesium.PropertyBag {
   const wind = point.windSpeed === null ? '未提供' : `${point.windSpeed} km/h`
   const pressure = point.pressure === null ? '未提供' : `${point.pressure} hPa`
-  const source = `和风天气${feed.sources.length ? `（${feed.sources.join('、')}）` : ''}`
+  const source = `和风天气${feed.sources.length > 0 ? `（${feed.sources.join('、')}）` : ''}`
   const publication = kind === '预报' && storm.now ? `最新实况时间：${formatOnlineTime(storm.now.time)}。` : ''
   return new Cesium.PropertyBag({
     name: `${storm.name}（${storm.id}）·${kind}`,
@@ -108,11 +108,11 @@ export function buildLiveTyphoons(dataSource: Cesium.CustomDataSource, feed: Typ
 
     addPath(observed, false)
     for (const point of observed) {
-      if (point !== now) addPoint(point, '实况')
+      if (point !== now) {addPoint(point, '实况')}
     }
     if (now) {
       addPath([now, ...forecast], true)
-      for (const point of forecast) addPoint(point, '预报')
+      for (const point of forecast) {addPoint(point, '预报')}
       addPoint(now, '最新中心')
     }
   }

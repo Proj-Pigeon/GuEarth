@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { use, type EChartsCoreOption } from 'echarts/core'
+import { use as registerEcharts } from 'echarts/core';
+import type { EChartsCoreOption } from 'echarts/core';
 import { BarChart as EChartsBarChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
@@ -7,7 +8,7 @@ import { useGlobeStore } from '@renderer/stores/globe'
 import EChartBase from './EChartBase'
 import styles from './BarChart.module.css'
 
-use([EChartsBarChart, GridComponent, TooltipComponent, LegendComponent, SVGRenderer])
+registerEcharts([EChartsBarChart, GridComponent, TooltipComponent, LegendComponent, SVGRenderer])
 
 export interface BarSeries {
   name: string
@@ -116,9 +117,9 @@ export function BarChart({
         textStyle: { color: '#ffffff', fontSize: 12, lineHeight: 20 },
         formatter: (params: unknown) => {
           const list = Array.isArray(params) ? (params as TooltipParam[]) : [params as TooltipParam]
-          if (!list.length) return ''
+          if (list.length === 0) {return ''}
           const rows = list
-            .filter((item) => item && item.seriesName)
+            .filter((item) => item?.seriesName)
             .map(
               (item) =>
                 `${item.marker}${item.seriesName} ${absValues ? formatNumber(Math.abs(item.value)) : formatNumber(item.value)}`

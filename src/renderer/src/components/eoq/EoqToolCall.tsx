@@ -1,11 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
-import {
-  useScrollLock,
-  useToolCallElapsed,
-  type ToolCallMessagePartStatus
-} from '@assistant-ui/react'
+import { useScrollLock, useToolCallElapsed } from '@assistant-ui/react';
+import type { ToolCallMessagePartStatus } from '@assistant-ui/react';
 import { CheckIcon, ChevronRightIcon, Loader2Icon, XCircleIcon } from 'lucide-react'
-import { toolLabel, type ToolStep } from '@renderer/stores/ai'
+import { toolLabel } from '@renderer/stores/ai';
+import type { ToolStep } from '@renderer/stores/ai';
 import { cn } from '@renderer/lib/utils'
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from './collapsible'
 
@@ -14,20 +12,20 @@ const ANIMATION_DURATION = 200
 const PRIMARY_ARG_KEYS = ['query', 'name', 'place', 'location', 'city', 'layer', 'panel', 'title', 'topic']
 
 function formatElapsed(ms: number): string {
-  if (ms < 1000) return '<1s'
+  if (ms < 1000) {return '<1s'}
   const seconds = ms / 1000
-  if (seconds < 10) return `${(Math.floor(seconds * 10) / 10).toFixed(1)}s`
-  if (seconds < 60) return `${Math.floor(seconds)}s`
+  if (seconds < 10) {return `${(Math.floor(seconds * 10) / 10).toFixed(1)}s`}
+  if (seconds < 60) {return `${Math.floor(seconds)}s`}
   return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`
 }
 
 function primaryArgPreview(args: Record<string, unknown>): string {
   for (const key of PRIMARY_ARG_KEYS) {
     const value = args[key]
-    if (typeof value === 'string' && value.trim()) return value.trim()
+    if (typeof value === 'string' && value.trim()) {return value.trim()}
   }
   for (const value of Object.values(args)) {
-    if (typeof value === 'string' && value.trim()) return value.trim()
+    if (typeof value === 'string' && value.trim()) {return value.trim()}
   }
   return ''
 }
@@ -41,7 +39,7 @@ function formatInput(args: Record<string, unknown>, argsText: string): string {
       return argsText || '（无输入）'
     }
   }
-  if (argsText && argsText !== '{}') return argsText
+  if (argsText && argsText !== '{}') {return argsText}
   return '（无输入）'
 }
 

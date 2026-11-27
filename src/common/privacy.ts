@@ -24,7 +24,7 @@ export const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
 }
 
 export function resolvePrivacySettings(raw: Record<string, unknown> | null | undefined): PrivacySettings {
-  if (!raw) return { ...DEFAULT_PRIVACY_SETTINGS }
+  if (!raw) {return { ...DEFAULT_PRIVACY_SETTINGS }}
   return {
     errorReportingEnabled: typeof raw.errorReportingEnabled === 'boolean'
       ? raw.errorReportingEnabled
@@ -82,14 +82,14 @@ export const PRIVACY_DISCLOSURES: readonly PrivacyDisclosureItem[] = [
 
 export function privacyDisclosureFor(key: PrivacySettingKey): PrivacyDisclosureItem {
   const item = PRIVACY_DISCLOSURES.find((entry) => entry.key === key)
-  if (!item) throw new Error(`Unknown privacy setting key: ${key}`)
+  if (!item) {throw new Error(`Unknown privacy setting key: ${key}`)}
   return item
 }
 
 export function filterPosthogEvent<T extends { event?: string }>(event: T | null | undefined, privacy: PrivacySettings): T | null {
-  if (!event) return null
+  if (!event) {return null}
   const name = event.event ?? ''
-  if (name === '$exception') return privacy.errorReportingEnabled ? event : null
-  if (name === 'ai_prompt_submitted' || name.startsWith('$ai_')) return privacy.aiTelemetryEnabled ? event : null
+  if (name === '$exception') {return privacy.errorReportingEnabled ? event : null}
+  if (name === 'ai_prompt_submitted' || name.startsWith('$ai_')) {return privacy.aiTelemetryEnabled ? event : null}
   return privacy.telemetryEnabled ? event : null
 }

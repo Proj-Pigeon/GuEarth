@@ -1,22 +1,10 @@
-import {
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-  type Ref
-} from 'react'
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { createPortal } from 'react-dom'
 import { XIcon } from 'lucide-react'
 import { Button, Checkbox } from '@renderer/components/ui'
-import {
-  computeGuideCardPosition,
-  type GuidePlacement,
-  type GuideRectBox
-} from '@renderer/lib/guidePosition'
+import { computeGuideCardPosition } from '@renderer/lib/guidePosition';
+import type { GuidePlacement, GuideRectBox } from '@renderer/lib/guidePosition';
 
 export interface FirstUseGuideHandle {
   start: () => void
@@ -55,7 +43,7 @@ function clearLegacyCompletion(): void {
   try {
     window.localStorage.removeItem(legacyCompletedKey)
   } catch {
-    return
+    // Best effort, so the failure is ignored.
   }
 }
 
@@ -70,7 +58,7 @@ function waitNextFrame(): Promise<void> {
 }
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+  return [...container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
     (element) => element.getClientRects().length > 0
   )
 }
@@ -82,8 +70,8 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   const [targetRect, setTargetRect] = useState<GuideRectBox | null>(null)
   const [cardSize, setCardSize] = useState({ width: DEFAULT_CARD_WIDTH, height: DEFAULT_CARD_HEIGHT })
   const [viewport, setViewport] = useState(() => ({
-    width: typeof window !== 'undefined' ? window.innerWidth : 1440,
-    height: typeof window !== 'undefined' ? window.innerHeight : 900
+    width: typeof window === 'undefined' ? 1440 : window.innerWidth,
+    height: typeof window === 'undefined' ? 900 : window.innerHeight
   }))
 
   const cardRef = useRef<HTMLDivElement | null>(null)
@@ -198,9 +186,9 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   const activeStep = steps[current] ?? steps[0]
 
   const measureTarget = useCallback(() => {
-    if (!openRef.current) return
+    if (!openRef.current) {return}
     const step = steps[currentRef.current]
-    if (!step) return
+    if (!step) {return}
     const element = getTargetElement(step.targetName)
     if (!element) {
       setTargetRect(null)
@@ -220,7 +208,7 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   }, [steps])
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {return}
     const handleViewportResize = (): void => {
       setViewport({ width: window.innerWidth, height: window.innerHeight })
       measureTarget()
@@ -237,9 +225,9 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   }, [open, current, measureTarget])
 
   useLayoutEffect(() => {
-    if (!open) return
+    if (!open) {return}
     const card = cardRef.current
-    if (!card) return
+    if (!card) {return}
     const measureCard = (): void => {
       const rect = card.getBoundingClientRect()
       const nextWidth = Math.round(rect.width) || DEFAULT_CARD_WIDTH
@@ -251,19 +239,19 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
       )
     }
     measureCard()
-    if (typeof ResizeObserver === 'undefined') return
+    if (typeof ResizeObserver === 'undefined') {return}
     const observer = new ResizeObserver(measureCard)
     observer.observe(card)
     return () => observer.disconnect()
   }, [open, current])
 
   async function handleChange(nextStep: number): Promise<void> {
-    if (transitioningRef.current) return
+    if (transitioningRef.current) {return}
     transitioningRef.current = true
     onStepChangeRef.current?.(nextStep)
     await waitNextFrame()
     if ([6, 7, 8].includes(nextStep) || [6, 7, 8].includes(currentRef.current)) {
-      await new Promise((resolve) => window.setTimeout(resolve, 320))
+      await new Promise((resolve) => { window.setTimeout(resolve, 320) })
     }
     if (!unmountedRef.current) {
       currentRef.current = nextStep
@@ -277,7 +265,7 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   const savePreference = useCallback((value: boolean): void => {
     dontPromptAgainRef.current = value
     setDontPromptAgain(value)
-    void window.guEarth.settings.update({ setupGuideDismissed: value }).catch(() => undefined)
+    void window.guEarth.settings.update({ setupGuideDismissed: value }).catch(() => {})
   }, [])
 
   const handleClose = useCallback((): void => {
@@ -299,15 +287,15 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
 
   useEffect(() => {
     async function checkFirstUse(): Promise<void> {
-      if (!readyRef.current || autoPromptCheckedRef.current) return
+      if (!readyRef.current || autoPromptCheckedRef.current) {return}
       autoPromptCheckedRef.current = true
       try {
         const settings = await window.guEarth.settings.get()
-        if (unmountedRef.current) return
+        if (unmountedRef.current) {return}
         if (settings.setupGuideDismissed !== null) {
           dontPromptAgainRef.current = settings.setupGuideDismissed
           setDontPromptAgain(settings.setupGuideDismissed)
-          if (!settings.setupGuideDismissed && readyRef.current && !openRef.current) start()
+          if (!settings.setupGuideDismissed && readyRef.current && !openRef.current) {start()}
           return
         }
         if (readLegacyCompletion()) {
@@ -323,12 +311,12 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
         }
         dontPromptAgainRef.current = true
         setDontPromptAgain(true)
-        if (readyRef.current && !openRef.current) start()
+        if (readyRef.current && !openRef.current) {start()}
       } catch {
-        if (unmountedRef.current) return
+        if (unmountedRef.current) {return}
         dontPromptAgainRef.current = true
         setDontPromptAgain(true)
-        if (readyRef.current && !openRef.current) start()
+        if (readyRef.current && !openRef.current) {start()}
       }
     }
 
@@ -336,39 +324,39 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
   }, [ready, start])
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {return}
     previousFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null
     cardRef.current?.focus({ preventScroll: true })
     return () => {
       const previous = previousFocusRef.current
       previousFocusRef.current = null
-      if (previous && previous.isConnected) {
+      if (previous?.isConnected) {
         previous.focus({ preventScroll: true })
       }
     }
   }, [open])
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {return}
     const card = cardRef.current
-    if (!card) return
+    if (!card) {return}
     if (!card.contains(document.activeElement)) {
       card.focus({ preventScroll: true })
     }
   }, [open, current])
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {return}
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
         event.preventDefault()
         handleClose()
         return
       }
-      if (event.key !== 'Tab') return
+      if (event.key !== 'Tab') {return}
       const card = cardRef.current
-      if (!card) return
+      if (!card) {return}
       const focusables = getFocusableElements(card)
       if (focusables.length === 0) {
         event.preventDefault()
@@ -397,7 +385,7 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [open, handleClose])
 
-  if (!open || typeof document === 'undefined') return null
+  if (!open || typeof document === 'undefined') {return null}
 
   const { top: cardTop, left: cardLeft } = computeGuideCardPosition(
     targetRect,
@@ -482,8 +470,8 @@ export function FirstUseGuide({ ready, onStepChange, ref }: FirstUseGuideProps) 
               size="sm"
               variant="primary"
               onClick={() => {
-                if (isLast) handleFinish()
-                else void handleChange(current + 1)
+                if (isLast) {handleFinish()}
+                else {void handleChange(current + 1)}
               }}
             >
               {isLast ? '完成' : '下一步'}

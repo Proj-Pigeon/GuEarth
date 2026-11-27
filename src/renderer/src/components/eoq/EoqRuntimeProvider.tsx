@@ -1,14 +1,9 @@
-import { useMemo, useRef, type ReactNode } from 'react'
-import {
-  AssistantRuntimeProvider,
-  useExternalStoreRuntime,
-  type AppendMessage,
-  type ExternalStoreAdapter,
-  type MessageStatus,
-  type ThreadMessageLike,
-  type ToolCallMessagePart
-} from '@assistant-ui/react'
-import { useAiStore, type ChatMessage } from '@renderer/stores/ai'
+import { useMemo, useRef } from 'react';
+import type { ReactNode } from 'react';
+import { AssistantRuntimeProvider, useExternalStoreRuntime } from '@assistant-ui/react';
+import type { AppendMessage, ExternalStoreAdapter, MessageStatus, ThreadMessageLike, ToolCallMessagePart } from '@assistant-ui/react';
+import { useAiStore } from '@renderer/stores/ai';
+import type { ChatMessage } from '@renderer/stores/ai';
 
 export interface EoqRuntimeProviderProps {
   children: ReactNode
@@ -34,7 +29,7 @@ function toToolArgs(args: Record<string, unknown>): ToolCallArgs {
 }
 
 function parseToolResult(result: string): unknown {
-  if (!result) return ''
+  if (!result) {return ''}
   try {
     return JSON.parse(result)
   } catch {
@@ -51,7 +46,7 @@ function extractAppendText(message: AppendMessage): string {
 }
 
 function toMessageStatus(message: ChatMessage): MessageStatus {
-  if (message.status === 'streaming') return { type: 'running' }
+  if (message.status === 'streaming') {return { type: 'running' }}
   if (message.status === 'error') {
     return {
       type: 'incomplete',
@@ -90,7 +85,7 @@ export function convertChatMessage(message: ChatMessage): ThreadMessageLike {
           ? {
               timing: {
                 startedAt: part.startedAt,
-                ...(completedAt !== undefined ? { completedAt } : {})
+                ...(completedAt === undefined ? {} : { completedAt })
               }
             }
           : {})
@@ -111,14 +106,14 @@ export function convertChatMessage(message: ChatMessage): ThreadMessageLike {
       argsText: serializeArgs(part.step.args),
       result: part.step.status === 'running' ? undefined : parseToolResult(part.step.result),
       isError: part.step.status === 'error',
-      ...(part.step.startedAt !== undefined
-        ? {
+      ...(part.step.startedAt === undefined
+        ? {}
+        : {
             timing: {
               startedAt: part.step.startedAt,
-              ...(part.step.completedAt !== undefined ? { completedAt: part.step.completedAt } : {})
+              ...(part.step.completedAt === undefined ? {} : { completedAt: part.step.completedAt })
             }
-          }
-        : {})
+          })
     }
   })
 
@@ -148,13 +143,13 @@ export function EoqRuntimeProvider({ children, onInterceptSend }: EoqRuntimeProv
       convertMessage: convertChatMessage,
       async onNew(message: AppendMessage): Promise<void> {
         const text = extractAppendText(message)
-        if (!text) return
-        if (onInterceptSendRef.current?.(text)) return
+        if (!text) {return}
+        if (onInterceptSendRef.current?.(text)) {return}
         await useAiStore.getState().send(text)
       },
       async onEdit(message: AppendMessage): Promise<void> {
         const text = extractAppendText(message)
-        if (!text) return
+        if (!text) {return}
         const state = useAiStore.getState()
         const targetId =
           message.sourceId ??
@@ -179,7 +174,7 @@ export function EoqRuntimeProvider({ children, onInterceptSend }: EoqRuntimeProv
           return
         }
         const parentIndex = state.messages.findIndex((item) => item.id === parentId)
-        if (parentIndex < 0) return
+        if (parentIndex === -1) {return}
         const nextMessage = state.messages[parentIndex + 1]
         if (nextMessage?.role === 'assistant') {
           await state.regenerate(nextMessage.id)

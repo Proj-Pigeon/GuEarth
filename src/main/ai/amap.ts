@@ -1,6 +1,6 @@
-import { createHash } from 'crypto'
+import { createHash } from 'node:crypto'
 import { net } from 'electron'
-import type { PoiCategoryCount, PoiStatisticsRequest, PoiStatisticsResult } from '../../common/poiStatistics'
+import type { PoiStatisticsRequest, PoiStatisticsResult } from '../../common/poiStatistics'
 import { gcj02ToWgs84, wgs84ToGcj02 } from '../geo'
 import { readProviderKey } from '../keyVault'
 import {
@@ -53,7 +53,7 @@ function toPlaces(pois: AmapPoi[]): AmapPlace[] {
     const location = typeof poi.location === 'string' ? poi.location.split(',') : []
     const longitude = Number(location[0])
     const latitude = Number(location[1])
-    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return []
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {return []}
     const [wgsLongitude, wgsLatitude] = gcj02ToWgs84(longitude, latitude)
     const text = (value: unknown): string => (typeof value === 'string' ? value : '')
     return [{
@@ -77,16 +77,16 @@ interface AmapPoisResponse {
 }
 
 function parsePois(body: unknown): AmapPoisResponse {
-  if (typeof body !== 'object' || body === null) return { pois: [], total: 0, error: '高德返回了无效响应' }
+  if (typeof body !== 'object' || body === null) {return { pois: [], total: 0, error: '高德返回了无效响应' }}
   const result = body as { status?: unknown; info?: unknown; infocode?: unknown; count?: unknown; pois?: unknown }
   if (result.status !== '1') {
-    if (result.infocode === '10009') return { pois: [], total: 0, error: '高德 Key 的平台类型不匹配，请在高德控制台配置「Web 服务」类型的 Key (10009)' }
+    if (result.infocode === '10009') {return { pois: [], total: 0, error: '高德 Key 的平台类型不匹配，请在高德控制台配置「Web 服务」类型的 Key (10009)' }}
     const info = typeof result.info === 'string' ? result.info : '未知错误'
     const code = typeof result.infocode === 'string' ? ` (${result.infocode})` : ''
     const retryable = !/DAILY/i.test(info) && /QPS|FREQUENT/i.test(info)
     return { pois: [], total: 0, error: `高德地点搜索失败：${info}${code}`, retryable }
   }
-  if (!Array.isArray(result.pois)) return { pois: [], total: 0, error: '高德返回了无效地点数据' }
+  if (!Array.isArray(result.pois)) {return { pois: [], total: 0, error: '高德返回了无效地点数据' }}
   const total = typeof result.count === 'string' || typeof result.count === 'number' ? Number(result.count) : 0
   return { pois: result.pois.filter((poi): poi is AmapPoi => typeof poi === 'object' && poi !== null), total: Number.isFinite(total) ? total : 0 }
 }
@@ -121,9 +121,9 @@ function requestUrl(base: string, params: Record<string, string>, securityKey?: 
   return `${base}?${query.join('&')}`
 }
 
-const SEARCH_MIN_INTERVAL_MS = 1_000
+const SEARCH_MIN_INTERVAL_MS = 1000
 const SEARCH_MAX_RETRIES = 2
-const SEARCH_RETRY_DELAY_MS = 2_000
+const SEARCH_RETRY_DELAY_MS = 2000
 const SEARCH_REQUEST_TIMEOUT_MS = 10_000
 const amapThrottle = createSearchThrottle(SEARCH_MIN_INTERVAL_MS)
 
@@ -175,7 +175,7 @@ export async function poiStatistics(request: PoiStatisticsRequest): Promise<PoiS
       error: '需要提供 centerName 或经纬度（longitude/latitude）'
     }
   }
-  const radius = Math.round(Math.min(50_000, Math.max(200, request.radiusMeters ?? 3_000)))
+  const radius = Math.round(Math.min(50_000, Math.max(200, request.radiusMeters ?? 3000)))
   const maxSamples = Math.min(POI_STATS_MAX_SAMPLES, Math.max(POI_STATS_PAGE_SIZE, request.maxSamples ?? POI_STATS_MAX_SAMPLES))
   const types = request.types
     ?.split('|')
@@ -193,8 +193,8 @@ export async function poiStatistics(request: PoiStatisticsRequest): Promise<PoiS
     extensions: 'base',
     sortrule: 'distance'
   }
-  if (types) aroundParams.types = types
-  if (request.keywords?.trim()) aroundParams.keywords = request.keywords.trim().slice(0, 40)
+  if (types) {aroundParams.types = types}
+  if (request.keywords?.trim()) {aroundParams.keywords = request.keywords.trim().slice(0, 40)}
   const url = requestUrl('https://restapi.amap.com/v3/place/around', aroundParams, securityKey)
   const first = await amapThrottle.run(() => requestPois(url))
   if (!first) {
@@ -231,10 +231,10 @@ export async function poiStatistics(request: PoiStatisticsRequest): Promise<PoiS
       const pageParams: Record<string, string> = { ...aroundParams, page: String(page) }
       const pageUrl = requestUrl('https://restapi.amap.com/v3/place/around', pageParams, securityKey)
       const pageResult = await amapThrottle.run(() => requestPois(pageUrl))
-      if (!pageResult || pageResult.error || pageResult.pois.length === 0) break
+      if (!pageResult || pageResult.error || pageResult.pois.length === 0) {break}
       pagesFetched = page
       aggregatePois(aggregation, pageResult.pois)
-      if (pageResult.pois.length < POI_STATS_PAGE_SIZE) break
+      if (pageResult.pois.length < POI_STATS_PAGE_SIZE) {break}
     }
   }
   const truncated = poiTruncated(reportedTotal, pagesFetched)
@@ -255,9 +255,9 @@ export async function poiStatistics(request: PoiStatisticsRequest): Promise<PoiS
 
 export async function searchPlaces(query: string, city?: string, requestId?: number): Promise<AmapSearchResult> {
   const keywords = query.trim().slice(0, 90)
-  if (!keywords) return { query, places: [], error: '缺少搜索关键词' }
+  if (!keywords) {return { query, places: [], error: '缺少搜索关键词' }}
   const isSuperseded = (): boolean => isPlacesRequestSuperseded(requestId)
-  if (isSuperseded()) return { query, places: [], superseded: true }
+  if (isSuperseded()) {return { query, places: [], superseded: true }}
   const key = readProviderKey('amap')
   const securityKey = readProviderKey('amap-sk')
   if (!key) {
@@ -268,19 +268,19 @@ export async function searchPlaces(query: string, city?: string, requestId?: num
     }
   }
   const params: Record<string, string> = { key, keywords, offset: '8', page: '1', extensions: 'base' }
-  if (city?.trim()) params.city = city.trim().slice(0, 40)
+  if (city?.trim()) {params.city = city.trim().slice(0, 40)}
   const url = requestUrl('https://restapi.amap.com/v3/place/text', params, securityKey)
   const first = await amapThrottle.run(() => requestPois(url), isSuperseded)
-  if (!first) return { query, places: [], superseded: true }
+  if (!first) {return { query, places: [], superseded: true }}
   let result = first
   for (let attempt = 1; result.error !== undefined && result.retryable === true && attempt <= SEARCH_MAX_RETRIES; attempt += 1) {
     await delay(SEARCH_RETRY_DELAY_MS * attempt)
     const next = await amapThrottle.run(() => requestPois(url), isSuperseded)
-    if (!next) return { query, places: [], superseded: true }
+    if (!next) {return { query, places: [], superseded: true }}
     result = next
   }
-  if (result.error) return { query, places: [], error: result.error }
+  if (result.error) {return { query, places: [], error: result.error }}
   const places = toPlaces(result.pois).slice(0, 8)
-  if (places.length === 0) return { query, places: [], note: '没有找到匹配的地点，可换个说法或切换搜索源' }
+  if (places.length === 0) {return { query, places: [], note: '没有找到匹配的地点，可换个说法或切换搜索源' }}
   return { query, places }
 }

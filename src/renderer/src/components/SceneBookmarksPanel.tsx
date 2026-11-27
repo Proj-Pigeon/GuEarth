@@ -35,9 +35,9 @@ export interface SceneBookmarksPanelProps {
   scenes: TeachingScene[]
   saveError: string
   onClose: () => void
-  onSave: (name: string, narration: string) => void
+  onSave: (name: string, narration: string) => void | Promise<void>
   onPreview: (id: string) => void
-  onUpdate: (id: string, changes: SceneEditPayload) => void
+  onUpdate: (id: string, changes: SceneEditPayload) => void | Promise<void>
   onRemove: (id: string) => void
   onMove: (id: string, offset: -1 | 1) => void
   onPlay: (mode: 'manual' | 'auto') => void
@@ -51,7 +51,7 @@ const narrationPreview = (scene: TeachingScene): string =>
 
 const sceneTags = (scene: TeachingScene): string[] => {
   const names = scene.snapshot.overlays.slice(0, 2).map(layerNameOf)
-  if (scene.snapshot.overlays.length > 2) names.push(`+${scene.snapshot.overlays.length - 2}`)
+  if (scene.snapshot.overlays.length > 2) {names.push(`+${scene.snapshot.overlays.length - 2}`)}
   return names
 }
 
@@ -86,9 +86,9 @@ export function SceneBookmarksPanel({
 
   function confirmSave(): void {
     const name = saveName.trim()
-    if (!name) return
+    if (!name) {return}
     setSaveVisible(false)
-    onSave(name, saveNarration.trim())
+    void onSave(name, saveNarration.trim())
   }
 
   function openEdit(scene: TeachingScene): void {
@@ -101,9 +101,9 @@ export function SceneBookmarksPanel({
 
   function confirmEdit(): void {
     const name = editName.trim()
-    if (!name) return
+    if (!name) {return}
     setEditVisible(false)
-    onUpdate(editId, {
+    void onUpdate(editId, {
       name,
       narration: editNarration.trim(),
       dwellSeconds: Math.min(60, Math.max(1, editDwellSeconds ?? 6))
@@ -138,7 +138,7 @@ export function SceneBookmarksPanel({
           {saveError && <Alert type="error" showIcon title={saveError} className={styles.panelAlert} />}
         </div>
         <div className={styles.sceneList}>
-          {!scenes.length ? (
+          {scenes.length === 0 ? (
             <div className={styles.sceneEmpty}>
               <Empty description="还没有教学场景">
                 <span className={styles.sceneEmptyHint}>将当前视角与图层保存为场景，方便课堂播放。</span>

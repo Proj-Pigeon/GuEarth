@@ -16,25 +16,27 @@ export interface PaginationProps {
   onChange: (page: number, pageSize: number) => void
 }
 
-function buildPages(current: number, totalPages: number): Array<number | 'ellipsis'> {
+function buildPages(current: number, totalPages: number): (number | 'ellipsis')[] {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1)
   }
-  const pages: Array<number | 'ellipsis'> = [1]
+  const pages: (number | 'ellipsis')[] = [1]
   const start = Math.max(2, current - 1)
   const end = Math.min(totalPages - 1, current + 1)
-  if (start > 2) pages.push('ellipsis')
-  for (let page = start; page <= end; page += 1) pages.push(page)
-  if (end < totalPages - 1) pages.push('ellipsis')
+  if (start > 2) {pages.push('ellipsis')}
+  for (let page = start; page <= end; page += 1) {pages.push(page)}
+  if (end < totalPages - 1) {pages.push('ellipsis')}
   pages.push(totalPages)
   return pages
 }
+
+const DEFAULT_PAGE_SIZE_OPTIONS = [20, 50, 100]
 
 export function Pagination({
   current,
   total,
   pageSize,
-  pageSizeOptions = [20, 50, 100],
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   showSizeChanger = false,
   showQuickJumper = false,
   showTotal = false,
@@ -51,9 +53,9 @@ export function Pagination({
   function submitJump(): void {
     const parsed = Number.parseInt(jumpDraft.trim(), 10)
     setJumpDraft('')
-    if (!Number.isFinite(parsed)) return
+    if (!Number.isFinite(parsed)) {return}
     const target = Math.min(totalPages, Math.max(1, parsed))
-    if (target !== safeCurrent) onChange(target, pageSize)
+    if (target !== safeCurrent) {onChange(target, pageSize)}
   }
 
   return (
@@ -112,7 +114,7 @@ export function Pagination({
           options={pageSizeOptions.map((size) => ({ value: String(size), label: `${size} 条/页` }))}
           onChange={(next) => {
             const parsed = Number(next)
-            if (Number.isFinite(parsed) && parsed > 0) onChange(1, parsed)
+            if (Number.isFinite(parsed) && parsed > 0) {onChange(1, parsed)}
           }}
         />
       )}
@@ -123,9 +125,9 @@ export function Pagination({
             value={jumpDraft}
             inputMode="numeric"
             aria-label="跳转页码"
-            onChange={(event) => setJumpDraft(event.target.value.replace(/[^\d]/g, ''))}
+            onChange={(event) => setJumpDraft(event.target.value.replaceAll(/[^\d]/g, ''))}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') submitJump()
+              if (event.key === 'Enter') {submitJump()}
             }}
             onBlur={submitJump}
             className="h-7 w-11 rounded-md border border-border-strong bg-elevated px-1.5 text-center font-mono text-[12px] text-ink outline-none focus:border-ring"

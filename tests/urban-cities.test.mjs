@@ -52,7 +52,7 @@ test('functional-zone cities: seven cities with unique ids and complete zone kin
   for (const city of functionalZoneCities) {
     assert.ok(city.districts.length >= 5, `${city.name} needs at least five districts`)
     assert.ok(city.longitude > 73 && city.longitude < 136 && city.latitude > 18 && city.latitude < 54, `${city.name} center outside China bounds`)
-    assert.ok(city.viewHeight >= 80000 && city.viewHeight <= 300000, `${city.name} view height implausible`)
+    assert.ok(city.viewHeight >= 80_000 && city.viewHeight <= 300_000, `${city.name} view height implausible`)
     assert.ok(city.overview.length >= 20, `${city.name} overview too short`)
     const present = new Set(city.districts.map((district) => district.kind))
     for (const kind of kinds) {

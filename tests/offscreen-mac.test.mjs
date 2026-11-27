@@ -50,7 +50,7 @@ test('main forwards frame acks and encoded video only from the offscreen window'
   assert.match(mainSource, /ipcMain\.on\('recordings:offscreen-video-chunk', \(event, bytes: unknown, position: unknown\): void => \{/)
   assert.match(mainSource, /ipcMain\.on\('recordings:offscreen-video-complete', \(event\): void => \{/)
   const frameAckBody = mainSource.slice(mainSource.indexOf("ipcMain.on('recordings:offscreen-frame-ack'"), mainSource.indexOf('function assertOffscreenRecordingIdle'))
-  assert.match(frameAckBody, /if \(event\.sender !== offscreenRecordingWindow\?\.webContents\) return/)
+  assert.match(frameAckBody, /if \(event\.sender !== offscreenRecordingWindow\?\.webContents\) \{return\}/)
   assert.match(frameAckBody, /noteMacOffscreenFrameAck\(count\)/)
   assert.match(frameAckBody, /deliverMacOffscreenVideo\(bytes, position\)/)
 })
@@ -92,7 +92,7 @@ test('the macOS encode deadline scales with the captured frame count', () => {
 
 test('the macOS frame-drain wait clears its timer once acks settle the queue', () => {
   assert.match(macSource, /clearTimeout\(timer\)/)
-  assert.match(macSource, /if \(!settled\) logger\.warn\('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码'\)/)
+  assert.match(macSource, /if \(!settled\) \{logger\.warn\('recording', '部分离屏帧尚未送达编码页，已按已到达帧继续编码'\)\}/)
   assert.match(macSource, /frameDrainResolve = \(\): void => \{/)
   assert.match(macSource, /frameDrainResolve = null/)
 })

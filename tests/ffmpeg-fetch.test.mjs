@@ -36,8 +36,8 @@ const legacyGithubRedirectTarget = 'https://objects.githubusercontent.com/github
 const cdnRedirectTargets = [npmmirrorRedirectTarget, githubRedirectTarget, legacyGithubRedirectTarget]
 
 function restoreEnv(key, value) {
-  if (value === undefined) delete process.env[key]
-  else process.env[key] = value
+  if (value === undefined) {delete process.env[key]}
+  else {process.env[key] = value}
 }
 
 test('the pinned ffmpeg build hashes and sizes are well formed', () => {
@@ -59,7 +59,7 @@ test('ffmpeg fetch prefers the configured override then the pinned mirrors', () 
   assert.equal(pinned.length, 2)
   assert.match(pinned[0], /^https:\/\/registry\.npmmirror\.com\//)
   assert.match(pinned[1], /^https:\/\/github\.com\/KarinJS\/FFmpeg-Builds\//)
-  for (const url of pinned) assert.ok(url.endsWith(`v8.1.3/${hostFfmpegBuild().archiveName}`))
+  for (const url of pinned) {assert.ok(url.endsWith(`v8.1.3/${hostFfmpegBuild().archiveName}`))}
   const override = `https://github.com/KarinJS/FFmpeg-Builds/releases/download/v8.1.3/${FFMPEG_BUILD.archiveName}`
   const overridden = archiveSources(override)
   assert.equal(overridden[0], override)
@@ -67,9 +67,9 @@ test('ffmpeg fetch prefers the configured override then the pinned mirrors', () 
 })
 
 test('ffmpeg fetch accepts the pinned sources and keeps CDN hosts redirect-only', () => {
-  for (const url of archiveSources(undefined)) assert.ok(isApprovedArchiveUrl(url), url)
+  for (const url of archiveSources(undefined)) {assert.ok(isApprovedArchiveUrl(url), url)}
   assert.ok(isApprovedArchiveUrl(pinnedMirrorUrl))
-  for (const target of cdnRedirectTargets) assert.ok(isApprovedArchiveRedirectUrl(target), target)
+  for (const target of cdnRedirectTargets) {assert.ok(isApprovedArchiveRedirectUrl(target), target)}
 })
 
 test('ffmpeg fetch resolves redirect targets against the current request URL', () => {
@@ -133,7 +133,7 @@ test('ffmpeg fetch accepts the pinned artifact served from an approved mirror ho
     assert.equal(sources.length, 3)
     assert.equal(sources[0], url)
     assert.deepEqual(sources.slice(1), archiveSources(undefined))
-    for (const source of sources) assert.ok(isApprovedArchiveUrl(source), source)
+    for (const source of sources) {assert.ok(isApprovedArchiveUrl(source), source)}
   }
   const relayedMirror = `https://registry.npmmirror.com/mirrors/ffmpeg-builds${pinnedArchivePathSuffix}`
   assert.equal(approvedArchiveSource(relayedMirror), relayedMirror)
@@ -186,7 +186,7 @@ test('ffmpeg fetch rejects untrusted hosts that serve the pinned path shape', ()
 })
 
 test('the download sink only accepts allowlisted pinned artifact URLs', () => {
-  for (const url of archiveSources(undefined)) assert.equal(assertArchiveSource(url), url)
+  for (const url of archiveSources(undefined)) {assert.equal(assertArchiveSource(url), url)}
   assert.equal(assertArchiveSource(pinnedMirrorUrl), pinnedMirrorUrl)
   assert.throws(() => assertArchiveSource(`https://example.com/${FFMPEG_BUILD.archiveName}`), /拒绝下载未经验证的来源/)
   assert.throws(
@@ -227,7 +227,7 @@ test('the encoder target lives in resources/bin and missing binaries are reporte
 
 test('the provisioned binary matches the pinned digest when present', async (t) => {
   const target = defaultBinaryPath(repoRoot)
-  if (!existsSync(target)) return t.skip('尚未获取内置编码器（npm run fetch:ffmpeg）')
+  if (!existsSync(target)) {return t.skip('尚未获取内置编码器（npm run fetch:ffmpeg）')}
   const result = await verifyFfmpegBinary(target)
   assert.equal(result.ok, true, result.reason)
 })
@@ -242,7 +242,7 @@ test('linux lgpl archives stay on the pinned allowlist', () => {
 })
 
 test('the offline FFMPEG_FETCH_FILE branch bypasses the network source allowlist', async (t) => {
-  if (process.platform !== 'win32' && process.platform !== 'linux') return t.skip('内置编码器仅在 Windows 与 Linux 上获取')
+  if (process.platform !== 'win32' && process.platform !== 'linux') {return t.skip('内置编码器仅在 Windows 与 Linux 上获取')}
   const sandbox = await mkdtemp(join(tmpdir(), 'guearth-ffmpeg-offline-'))
   const previousFile = process.env.FFMPEG_FETCH_FILE
   const previousUrl = process.env.FFMPEG_FETCH_URL

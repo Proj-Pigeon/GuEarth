@@ -29,7 +29,7 @@ registerHooks({
   resolve(specifier, context, nextResolve) {
     if (specifier.startsWith('@renderer/')) {
       const target = resolve('src/renderer/src', specifier.slice(10))
-      if (/\.[a-z]+$/i.test(target)) return nextResolve(pathToFileURL(target).href, context)
+      if (/\.[a-z]+$/i.test(target)) {return nextResolve(pathToFileURL(target).href, context)}
       try {
         return nextResolve(pathToFileURL(`${target}.ts`).href, context)
       } catch {
@@ -157,7 +157,7 @@ test('thematic sources clean up across viewer changes, delayed additions and unm
   const pendingFeeds = []
   dom.window.guEarth = {
     datasets: {
-      getEarthquakes: () => new Promise((resolveFeed) => pendingFeeds.push(resolveFeed)),
+      getEarthquakes: () => new Promise((resolveFeed) => { pendingFeeds.push(resolveFeed) }),
       getOnlineData: async () => ({ revision: 1, earthquakes: null, earthquakeError: '', typhoons: null, typhoonError: '', typhoonConfigured: false, typhoonStatus: 'unconfigured' }),
       onOnlineData: () => () => {}
     }
@@ -174,7 +174,7 @@ test('thematic sources clean up across viewer changes, delayed additions and unm
   const second = makeViewer()
   const added = []
   const originalAdd = first.dataSources.add.bind(first.dataSources)
-  first.dataSources.add = (source) => new Promise((resolveAdd) => added.push(async () => resolveAdd(await originalAdd(source))))
+  first.dataSources.add = (source) => new Promise((resolveAdd) => { added.push(async () => resolveAdd(await originalAdd(source))) })
 
   const container = dom.window.document.createElement('div')
   dom.window.document.body.appendChild(container)
@@ -203,7 +203,7 @@ test('thematic sources clean up across viewer changes, delayed additions and unm
   act(() => {
     useClimateStore.getState().setOverlay('plate-tectonics', false)
   })
-  for (const resolveFeed of pendingFeeds) resolveFeed({ events: [{ longitude: 120, latitude: 30, magnitude: 5, depthKm: 10, place: 'test' }] })
+  for (const resolveFeed of pendingFeeds) {resolveFeed({ events: [{ longitude: 120, latitude: 30, magnitude: 5, depthKm: 10, place: 'test' }] })}
   await Promise.resolve()
   await Promise.resolve()
   assert.equal(obsolete.entities.values.length, before)
@@ -223,7 +223,7 @@ test('earthquake failures stay retryable and retry refreshes the feed', async (t
     datasets: {
       getEarthquakes: (refresh = false) => {
         refreshRequests.push(refresh)
-        if (refreshRequests.length === 1) return Promise.reject(new Error('offline'))
+        if (refreshRequests.length === 1) {return Promise.reject(new Error('offline'))}
         return Promise.resolve({ fetchedAt: 2, events: [{ longitude: 120, latitude: 30, magnitude: 6, depthKm: 10, place: 'test', time: 1 }] })
       },
       getOnlineData: async () => ({ revision: 1, earthquakes: null, earthquakeError: 'offline', typhoons: null, typhoonError: '', typhoonConfigured: false, typhoonStatus: 'unconfigured' }),
@@ -324,7 +324,7 @@ test('typhoon layers fetch newly configured data on demand and ignore obsolete I
     datasets: {
       getOnlineData: () => new Promise((resolveData) => { resolveInitial = resolveData }),
       onOnlineData: (listener) => { notify = listener; return () => { unsubscribed = true } },
-      ensureTyphoons: () => new Promise((resolveTyphoons) => requests.push(resolveTyphoons))
+      ensureTyphoons: () => new Promise((resolveTyphoons) => { requests.push(resolveTyphoons) })
     }
   }
   resetClimateStore()

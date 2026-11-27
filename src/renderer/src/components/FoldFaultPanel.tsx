@@ -40,14 +40,14 @@ const faultFacts = [
 ]
 
 const foldCases: GlobeCase[] = [
-  { name: '喜马拉雅褶皱山系', longitude: 86.9, latitude: 27.9, height: 900000, summary: '板块碰撞挤压形成的典型褶皱山系' },
-  { name: '欧洲阿尔卑斯山', longitude: 9.5, latitude: 46.5, height: 900000, summary: '非洲板块与亚欧板块挤压形成' }
+  { name: '喜马拉雅褶皱山系', longitude: 86.9, latitude: 27.9, height: 900_000, summary: '板块碰撞挤压形成的典型褶皱山系' },
+  { name: '欧洲阿尔卑斯山', longitude: 9.5, latitude: 46.5, height: 900_000, summary: '非洲板块与亚欧板块挤压形成' }
 ]
 
 const faultCases: GlobeCase[] = [
-  { name: '东非大裂谷（地堑）', longitude: 36, latitude: -3, height: 1200000, summary: '大陆断裂拉伸下陷形成的巨型地堑带' },
-  { name: '华山（地垒）', longitude: 110.08, latitude: 34.48, height: 45000, summary: '秦岭北麓断层上升形成的块状山地' },
-  { name: '渭河平原（地堑）', longitude: 109.2, latitude: 34.4, height: 260000, summary: '断陷下陷形成的地堑谷地' }
+  { name: '东非大裂谷（地堑）', longitude: 36, latitude: -3, height: 1_200_000, summary: '大陆断裂拉伸下陷形成的巨型地堑带' },
+  { name: '华山（地垒）', longitude: 110.08, latitude: 34.48, height: 45_000, summary: '秦岭北麓断层上升形成的块状山地' },
+  { name: '渭河平原（地堑）', longitude: 109.2, latitude: 34.4, height: 260_000, summary: '断陷下陷形成的地堑谷地' }
 ]
 
 export function FoldFaultPanel({ viewer, onClose }: FoldFaultPanelProps) {

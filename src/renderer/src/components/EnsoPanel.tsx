@@ -1,7 +1,7 @@
 import { XIcon } from 'lucide-react'
 import { Button, Segmented } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
-import { ensoPhaseMeta, ensoPhaseOptions, type EnsoPhase } from '@renderer/thematic/ensoPhases'
+import { ensoPhaseMeta, ensoPhaseOptions } from '@renderer/thematic/ensoPhases';
 import styles from './EnsoPanel.module.css'
 
 export interface EnsoPanelProps {
@@ -24,7 +24,7 @@ export function EnsoPanel({ onClose }: EnsoPanelProps) {
         options={ensoPhaseOptions}
         size="sm"
         aria-label="ENSO 相位"
-        onChange={(value) => setEnsoPhase(value as EnsoPhase)}
+        onChange={(value) => setEnsoPhase(value)}
       />
       <div className={styles.phaseSummary}>{meta.summary}</div>
       <div className={styles.walkerLine}>

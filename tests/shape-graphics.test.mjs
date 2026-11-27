@@ -7,11 +7,11 @@ import * as Cesium from 'cesium'
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier.startsWith('@renderer/')) return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)
+    if (specifier.startsWith('@renderer/')) {return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)}
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
       throw error
     }
   }
@@ -113,7 +113,7 @@ test('shapes without any label text produce no label graphics', () => {
 const ringCartesians = (ring, height = 0) => ring.map(([longitude, latitude]) => Cesium.Cartesian3.fromDegrees(longitude, latitude, height))
 
 function labelTolerance(squareMeters) {
-  return squareMeters >= 1_000_000 ? 5_000 : 0.5
+  return squareMeters >= 1_000_000 ? 5000 : 0.5
 }
 
 function assertReportedArea(actual, reference, tolerance = labelTolerance(reference)) {
@@ -123,7 +123,7 @@ function assertReportedArea(actual, reference, tolerance = labelTolerance(refere
 }
 
 function parallelCellArea(south, north, west, east) {
-  const equatorialRadius = 6378137
+  const equatorialRadius = 6_378_137
   const flattening = 1 / 298.257223563
   const eccentricitySquared = flattening * (2 - flattening)
   const eccentricity = Math.sqrt(eccentricitySquared)
@@ -138,18 +138,18 @@ const concave = [
   [116, 39], [116.03, 39], [116.03, 39.03], [116.02, 39.03],
   [116.02, 39.01], [116.01, 39.01], [116.01, 39.03], [116, 39.03]
 ]
-const CONCAVE_GEODESIC_M2 = 6730374.918290138
+const CONCAVE_GEODESIC_M2 = 6_730_374.918290138
 const HIGH_LATITUDE_CELL = [[10, 60], [10.05, 60], [10.05, 60.05], [10, 60.05]]
-const HIGH_LATITUDE_GEODESIC_M2 = 15530344.38269806
+const HIGH_LATITUDE_GEODESIC_M2 = 15_530_344.38269806
 const ONE_DEGREE_CELL = [[10, 60], [11, 60], [11, 61], [10, 61]]
-const ONE_DEGREE_GEODESIC_M2 = 6122943163.071289
-const ANTIMERIDIAN_GEODESIC_M2 = 24619443759.277203
+const ONE_DEGREE_GEODESIC_M2 = 6_122_943_163.071289
+const ANTIMERIDIAN_GEODESIC_M2 = 24_619_443_759.277203
 const ANTARCTICA = [
   [-58, -63.1], [-74, -72.9], [-102, -71.9], [-102, -74.9], [-131, -74.3], [-163, -77.5],
   [163, -77.4], [172, -71.7], [140, -65.9], [113, -65.7], [88, -66.6], [59, -66.9],
   [25, -69.8], [-4, -70], [-14, -71], [-33, -77.3], [-46, -77.9], [-61, -74.7]
 ]
-const PUBLISHED_ANTARCTICA_M2 = 13662703680020.1
+const PUBLISHED_ANTARCTICA_M2 = 13_662_703_680_020.1
 
 test('polygon area matches the WGS84 geodesic area of a concave outline', () => {
   const area = polygonArea(ringCartesians(concave))
@@ -203,7 +203,7 @@ test('polygon area keeps the ellipsoidal footprint when vertices have different 
   const withRaisedDuplicate = [seaLevel, raised, ...clean.slice(1)]
   assertReportedArea(polygonArea(elevated), polygonArea(flat), 0.05)
   assertReportedArea(polygonArea(withRaisedDuplicate), polygonArea(clean), 0.05)
-  assertReportedArea(polygonArea(flat), 378719458.75068665)
+  assertReportedArea(polygonArea(flat), 378_719_458.75068665)
 })
 
 test('polygon area drops a true duplicate geocentric direction', () => {
@@ -234,13 +234,13 @@ test('polygon area drops a true duplicate geocentric direction', () => {
     Cesium.Cartesian3.fromDegrees(0.2, 0.2, 0)
   ]
   assert.equal(Cesium.Cartesian3.angleBetween(equatorial[0], equatorial[1]), 0)
-  assertReportedArea(polygonArea(equatorial), 246181951.57871842)
+  assertReportedArea(polygonArea(equatorial), 246_181_951.57871842)
 })
 
 test('self-intersecting polygons report the rendered fill instead of cancelling opposite lobes', () => {
   const symmetric = [[116, 39], [116.2, 39], [116, 39.2], [116.2, 39.2]]
-  const symmetricFilled = 192340903.5258026
-  const symmetricCancelled = 542658.3645782471
+  const symmetricFilled = 192_340_903.5258026
+  const symmetricCancelled = 542_658.3645782471
   const symmetricArea = polygonArea(ringCartesians(symmetric))
   assertReportedArea(symmetricArea, symmetricFilled)
   assert.ok(Math.abs(symmetricArea - symmetricCancelled) > labelTolerance(symmetricFilled))
@@ -249,15 +249,15 @@ test('self-intersecting polygons report the rendered fill instead of cancelling 
   assertReportedArea(polygonArea(ringCartesians(rotated)), symmetricFilled)
 
   const asymmetric = [[116, 40], [116.4, 40], [116.05, 40.25], [116.15, 40.3]]
-  const asymmetricFilled = 568609657.5216141
-  const asymmetricCancelled = 367815848.036705
+  const asymmetricFilled = 568_609_657.5216141
+  const asymmetricCancelled = 367_815_848.036705
   const asymmetricArea = polygonArea(ringCartesians(asymmetric))
   assertReportedArea(asymmetricArea, asymmetricFilled)
   assert.ok(Math.abs(asymmetricArea - asymmetricCancelled) > labelTolerance(asymmetricFilled))
   assert.ok(Math.abs(asymmetricFilled - asymmetricCancelled) > 1_000_000)
 
-  const starFilled = 68317813710.74405
-  const starCancelled = 59699228587.22718
+  const starFilled = 68_317_813_710.74405
+  const starCancelled = 59_699_228_587.22718
   const star = polygonArea(ringCartesians([[0, 0], [2, -1], [0.5, -3], [-1.5, -1], [0.5, -0.2]]))
   assertReportedArea(star, starFilled)
   assert.ok(Math.abs(star - starCancelled) > labelTolerance(starFilled))
@@ -266,24 +266,24 @@ test('self-intersecting polygons report the rendered fill instead of cancelling 
 test('a ring that meets only at a repeated vertex reports the rendered lobe', () => {
   const touch = [[-1, -1], [0, 0], [1, 1], [-1, 1], [0, 0], [1, -1]]
   const area = polygonArea(ringCartesians(touch))
-  assertReportedArea(area, 12309734185.834341)
+  assertReportedArea(area, 12_309_734_185.834341)
   assert.ok(area > labelTolerance(area))
 })
 
 test('separated collinear edges stay on the geodesic area', () => {
   const stepped = [[0, 0], [1, 0], [1, 1], [2, 1], [2, 0], [3, 0], [3, 2], [0, 2]]
-  assertReportedArea(polygonArea(ringCartesians(stepped)), 61548025574.44525)
+  assertReportedArea(polygonArea(ringCartesians(stepped)), 61_548_025_574.44525)
 })
 
 test('a simple ring outside the tangent hemisphere keeps the geodesic area', () => {
-  assertReportedArea(polygonArea(ringCartesians([[-170, 20], [-10, 20], [10, -10], [170, -10]])), 227054440823306.5, 1)
+  assertReportedArea(polygonArea(ringCartesians([[-170, 20], [-10, 20], [10, -10], [170, -10]])), 227_054_440_823_306.5, 1)
 })
 
 test('a ring that revisits a vertex keeps the simple polygon area', () => {
   const square = [[0, 0], [1, 0], [1, 1], [0, 1]]
   const pinched = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0], [0, 1]]
   assertReportedArea(polygonArea(ringCartesians(pinched)), polygonArea(ringCartesians(square)), 0.05)
-  assertReportedArea(polygonArea(ringCartesians(square)), 12308778361.469452)
+  assertReportedArea(polygonArea(ringCartesians(square)), 12_308_778_361.469452)
 })
 
 test('polygon area of an antimeridian rectangle is the small geodesic quadrilateral', () => {

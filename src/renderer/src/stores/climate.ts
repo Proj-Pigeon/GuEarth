@@ -165,7 +165,7 @@ export const useClimateStore = create<ClimateStore>()(
     },
     advance(dtSeconds: number): void {
       const state = get()
-      if (!state.isPlaying) return
+      if (!state.isPlaying) {return}
       const next = state.month + dtSeconds * MONTHS_PER_SECOND
       const month = next >= MONTH_MAX ? next - 12 : next
       set({

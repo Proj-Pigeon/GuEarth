@@ -7,8 +7,8 @@ export interface PrewarmView {
 }
 
 export const RECORD_PREWARM_QUALITY_CONFIG: Record<OffscreenPrewarmQuality, { screenSpaceError: number; viewTimeoutMs: number; totalTimeoutMs: number }> = {
-  standard: { screenSpaceError: 4, viewTimeoutMs: 4_000, totalTimeoutMs: 24_000 },
-  high: { screenSpaceError: 1, viewTimeoutMs: 6_000, totalTimeoutMs: 30_000 },
+  standard: { screenSpaceError: 4, viewTimeoutMs: 4000, totalTimeoutMs: 24_000 },
+  high: { screenSpaceError: 1, viewTimeoutMs: 6000, totalTimeoutMs: 30_000 },
   ultra: { screenSpaceError: 0.5, viewTimeoutMs: 10_000, totalTimeoutMs: 45_000 }
 }
 
@@ -44,7 +44,7 @@ export function recordingPrewarmViews(scenes: TeachingScene[]): PrewarmView[] {
   const views: PrewarmView[] = []
   for (let index = 0; index < scenes.length; index += 1) {
     const camera = sanitizeCamera(scenes[index].snapshot.camera)
-    if (index > 0) views.push({ camera: interpolateCamera(sanitizeCamera(scenes[index - 1].snapshot.camera), camera, 0.5), sceneIndex: index })
+    if (index > 0) {views.push({ camera: interpolateCamera(sanitizeCamera(scenes[index - 1].snapshot.camera), camera, 0.5), sceneIndex: index })}
     views.push({ camera, sceneIndex: index })
   }
   return views

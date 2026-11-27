@@ -8,33 +8,46 @@ let queue: Promise<void> = Promise.resolve()
 
 async function dispatch(request: HawdbWorkerRequest): Promise<unknown> {
   switch (request.op) {
-    case 'open':
+    case 'open': {
       return engine.open(request.payload)
-    case 'close':
+    }
+    case 'close': {
       engine.close()
       return true
-    case 'status':
+    }
+    case 'status': {
       return engine.status()
-    case 'memory:list':
+    }
+    case 'memory:list': {
       return engine.listMemories()
-    case 'memory:add':
+    }
+    case 'memory:add': {
       return engine.addMemory(request.payload.content, request.payload.source)
-    case 'memory:delete':
+    }
+    case 'memory:delete': {
       return engine.deleteMemory(request.payload.id)
-    case 'memory:recall':
+    }
+    case 'memory:recall': {
       return engine.recallMemories(request.payload.query, request.payload.limit)
-    case 'history:list':
+    }
+    case 'history:list': {
       return engine.listConversations()
-    case 'history:get':
+    }
+    case 'history:get': {
       return engine.getConversation(request.payload.id)
-    case 'history:save':
+    }
+    case 'history:save': {
       return engine.saveConversation(request.payload.conversation)
-    case 'history:delete':
+    }
+    case 'history:delete': {
       return engine.deleteConversation(request.payload.id)
-    case 'history:search':
+    }
+    case 'history:search': {
       return engine.searchConversations(request.payload.query, request.payload.limit, request.payload.excludeId)
-    case 'knowledge:retrieve':
+    }
+    case 'knowledge:retrieve': {
       return engine.retrieveKnowledge(request.payload.query, request.payload.module, request.payload.topK)
+    }
   }
 }
 
@@ -58,6 +71,6 @@ if (parentPort) {
           })
         }
       })
-      .catch(() => undefined)
+      .catch(() => {})
   })
 }

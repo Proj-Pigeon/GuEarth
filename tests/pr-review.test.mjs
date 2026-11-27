@@ -19,12 +19,12 @@ const tileFsUrl = `data:text/javascript,${encodeURIComponent(`
 `)}`
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier === 'fs/promises' && context.parentURL.endsWith('/tileCacheFiles.ts')) return nextResolve(tileFsUrl, context)
-    if (specifier.startsWith('@renderer/')) return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)
+    if (specifier === 'node:fs/promises' && context.parentURL.endsWith('/tileCacheFiles.ts')) {return nextResolve(tileFsUrl, context)}
+    if (specifier.startsWith('@renderer/')) {return nextResolve(pathToFileURL(resolve('src/renderer/src', `${specifier.slice(10)}.ts`)).href, context)}
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
       throw error
     }
   }
@@ -52,7 +52,7 @@ test('cache quota includes metadata and evicts complete oldest pairs', async (t)
   for (const name of ['old', 'new']) {
     await writeFile(join(path, `${name}.bin`), Buffer.alloc(10))
     await writeFile(join(path, `${name}.json`), Buffer.alloc(10))
-    if (name === 'old') for (const extension of ['bin', 'json']) await utimes(join(path, `${name}.${extension}`), 1, 1)
+    if (name === 'old') {for (const extension of ['bin', 'json']) {await utimes(join(path, `${name}.${extension}`), 1, 1)}}
   }
   assert.equal((await listTileFiles(path)).reduce((sum, file) => sum + file.size, 0), 40)
   assert.equal(await pruneTileFiles(path, 20), 20)
@@ -81,7 +81,7 @@ test('atomic replacement exposes complete bytes and cleans failed temporary writ
     const data = await readFile(path)
     assert.ok(data.equals(before) || data.equals(after))
   }
-  if (!await writing) await writeAtomic(path, after)
+  if (!await writing) {await writeAtomic(path, after)}
   assert.deepEqual(await readFile(path), after)
   const invalid = join(dirname(path), 'blocked')
   await mkdir(invalid)
@@ -141,13 +141,13 @@ function playerFixture(t) {
   let requests = 0
   const viewer = {
     isDestroyed: () => false,
-    scene: { mode: 3, globe: { tilesLoaded: true, maximumScreenSpaceError: 2, pick: () => undefined }, requestRender: () => { requests += 1 }, canvas: { clientWidth: 800, clientHeight: 600 } },
+    scene: { mode: 3, globe: { tilesLoaded: true, maximumScreenSpaceError: 2, pick: () => {} }, requestRender: () => { requests += 1 }, canvas: { clientWidth: 800, clientHeight: 600 } },
     camera: { setView() {}, flyTo(options) { options.complete() }, getPickRay: () => ({}) }
   }
   const player = createScenePlayerController(viewer, () => {}, () => {})
   const unmount = player.mount()
   t.onTestFinished(unmount)
-  const scene = { name: 'Sky', narration: '', flyDurationMs: 100, dwellMs: 100, snapshot: { camera: { longitude: 179, latitude: 30, height: 10000, heading: 350, pitch: 10 }, basemapId: '', overlays: [], month: 6, simTime: null } }
+  const scene = { name: 'Sky', narration: '', flyDurationMs: 100, dwellMs: 100, snapshot: { camera: { longitude: 179, latitude: 30, height: 10_000, heading: 350, pitch: 10 }, basemapId: '', overlays: [], month: 6, simTime: null } }
   const tick = async (ms) => { vi.advanceTimersByTime(ms); await nextTurn() }
   return { viewer, player, scene, tick, requests: () => requests }
 }
@@ -155,22 +155,22 @@ function playerFixture(t) {
 test('sky-facing scenes advance once tiles are ready instead of waiting ten seconds', async (t) => {
   const { player, scene, tick } = playerFixture(t)
   const playing = player.play({ scenes: [scene], mode: 'auto' })
-  for (let index = 0; index < 35; index += 1) await tick(120)
+  for (let index = 0; index < 35; index += 1) {await tick(120)}
   assert.equal(player.getPlayerState().active, false)
   await playing
 })
 
 function walkReactNodes(value, visit) {
   if (Array.isArray(value)) {
-    for (const item of value) walkReactNodes(item, visit)
+    for (const item of value) {walkReactNodes(item, visit)}
   } else if (value && typeof value === 'object') {
     visit(value)
-    if (value.props?.children !== undefined) walkReactNodes(value.props.children, visit)
+    if (value.props?.children !== undefined) {walkReactNodes(value.props.children, visit)}
   }
 }
 
 function childTextList(children) {
-  if (children === undefined || children === null) return []
+  if (children === undefined || children === null) {return []}
   return Array.isArray(children) ? children : [children]
 }
 
@@ -200,10 +200,10 @@ test('streaming markdown tints the last two words, appends one caret and leaves 
   assert.deepEqual(fresh.map((node) => node.props.children), ['结', '尾'])
   assert.equal(
     seen.some((node) => {
-      if (node.type !== 'pre') return false
+      if (node.type !== 'pre') {return false}
       let hasToken = false
       walkReactNodes(node.props?.children, (child) => {
-        if (child.props?.className?.includes('stream-token')) hasToken = true
+        if (child.props?.className?.includes('stream-token')) {hasToken = true}
       })
       return hasToken
     }),

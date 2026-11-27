@@ -36,21 +36,21 @@ test('flat high ground keeps the collision floor without extra zoom', () => {
 
 test('steep summit is framed by local relief instead of skimming the surface', () => {
   const height = frame({ centerGroundM: 8849, relief: everestRelief, requestedHeightM: 5000 })
-  assert.equal(height, 20849)
+  assert.equal(height, 20_849)
   assert.ok(height > 8849 + 1000)
-  assert.ok(height - 8849 <= 12000)
+  assert.ok(height - 8849 <= 12_000)
 })
 
 test('vertical exaggeration raises the framed mountain and still clears the visual surface', () => {
   const normal = frame({ centerGroundM: 8849, relief: everestRelief })
   const exaggerated = frame({ centerGroundM: 8849, relief: everestRelief, verticalExaggeration: 2, relativeHeightM: 0 })
-  assert.equal(exaggerated, 29698)
+  assert.equal(exaggerated, 29_698)
   assert.ok(exaggerated > normal)
   assert.ok(exaggerated > 8849 * 2 + 1000)
 })
 
 test('exaggeration reference height still applies on flat terrain', () => {
-  assert.equal(frame({ centerGroundM: 8849, verticalExaggeration: 2, relativeHeightM: 100, relief: [{ distanceM: 2400, groundM: 8849 }] }), 18598)
+  assert.equal(frame({ centerGroundM: 8849, verticalExaggeration: 2, relativeHeightM: 100, relief: [{ distanceM: 2400, groundM: 8849 }] }), 18_598)
 })
 
 test('ordinary low terrain and point destinations keep the requested height', () => {
@@ -59,7 +59,7 @@ test('ordinary low terrain and point destinations keep the requested height', ()
     { distanceM: 2400, groundM: 28 },
     { distanceM: 7200, groundM: 42 }
   ]
-  assert.equal(frame({ requestedHeightM: 40000, centerGroundM: 30, relief: city }), 40000)
+  assert.equal(frame({ requestedHeightM: 40_000, centerGroundM: 30, relief: city }), 40_000)
   assert.equal(frame({ requestedHeightM: 2500, centerGroundM: 15, relief: city.map((sample) => ({ ...sample, groundM: 18 })) }), 2500)
   assert.equal(frame({ requestedHeightM: 800, centerGroundM: 20, relief: [] }), 1020)
 })
@@ -78,8 +78,8 @@ test('gentle hills do not expand into a regional frame', () => {
 })
 
 test('broad destinations stay at the requested height over steep relief', () => {
-  assert.equal(frame({ requestedHeightM: 1500000, centerGroundM: 8849, relief: everestRelief }), 1500000)
-  assert.equal(frame({ requestedHeightM: 50000, centerGroundM: 8849, relief: everestRelief }), 50000)
+  assert.equal(frame({ requestedHeightM: 1_500_000, centerGroundM: 8849, relief: everestRelief }), 1_500_000)
+  assert.equal(frame({ requestedHeightM: 50_000, centerGroundM: 8849, relief: everestRelief }), 50_000)
 })
 
 test('moderate relief frames between the collision floor and the mountain cap', () => {
@@ -89,7 +89,7 @@ test('moderate relief frames between the collision floor and the mountain cap', 
     relief: [{ distanceM: 2400, groundM: 1100 }]
   })
   assert.ok(height > 1500 + 1000)
-  assert.ok(height < 1500 + 12000)
+  assert.ok(height < 1500 + 12_000)
   assert.ok(height < frame({ centerGroundM: 8849, relief: everestRelief }))
 })
 
@@ -127,18 +127,18 @@ test('missing fov falls back to the nadir default', () => {
 })
 
 test('unknown terrain fallback and sample ceiling stay above the collision ground', () => {
-  assert.equal(conservativeFlightHeightM(5000, 1, 0), 10000)
-  assert.equal(conservativeFlightHeightM(60000, 1, 0), 60000)
-  assert.equal(conservativeFlightHeightM(5000, 2, 100), 18900)
-  assert.equal(flightSampleCeilingM(1, 0), 21000)
-  assert.equal(flightSampleCeilingM(2, 0), 30000)
-  assert.equal(flightSampleCeilingM(2, 100), 29900)
+  assert.equal(conservativeFlightHeightM(5000, 1, 0), 10_000)
+  assert.equal(conservativeFlightHeightM(60_000, 1, 0), 60_000)
+  assert.equal(conservativeFlightHeightM(5000, 2, 100), 18_900)
+  assert.equal(flightSampleCeilingM(1, 0), 21_000)
+  assert.equal(flightSampleCeilingM(2, 0), 30_000)
+  assert.equal(flightSampleCeilingM(2, 100), 29_900)
 })
 
 test('relief offsets ring a destination without leaving the hemisphere', () => {
   const offsets = flightReliefOffsets()
   assert.equal(offsets.length, 24)
-  const north = destinationAt(86.925, 27.988, 111319.49079327358, 0)
+  const north = destinationAt(86.925, 27.988, 111_319.49079327358, 0)
   assert.ok(Math.abs(north.latitude - 28.988) < 1e-4)
   assert.ok(Math.abs(north.longitude - 86.925) < 1e-4)
   const east = destinationAt(86.925, 27.988, 5000, Math.PI / 2)

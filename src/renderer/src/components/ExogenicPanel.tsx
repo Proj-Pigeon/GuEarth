@@ -25,7 +25,7 @@ const stages: ChainStage[] = [
     force: '温差、冻融、水、生物',
     description: '岩石原地被破坏、崩解碎裂，不发生位移。花岗岩球状风化、石灰岩化学溶蚀都属于风化。',
     color: '#faad14',
-    site: { label: '黄山球状风化', longitude: 118.17, latitude: 30.13, height: 30000 }
+    site: { label: '黄山球状风化', longitude: 118.17, latitude: 30.13, height: 30_000 }
   },
   {
     id: 'erosion',
@@ -33,7 +33,7 @@ const stages: ChainStage[] = [
     force: '流水、风力、冰川、海浪',
     description: '风化产物与岩石被外力破坏并搬离原地：流水下切成 V 形谷、风蚀雅丹、冰川刨蚀 U 形谷、海浪蚀出海蚀崖。',
     color: '#fa8c16',
-    site: { label: '虎跳峡流水侵蚀', longitude: 100.05, latitude: 27.25, height: 45000 }
+    site: { label: '虎跳峡流水侵蚀', longitude: 100.05, latitude: 27.25, height: 45_000 }
   },
   {
     id: 'transportation',
@@ -41,7 +41,7 @@ const stages: ChainStage[] = [
     force: '流水、风力、冰川',
     description: '外力将碎屑物质搬运离开：河流挟带泥沙（黄河“一碗水半碗沙”）、风沙运移、冰川携带冰碛物。',
     color: '#722ed1',
-    site: { label: '黄河中游泥沙搬运', longitude: 110.5, latitude: 35.5, height: 400000 }
+    site: { label: '黄河中游泥沙搬运', longitude: 110.5, latitude: 35.5, height: 400_000 }
   },
   {
     id: 'deposition',
@@ -49,7 +49,7 @@ const stages: ChainStage[] = [
     force: '流速/风速降低、冰川消融',
     description: '外力减弱，物质沉积：山前冲积扇、河流三角洲、风积沙丘、冰碛垄。粒径大的先沉积、小的后沉积，出现分选性。',
     color: '#13c2c2',
-    site: { label: '长江三角洲堆积', longitude: 120.7, latitude: 31.6, height: 300000 }
+    site: { label: '长江三角洲堆积', longitude: 120.7, latitude: 31.6, height: 300_000 }
   },
   {
     id: 'lithification',
@@ -68,7 +68,7 @@ export function ExogenicPanel({ viewer, onClose }: ExogenicPanelProps) {
   }
 
   function flyToSite(stage: ChainStage): void {
-    if (!stage.site) return
+    if (!stage.site) {return}
     if (viewer && !viewer.isDestroyed()) {
       viewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(stage.site.longitude, stage.site.latitude, stage.site.height),

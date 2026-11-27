@@ -78,7 +78,7 @@ export const useScenesStore = create<ScenesStore>()(
   subscribeWithSelector((set, get) => ({
     ...createInitialScenesState(),
     async hydrate(): Promise<void> {
-      if (get().hydrated || typeof window === 'undefined' || !window.guEarth?.scenes) return
+      if (get().hydrated || typeof window === 'undefined' || !window.guEarth?.scenes) {return}
       set({ hydrated: true })
       try {
         const document = await window.guEarth.scenes.load()
@@ -121,7 +121,7 @@ export const useScenesStore = create<ScenesStore>()(
       const current = get().scenes
       const index = current.findIndex((scene) => scene.id === id)
       const target = index + offset
-      if (index < 0 || target < 0 || target >= current.length) return
+      if (index === -1 || target < 0 || target >= current.length) {return}
       const next = [...current]
       const [moved] = next.splice(index, 1)
       next.splice(target, 0, moved)

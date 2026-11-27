@@ -13,7 +13,7 @@ test('a Cesium request error is recognized whatever order its properties were cr
     { response: {}, responseHeaders: {}, statusCode: 502 },
     { statusCode: undefined, response: undefined, responseHeaders: undefined }
   ]
-  for (const shape of shapes) assert.equal(isRequestErrorShape(shape), true)
+  for (const shape of shapes) {assert.equal(isRequestErrorShape(shape), true)}
 })
 
 test('ordinary errors, arrays, incomplete and overloaded objects, and primitives are not request errors', () => {
@@ -48,7 +48,7 @@ test('a throwing tile pipeline settles into a 502 response so the protocol handl
     async () => {
       throw new Error('nativeImage decode failed')
     },
-    (error) => failures.push(error)
+    (error) => { failures.push(error) }
   )
   assert.equal(response.status, TILE_FAILURE_STATUS)
   assert.equal(await response.text(), 'Tile unavailable')

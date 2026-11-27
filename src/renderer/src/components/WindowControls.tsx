@@ -32,13 +32,13 @@ export function WindowControls() {
 
   useEffect(() => {
     const api = window.guEarth?.windowControls
-    if (!api) return
+    if (!api) {return}
     let active = true
     void api.getState().then((initial) => {
-      if (active) setState(initial)
+      if (active) {setState(initial)}
     })
     const unsubscribe = api.onStateChange((next) => {
-      if (active) setState(next)
+      if (active) {setState(next)}
     })
     return () => {
       active = false
@@ -47,14 +47,14 @@ export function WindowControls() {
   }, [])
 
   useEffect(() => {
-    if (typeof document === 'undefined') return
+    if (typeof document === 'undefined') {return}
     document.documentElement.dataset.fullscreen = state.fullScreen ? 'true' : 'false'
     return () => {
       delete document.documentElement.dataset.fullscreen
     }
   }, [state.fullScreen])
 
-  if (!window.guEarth?.windowControls) return null
+  if (!window.guEarth?.windowControls) {return null}
 
   const isMac = state.platform === 'darwin'
   const expanded = state.maximized || state.fullScreen

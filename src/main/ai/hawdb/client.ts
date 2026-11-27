@@ -1,6 +1,5 @@
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { Worker } from 'node:worker_threads'
 import type { AgentMemory, StoredAiConversation, StoredAiConversationSummary } from '../../../preload'
 import { EoqHawdbEngine } from './engine'
@@ -17,7 +16,7 @@ import type {
 } from './protocol'
 
 const REQUEST_TIMEOUT_MS = 30_000
-const CLOSE_TIMEOUT_MS = 3_000
+const CLOSE_TIMEOUT_MS = 3000
 
 interface PendingRequest {
   resolve: (value: unknown) => void
@@ -46,8 +45,8 @@ type RequestBody =
   | { op: 'knowledge:retrieve'; payload: { query: string; module?: string; topK?: number } }
 
 function defaultWorkerPath(): string {
-  if (typeof __dirname === 'string') return join(__dirname, 'hawdbWorker.js')
-  return join(dirname(fileURLToPath(import.meta.url)), 'hawdbWorker.js')
+  if (typeof __dirname === 'string') {return join(__dirname, 'hawdbWorker.js')}
+  return join(import.meta.dirname, 'hawdbWorker.js')
 }
 
 export class EoqHawdbClient {
@@ -56,7 +55,7 @@ export class EoqHawdbClient {
   private worker: Worker | null = null
   private inProcessEngine: EoqHawdbEngine | null = null
   private inProcessQueue: Promise<unknown> = Promise.resolve()
-  private pending = new Map<number, PendingRequest>()
+  private readonly pending = new Map<number, PendingRequest>()
   private nextRequestId = 1
   private ready = false
   private lastStatus: HawdbStatusInfo | null = null
@@ -83,11 +82,11 @@ export class EoqHawdbClient {
   }
 
   private ensureWorker(): Worker {
-    if (this.worker) return this.worker
+    if (this.worker) {return this.worker}
     const worker = new Worker(this.workerPath)
     worker.on('message', (response: HawdbWorkerResponse) => {
       const entry = this.pending.get(response.id)
-      if (!entry) return
+      if (!entry) {return}
       clearTimeout(entry.timer)
       this.pending.delete(response.id)
       if (response.ok) {
@@ -103,7 +102,7 @@ export class EoqHawdbClient {
     })
     worker.on('exit', (code) => {
       this.ready = false
-      if (this.worker === worker) this.worker = null
+      if (this.worker === worker) {this.worker = null}
       if (this.pending.size > 0) {
         this.rejectAllPending(new Error(`HawDB 工作线程已退出（code=${code}）`))
       }
@@ -113,10 +112,10 @@ export class EoqHawdbClient {
   }
 
   private runInProcess<T>(task: (engine: EoqHawdbEngine) => T | Promise<T>): Promise<T> {
-    if (!this.inProcessEngine) this.inProcessEngine = new EoqHawdbEngine()
+    if (!this.inProcessEngine) {this.inProcessEngine = new EoqHawdbEngine()}
     const engine = this.inProcessEngine
     const next = this.inProcessQueue.then(() => task(engine))
-    this.inProcessQueue = next.catch(() => undefined)
+    this.inProcessQueue = next.catch(() => {})
     return next
   }
 
@@ -127,7 +126,7 @@ export class EoqHawdbClient {
     const worker = this.ensureWorker()
     const id = this.nextRequestId
     this.nextRequestId += 1
-    const request: HawdbWorkerRequest = { ...body, id } as HawdbWorkerRequest
+    const request: HawdbWorkerRequest = { ...body, id }
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id)
@@ -146,33 +145,46 @@ export class EoqHawdbClient {
   private dispatchInProcess<T>(body: RequestBody): Promise<T> {
     return this.runInProcess((engine) => {
       switch (body.op) {
-        case 'open':
+        case 'open': {
           return engine.open(body.payload) as Promise<T>
-        case 'close':
+        }
+        case 'close': {
           engine.close()
           return true as T
-        case 'status':
+        }
+        case 'status': {
           return engine.status() as T
-        case 'memory:list':
+        }
+        case 'memory:list': {
           return engine.listMemories() as T
-        case 'memory:add':
+        }
+        case 'memory:add': {
           return engine.addMemory(body.payload.content, body.payload.source) as Promise<T>
-        case 'memory:delete':
+        }
+        case 'memory:delete': {
           return engine.deleteMemory(body.payload.id) as Promise<T>
-        case 'memory:recall':
+        }
+        case 'memory:recall': {
           return engine.recallMemories(body.payload.query, body.payload.limit) as T
-        case 'history:list':
+        }
+        case 'history:list': {
           return engine.listConversations() as T
-        case 'history:get':
+        }
+        case 'history:get': {
           return engine.getConversation(body.payload.id) as T
-        case 'history:save':
+        }
+        case 'history:save': {
           return engine.saveConversation(body.payload.conversation) as Promise<T>
-        case 'history:delete':
+        }
+        case 'history:delete': {
           return engine.deleteConversation(body.payload.id) as Promise<T>
-        case 'history:search':
+        }
+        case 'history:search': {
           return engine.searchConversations(body.payload.query, body.payload.limit, body.payload.excludeId) as T
-        case 'knowledge:retrieve':
+        }
+        case 'knowledge:retrieve': {
           return engine.retrieveKnowledge(body.payload.query, body.payload.module, body.payload.topK) as T
+        }
       }
     })
   }
@@ -194,14 +206,14 @@ export class EoqHawdbClient {
       }
     }
     const worker = this.worker
-    if (!worker) return
+    if (!worker) {return}
     try {
       await this.send({ op: 'close' }, CLOSE_TIMEOUT_MS)
     } catch {
       void 0
     } finally {
       this.worker = null
-      await worker.terminate().catch(() => undefined)
+      await worker.terminate().catch(() => {})
     }
   }
 

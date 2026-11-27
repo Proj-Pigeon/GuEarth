@@ -1,41 +1,10 @@
 import { app, BrowserWindow, ipcMain, net, shell } from 'electron'
-import { randomBytes } from 'crypto'
-import { hostname } from 'os'
-import { join } from 'path'
+import { randomBytes } from 'node:crypto'
+import { hostname } from 'node:os'
+import { join } from 'node:path'
 import { logger } from '../common/logger'
-import {
-  accountPhaseLabel,
-  buildDeviceName,
-  describeAuthorizationFailure,
-  deviceListUrl,
-  encodeBase64Url,
-  isValidDeviceName,
-  isValidInstallationId,
-  isTrustedVerificationUriComplete,
-  normalizeIssuer,
-  parseDeviceAuthorization,
-  parseDiscovery,
-  parseTokenResponse,
-  parseUserInfo,
-  passportPlatform,
-  retryAfterSeconds,
-  scopeParameter,
-  signedOutAccountState,
-  truncateToUtf8Bytes,
-  PASSPORT_DEFAULT_ACCOUNT_ORIGIN,
-  PASSPORT_DEFAULT_CLIENT_ID,
-  PASSPORT_DEFAULT_ISSUER,
-  PASSPORT_DEVICE_GRANT_TYPE,
-  PASSPORT_DISCOVERY_PATH,
-  PASSPORT_REFRESH_GRANT_TYPE,
-  PASSPORT_SCOPES,
-  SLOW_DOWN_INCREMENT_SECONDS,
-  type AccountPhase,
-  type AccountProfile,
-  type AccountState,
-  type PassportEndpoints,
-  type PassportTokenResponse
-} from '../common/passport'
+import { accountPhaseLabel, buildDeviceName, describeAuthorizationFailure, deviceListUrl, encodeBase64Url, isValidDeviceName, isValidInstallationId, isTrustedVerificationUriComplete, normalizeIssuer, parseDeviceAuthorization, parseDiscovery, parseTokenResponse, parseUserInfo, passportPlatform, retryAfterSeconds, scopeParameter, signedOutAccountState, truncateToUtf8Bytes, PASSPORT_DEFAULT_ACCOUNT_ORIGIN, PASSPORT_DEFAULT_CLIENT_ID, PASSPORT_DEFAULT_ISSUER, PASSPORT_DEVICE_GRANT_TYPE, PASSPORT_DISCOVERY_PATH, PASSPORT_REFRESH_GRANT_TYPE, PASSPORT_SCOPES, SLOW_DOWN_INCREMENT_SECONDS } from '../common/passport';
+import type { AccountPhase, AccountProfile, AccountState, PassportEndpoints, PassportTokenResponse } from '../common/passport';
 import { clearProviderKey, readProviderKey, writeProviderKey } from './keyVault'
 import { readJson, serialQueue, writeJson } from './jsonStore'
 
@@ -79,11 +48,11 @@ let restoring = false
 const enqueueAccount = serialQueue()
 
 function passportIssuer(): string {
-  return normalizeIssuer(process.env['GUEARTH_PASSPORT_ISSUER'] ?? PASSPORT_DEFAULT_ISSUER) || PASSPORT_DEFAULT_ISSUER
+  return normalizeIssuer(process.env.GUEARTH_PASSPORT_ISSUER ?? PASSPORT_DEFAULT_ISSUER) || PASSPORT_DEFAULT_ISSUER
 }
 
 function passportAccountOrigin(): string {
-  const raw = process.env['GUEARTH_PASSPORT_ACCOUNT_ORIGIN'] ?? PASSPORT_DEFAULT_ACCOUNT_ORIGIN
+  const raw = process.env.GUEARTH_PASSPORT_ACCOUNT_ORIGIN ?? PASSPORT_DEFAULT_ACCOUNT_ORIGIN
   try {
     return new URL(raw).origin
   } catch {
@@ -92,7 +61,7 @@ function passportAccountOrigin(): string {
 }
 
 function passportClientId(): string {
-  const raw = process.env['GUEARTH_PASSPORT_CLIENT_ID'] ?? PASSPORT_DEFAULT_CLIENT_ID
+  const raw = process.env.GUEARTH_PASSPORT_CLIENT_ID ?? PASSPORT_DEFAULT_CLIENT_ID
   return truncateToUtf8Bytes(raw.trim(), 128)
 }
 
@@ -113,7 +82,7 @@ function snapshot(): AccountState {
 function emitState(): void {
   const state = snapshot()
   for (const window of BrowserWindow.getAllWindows()) {
-    if (!window.isDestroyed()) window.webContents.send('account:event', state)
+    if (!window.isDestroyed()) {window.webContents.send('account:event', state)}
   }
 }
 
@@ -160,7 +129,7 @@ async function readPayload(response: Response): Promise<unknown> {
 async function resolveEndpoints(signal?: AbortSignal): Promise<PassportEndpoints> {
   const issuer = passportIssuer()
   const cached = endpoints
-  if (cached && cached.issuer === issuer && Date.now() - endpointsFetchedAt < DISCOVERY_TTL_MS) return cached
+  if (cached?.issuer === issuer && Date.now() - endpointsFetchedAt < DISCOVERY_TTL_MS) {return cached}
   const timeoutSignal = requestSignal(signal)
   try {
     const response = await net.fetch(`${issuer}${PASSPORT_DISCOVERY_PATH}`, {
@@ -190,9 +159,9 @@ async function resolveEndpoints(signal?: AbortSignal): Promise<PassportEndpoints
 
 function installationId(): string {
   const existing = readProviderKey(INSTALLATION_SECRET_ID)
-  if (isValidInstallationId(existing)) return existing
+  if (isValidInstallationId(existing)) {return existing}
   const generated = encodeBase64Url(randomBytes(32))
-  if (!isValidInstallationId(generated)) throw new Error('无法生成本机安装标识')
+  if (!isValidInstallationId(generated)) {throw new Error('无法生成本机安装标识')}
   writeProviderKey(INSTALLATION_SECRET_ID, generated)
   return generated
 }
@@ -213,11 +182,11 @@ function forgetTokens(): void {
 }
 
 function readProfileCache(value: unknown): AccountProfile | null {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {return null}
   const record = value as Record<string, unknown>
-  if (typeof record.profile !== 'object' || record.profile === null || Array.isArray(record.profile)) return null
+  if (typeof record.profile !== 'object' || record.profile === null || Array.isArray(record.profile)) {return null}
   const cached = record.profile as Record<string, unknown>
-  if (typeof cached.sub !== 'string' || cached.sub === '') return null
+  if (typeof cached.sub !== 'string' || cached.sub === '') {return null}
   const scopes = Array.isArray(cached.scopes) ? cached.scopes.filter((scope): scope is string => typeof scope === 'string') : []
   return {
     sub: cached.sub,
@@ -267,7 +236,7 @@ function delay(ms: number, signal: AbortSignal): Promise<void> {
 }
 
 function clampInterval(seconds: number): number {
-  if (!Number.isFinite(seconds) || seconds <= 0) return 5
+  if (!Number.isFinite(seconds) || seconds <= 0) {return 5}
   return Math.min(MAX_POLL_INTERVAL_SECONDS, Math.max(1, Math.round(seconds)))
 }
 
@@ -284,7 +253,7 @@ async function fetchUserInfo(token: string, signal?: AbortSignal): Promise<Accou
     throw Object.assign(new Error(failure.message), { invalidatesSession: failure.invalidatesSession || response.status === 401 })
   }
   const info = parseUserInfo(payload)
-  if (!info) throw new Error('鸽巢通行证返回的账户信息无效')
+  if (!info) {throw new Error('鸽巢通行证返回的账户信息无效')}
   return {
     sub: info.sub,
     username: info.username,
@@ -310,7 +279,7 @@ async function requestToken(body: URLSearchParams, signal: AbortSignal): Promise
     })
   }
   const tokens = parseTokenResponse(payload)
-  if (!tokens) throw new Error('登录服务返回的数据无效，请重新发起登录')
+  if (!tokens) {throw new Error('登录服务返回的数据无效，请重新发起登录')}
   return tokens
 }
 
@@ -318,7 +287,7 @@ async function exchangeDeviceCode(deviceCode: string, initialInterval: number, e
   let interval = clampInterval(initialInterval)
   for (;;) {
     await delay(interval * 1000, signal)
-    if (Date.now() >= expiresAt) throw new Error('登录确认已超时，请重新发起登录')
+    if (Date.now() >= expiresAt) {throw new Error('登录确认已超时，请重新发起登录')}
     let tokens: PassportTokenResponse
     try {
       tokens = await requestToken(
@@ -330,7 +299,7 @@ async function exchangeDeviceCode(deviceCode: string, initialInterval: number, e
         signal
       )
     } catch (error) {
-      if (signal.aborted) throw new LoginCancelledError()
+      if (signal.aborted) {throw new LoginCancelledError()}
       const failure = error as Error & { terminal?: boolean; slowDown?: boolean; retryable?: boolean; retryAfterSeconds?: number }
       if (failure.slowDown) {
         interval = clampInterval(interval + SLOW_DOWN_INCREMENT_SECONDS)
@@ -368,11 +337,11 @@ async function adoptTokens(tokens: PassportTokenResponse): Promise<AccountProfil
 }
 
 async function startLogin(): Promise<AccountState> {
-  if (loginController) throw new Error('已有登录流程正在进行')
-  if (phase === 'signed-in') throw new Error('当前已登录，请先退出登录')
+  if (loginController) {throw new Error('已有登录流程正在进行')}
+  if (phase === 'signed-in') {throw new Error('当前已登录，请先退出登录')}
   if (readRefreshToken()) {
     await restoreSession()
-    if (snapshot().phase === 'signed-in') return snapshot()
+    if (snapshot().phase === 'signed-in') {return snapshot()}
   }
   const controller = new AbortController()
   loginController = controller
@@ -383,8 +352,8 @@ async function startLogin(): Promise<AccountState> {
     setPhase('creating')
     const installation = installationId()
     const deviceName = buildDeviceName(hostname())
-    if (!isValidInstallationId(installation)) throw new Error('本机安装标识无效，无法发起登录')
-    if (!isValidDeviceName(deviceName)) throw new Error('设备名称无效，无法发起登录')
+    if (!isValidInstallationId(installation)) {throw new Error('本机安装标识无效，无法发起登录')}
+    if (!isValidDeviceName(deviceName)) {throw new Error('设备名称无效，无法发起登录')}
     const created = await resolveEndpoints(controller.signal)
     const response = await postForm(
       created.deviceAuthorizationEndpoint,
@@ -404,7 +373,7 @@ async function startLogin(): Promise<AccountState> {
     }
     const accountOrigin = passportAccountOrigin()
     const authorization = parseDeviceAuthorization(payload, accountOrigin)
-    if (!authorization) throw new Error('登录确认信息无效，请重新发起登录')
+    if (!authorization) {throw new Error('登录确认信息无效，请重新发起登录')}
     if (!isTrustedVerificationUriComplete(authorization.verificationUriComplete, accountOrigin)) {
       throw new Error('登录确认页地址不受信任，已终止本次登录')
     }
@@ -417,13 +386,13 @@ async function startLogin(): Promise<AccountState> {
     }
     verificationUriComplete = authorization.verificationUriComplete
     setPhase('awaiting-approval')
-    void shell.openExternal(authorization.verificationUriComplete).catch(() => undefined)
+    void shell.openExternal(authorization.verificationUriComplete).catch(() => {})
     const tokens = await exchangeDeviceCode(authorization.deviceCode, authorization.interval, expiresAt, controller.signal)
-    if (controller.signal.aborted) throw new LoginCancelledError()
+    if (controller.signal.aborted) {throw new LoginCancelledError()}
     setPhase('finalizing')
     await adoptTokens(tokens)
     adopted = true
-    if (controller.signal.aborted) throw new LoginCancelledError()
+    if (controller.signal.aborted) {throw new LoginCancelledError()}
     challenge = null
     verificationUriComplete = ''
     setPhase('signed-in')
@@ -432,8 +401,8 @@ async function startLogin(): Promise<AccountState> {
     challenge = null
     verificationUriComplete = ''
     if (error instanceof LoginCancelledError || controller.signal.aborted) {
-      if (adopted) await discardAdoptedSession()
-      else setPhase('signed-out')
+      if (adopted) {await discardAdoptedSession()}
+      else {setPhase('signed-out')}
       return snapshot()
     }
     const message = error instanceof Error ? error.message : '登录失败，请稍后再试'
@@ -450,25 +419,25 @@ function cancelLogin(): void {
 }
 
 function beginLogin(): Promise<AccountState> {
-  if (loginTask) return Promise.reject(new Error('已有登录流程正在进行'))
+  if (loginTask) {return Promise.reject(new Error('已有登录流程正在进行'))}
   const task = startLogin()
   loginTask = task
   void task.then(
     () => {
-      if (loginTask === task) loginTask = null
+      if (loginTask === task) {loginTask = null}
     },
     () => {
-      if (loginTask === task) loginTask = null
+      if (loginTask === task) {loginTask = null}
     }
   )
   return task
 }
 
 async function refreshAccessToken(): Promise<string> {
-  if (accessToken && Date.now() < accessTokenExpiresAt - ACCESS_TOKEN_MARGIN_MS) return accessToken
-  if (refreshInFlight) return refreshInFlight
+  if (accessToken && Date.now() < accessTokenExpiresAt - ACCESS_TOKEN_MARGIN_MS) {return accessToken}
+  if (refreshInFlight) {return refreshInFlight}
   const refreshToken = readRefreshToken()
-  if (!refreshToken) throw new Error('登录状态已失效，请重新登录')
+  if (!refreshToken) {throw new Error('登录状态已失效，请重新登录')}
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   const task = (async () => {
@@ -491,7 +460,7 @@ async function refreshAccessToken(): Promise<string> {
     return await task
   } catch (error) {
     const failure = error as Error & { invalidatesSession?: boolean }
-    if (failure.invalidatesSession) await endSessionLocally('登录状态已失效，请重新登录')
+    if (failure.invalidatesSession) {await endSessionLocally('登录状态已失效，请重新登录')}
     throw error
   } finally {
     refreshInFlight = null
@@ -527,7 +496,7 @@ async function revokeRemote(refreshToken: string, signal: AbortSignal): Promise<
     body.set('token', refreshToken)
     body.set('token_type_hint', 'refresh_token')
     const response = await postForm(active.revocationEndpoint, body, signal)
-    if (response.ok) return true
+    if (response.ok) {return true}
     logger.warn('account', `Passport 撤销请求返回 HTTP ${response.status}`)
     return false
   } catch (error) {
@@ -537,9 +506,9 @@ async function revokeRemote(refreshToken: string, signal: AbortSignal): Promise<
 }
 
 async function signOut(): Promise<AccountState> {
-  if (phase === 'signing-out') return snapshot()
+  if (phase === 'signing-out') {return snapshot()}
   cancelLogin()
-  await loginTask?.catch(() => undefined)
+  await loginTask?.catch(() => {})
   const refreshToken = readRefreshToken()
   setPhase('signing-out')
   let revokedRemotely = true
@@ -562,7 +531,7 @@ async function signOut(): Promise<AccountState> {
 }
 
 async function restoreSession(): Promise<void> {
-  if (restoring) return
+  if (restoring) {return}
   const refreshToken = readRefreshToken()
   if (!refreshToken) {
     if (profile || signedInAt) {
@@ -581,11 +550,11 @@ async function restoreSession(): Promise<void> {
       const info = await fetchUserInfo(accessToken)
       profile = { ...info, scopes: profile?.scopes?.length ? profile.scopes : info.scopes }
     } catch (error) {
-      if ((error as Error & { invalidatesSession?: boolean }).invalidatesSession) throw error
-      if (!profile) throw error
+      if ((error as Error & { invalidatesSession?: boolean }).invalidatesSession) {throw error}
+      if (!profile) {throw error}
       logger.warn('account', '恢复登录状态时获取账户信息失败，已沿用本机缓存的账户信息', error)
     }
-    signedInAt = signedInAt || Date.now()
+    signedInAt ||= Date.now()
     pendingRemoteRevocation = false
     await persistAccount()
     setPhase('signed-in')
@@ -603,7 +572,7 @@ async function restoreSession(): Promise<void> {
 }
 
 async function dismissRevocationWarning(): Promise<AccountState> {
-  if (!pendingRemoteRevocation) return snapshot()
+  if (!pendingRemoteRevocation) {return snapshot()}
   pendingRemoteRevocation = false
   await persistAccount()
   setPhase('signed-out')
@@ -612,13 +581,13 @@ async function dismissRevocationWarning(): Promise<AccountState> {
 
 async function openAccountDevices(): Promise<void> {
   const url = accountDeviceListUrl()
-  if (!url) throw new Error('账号页地址不可用')
+  if (!url) {throw new Error('账号页地址不可用')}
   await shell.openExternal(url)
 }
 
 async function openVerificationPage(): Promise<void> {
   const url = verificationUriComplete
-  if (!url || !isTrustedVerificationUriComplete(url, passportAccountOrigin())) throw new Error('当前没有可打开的登录确认页')
+  if (!url || !isTrustedVerificationUriComplete(url, passportAccountOrigin())) {throw new Error('当前没有可打开的登录确认页')}
   await shell.openExternal(url)
 }
 
@@ -628,7 +597,7 @@ export function initAccount(): void {
   ipcMain.handle('account:login', (): Promise<AccountState> => beginLogin())
   ipcMain.handle('account:cancel-login', async (): Promise<AccountState> => {
     cancelLogin()
-    await loginTask?.catch(() => undefined)
+    await loginTask?.catch(() => {})
     return snapshot()
   })
   ipcMain.handle('account:sign-out', (): Promise<AccountState> => signOut())
@@ -642,7 +611,7 @@ export function initAccount(): void {
       profile = persisted.profile
       signedInAt = persisted.signedInAt
       pendingRemoteRevocation = persisted.pendingRemoteRevocation
-      if (profile) emitState()
+      if (profile) {emitState()}
     } catch {
       profile = null
     }

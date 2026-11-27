@@ -16,7 +16,7 @@ function createDeepTerrainTile() {
   }
 }
 
-const deepTerrain = { getLevelMaximumGeometricError: level => 40075016.68557849 / (256 * 2 ** (level + 1)) }
+const deepTerrain = { getLevelMaximumGeometricError: level => 40_075_016.68557849 / (256 * 2 ** (level + 1)) }
 
 test('unbounded imagery reproduces the Everest rectangle crash in Cesium', () => {
   const layer = new ImageryLayer(new UrlTemplateImageryProvider({ url: 'https://example.test/{z}/{x}/{y}.png' }))
@@ -54,7 +54,7 @@ function terrainScene(requestTileGeometry, exaggeration = 1, relativeHeight = 0,
 
 const SUMMIT_LON = 86.925
 const SUMMIT_LAT = 27.988
-const EARTH_RADIUS_M = 6378137
+const EARTH_RADIUS_M = 6_378_137
 
 function surfaceDistance(longitude, latitude) {
   const dx = (longitude - SUMMIT_LON * Math.PI / 180) * Math.cos(SUMMIT_LAT * Math.PI / 180) * EARTH_RADIUS_M
@@ -92,7 +92,7 @@ test('AI flight ends above the sampled Everest summit', async () => {
 })
 
 test('AI flight clearance follows exaggerated terrain and its reference height', async () => {
-  assert.ok(Math.abs(await flightHeight(terrainScene(() => heightmap(8849), 2, 100)) - 18598) < 1e-5)
+  assert.ok(Math.abs(await flightHeight(terrainScene(() => heightmap(8849), 2, 100)) - 18_598) < 1e-5)
 })
 
 test('ordinary lowland flight preserves the requested height', async () => {
@@ -105,17 +105,17 @@ test('high altitude flight does not wait for terrain requests', async () => {
     requests += 1
     return heightmap(8849)
   })
-  assert.ok(Math.abs(await flightHeight(scene, 60000) - 60000) < 1e-5)
+  assert.ok(Math.abs(await flightHeight(scene, 60_000) - 60_000) < 1e-5)
   assert.equal(requests, 0)
 })
 
 test('unavailable terrain uses a conservative altitude instead of entering the mountain', async () => {
   const scene = terrainScene(() => Promise.reject(new Error('offline')))
-  assert.ok(Math.abs(await flightHeight(scene) - 10000) < 1e-5)
+  assert.ok(Math.abs(await flightHeight(scene) - 10_000) < 1e-5)
 })
 
 test('non-finite terrain samples use the conservative altitude', async () => {
-  assert.ok(Math.abs(await flightHeight(terrainScene(() => heightmap(Number.NaN))) - 10000) < 1e-5)
+  assert.ok(Math.abs(await flightHeight(terrainScene(() => heightmap(Number.NaN))) - 10_000) < 1e-5)
 })
 
 test('terrain lookup timeout still allows flight', async context => {
@@ -123,7 +123,7 @@ test('terrain lookup timeout still allows flight', async context => {
   context.onTestFinished(() => vi.useRealTimers())
   const flight = flightHeight(terrainScene(() => new Promise(() => {})))
   vi.advanceTimersByTime(4000)
-  assert.ok(Math.abs(await flight - 10000) < 1e-5)
+  assert.ok(Math.abs(await flight - 10_000) < 1e-5)
 })
 
 test('ellipsoid terrain needs no network lookup', async () => {
@@ -134,7 +134,7 @@ test('ellipsoid terrain needs no network lookup', async () => {
 test('sampled steep summit keeps clearance above the old 1000m skim', async () => {
   const scene = terrainScene(() => terrainData(peakedHeight))
   const height = await flightHeight(scene, 5000)
-  assert.ok(Math.abs(height - 20849) < 1e-3)
+  assert.ok(Math.abs(height - 20_849) < 1e-3)
   assert.ok(height > 8849 + 1000)
 })
 
@@ -153,7 +153,7 @@ test('broad flight does not sample or tighten a steep destination', async () => 
     requests += 1
     return heightmap(8849)
   })
-  assert.ok(Math.abs(await flightHeight(scene, 400000) - 400000) < 1e-3)
+  assert.ok(Math.abs(await flightHeight(scene, 400_000) - 400_000) < 1e-3)
   assert.equal(requests, 0)
 })
 
@@ -163,7 +163,7 @@ test('flight above the framing ceiling does not wait for terrain', async () => {
     requests += 1
     return heightmap(8849)
   })
-  assert.ok(Math.abs(await flightHeight(scene, 25000) - 25000) < 1e-3)
+  assert.ok(Math.abs(await flightHeight(scene, 25_000) - 25_000) < 1e-3)
   assert.equal(requests, 0)
 })
 
@@ -173,7 +173,7 @@ test('close flight still samples flat terrain before accepting the request', asy
     requests += 1
     return heightmap(50)
   })
-  assert.ok(Math.abs(await flightHeight(scene, 15000) - 15000) < 1e-5)
+  assert.ok(Math.abs(await flightHeight(scene, 15_000) - 15_000) < 1e-5)
   assert.equal(requests, 1)
 })
 
@@ -185,7 +185,7 @@ test('invalid neighborhood samples do not zoom out past the center clearance', a
 test('wider fov frames a moderate ridge lower than the default view', async () => {
   const medium = (longitude, latitude) => {
     const distance = surfaceDistance(longitude, latitude)
-    if (distance < 3000) return 2000 - distance * 0.35
+    if (distance < 3000) {return 2000 - distance * 0.35}
     return 2000 - 3000 * 0.35 - (distance - 3000) * 0.02
   }
   const nadir = await flightHeight(terrainScene(() => terrainData(medium)), 2000)
@@ -220,11 +220,12 @@ test('late terrain does not revive a superseded flight', async () => {
   const pending = terrainScene(() => new Promise((resolve) => { resolveTile = resolve }))
   let cancelled = false
   const superseded = resolveFlightDestination(pending, SUMMIT_LON, SUMMIT_LAT, 5000, { isCancelled: () => cancelled })
-  for (let attempt = 0; attempt < 8 && !resolveTile; attempt += 1) await Promise.resolve()
+  // oxlint-disable-next-line eslint/no-unmodified-loop-condition -- `resolveTile` is set by the stubbed request while the loop awaits
+  for (let attempt = 0; attempt < 8 && !resolveTile; attempt += 1) {await Promise.resolve()}
   assert.equal(typeof resolveTile, 'function')
   cancelled = true
   resolveTile({ interpolateHeight: () => 8849 })
   assert.equal(await superseded, undefined)
   const current = await flightHeight(terrainScene(() => terrainData(peakedHeight)), 5000)
-  assert.ok(Math.abs(current - 20849) < 1e-3)
+  assert.ok(Math.abs(current - 20_849) < 1e-3)
 })

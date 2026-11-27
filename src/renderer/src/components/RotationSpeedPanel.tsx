@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { XIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui'
-import LineChart, { type ChartSeries } from './charts/LineChart'
+import LineChart from './charts/LineChart';
+import type { ChartSeries } from './charts/LineChart';
 import styles from './RotationSpeedPanel.module.css'
 
 export interface RotationSpeedPanelProps {
@@ -46,7 +47,7 @@ const facts = [
 
 export function RotationSpeedPanel({ onClose }: RotationSpeedPanelProps) {
   const speedSeries = useMemo<ChartSeries[]>(() => {
-    const points: Array<[number, number]> = []
+    const points: [number, number][] = []
     for (let lat = -90; lat <= 90; lat += 2) {
       points.push([lat, EQUATOR_SPEED_KMH * Math.cos((lat * Math.PI) / 180)])
     }

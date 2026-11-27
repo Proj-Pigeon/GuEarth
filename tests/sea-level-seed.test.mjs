@@ -41,7 +41,7 @@ test('one shared promise owns the land mask and the cache check so concurrent ca
   const assignIndex = samplingSource.indexOf('samplePromise ??=')
   const maskIndex = samplingSource.indexOf('await ensureLandMask()')
   const cacheIndex = samplingSource.indexOf('if (allPointsCached())')
-  assert.ok(assignIndex >= 0 && maskIndex > assignIndex && cacheIndex > maskIndex)
+  assert.ok(assignIndex !== -1 && maskIndex > assignIndex && cacheIndex > maskIndex)
   assert.ok(samplingSource.includes('})().finally(() => {'))
   assert.ok(samplingSource.includes('samplePromise = undefined'))
   assert.ok(!samplingSource.includes('if (samplePromise) return samplePromise'))

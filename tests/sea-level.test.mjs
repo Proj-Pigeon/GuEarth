@@ -55,7 +55,7 @@ test('cache keys are stable and scenarios list matches teaching values', () => {
   assert.equal(cacheKeyOf(120.123456, 31.98765), '120.1235,31.9876')
   assert.deepEqual([...SEA_LEVEL_SCENARIOS], [0.5, 1, 2, 5])
   assert.ok(seaLevelFacts.length >= 4)
-  for (const rise of SEA_LEVEL_SCENARIOS) assert.ok(scenarioSummary(rise).includes(String(rise)))
+  for (const rise of SEA_LEVEL_SCENARIOS) {assert.ok(scenarioSummary(rise).includes(String(rise)))}
 })
 
 test('land mask distinguishes mainland, island, lake and open sea', () => {

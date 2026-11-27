@@ -10,8 +10,8 @@ export interface ProvincePopulation {
 export const POPULATION_CENSUS_YEAR = '2020年第七次全国人口普查'
 
 export const provincePopulation: ProvincePopulation[] = [
-  { name: '广东省', populationWan: 12601.25, areaWanKm2: 17.97, urbanizationPct: 74.15, huSide: 'east', note: '经济发达、就业机会多,外来人口大量流入,珠三角人口高度集聚' },
-  { name: '山东省', populationWan: 10152.75, areaWanKm2: 15.79, urbanizationPct: 63.94, huSide: 'east', note: '平原广阔、农业开发历史悠久,人口大省' },
+  { name: '广东省', populationWan: 12_601.25, areaWanKm2: 17.97, urbanizationPct: 74.15, huSide: 'east', note: '经济发达、就业机会多,外来人口大量流入,珠三角人口高度集聚' },
+  { name: '山东省', populationWan: 10_152.75, areaWanKm2: 15.79, urbanizationPct: 63.94, huSide: 'east', note: '平原广阔、农业开发历史悠久,人口大省' },
   { name: '河南省', populationWan: 9936.55, areaWanKm2: 16.7, urbanizationPct: 55.43, huSide: 'east', note: '黄淮平原农业发达,人口大省,劳务输出多' },
   { name: '江苏省', populationWan: 8474.8, areaWanKm2: 10.72, urbanizationPct: 73.44, huSide: 'east', note: '地势平坦、水网密布,工农业俱发达' },
   { name: '四川省', populationWan: 8367.49, areaWanKm2: 48.6, urbanizationPct: 56.73, huSide: 'cross', note: '人口集中于成都平原,西部山地高原稀疏' },
@@ -68,7 +68,7 @@ export const densityBins: DensityBin[] = [
 
 export function densityColor(density: number): string {
   for (const bin of densityBins) {
-    if (bin.max === null || density < bin.max) return bin.color
+    if (bin.max === null || density < bin.max) {return bin.color}
   }
   return densityBins[densityBins.length - 1].color
 }
@@ -88,14 +88,14 @@ export function densityRank(name: string): number {
 }
 
 export function huSideLabelOf(huSide: ProvincePopulation['huSide']): string {
-  if (huSide === 'east') return '胡焕庸线以东'
-  if (huSide === 'west') return '胡焕庸线以西'
+  if (huSide === 'east') {return '胡焕庸线以东'}
+  if (huSide === 'west') {return '胡焕庸线以西'}
   return '胡焕庸线穿过'
 }
 
 export function provinceSummary(name: string): string | null {
   const province = provincePopulation.find((item) => item.name === name)
-  if (!province) return null
+  if (!province) {return null}
   const density = Math.round(densityOf(province))
   const urbanization = province.urbanizationPct === null ? '—' : `${province.urbanizationPct.toFixed(1)}%`
   const side = huSideLabelOf(province.huSide)
@@ -103,7 +103,7 @@ export function provinceSummary(name: string): string | null {
 }
 
 export function formatWan(value: number): string {
-  return value >= 10000 ? `${(value / 10000).toFixed(2)} 亿` : `${Math.round(value * 100) / 100} 万`
+  return value >= 10_000 ? `${(value / 10_000).toFixed(2)} 亿` : `${Math.round(value * 100) / 100} 万`
 }
 
 export const pyramidAgeGroups = ['0-4', '5-9', '10-14', '15-19', '20-24', '25-29', '30-34', '35-39', '40-44', '45-49', '50-54', '55-59', '60-64', '65-69', '70-74', '75-79', '80+'] as const
@@ -138,16 +138,16 @@ export const censusAgeStructure: CensusAgeStructure[] = [
 ]
 
 export const nationalPopulation = [
-  { year: 1953, populationWan: 58260 },
-  { year: 1964, populationWan: 69458 },
-  { year: 1982, populationWan: 100818 },
-  { year: 1990, populationWan: 113368 },
-  { year: 2000, populationWan: 126583 },
-  { year: 2010, populationWan: 133972 },
-  { year: 2020, populationWan: 141178 }
+  { year: 1953, populationWan: 58_260 },
+  { year: 1964, populationWan: 69_458 },
+  { year: 1982, populationWan: 100_818 },
+  { year: 1990, populationWan: 113_368 },
+  { year: 2000, populationWan: 126_583 },
+  { year: 2010, populationWan: 133_972 },
+  { year: 2020, populationWan: 141_178 }
 ]
 
-export const urbanizationSeries: Array<[number, number]> = [
+export const urbanizationSeries: [number, number][] = [
   [1949, 10.64], [1955, 13.48], [1960, 19.75], [1965, 17.98], [1970, 17.38], [1975, 17.34],
   [1978, 17.92], [1980, 19.39], [1982, 21.13], [1985, 23.71], [1990, 26.41], [1995, 29.04],
   [2000, 36.22], [2005, 42.99], [2010, 49.95], [2015, 57.33], [2020, 63.89], [2023, 66.16]
@@ -165,10 +165,10 @@ export const huLineEndpoints = [
   { name: '腾冲', longitude: 98.5, latitude: 25.03 }
 ]
 
-export const huLinePath: Array<[number, number]> = [
+export const huLinePath: [number, number][] = [
   [127.53, 50.24],
   [117.4, 40.4],
-  [108.0, 32.4],
+  [108, 32.4],
   [98.5, 25.03]
 ]
 
@@ -191,7 +191,7 @@ export interface MigrationFlow {
   from: [number, number]
   toName: string
   to: [number, number]
-  path: Array<[number, number]>
+  path: [number, number][]
   weight: 'major' | 'minor'
   note?: string
 }
@@ -220,10 +220,10 @@ export const migrationFacts = [
   '迁移主线:由中西部内陆流向东部与南部沿海,由乡村流向城镇,由欠发达地区流向发达地区'
 ]
 
-export function smoothMigrationPath(points: Array<[number, number]>, samplesPerSegment = 12): Array<[number, number]> {
-  if (points.length < 3) return [...points]
+export function smoothMigrationPath(points: [number, number][], samplesPerSegment = 12): [number, number][] {
+  if (points.length < 3) {return [...points]}
   const padded = [points[0], ...points, points[points.length - 1]]
-  const result: Array<[number, number]> = []
+  const result: [number, number][] = []
   for (let i = 0; i < padded.length - 3; i += 1) {
     const p0 = padded[i]
     const p1 = padded[i + 1]

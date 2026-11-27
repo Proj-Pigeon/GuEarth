@@ -1,10 +1,15 @@
 import { XIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui'
-import { thematicLayerCatalog, useClimateStore, type ThematicLayerId } from '@renderer/stores/climate'
-import { useSolarStore, type MotionPanel as SolarMotionPanel } from '@renderer/stores/solar'
-import { useAtmosphereStore, type AtmospherePanel } from '@renderer/stores/atmosphere'
-import { useHydrologyStore, type HydrologyPanel } from '@renderer/stores/hydrology'
-import { useLandformStore, type LandformPanel } from '@renderer/stores/landform'
+import { thematicLayerCatalog, useClimateStore } from '@renderer/stores/climate';
+import type { ThematicLayerId } from '@renderer/stores/climate';
+import { useSolarStore } from '@renderer/stores/solar';
+import type { MotionPanel as SolarMotionPanel } from '@renderer/stores/solar';
+import { useAtmosphereStore } from '@renderer/stores/atmosphere';
+import type { AtmospherePanel } from '@renderer/stores/atmosphere';
+import { useHydrologyStore } from '@renderer/stores/hydrology';
+import type { HydrologyPanel } from '@renderer/stores/hydrology';
+import { useLandformStore } from '@renderer/stores/landform';
+import type { LandformPanel } from '@renderer/stores/landform';
 import { usePopulationStore } from '@renderer/stores/population'
 import { useTransportStore } from '@renderer/stores/transport'
 import { useEnvironmentStore } from '@renderer/stores/environment'
@@ -60,7 +65,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
   const zonationPanel = useZonationStore((state) => state.panel)
   const drawingActiveTool = useDrawingStore((state) => state.activeTool)
 
-  if (!open) return null
+  if (!open) {return null}
 
   function layerEntry(id: ThematicLayerId): LabEntry {
     const layer = thematicLayerCatalog.find((item) => item.id === id)
@@ -86,7 +91,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
       toggle: () => {
         const next = useSolarStore.getState().motionPanel !== panel
         closeAllPanels()
-        if (next) useSolarStore.getState().setMotionPanel(panel)
+        if (next) {useSolarStore.getState().setMotionPanel(panel)}
         return next
       }
     }
@@ -101,7 +106,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
       toggle: () => {
         const next = useAtmosphereStore.getState().panel !== panel
         closeAllPanels()
-        if (next) useAtmosphereStore.getState().setPanel(panel)
+        if (next) {useAtmosphereStore.getState().setPanel(panel)}
         return next
       }
     }
@@ -116,7 +121,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
       toggle: () => {
         const next = useHydrologyStore.getState().panel !== panel
         closeAllPanels()
-        if (next) useHydrologyStore.getState().setPanel(panel)
+        if (next) {useHydrologyStore.getState().setPanel(panel)}
         return next
       }
     }
@@ -131,7 +136,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
       toggle: () => {
         const next = useLandformStore.getState().panel !== panel
         closeAllPanels()
-        if (next) useLandformStore.getState().setPanel(panel)
+        if (next) {useLandformStore.getState().setPanel(panel)}
         return next
       }
     }
@@ -146,7 +151,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
       toggle: () => {
         const next = usePopulationStore.getState().panel !== 'population'
         closeAllPanels()
-        if (next) usePopulationStore.getState().setPanel('population')
+        if (next) {usePopulationStore.getState().setPanel('population')}
         return next
       }
     }
@@ -161,7 +166,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
       toggle: () => {
         const next = usePopulationStore.getState().panel !== 'cities'
         closeAllPanels()
-        if (next) usePopulationStore.getState().setPanel('cities')
+        if (next) {usePopulationStore.getState().setPanel('cities')}
         return next
       }
     }
@@ -176,7 +181,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
       toggle: () => {
         const next = useTransportStore.getState().panel !== 'transport'
         closeAllPanels()
-        if (next) useTransportStore.getState().setPanel('transport')
+        if (next) {useTransportStore.getState().setPanel('transport')}
         return next
       }
     }
@@ -191,7 +196,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
       toggle: () => {
         const next = useEnvironmentStore.getState().panel !== 'environment'
         closeAllPanels()
-        if (next) useEnvironmentStore.getState().setPanel('environment')
+        if (next) {useEnvironmentStore.getState().setPanel('environment')}
         return next
       }
     }
@@ -206,7 +211,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
       toggle: () => {
         const next = useDecisionStore.getState().panel !== 'location'
         closeAllPanels()
-        if (next) useDecisionStore.getState().setPanel('location')
+        if (next) {useDecisionStore.getState().setPanel('location')}
         return next
       }
     }
@@ -221,7 +226,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
       toggle: () => {
         const next = useZonationStore.getState().panel !== 'zonation-profile'
         closeAllPanels()
-        if (next) useZonationStore.getState().setPanel('zonation-profile')
+        if (next) {useZonationStore.getState().setPanel('zonation-profile')}
         return next
       }
     }
@@ -254,7 +259,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
           toggle: () => {
             const next = !useClimateStore.getState().overlays['temperature-zones']
             useClimateStore.getState().setOverlay('temperature-zones', next)
-            if (next) useSolarStore.getState().setActive(true)
+            if (next) {useSolarStore.getState().setActive(true)}
             return next
           }
         },
@@ -266,7 +271,7 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
           toggle: () => {
             const next = useDrawingStore.getState().activeTool !== 'timezone'
             closeAllPanels()
-            if (next) useDrawingStore.getState().setActiveTool('timezone')
+            if (next) {useDrawingStore.getState().setActiveTool('timezone')}
             return next
           }
         },
@@ -299,9 +304,9 @@ export function TeachingLab({ open, onClose }: TeachingLabProps) {
           key: 'enso',
           name: 'ENSO（厄尔尼诺与拉尼娜）',
           description: '三相位海温距平着色 + 沃克环流剖面，点击海区看影响',
-          active: overlays['enso'],
+          active: overlays.enso,
           toggle: () => {
-            const next = !useClimateStore.getState().overlays['enso']
+            const next = !useClimateStore.getState().overlays.enso
             useClimateStore.getState().setOverlay('enso', next)
             return next
           }

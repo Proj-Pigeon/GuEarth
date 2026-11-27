@@ -4,9 +4,11 @@ import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiSta
 import type { AccountDeviceChallenge, AccountPhase, AccountProfile, AccountState } from '../common/passport'
 import type { MirrorEndpointId, MirrorEndpointPreference, MirrorEndpointProbeResult, TileMirrorMode } from '../common/tileMirror'
 import type { TouchInteractionMode } from '../common/touchInteraction'
-import { isThemeMode, type ResolvedTheme, type ThemeMode } from '../common/themeMode'
+import { isThemeMode } from '../common/themeMode';
+import type { ResolvedTheme, ThemeMode } from '../common/themeMode';
 import type { EnsoPhase } from '../common/thematicState'
 import type { LaboratoryProvider, LaboratoryProviderInput, OnlineDataSnapshot } from '../common/onlineData'
+import type { ConversationSearchHit, HawdbStatusInfo, MemoryRecallMatch } from '../main/ai/hawdb/protocol'
 
 export interface ProviderCredentialStatus {
   configured: boolean
@@ -302,7 +304,6 @@ export interface StoredAiConversation extends StoredAiConversationSummary {
   compression?: StoredAiCompression
 }
 
-import type { ConversationSearchHit, HawdbStatusInfo, MemoryRecallMatch } from '../main/ai/hawdb/protocol'
 
 export type { ConversationSearchHit as AiConversationSearchHit, HawdbStatusInfo as AiHawdbStatus, MemoryRecallMatch as AiMemoryRecallMatch }
 
@@ -435,7 +436,7 @@ export interface OffscreenRecordingScript {
   scenes: TeachingScene[]
   annotations: OffscreenRecordingAnnotation[]
   terrain: OffscreenRecordingTerrain
-  seaLevelHeights?: Array<number | null>
+  seaLevelHeights?: (number | null)[]
   prewarmQuality: OffscreenPrewarmQuality
   centerTarget: boolean
   width: number
@@ -511,7 +512,7 @@ interface PreloadGlobal {
 function applyInitialDocumentAttributes(): void {
   const host = globalThis as unknown as PreloadGlobal
   const root = host.document?.documentElement
-  if (!root) return
+  if (!root) {return}
   root.classList.toggle('dark', initialTheme.resolvedTheme === 'dark')
   root.style.colorScheme = initialTheme.resolvedTheme
   root.dataset.platform = process.platform
@@ -558,7 +559,7 @@ const api = {
     onMirrorStatus: (listener: (status: TileMirrorStatus) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: TileMirrorStatus): void => listener(payload)
       ipcRenderer.on('tiles:mirror-status', wrapped)
-      return () => ipcRenderer.removeListener('tiles:mirror-status', wrapped)
+      return () => { ipcRenderer.removeListener('tiles:mirror-status', wrapped) }
     }
   },
   annotations: {
@@ -579,13 +580,13 @@ const api = {
     onOffscreenProgress: (listener: (progress: OffscreenRecordingProgress) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: OffscreenRecordingProgress): void => listener(payload)
       ipcRenderer.on('recordings:offscreen-progress', wrapped)
-      return () => ipcRenderer.removeListener('recordings:offscreen-progress', wrapped)
+      return () => { ipcRenderer.removeListener('recordings:offscreen-progress', wrapped) }
     },
     offscreenNotice: (message: string): void => ipcRenderer.send('recordings:offscreen-notice', message),
     onOffscreenNotice: (listener: (message: string) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: string): void => listener(payload)
       ipcRenderer.on('recordings:offscreen-notice', wrapped)
-      return () => ipcRenderer.removeListener('recordings:offscreen-notice', wrapped)
+      return () => { ipcRenderer.removeListener('recordings:offscreen-notice', wrapped) }
     },
     offscreenNext: (): void => ipcRenderer.send('recordings:offscreen-next'),
     offscreenSkipPrewarm: (): void => ipcRenderer.send('recordings:offscreen-skip-prewarm'),
@@ -594,7 +595,7 @@ const api = {
     onOffscreenFrame: (listener: (index: number, captureTimeMs: number, jpeg: Uint8Array) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, index: number, captureTimeMs: number, jpeg: Uint8Array): void => listener(index, captureTimeMs, jpeg)
       ipcRenderer.on('recordings:offscreen-frame', wrapped)
-      return () => ipcRenderer.removeListener('recordings:offscreen-frame', wrapped)
+      return () => { ipcRenderer.removeListener('recordings:offscreen-frame', wrapped) }
     },
     sendOffscreenFrameAck: (count: number): void => ipcRenderer.send('recordings:offscreen-frame-ack', count),
     sendOffscreenVideoChunk: (bytes: Uint8Array, position: number): void => ipcRenderer.send('recordings:offscreen-video-chunk', bytes, position),
@@ -611,7 +612,7 @@ const api = {
     onStateChange: (listener: (state: WindowControlsState) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: WindowControlsState): void => listener(payload)
       ipcRenderer.on('window:state-changed', wrapped)
-      return () => ipcRenderer.removeListener('window:state-changed', wrapped)
+      return () => { ipcRenderer.removeListener('window:state-changed', wrapped) }
     }
   },
   account: {
@@ -625,7 +626,7 @@ const api = {
     onState: (listener: (state: AccountState) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: AccountState): void => listener(payload)
       ipcRenderer.on('account:event', wrapped)
-      return () => ipcRenderer.removeListener('account:event', wrapped)
+      return () => { ipcRenderer.removeListener('account:event', wrapped) }
     }
   },
   logs: {
@@ -646,7 +647,7 @@ const api = {
     onOnlineData: (listener: (snapshot: OnlineDataSnapshot) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: OnlineDataSnapshot): void => listener(payload)
       ipcRenderer.on('datasets:online-data-changed', wrapped)
-      return () => ipcRenderer.removeListener('datasets:online-data-changed', wrapped)
+      return () => { ipcRenderer.removeListener('datasets:online-data-changed', wrapped) }
     },
     getEarthquakes: (refresh = false): Promise<EarthquakeFeed> => ipcRenderer.invoke('datasets:earthquakes', refresh),
     getProvinces: (): Promise<ProvinceGeoDocument> => ipcRenderer.invoke('datasets:provinces')
@@ -659,7 +660,7 @@ const api = {
     onEvent: (listener: (event: UpdaterEvent) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: UpdaterEvent): void => listener(payload)
       ipcRenderer.on('updater:event', wrapped)
-      return () => ipcRenderer.removeListener('updater:event', wrapped)
+      return () => { ipcRenderer.removeListener('updater:event', wrapped) }
     }
   },
   ai: {
@@ -689,7 +690,7 @@ const api = {
     onEvent: (listener: (event: AiChatEvent) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, payload: AiChatEvent): void => listener(payload)
       ipcRenderer.on('ai:event', wrapped)
-      return () => ipcRenderer.removeListener('ai:event', wrapped)
+      return () => { ipcRenderer.removeListener('ai:event', wrapped) }
     }
   }
 }
