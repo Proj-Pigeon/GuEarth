@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { registerHooks } from 'node:module'
 import { mkdtemp, readFile, writeFile, readdir, rename, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -51,7 +51,7 @@ function conversation(id, updatedAt = 1, content = '地理问题') {
 
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), 'guearth-history-'))
-  t.after(() => rm(directory, { recursive: true, force: true }))
+  t.onTestFinished(() => rm(directory, { recursive: true, force: true }))
   return { path: join(directory, 'history.json'), directory }
 }
 

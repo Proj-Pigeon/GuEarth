@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'

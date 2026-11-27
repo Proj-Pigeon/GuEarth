@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { fanMigrationEndpoints, migrationFlows, smoothMigrationPath } from '../src/renderer/src/thematic/populationCensus.ts'
 
 test('smoothed path passes through every waypoint', () => {

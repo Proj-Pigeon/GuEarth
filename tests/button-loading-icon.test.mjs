@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import ts from 'typescript'
 
 const RENDERER_ROOT = resolve('src/renderer/src')

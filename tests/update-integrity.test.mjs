@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { compareVersions, extractAssetDigest, hashFile, parseSha256, releaseTagCandidates } from '../src/main/updateIntegrity.ts'
 
 const HEX = 'a3b5c7d9e1f2031425364758697a8b9c0d1e2f30415263748596a7b8c9d0e1f2'

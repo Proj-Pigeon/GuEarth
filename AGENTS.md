@@ -96,8 +96,10 @@ npm run build      # production build
 npm run fetch:ffmpeg   # pinned LGPL FFmpeg for Windows or Linux into resources/bin
 npm run build:linux    # AppImage + deb for Linux x64 and arm64
 npm run typecheck  # tsc (node) + tsc (web)
-npm test           # node:test unit tests (tests/*.test.mjs), run by CI
+npm test           # Vitest unit tests (tests/*.test.mjs), run by CI
 ```
+
+Vitest uses native Node.js imports (`experimental.viteModuleRunner: false` in `vite.config.mts`), so the `module.registerHooks` fixtures in the tests can load React components and simulate filesystem failures.
 
 ## Docs
 

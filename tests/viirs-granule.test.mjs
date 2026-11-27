@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { viirsCacheStyleId, viirsGranuleDate } from '../src/common/viirs.ts'
 
 test('viirsGranuleDate lags two UTC days behind the request time', () => {

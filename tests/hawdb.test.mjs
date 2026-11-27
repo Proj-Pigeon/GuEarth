@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, chmod, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { registerHooks } from 'node:module'
 import { fileURLToPath } from 'node:url'
 
@@ -96,7 +96,7 @@ test('EoqHawdbEngine persists memories, conversations, BM25 recall and Cypher kn
     return
   }
   const baseDir = await mkdtemp(join(repoRoot, '.tmp-hawdb-test-'))
-  t.after(() => rm(baseDir, { recursive: true, force: true }))
+  t.onTestFinished(() => rm(baseDir, { recursive: true, force: true }))
 
   const dbRoot = join(baseDir, 'eoq-hawdb')
   const legacyMemoriesPath = join(baseDir, 'ai-memories.json')
@@ -183,12 +183,12 @@ test('EoqHawdbEngine falls back cleanly to memory-snapshot under restricted dire
     return
   }
   const baseDir = await mkdtemp(join(tmpdir(), 'guearth-hawdb-snap-'))
-  t.after(() => rm(baseDir, { recursive: true, force: true }))
+  t.onTestFinished(() => rm(baseDir, { recursive: true, force: true }))
   const dbRoot = join(baseDir, 'eoq-hawdb')
   if (process.platform !== 'win32') {
     await mkdir(join(dbRoot, 'db'), { recursive: true })
     await chmod(join(dbRoot, 'db'), 0o500).catch(() => undefined)
-    t.after(() => chmod(join(dbRoot, 'db'), 0o700).catch(() => undefined))
+    t.onTestFinished(() => chmod(join(dbRoot, 'db'), 0o700).catch(() => undefined))
   }
   const entries = loadKnowledgeFixtures().slice(0, 12)
 
@@ -234,7 +234,7 @@ test('AiMemoryStore and AiChatHistoryStore work end-to-end when attached to EoqH
     return
   }
   const baseDir = await mkdtemp(join(repoRoot, '.tmp-hawdb-client-'))
-  t.after(() => rm(baseDir, { recursive: true, force: true }))
+  t.onTestFinished(() => rm(baseDir, { recursive: true, force: true }))
   await mkdir(baseDir, { recursive: true })
 
   const client = new EoqHawdbClient({ inProcess: true })
@@ -277,7 +277,7 @@ test('EoqHawdbClient communicates with the compiled worker_threads bundle', asyn
     return
   }
   const baseDir = await mkdtemp(join(repoRoot, '.tmp-hawdb-worker-'))
-  t.after(() => rm(baseDir, { recursive: true, force: true }))
+  t.onTestFinished(() => rm(baseDir, { recursive: true, force: true }))
 
   const client = new EoqHawdbClient({ workerPath: compiledWorker })
   try {

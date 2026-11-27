@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { buildDecisionPrompt, decisionCases, decisionSandboxIntro } from '../src/renderer/src/thematic/decisionSandbox.ts'
 
 test('decision cases: four contexts with essential factors and reachable places', () => {

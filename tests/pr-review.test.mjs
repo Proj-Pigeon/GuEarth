@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test, vi } from 'vitest'
 import { registerHooks } from 'node:module'
 import { mkdtemp, readFile, writeFile, readdir, mkdir, rm, utimes } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -43,7 +43,7 @@ const { renderMarkdown, renderStreamingMarkdown, createStreamingDelayState, sett
 
 async function directory(t) {
   const path = await mkdtemp(join(tmpdir(), 'guearth-review-'))
-  t.after(() => rm(path, { recursive: true, force: true }))
+  t.onTestFinished(() => rm(path, { recursive: true, force: true }))
   return path
 }
 
@@ -66,7 +66,7 @@ test('failed cache deletions remain in quota and orphan metadata is pruned', asy
   await writeFile(join(path, 'locked.json'), Buffer.alloc(10))
   await writeFile(join(path, 'orphan.json'), Buffer.alloc(10))
   blocked.add(locked)
-  t.after(() => blocked.delete(locked))
+  t.onTestFinished(() => blocked.delete(locked))
   assert.equal(await pruneTileFiles(path, 0), 10)
   assert.deepEqual(await readdir(path), ['locked.bin'])
 })
@@ -136,7 +136,8 @@ function playerFixture(t) {
   resetSolarStore()
   resetGlobeStore()
   resetTransportStore()
-  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 })
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], now: 1000 })
+  t.onTestFinished(() => vi.useRealTimers())
   let requests = 0
   const viewer = {
     isDestroyed: () => false,
@@ -145,9 +146,9 @@ function playerFixture(t) {
   }
   const player = createScenePlayerController(viewer, () => {}, () => {})
   const unmount = player.mount()
-  t.after(unmount)
+  t.onTestFinished(unmount)
   const scene = { name: 'Sky', narration: '', flyDurationMs: 100, dwellMs: 100, snapshot: { camera: { longitude: 179, latitude: 30, height: 10000, heading: 350, pitch: 10 }, basemapId: '', overlays: [], month: 6, simTime: null } }
-  const tick = async (ms) => { t.mock.timers.tick(ms); await nextTurn() }
+  const tick = async (ms) => { vi.advanceTimersByTime(ms); await nextTurn() }
   return { viewer, player, scene, tick, requests: () => requests }
 }
 

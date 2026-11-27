@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { test } from 'node:test'
+import { test } from 'vitest'
 
 const layersSource = await readFile(new URL('../src/renderer/src/composables/useThematicLayers.ts', import.meta.url), 'utf8')
 

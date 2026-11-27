@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { setImmediate as nextTurn } from 'node:timers/promises'
-import { test } from 'node:test'
+import { test, vi } from 'vitest'
 import { compileFunction } from 'node:vm'
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 import * as passport from '../src/common/passport.ts'
@@ -17,7 +17,8 @@ const tokenPayload = { access_token: 'local-access', refresh_token: 'local-refre
 const json = (payload, status = 200, headers) => Response.json(payload, { status, headers })
 
 function fixture(t, respond, refreshToken = '') {
-  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 })
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], now: 1000 })
+  t.onTestFinished(() => vi.useRealTimers())
   const secrets = new Map(refreshToken ? [['passport-refresh-token', refreshToken]] : [])
   const requests = []
   const timeoutDurations = []
@@ -56,7 +57,7 @@ function fixture(t, respond, refreshToken = '') {
     if (!dependency) throw new Error(`Unexpected module dependency: ${id}`)
     return dependency
   }, {}, signals)
-  const tick = async (ms) => { t.mock.timers.tick(ms); await nextTurn() }
+  const tick = async (ms) => { vi.advanceTimersByTime(ms); await nextTurn() }
   return { ...api, requests, secrets, timeoutDurations, tick }
 }
 
