@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url'
 import { JSDOM } from 'jsdom'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 

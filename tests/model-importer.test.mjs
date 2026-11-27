@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { compileFunction } from 'node:vm'
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
+import { ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
 import { test } from 'vitest'
 import * as tileMirror from '../src/common/tileMirror.ts'
 

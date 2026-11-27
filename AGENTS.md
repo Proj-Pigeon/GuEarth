@@ -23,7 +23,7 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 **Pinned versions — do not bump casually:**
 
 - `vite@^8` — the project uses Vite 8 with electron-vite@6.
-- `typescript@5.9.x` — pinned TypeScript version (`tsconfig.node.json` + `tsconfig.web.json`).
+- `typescript@^7` — the native TypeScript compiler (`tsconfig.node.json` + `tsconfig.web.json`). TypeScript 7 has no stable JS API yet, so tests that compile or parse source import TypeScript 6 from `@typescript/typescript6`. `npm run typecheck` calls `node_modules/typescript/bin/tsc` directly, because `@typescript/typescript6` also links a TypeScript 6 `tsc` into `node_modules/.bin`.
 - `@base-ui/react@^1.9` + `tailwindcss@^4.3` + `lucide-react` — headless Base UI primitives wrapped in `src/renderer/src/components/ui/` following [DESIGN.md](./DESIGN.md) monochrome Light/Dark tokens. Do not reintroduce `antd` or `@ant-design/*`.
 - Electron binaries must be installed manually with the npmmirror mirror:
   `ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" node node_modules/electron/install.js`
