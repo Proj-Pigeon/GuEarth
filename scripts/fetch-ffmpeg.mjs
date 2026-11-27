@@ -271,7 +271,7 @@ function tarCommand() {
 async function download(url, destination) {
   console.log(`下载内置视频编码器：${url}`)
   const response = await fetchArchive(assertArchiveSource(url), {
-    approveUrl: value => approvedDownloadUrl(value, downloadHosts),
+    hosts: downloadHosts,
     resolveRedirect: archiveRedirectTarget,
     userAgent: 'GuEarth-FFmpeg-Fetch'
   })

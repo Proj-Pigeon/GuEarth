@@ -176,7 +176,7 @@ export function assertArchiveSource(url) {
   if (!isApprovedArchiveUrl(url) || !matchesPinnedArchivePath(url)) {
     throw new Error(`拒绝下载未经验证的来源：${rejectedArchiveLabel(url)}`)
   }
-  return url
+  return assertFetchableUrl(url)
 }
 
 export function assertFetchableUrl(url) {
@@ -279,7 +279,7 @@ function tarCommand() {
 async function download(url, destination) {
   console.log(`下载 HawDB 引擎库：${url}`)
   const response = await fetchArchive(assertArchiveSource(url), {
-    approveUrl: assertFetchableUrl,
+    hosts: downloadHosts,
     resolveRedirect: archiveRedirectTarget,
     userAgent: 'GuEarth-HawDB-Fetch'
   })
