@@ -22,7 +22,7 @@ map data providers, an AI globe assistant ("EOQ agent"), and teaching/drawing to
 
 **Pinned versions — do not bump casually:**
 
-- `vite@^7` — electron-vite@5 peer range tops out at vite 7.
+- `vite@^8` — the project uses Vite 8 with electron-vite@6.
 - `typescript@5.9.x` — pinned TypeScript version (`tsconfig.node.json` + `tsconfig.web.json`).
 - `@base-ui/react@^1.9` + `tailwindcss@^4.3` + `lucide-react` — headless Base UI primitives wrapped in `src/renderer/src/components/ui/` following [DESIGN.md](./DESIGN.md) monochrome Light/Dark tokens. Do not reintroduce `antd` or `@ant-design/*`.
 - Electron binaries must be installed manually with the npmmirror mirror:
