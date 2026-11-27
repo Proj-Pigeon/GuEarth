@@ -176,6 +176,11 @@ test('ffmpeg fetch accepts the pinned artifact served from an approved mirror ho
   assert.equal(archiveSources(undefined).length, 2)
 })
 
+test('ffmpeg keeps a mirror path with repeated slashes on its approved origin', () => {
+  const mirror = `https://registry.npmmirror.com//mirrors/ffmpeg-builds${pinnedArchivePathSuffix}`
+  assert.equal(archiveSources(mirror)[0], mirror)
+})
+
 test('ffmpeg fetch rejects override paths that are not the pinned artifact', () => {
   const wrongArtifacts = [
     'https://github.com/KarinJS/FFmpeg-Builds/releases/download/v8.1.3/ffmpeg-8.1.3-win32-x64-full.tar.xz',

@@ -8,6 +8,8 @@ import { pipeline } from 'node:stream/promises'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 
+import { approvedDownloadUrl, fetchArchive } from './fetch-archive.mjs'
+
 const runFile = promisify(execFile)
 
 const ffmpegVersion = '8.1.3'
@@ -61,7 +63,7 @@ export const APPROVED_ARCHIVE_REDIRECT_HOSTS = [
   'release-assets.githubusercontent.com'
 ]
 
-const maxArchiveRedirects = 5
+const downloadHosts = [...APPROVED_ARCHIVE_HOSTS, ...APPROVED_ARCHIVE_REDIRECT_HOSTS]
 
 const pinnedArchiveNames = new Set(Object.values(FFMPEG_BUILDS).map(build => build.archiveName))
 
@@ -164,8 +166,7 @@ export function approvedArchiveSource(overrideUrl) {
       `FFMPEG_FETCH_URL 归档路径不受信任：${parsed.pathname}${parsed.search}；仅允许指向 v${ffmpegVersion} 的 ${allowed}，离线安装请将 FFMPEG_FETCH_FILE 指向本地归档`
     )
   }
-  const approvedHost = APPROVED_ARCHIVE_HOSTS.find(host => host === parsed.hostname)
-  return new URL(parsed.pathname, `https://${approvedHost}/`).href
+  return approvedDownloadUrl(parsed.href, APPROVED_ARCHIVE_HOSTS)
 }
 
 export function assertArchiveSource(url) {
@@ -267,28 +268,13 @@ function tarCommand() {
   return existsSync(systemTar) ? systemTar : 'tar'
 }
 
-async function fetchArchive(url) {
-  assertArchiveSource(url)
-  let current = url
-  for (let hop = 0; hop <= maxArchiveRedirects; hop += 1) {
-    const response = await fetch(current, {
-      redirect: 'manual',
-      headers: { 'user-agent': 'GuEarth-FFmpeg-Fetch' }
-    })
-    if (response.status < 300 || response.status >= 400) {
-      return response
-    }
-    if (hop === maxArchiveRedirects) {
-      break
-    }
-    current = archiveRedirectTarget(response.headers.get('location'), current)
-  }
-  throw new Error(`下载重定向次数过多：${rejectedArchiveLabel(url)}`)
-}
-
 async function download(url, destination) {
   console.log(`下载内置视频编码器：${url}`)
-  const response = await fetchArchive(url)
+  const response = await fetchArchive(assertArchiveSource(url), {
+    approveUrl: value => approvedDownloadUrl(value, downloadHosts),
+    resolveRedirect: archiveRedirectTarget,
+    userAgent: 'GuEarth-FFmpeg-Fetch'
+  })
   if (!response.ok || response.body == null) {
     throw new Error(`HTTP ${response.status}`)
   }

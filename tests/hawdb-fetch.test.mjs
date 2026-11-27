@@ -82,6 +82,7 @@ test('hawdb fetch revalidates every request URL against the approved hosts', () 
   for (const rejected of [
     'http://github.com/file.zip',
     'https://evil.example.com/file.zip',
+    'https://github.com:8443/file.zip',
     'file:///tmp/file.zip'
   ]) {
     assert.throws(() => assertFetchableUrl(rejected), /拒绝请求未经验证的地址/)

@@ -8,6 +8,8 @@ import { pipeline } from 'node:stream/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 
+import { approvedDownloadUrl, fetchArchive } from './fetch-archive.mjs'
+
 const runFile = promisify(execFile)
 
 export const HAWDB_VERSION = '0.35.1'
@@ -81,7 +83,7 @@ export const APPROVED_ARCHIVE_REDIRECT_HOSTS = [
   'release-assets.githubusercontent.com'
 ]
 
-const maxArchiveRedirects = 5
+const downloadHosts = [...APPROVED_ARCHIVE_HOSTS, ...APPROVED_ARCHIVE_REDIRECT_HOSTS]
 const pinnedArchiveNames = new Set(Object.values(HAWDB_BUILDS).map(build => build.archiveName))
 
 export function normalizeHawdbArch(arch) {
@@ -178,10 +180,7 @@ export function assertArchiveSource(url) {
 }
 
 export function assertFetchableUrl(url) {
-  if (!isApprovedArchiveRedirectUrl(url)) {
-    throw new Error(`拒绝请求未经验证的地址：${rejectedArchiveLabel(url)}`)
-  }
-  return url
+  return approvedDownloadUrl(url, downloadHosts)
 }
 
 export function defaultHawdbBinaryPath(repoRoot, platform = process.platform, arch = process.arch) {
@@ -277,27 +276,13 @@ function tarCommand() {
   return existsSync(systemTar) ? systemTar : 'tar'
 }
 
-async function fetchArchive(url) {
-  let current = assertArchiveSource(url)
-  for (let hop = 0; hop <= maxArchiveRedirects; hop += 1) {
-    const response = await fetch(assertFetchableUrl(current), {
-      redirect: 'manual',
-      headers: { 'user-agent': 'GuEarth-HawDB-Fetch' }
-    })
-    if (response.status < 300 || response.status >= 400) {
-      return response
-    }
-    if (hop === maxArchiveRedirects) {
-      break
-    }
-    current = archiveRedirectTarget(response.headers.get('location'), current)
-  }
-  throw new Error(`下载重定向次数过多：${rejectedArchiveLabel(url)}`)
-}
-
 async function download(url, destination) {
   console.log(`下载 HawDB 引擎库：${url}`)
-  const response = await fetchArchive(url)
+  const response = await fetchArchive(assertArchiveSource(url), {
+    approveUrl: assertFetchableUrl,
+    resolveRedirect: archiveRedirectTarget,
+    userAgent: 'GuEarth-HawDB-Fetch'
+  })
   if (!response.ok || response.body == null) {
     throw new Error(`HTTP ${response.status}`)
   }
