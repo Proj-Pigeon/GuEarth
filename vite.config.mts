@@ -19,10 +19,8 @@ export default liangmi({
         // Stores, errors and protocol readers are written as classes.
         'eslint/max-classes-per-file': 'off',
         // JSX props are not memoized across the app, and there is no React Compiler to rely on.
-        'react-perf/jsx-no-jsx-as-prop': 'off',
         'react-perf/jsx-no-new-object-as-prop': 'off',
         'react-perf/jsx-no-new-array-as-prop': 'off',
-        'react-perf/jsx-no-new-function-as-prop': 'off',
         'react/jsx-no-constructed-context-values': 'off',
         // React Compiler checks. Fixing them changes render and effect timing, so they need testing in the running app first.
         'react/refs': 'off',
@@ -66,9 +64,7 @@ export default liangmi({
         'eslint/eqeqeq': ['error', 'always', { null: 'ignore' }],
         // Copies such as `[...map.keys()]` protect loops that change the collection.
         'unicorn/no-useless-spread': 'off',
-        // Their fixes change behavior: `.then(onOk, onError)` only catches the original promise,
         // `structuredClone` throws where the JSON round trip drops functions, and `codePointAt` reads surrogate pairs.
-        'promise/prefer-catch': 'off',
         'unicorn/prefer-structured-clone': 'off',
         'unicorn/prefer-code-point': 'off',
         // `worker_threads` ports have no target origin.

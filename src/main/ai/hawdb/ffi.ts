@@ -246,7 +246,6 @@ export class HawdbLibrary {
     this.symbols = {
       hawdb_open: this.lib.func('void * hawdb_open(const uint8_t *path, size_t path_len, const uint8_t *options_json, size_t options_len, _Inout_ HawdbBuffer *err_out)'),
       hawdb_open_in_memory: this.lib.func('void * hawdb_open_in_memory(_Inout_ HawdbBuffer *err_out)'),
-      // oxlint-disable-next-line typescript/strict-void-return -- koffi types every native function as value-returning
       hawdb_close: this.lib.func('void hawdb_close(void *db)'),
       hawdb_query: this.lib.func('bool hawdb_query(void *db, const uint8_t *cypher, size_t cypher_len, const uint8_t *params_json, size_t params_len, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'),
       hawdb_query_sql: this.lib.func('bool hawdb_query_sql(void *db, const uint8_t *sql, size_t sql_len, const uint8_t *params_json, size_t params_len, _Inout_ HawdbBuffer *result_out, _Inout_ HawdbBuffer *err_out)'),
@@ -264,9 +263,7 @@ export class HawdbLibrary {
       hawdb_scrub: this.lib.func('bool hawdb_scrub(void *db, _Inout_ HawdbBuffer *report_out, _Inout_ HawdbBuffer *err_out)'),
       hawdb_format_version: this.lib.func('uint32_t hawdb_format_version()'),
       hawdb_dump_format_version: this.lib.func('uint32_t hawdb_dump_format_version()'),
-      // oxlint-disable-next-line typescript/strict-void-return -- koffi types every native function as value-returning
       hawdb_version: this.lib.func('void hawdb_version(_Inout_ HawdbBuffer *out)'),
-      // oxlint-disable-next-line typescript/strict-void-return -- koffi types every native function as value-returning
       hawdb_buffer_free: this.lib.func('void hawdb_buffer_free(_Inout_ HawdbBuffer *buf)')
     }
   }

@@ -8,7 +8,6 @@ import { pipeline } from 'node:stream/promises'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 
-// oxlint-disable-next-line typescript/strict-void-return -- `promisify` reads `execFile`'s callback overload
 const runFile = promisify(execFile)
 
 const ffmpegVersion = '8.1.3'
