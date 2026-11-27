@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 
 const SRC_ROOT = resolve('src')
 const FORBIDDEN_PATTERNS = [

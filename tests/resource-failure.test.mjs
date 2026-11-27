@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { describeResourceFailure, isRequestErrorShape, requestErrorRejectionLabel } from '../src/common/resourceFailure.ts'
 import { serveTileResponse, TILE_FAILURE_STATUS, tileFailureResponse } from '../src/common/tileProtocol.ts'
 

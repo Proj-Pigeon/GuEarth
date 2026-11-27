@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { CITY_TIER_META, cityTierOf, FUNCTIONAL_ZONES, functionalZoneCities, functionalZoneCityById, urbanCities } from '../src/renderer/src/thematic/urbanCities.ts'
 
 test('city tier metadata contains exactly five tiers with strictly shrinking service radii', () => {

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test, vi } from 'vitest'
+import { test, vi } from 'vite-plus/test'
 import { registerHooks } from 'node:module'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { AGRI_CATEGORY_META, agriCategoryOf, agriculturalRegions, agriFacts } from '../src/renderer/src/thematic/agriculturalRegions.ts'
 import { industrialBases, industrialTransferFacts, industrialTransferFlows } from '../src/renderer/src/thematic/industrialBases.ts'
 

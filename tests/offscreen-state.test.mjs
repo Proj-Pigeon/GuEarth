@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 
 import { wrapText } from '../src/renderer/src/offscreenText.ts'
 

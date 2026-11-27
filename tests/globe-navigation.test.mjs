@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test, vi } from 'vitest'
+import { test, vi } from 'vite-plus/test'
 import { Cartographic, EllipsoidTerrainProvider, GeographicTilingScheme, HeightmapTerrainData, ImageryLayer, UrlTemplateImageryProvider, WebMercatorTilingScheme } from 'cesium'
 import { createBasemapImageryProvider } from '../src/renderer/src/composables/basemapImagery.ts'
 import { resolveFlightDestination } from '../src/renderer/src/composables/terrainFlight.ts'

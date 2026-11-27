@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, chmod, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { test } from 'vitest'
+import { test } from 'vite-plus/test'
 import { registerHooks } from 'node:module'
 import { fileURLToPath } from 'node:url'
 
