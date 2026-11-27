@@ -78,6 +78,7 @@ export default defineConfig({
           offscreen: resolve('src/renderer/offscreen.html')
         },
         output: {
+          comments: false,
           codeSplitting: {
             groups: [{ name: 'cesium', test: /[\\/]node_modules[\\/]@?cesium[\\/]/ }]
           }
