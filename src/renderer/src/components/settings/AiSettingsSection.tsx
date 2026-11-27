@@ -165,7 +165,7 @@ export function AiSettingsSection({
   const [testingModelKey, setTestingModelKey] = useState('')
   const [modelDraft, setModelDraft] = useState<AiModelConfig>(EMPTY_MODEL_DRAFT)
 
-  const importRequestTokenRef = useRef(0)
+  const importRequestIdRef = useRef(0)
   const latestDraftsRef = useRef({
     providers: draftProviders,
     activeChoice,
@@ -535,7 +535,7 @@ export function AiSettingsSection({
   }, [])
 
   const invalidateImportSession = useCallback((): void => {
-    importRequestTokenRef.current += 1
+    importRequestIdRef.current += 1
     setImportLoading(false)
     setImportMatching(false)
   }, [])
@@ -555,7 +555,7 @@ export function AiSettingsSection({
       toast.warning('请先保存 API Key')
       return
     }
-    const token = ++importRequestTokenRef.current
+    const requestId = ++importRequestIdRef.current
     setImportProviderId(selectedProvider.id)
     setImportRows([])
     setImportPage(1)
@@ -571,15 +571,15 @@ export function AiSettingsSection({
         models: selectedProvider.models.map(({ key: _key, ...model }) => model),
         modelGroupCompat
       })
-      if (token !== importRequestTokenRef.current) {return}
+      if (requestId !== importRequestIdRef.current) {return}
       applyImportRows(result.models)
       toast.success(`已获取 ${result.models.length} 个模型`)
     } catch (error) {
-      if (token !== importRequestTokenRef.current) {return}
+      if (requestId !== importRequestIdRef.current) {return}
       setImportOpen(false)
       toast.error(ipcErrorMessage(error, '模型导入失败'))
     } finally {
-      if (token === importRequestTokenRef.current) {setImportLoading(false)}
+      if (requestId === importRequestIdRef.current) {setImportLoading(false)}
     }
   }, [applyImportRows, credentialStatuses, modelGroupCompat, selectedProvider, toast])
 
@@ -589,7 +589,7 @@ export function AiSettingsSection({
       const previous = modelGroupCompat
       setModelGroupCompat(next)
       if (importRows.length === 0) {return}
-      const token = ++importRequestTokenRef.current
+      const requestId = ++importRequestIdRef.current
       setImportMatching(true)
       try {
         const result = await window.guEarth.ai.importModels({
@@ -601,14 +601,14 @@ export function AiSettingsSection({
           ids: importRows.map((row) => row.id),
           modelGroupCompat: next
         })
-        if (token !== importRequestTokenRef.current) {return}
+        if (requestId !== importRequestIdRef.current) {return}
         applyImportRows(result.models)
       } catch (error) {
-        if (token !== importRequestTokenRef.current) {return}
+        if (requestId !== importRequestIdRef.current) {return}
         setModelGroupCompat(previous)
         toast.error(ipcErrorMessage(error, '模型匹配失败'))
       } finally {
-        if (token === importRequestTokenRef.current) {setImportMatching(false)}
+        if (requestId === importRequestIdRef.current) {setImportMatching(false)}
       }
     },
     [applyImportRows, importLoading, importMatching, importProvider, importRows, modelGroupCompat, toast]
