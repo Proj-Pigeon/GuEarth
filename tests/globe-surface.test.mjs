@@ -21,6 +21,7 @@ import {
   isWebGlInitializationError,
   isZeroFramebufferError,
   nudgedCanvasSize,
+  shouldDrawOwnedFrame,
   shouldStopRenderLoop,
   shouldUseSoftwareMsaaWorkaround,
   surfaceFailureAlreadyShown,
@@ -208,6 +209,22 @@ test('canvas backing stores are nudged only when Cesium would assign the same si
   assert.deepEqual(nudgedCanvasSize(300, 150, 1440, 900), { width: 1440, height: 900 })
 })
 
+test('an idle globe still draws while a camera flight tween is queued', () => {
+  const idle = {
+    pointerActive: false,
+    settleFrames: 0,
+    renderRequested: false,
+    renderViewReady: true,
+    activeTweens: 0
+  }
+  assert.equal(shouldDrawOwnedFrame(idle), false)
+  assert.equal(shouldDrawOwnedFrame({ ...idle, activeTweens: 1 }), true)
+  assert.equal(shouldDrawOwnedFrame({ ...idle, renderRequested: true }), true)
+  assert.equal(shouldDrawOwnedFrame({ ...idle, pointerActive: true }), true)
+  assert.equal(shouldDrawOwnedFrame({ ...idle, settleFrames: 1 }), true)
+  assert.equal(shouldDrawOwnedFrame({ ...idle, renderViewReady: false }), true)
+})
+
 test('the globe viewer keeps rendering ownership and surfaces WebGL failure in Chinese', async () => {
   const viewerSource = await readFile(
     new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url),
@@ -233,6 +250,7 @@ test('the globe viewer keeps rendering ownership and surfaces WebGL failure in C
   assert.doesNotMatch(restoredHandler, /startOwnedRenderLoop|forceWidgetResize|requestRender/)
   assert.match(viewerSource, /surfaceFailureCopy\(webglContextLost\)/)
   assert.match(viewerSource, /decideRenderFrame\(/)
+  assert.match(viewerSource, /activeTweens: widget\.scene\.tweens\.length/)
   assert.match(viewerSource, /createViewerWithRetries\(/)
   assert.match(viewerSource, /registerRetry\('webgl'/)
   assert.match(appSource, /globeLoadingHint/)

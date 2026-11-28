@@ -20,6 +20,7 @@ import {
   nudgedCanvasSize,
   RENDER_HALTED_DETAIL,
   RENDER_HALTED_MESSAGE,
+  shouldDrawOwnedFrame,
   shouldStopRenderLoop,
   shouldUseSoftwareMsaaWorkaround,
   surfaceFailureCopy,
@@ -1076,10 +1077,16 @@ function createCesiumViewerController(
     }
   }
 
-  function shouldDrawFrame(): boolean {
+  function shouldDrawFrame(widget: Cesium.CesiumWidget): boolean {
     const requested = renderRequested
     renderRequested = false
-    return pointerActive || settleFrames > 0 || requested || !renderViewReady
+    return shouldDrawOwnedFrame({
+      pointerActive,
+      settleFrames,
+      renderRequested: requested,
+      renderViewReady,
+      activeTweens: widget.scene.tweens.length
+    })
   }
 
   function noteCameraMotion(widget: Cesium.CesiumWidget): void {
@@ -1130,7 +1137,7 @@ function createCesiumViewerController(
         const decision = decideRenderFrame(size, surfaceRecoveryAttempted)
         if (decision.action === 'render') {
           surfaceRecoveryAttempted = false
-          if (shouldDrawFrame()) {
+          if (shouldDrawFrame(widget)) {
             const faultsBefore = consecutiveRenderFaults
             widget.render()
             if (runId !== renderLoopGeneration || renderHalted) {
