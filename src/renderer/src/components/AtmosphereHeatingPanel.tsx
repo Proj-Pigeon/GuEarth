@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
-import { XIcon } from 'lucide-react'
 import { Button, Segmented, Tag } from '@renderer/components/ui'
+import { XIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
+
 import { diagramColors as dc, diagramFont } from './diagram/diagramTheme'
+
 import styles from './AtmosphereHeatingPanel.module.css'
 
 export interface AtmosphereHeatingPanelProps {
@@ -63,26 +65,92 @@ export function AtmosphereHeatingPanel({ onClose }: AtmosphereHeatingPanelProps)
     if (isDay) {
       if (isCloudy) {
         list.push(
-          { d: 'M 56 44 L 200 52', color: SOLAR, width: 2.4, marker: 'solar', label: '太阳辐射', labelAt: [116, 30] },
-          { d: 'M 214 48 Q 258 30 280 20', color: SOLAR, width: 1.6, dashed: true, marker: 'solar', label: '云层反射', labelAt: [254, 14] },
-          { d: 'M 58 52 L 84 166', color: SOLAR, width: 1.4, dashed: true, marker: 'solar', label: '云隙透过', labelAt: [72, 140], labelAnchor: 'end' }
+          {
+            d: 'M 56 44 L 200 52',
+            color: SOLAR,
+            width: 2.4,
+            marker: 'solar',
+            label: '太阳辐射',
+            labelAt: [116, 30]
+          },
+          {
+            d: 'M 214 48 Q 258 30 280 20',
+            color: SOLAR,
+            width: 1.6,
+            dashed: true,
+            marker: 'solar',
+            label: '云层反射',
+            labelAt: [254, 14]
+          },
+          {
+            d: 'M 58 52 L 84 166',
+            color: SOLAR,
+            width: 1.4,
+            dashed: true,
+            marker: 'solar',
+            label: '云隙透过',
+            labelAt: [72, 140],
+            labelAnchor: 'end'
+          }
         )
       } else {
         list.push(
-          { d: 'M 56 44 L 160 166', color: SOLAR, width: 2.6, marker: 'solar', label: '太阳辐射', labelAt: [118, 92], labelAnchor: 'start' },
-          { d: 'M 76 68 L 116 52', color: SOLAR, width: 1.4, dashed: true, marker: 'solar', label: '大气削弱', labelAt: [122, 52], labelAnchor: 'start' }
+          {
+            d: 'M 56 44 L 160 166',
+            color: SOLAR,
+            width: 2.6,
+            marker: 'solar',
+            label: '太阳辐射',
+            labelAt: [118, 92],
+            labelAnchor: 'start'
+          },
+          {
+            d: 'M 76 68 L 116 52',
+            color: SOLAR,
+            width: 1.4,
+            dashed: true,
+            marker: 'solar',
+            label: '大气削弱',
+            labelAt: [122, 52],
+            labelAnchor: 'start'
+          }
         )
       }
     }
     if (isCloudy) {
       list.push(
-        { d: 'M 170 166 L 170 72', color: GROUND_RADIATION, width: 2.2, marker: 'ground', label: '地面辐射', labelAt: [162, 124], labelAnchor: 'end' },
+        {
+          d: 'M 170 166 L 170 72',
+          color: GROUND_RADIATION,
+          width: 2.2,
+          marker: 'ground',
+          label: '地面辐射',
+          labelAt: [162, 124],
+          labelAnchor: 'end'
+        },
         { d: 'M 260 166 L 260 72', color: GROUND_RADIATION, width: 1.6, marker: 'ground' }
       )
     } else {
       list.push(
-        { d: 'M 130 166 L 130 92', color: GROUND_RADIATION, width: 2.2, marker: 'ground', label: '地面辐射', labelAt: [122, 140], labelAnchor: 'end' },
-        { d: 'M 300 166 L 300 34', color: GROUND_RADIATION, width: 1.4, dashed: true, marker: 'ground', label: '逸散到宇宙', labelAt: [294, 26], labelAnchor: 'end' }
+        {
+          d: 'M 130 166 L 130 92',
+          color: GROUND_RADIATION,
+          width: 2.2,
+          marker: 'ground',
+          label: '地面辐射',
+          labelAt: [122, 140],
+          labelAnchor: 'end'
+        },
+        {
+          d: 'M 300 166 L 300 34',
+          color: GROUND_RADIATION,
+          width: 1.4,
+          dashed: true,
+          marker: 'ground',
+          label: '逸散到宇宙',
+          labelAt: [294, 26],
+          labelAnchor: 'end'
+        }
       )
     }
     if (period === 'night' && isCloudy) {
@@ -138,131 +206,158 @@ export function AtmosphereHeatingPanel({ onClose }: AtmosphereHeatingPanelProps)
       : '多云夜晚云吸收地面辐射多、逆辐射强，保温作用强，气温不会太低。'
   }, [period, cloud])
 
-  const labeledArrows = useMemo(() => arrows.filter((item) => item.label && item.labelAt), [arrows])
+  const labeledArrows = useMemo(() => arrows.filter(item => item.label && item.labelAt), [arrows])
 
   return (
-    <div className={styles.heatingPanel} role="group" aria-label="大气受热过程演示">
+    <div className={styles.heatingPanel} role='group' aria-label='大气受热过程演示'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>大气受热过程</span>
-        <Button variant="ghost" size="sm" aria-label="关闭大气受热过程" icon={<XIcon className="size-3.5" />} onClick={onClose} />
+        <Button
+          variant='ghost'
+          size='sm'
+          aria-label='关闭大气受热过程'
+          icon={<XIcon className='size-3.5' />}
+          onClick={onClose}
+        />
       </div>
       <div className={styles.controlRow}>
         <div className={styles.controlGroup}>
           <span className={styles.controlLabel}>昼夜</span>
           <Segmented
             value={period}
-            size="sm"
+            size='sm'
             options={periodOptions}
-            aria-label="昼夜"
-            onChange={(value) => setPeriod(value as Period)}
+            aria-label='昼夜'
+            onChange={value => setPeriod(value as Period)}
           />
         </div>
         <div className={styles.controlGroup}>
           <span className={styles.controlLabel}>云量</span>
           <Segmented
             value={cloud}
-            size="sm"
+            size='sm'
             options={cloudOptions}
-            aria-label="云量"
-            onChange={(value) => setCloud(value as CloudCover)}
+            aria-label='云量'
+            onChange={value => setCloud(value as CloudCover)}
           />
         </div>
       </div>
       <svg
-        viewBox="0 0 360 200"
+        viewBox='0 0 360 200'
         className={styles.heatingSvg}
-        role="img"
-        aria-label="大气受热过程示意图：太阳辐射、地面辐射与大气逆辐射"
+        role='img'
+        aria-label='大气受热过程示意图：太阳辐射、地面辐射与大气逆辐射'
       >
         <defs>
-          <linearGradient id="ah-sky-day" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#d6ecff" />
-            <stop offset="100%" stopColor="#f4faff" />
+          <linearGradient id='ah-sky-day' x1='0' y1='0' x2='0' y2='1'>
+            <stop offset='0%' stopColor='#d6ecff' />
+            <stop offset='100%' stopColor='#f4faff' />
           </linearGradient>
-          <linearGradient id="ah-sky-night" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1d2b4d" />
-            <stop offset="100%" stopColor="#3a4a6b" />
+          <linearGradient id='ah-sky-night' x1='0' y1='0' x2='0' y2='1'>
+            <stop offset='0%' stopColor='#1d2b4d' />
+            <stop offset='100%' stopColor='#3a4a6b' />
           </linearGradient>
-          <linearGradient id="ah-ground" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#e8c9a0" />
-            <stop offset="100%" stopColor="#c9a06c" />
+          <linearGradient id='ah-ground' x1='0' y1='0' x2='0' y2='1'>
+            <stop offset='0%' stopColor='#e8c9a0' />
+            <stop offset='100%' stopColor='#c9a06c' />
           </linearGradient>
-          <radialGradient id="ah-sun" cx="42%" cy="38%" r="65%">
-            <stop offset="0%" stopColor="#ffd666" />
-            <stop offset="100%" stopColor={dc.sun} />
+          <radialGradient id='ah-sun' cx='42%' cy='38%' r='65%'>
+            <stop offset='0%' stopColor='#ffd666' />
+            <stop offset='100%' stopColor={dc.sun} />
           </radialGradient>
-          <marker id="ah-solar" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 Z" fill={SOLAR} />
+          <marker
+            id='ah-solar'
+            markerWidth='7'
+            markerHeight='7'
+            refX='5.5'
+            refY='3.5'
+            orient='auto'
+          >
+            <path d='M0,0 L7,3.5 L0,7 Z' fill={SOLAR} />
           </marker>
-          <marker id="ah-ground-m" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 Z" fill={GROUND_RADIATION} />
+          <marker
+            id='ah-ground-m'
+            markerWidth='7'
+            markerHeight='7'
+            refX='5.5'
+            refY='3.5'
+            orient='auto'
+          >
+            <path d='M0,0 L7,3.5 L0,7 Z' fill={GROUND_RADIATION} />
           </marker>
-          <marker id="ah-counter" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 Z" fill={COUNTER_RADIATION} />
+          <marker
+            id='ah-counter'
+            markerWidth='7'
+            markerHeight='7'
+            refX='5.5'
+            refY='3.5'
+            orient='auto'
+          >
+            <path d='M0,0 L7,3.5 L0,7 Z' fill={COUNTER_RADIATION} />
           </marker>
         </defs>
         <rect
-          x="0"
-          y="0"
-          width="360"
-          height="170"
+          x='0'
+          y='0'
+          width='360'
+          height='170'
           fill={period === 'day' ? 'url(#ah-sky-day)' : 'url(#ah-sky-night)'}
           className={styles.skyFade}
         />
         <text
-          x="10"
-          y="16"
+          x='10'
+          y='16'
           className={styles.spaceLabel}
           fill={period === 'day' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.55)'}
         >
           宇宙空间
         </text>
         {period === 'night' && (
-          <g fill="rgba(255,255,255,0.75)">
-            <circle cx="120" cy="26" r="1.2" />
-            <circle cx="186" cy="14" r="1" />
-            <circle cx="262" cy="30" r="1.2" />
-            <circle cx="320" cy="18" r="1" />
+          <g fill='rgba(255,255,255,0.75)'>
+            <circle cx='120' cy='26' r='1.2' />
+            <circle cx='186' cy='14' r='1' />
+            <circle cx='262' cy='30' r='1.2' />
+            <circle cx='320' cy='18' r='1' />
           </g>
         )}
         {period === 'day' ? (
           <g>
-            <circle cx="44" cy="36" r="14" fill="url(#ah-sun)" opacity="0.35" />
-            <circle cx="44" cy="36" r="9" fill="url(#ah-sun)" />
+            <circle cx='44' cy='36' r='14' fill='url(#ah-sun)' opacity='0.35' />
+            <circle cx='44' cy='36' r='9' fill='url(#ah-sun)' />
           </g>
         ) : (
           <g>
-            <circle cx="44" cy="36" r="9" fill="#e8e8e8" />
-            <circle cx="48" cy="33" r="8" fill="#2c3a5c" />
+            <circle cx='44' cy='36' r='9' fill='#e8e8e8' />
+            <circle cx='48' cy='33' r='8' fill='#2c3a5c' />
           </g>
         )}
         {cloud === 'cloudy' && (
           <g className={styles.cloudGroup}>
             <ellipse
-              cx="218"
-              cy="54"
-              rx="34"
-              ry="12"
+              cx='218'
+              cy='54'
+              rx='34'
+              ry='12'
               fill={period === 'day' ? 'rgba(0,0,0,0.14)' : 'rgba(255,255,255,0.16)'}
             />
             <ellipse
-              cx="195"
-              cy="60"
-              rx="20"
-              ry="9"
+              cx='195'
+              cy='60'
+              rx='20'
+              ry='9'
               fill={period === 'day' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'}
             />
             <ellipse
-              cx="245"
-              cy="60"
-              rx="22"
-              ry="9"
+              cx='245'
+              cy='60'
+              rx='22'
+              ry='9'
               fill={period === 'day' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'}
             />
             <text
-              x="218"
-              y="34"
-              textAnchor="middle"
+              x='218'
+              y='34'
+              textAnchor='middle'
               className={styles.spaceLabel}
               fill={period === 'day' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.6)'}
             >
@@ -274,12 +369,12 @@ export function AtmosphereHeatingPanel({ onClose }: AtmosphereHeatingPanelProps)
           <path
             key={`r-${index}`}
             d={arrow.d}
-            fill="none"
+            fill='none'
             stroke={arrow.color}
             strokeWidth={arrow.width}
             strokeDasharray={arrow.dashed ? '5 4' : undefined}
             markerEnd={`url(#ah-${arrow.marker === 'ground' ? 'ground-m' : arrow.marker})`}
-            strokeLinecap="round"
+            strokeLinecap='round'
           />
         ))}
         {labeledArrows.map((arrow, index) => (
@@ -288,21 +383,25 @@ export function AtmosphereHeatingPanel({ onClose }: AtmosphereHeatingPanelProps)
             x={arrow.labelAt![0]}
             y={arrow.labelAt![1]}
             textAnchor={arrow.labelAnchor ?? 'middle'}
-            className={period === 'night' ? `${styles.arrowLabel} ${styles.arrowLabelDark}` : styles.arrowLabel}
+            className={
+              period === 'night'
+                ? `${styles.arrowLabel} ${styles.arrowLabelDark}`
+                : styles.arrowLabel
+            }
             fill={arrow.color}
             fontFamily={diagramFont}
           >
             {arrow.label}
           </text>
         ))}
-        <rect x="0" y="170" width="360" height="30" fill="url(#ah-ground)" />
-        <line x1="0" y1="170" x2="360" y2="170" stroke="rgba(0, 0, 0, 0.35)" strokeWidth="1.5" />
-        <text x="180" y="188" textAnchor="middle" className={styles.groundLabel}>
+        <rect x='0' y='170' width='360' height='30' fill='url(#ah-ground)' />
+        <line x1='0' y1='170' x2='360' y2='170' stroke='rgba(0, 0, 0, 0.35)' strokeWidth='1.5' />
+        <text x='180' y='188' textAnchor='middle' className={styles.groundLabel}>
           {groundText}
         </text>
       </svg>
       <div className={styles.legendRow}>
-        {legendItems.map((item) => (
+        {legendItems.map(item => (
           <span key={item.name} className={styles.legendItem}>
             <span className={styles.legendSwatch} style={{ background: item.color }} />
             {item.name}
@@ -316,7 +415,7 @@ export function AtmosphereHeatingPanel({ onClose }: AtmosphereHeatingPanelProps)
       <div className={styles.keyPoints}>
         <div className={styles.sectionTitle}>要点回顾</div>
         <ul className={styles.pointList}>
-          {keyPoints.map((point) => (
+          {keyPoints.map(point => (
             <li key={point} className={styles.pointItem}>
               {point}
             </li>

@@ -1,4 +1,4 @@
-import type { PrivacySettings } from '../../../common/privacy';
+import type { PrivacySettings } from '../../../common/privacy'
 
 type PrivacyListener = (settings: PrivacySettings) => void
 
@@ -32,7 +32,9 @@ export function applyRendererPrivacySettings(next: PrivacySettings): void {
     aiTelemetryEnabled: next.aiTelemetryEnabled === true
   }
   const snapshot = getPrivacySettings()
-  for (const listener of listeners) {listener(snapshot)}
+  for (const listener of listeners) {
+    listener(snapshot)
+  }
 }
 
 export function onPrivacySettingsChange(listener: PrivacyListener): () => void {

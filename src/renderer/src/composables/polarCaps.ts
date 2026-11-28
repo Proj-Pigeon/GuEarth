@@ -9,18 +9,32 @@ export function createPolarCaps(terrain: Cesium.TerrainProvider): Cesium.Primiti
   if (rectangle.south > -Cesium.Math.PI_OVER_TWO) {
     caps.push(new Cesium.Rectangle(-Math.PI, -Cesium.Math.PI_OVER_TWO, Math.PI, rectangle.south))
   }
-  if (caps.length === 0) {return undefined}
+  if (caps.length === 0) {
+    return undefined
+  }
 
   return new Cesium.Primitive({
-    geometryInstances: caps.flatMap((cap) => [-Math.PI, -Cesium.Math.PI_OVER_TWO, 0, Cesium.Math.PI_OVER_TWO].map((west) => new Cesium.GeometryInstance({
-      geometry: new Cesium.RectangleGeometry({
-        rectangle: new Cesium.Rectangle(west, cap.south, west + Cesium.Math.PI_OVER_TWO, cap.north),
-        ellipsoid,
-        granularity: Cesium.Math.toRadians(0.25),
-        vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT
-      }),
-      attributes: { color: Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.WHITE) }
-    }))),
+    geometryInstances: caps.flatMap(cap =>
+      [-Math.PI, -Cesium.Math.PI_OVER_TWO, 0, Cesium.Math.PI_OVER_TWO].map(
+        west =>
+          new Cesium.GeometryInstance({
+            geometry: new Cesium.RectangleGeometry({
+              rectangle: new Cesium.Rectangle(
+                west,
+                cap.south,
+                west + Cesium.Math.PI_OVER_TWO,
+                cap.north
+              ),
+              ellipsoid,
+              granularity: Cesium.Math.toRadians(0.25),
+              vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT
+            }),
+            attributes: {
+              color: Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.WHITE)
+            }
+          })
+      )
+    ),
     appearance: new Cesium.PerInstanceColorAppearance({ flat: true, translucent: false }),
     asynchronous: false,
     allowPicking: false

@@ -1,5 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { SaveIcon, Trash2Icon } from 'lucide-react'
 import {
   Alert,
   Button,
@@ -10,7 +8,11 @@ import {
   Tag,
   useToast
 } from '@renderer/components/ui'
+import { SaveIcon, Trash2Icon } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+
 import type { AiSearchProviderConfig, ProviderCredentialStatus } from '../../../preload'
+
 import styles from './SearchProviderSettings.module.css'
 
 export interface SearchProviderSettingsProps {
@@ -25,31 +27,45 @@ export function SearchProviderSettings({
   onActiveProviderIdChange
 }: SearchProviderSettingsProps) {
   const toast = useToast()
-  const selected = providers.find((provider) => provider.id === activeProviderId) ?? providers[0]
+  const selected = providers.find(provider => provider.id === activeProviderId) ?? providers[0]
   const selectedId = selected?.id
   const selectedIdRef = useRef(selectedId)
   selectedIdRef.current = selectedId
 
-  const [credential, setCredential] = useState<ProviderCredentialStatus>({ configured: false, updatedAt: null })
+  const [credential, setCredential] = useState<ProviderCredentialStatus>({
+    configured: false,
+    updatedAt: null
+  })
   const [apiKeyDraft, setApiKeyDraft] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [clearing, setClearing] = useState(false)
   const [error, setError] = useState('')
 
-  const refreshCredential = useCallback(async (providerId = selectedIdRef.current): Promise<void> => {
-    if (!providerId) {return}
-    setLoading(true)
-    setError('')
-    try {
-      const status = await window.guEarth.settings.hasProviderApiKey(`ai-search-${providerId}`)
-      if (selectedIdRef.current === providerId) {setCredential(status)}
-    } catch {
-      if (selectedIdRef.current === providerId) {setError('无法读取搜索密钥状态，请重试')}
-    } finally {
-      if (selectedIdRef.current === providerId) {setLoading(false)}
-    }
-  }, [])
+  const refreshCredential = useCallback(
+    async (providerId = selectedIdRef.current): Promise<void> => {
+      if (!providerId) {
+        return
+      }
+      setLoading(true)
+      setError('')
+      try {
+        const status = await window.guEarth.settings.hasProviderApiKey(`ai-search-${providerId}`)
+        if (selectedIdRef.current === providerId) {
+          setCredential(status)
+        }
+      } catch {
+        if (selectedIdRef.current === providerId) {
+          setError('无法读取搜索密钥状态，请重试')
+        }
+      } finally {
+        if (selectedIdRef.current === providerId) {
+          setLoading(false)
+        }
+      }
+    },
+    []
+  )
 
   useEffect(() => {
     setApiKeyDraft('')
@@ -65,7 +81,9 @@ export function SearchProviderSettings({
   async function saveKey(): Promise<void> {
     const providerId = selectedIdRef.current
     const key = apiKeyDraft.trim()
-    if (!providerId || !key || saving || clearing) {return}
+    if (!providerId || !key || saving || clearing) {
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -84,7 +102,9 @@ export function SearchProviderSettings({
 
   async function clearKey(): Promise<void> {
     const providerId = selectedIdRef.current
-    if (!providerId || saving || clearing) {return}
+    if (!providerId || saving || clearing) {
+      return
+    }
     setClearing(true)
     setError('')
     try {
@@ -106,12 +126,14 @@ export function SearchProviderSettings({
       {providers.length > 1 && (
         <Select
           value={activeProviderId}
-          options={providers.map((provider) => ({ value: provider.id, label: provider.name }))}
+          options={providers.map(provider => ({ value: provider.id, label: provider.name }))}
           disabled={loading || saving || clearing}
-          aria-label="默认搜索供应商"
+          aria-label='默认搜索供应商'
           className={styles.searchProviderSelect}
-          onChange={(value) => {
-            if (value) {onActiveProviderIdChange(value)}
+          onChange={value => {
+            if (value) {
+              onActiveProviderIdChange(value)
+            }
           }}
         />
       )}
@@ -134,11 +156,11 @@ export function SearchProviderSettings({
                 <PasswordInput
                   id={`search-key-${selected.id}`}
                   value={apiKeyDraft}
-                  onChange={(event) => setApiKeyDraft(event.target.value)}
+                  onChange={event => setApiKeyDraft(event.target.value)}
                   maxLength={4096}
                   disabled={saving || clearing}
-                  autoComplete="off"
-                  placeholder="输入 AppBuilder API Key"
+                  autoComplete='off'
+                  placeholder='输入 AppBuilder API Key'
                   onPressEnter={() => void saveKey()}
                 />
               </div>
@@ -146,7 +168,7 @@ export function SearchProviderSettings({
                 <Button
                   loading={saving}
                   disabled={!apiKeyDraft.trim() || clearing || loading}
-                  icon={<SaveIcon className="size-3.5" />}
+                  icon={<SaveIcon className='size-3.5' />}
                   onClick={() => void saveKey()}
                 >
                   保存密钥
@@ -154,7 +176,7 @@ export function SearchProviderSettings({
                 <Button
                   loading={clearing}
                   disabled={!credential.configured || saving || loading}
-                  icon={<Trash2Icon className="size-3.5" />}
+                  icon={<Trash2Icon className='size-3.5' />}
                   onClick={() => void clearKey()}
                 >
                   清除密钥
@@ -166,17 +188,21 @@ export function SearchProviderSettings({
       )}
       {error && (
         <Alert
-          type="error"
+          type='error'
           showIcon
           title={error}
           action={
-            <Button size="sm" disabled={saving || clearing} onClick={() => void refreshCredential()}>
+            <Button
+              size='sm'
+              disabled={saving || clearing}
+              onClick={() => void refreshCredential()}
+            >
               刷新状态
             </Button>
           }
         />
       )}
-      {!selected && <Empty description="暂无可用搜索服务" />}
+      {!selected && <Empty description='暂无可用搜索服务' />}
     </section>
   )
 }

@@ -1,6 +1,6 @@
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
-import { Loader2Icon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { Loader2Icon } from 'lucide-react'
 
 export interface SwitchProps {
   checked: boolean
@@ -26,11 +26,11 @@ export function Switch({
 
   return (
     <BaseSwitch.Root
-      data-slot="switch"
+      data-slot='switch'
       checked={checked}
       disabled={isDisabled}
       aria-label={ariaLabel}
-      onCheckedChange={(next) => onChange?.(next)}
+      onCheckedChange={next => onChange?.(next)}
       className={cn(
         'relative inline-flex shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-border-strong p-0.5 transition-colors duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring/30 data-[checked]:bg-primary data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45 motion-reduce:transition-none',
         small ? 'h-[18px] w-8' : 'h-[22px] w-10',
@@ -45,7 +45,9 @@ export function Switch({
             : 'size-[18px] data-[checked]:translate-x-[18px]'
         )}
       >
-        {loading && <Loader2Icon className="size-2.5 animate-spin text-ink-secondary" aria-hidden="true" />}
+        {loading && (
+          <Loader2Icon className='text-ink-secondary size-2.5 animate-spin' aria-hidden='true' />
+        )}
       </BaseSwitch.Thumb>
     </BaseSwitch.Root>
   )

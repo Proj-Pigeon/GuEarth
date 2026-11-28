@@ -1,10 +1,10 @@
-import { forwardRef } from 'react';
-import type { ReactNode } from 'react';
 import { Button as BaseButton } from '@base-ui/react/button'
-import { cva } from 'class-variance-authority';
-import type { VariantProps } from 'class-variance-authority';
-import { Loader2Icon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { cva } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
+import { Loader2Icon } from 'lucide-react'
+import { forwardRef } from 'react'
+import type { ReactNode } from 'react'
 
 const buttonVariants = cva(
   'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 font-normal whitespace-nowrap select-none transition-[background-color,border-color,color,opacity] duration-100 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed data-[disabled]:cursor-not-allowed motion-reduce:transition-none [&>svg]:block [&>svg]:shrink-0',
@@ -19,8 +19,7 @@ const buttonVariants = cva(
           'border border-transparent bg-transparent text-ink-secondary hover:not-data-[disabled]:bg-muted hover:not-data-[disabled]:text-ink active:not-data-[disabled]:bg-active-fill data-[disabled]:text-ink-disabled',
         dashed:
           'border border-dashed border-border-strong bg-transparent text-ink-secondary hover:not-data-[disabled]:border-ink/40 hover:not-data-[disabled]:bg-muted hover:not-data-[disabled]:text-ink data-[disabled]:text-ink-disabled',
-        link:
-          'border border-transparent bg-transparent px-1 text-ink underline-offset-4 hover:not-data-[disabled]:underline data-[disabled]:text-ink-disabled'
+        link: 'border border-transparent bg-transparent px-1 text-ink underline-offset-4 hover:not-data-[disabled]:underline data-[disabled]:text-ink-disabled'
       },
       size: {
         sm: 'h-7 rounded-md px-2.5 text-[12px] leading-5',
@@ -86,55 +85,59 @@ const buttonVariants = cva(
 )
 
 export interface ButtonProps
-  extends Omit<BaseButton.Props, 'className'>,
-    VariantProps<typeof buttonVariants> {
+  extends Omit<BaseButton.Props, 'className'>, VariantProps<typeof buttonVariants> {
   className?: string
   loading?: boolean
   icon?: ReactNode
 }
 
-export const Button = forwardRef<HTMLElement, ButtonProps>((
-  {
-    variant,
-    size,
-    shape,
-    danger,
-    block,
-    loading = false,
-    disabled,
-    icon,
-    className,
-    children,
-    type = 'button',
-    ...props
-  },
-  ref
-) => {
-  const isDisabled = Boolean(disabled || loading)
-  const leadingIcon = loading ? (
-    <Loader2Icon className="size-3.5 shrink-0 animate-spin" aria-hidden="true" />
-  ) : (
-    icon
-  )
-  const iconOnly = Boolean(leadingIcon) && (children === undefined || children === null || children === false)
-  return (
-    <BaseButton
-      ref={ref}
-      type={type}
-      data-slot="button"
-      disabled={isDisabled}
-      className={cn(
-        buttonVariants({ variant, size, shape, danger, block }),
-        iconOnly && 'gap-0 leading-none',
-        iconOnly && shape !== 'circle' && (size === 'sm' ? 'size-7 p-0' : size === 'lg' ? 'size-10 p-0' : 'size-8 p-0'),
-        className
-      )}
-      {...props}
-    >
-      {leadingIcon}
-      {children}
-    </BaseButton>
-  )
-})
+export const Button = forwardRef<HTMLElement, ButtonProps>(
+  (
+    {
+      variant,
+      size,
+      shape,
+      danger,
+      block,
+      loading = false,
+      disabled,
+      icon,
+      className,
+      children,
+      type = 'button',
+      ...props
+    },
+    ref
+  ) => {
+    const isDisabled = Boolean(disabled || loading)
+    const leadingIcon = loading ? (
+      <Loader2Icon className='size-3.5 shrink-0 animate-spin' aria-hidden='true' />
+    ) : (
+      icon
+    )
+    const iconOnly =
+      Boolean(leadingIcon) && (children === undefined || children === null || children === false)
+    return (
+      <BaseButton
+        ref={ref}
+        type={type}
+        data-slot='button'
+        disabled={isDisabled}
+        className={cn(
+          buttonVariants({ variant, size, shape, danger, block }),
+          iconOnly && 'gap-0 leading-none',
+          iconOnly &&
+            shape !== 'circle' &&
+            (size === 'sm' ? 'size-7 p-0' : size === 'lg' ? 'size-10 p-0' : 'size-8 p-0'),
+          className
+        )}
+        {...props}
+      >
+        {leadingIcon}
+        {children}
+      </BaseButton>
+    )
+  }
+)
 
 export default Button

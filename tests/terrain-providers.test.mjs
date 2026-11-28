@@ -1,10 +1,18 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+
 import { test } from 'vite-plus/test'
+
 import { TERRAIN_PROVIDER_ID_SET, TERRAIN_PROVIDER_IDS } from '../src/common/terrainProviders.ts'
 
-const registrySource = await readFile(new URL('../src/renderer/src/terrain/terrainRegistry.ts', import.meta.url), 'utf8')
-const globeSource = await readFile(new URL('../src/renderer/src/stores/globe.ts', import.meta.url), 'utf8')
+const registrySource = await readFile(
+  new URL('../src/renderer/src/terrain/terrainRegistry.ts', import.meta.url),
+  'utf8'
+)
+const globeSource = await readFile(
+  new URL('../src/renderer/src/stores/globe.ts', import.meta.url),
+  'utf8'
+)
 const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
 
 test('every shared terrain provider id has a registry factory and a catalog entry', () => {
@@ -14,13 +22,22 @@ test('every shared terrain provider id has a registry factory and a catalog entr
     assert.ok(registryKey, `registry factory missing for ${id}`)
     assert.ok(globeSource.includes(`id: '${id}'`), `terrain catalog entry missing for ${id}`)
   }
-  assert.match(registrySource, /Record<TerrainProviderId, \(\) => Promise<Cesium\.TerrainProvider>>/)
+  assert.match(
+    registrySource,
+    /Record<TerrainProviderId, \(\) => Promise<Cesium\.TerrainProvider>>/
+  )
   assert.match(globeSource, /id: TerrainProviderId/)
 })
 
 test('registry lookups fall back through the shared factory instead of ad hoc indexing', () => {
-  const viewerSource = readFile(new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url), 'utf8')
-  const offscreenSource = readFile(new URL('../src/renderer/src/offscreen.tsx', import.meta.url), 'utf8')
+  const viewerSource = readFile(
+    new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url),
+    'utf8'
+  )
+  const offscreenSource = readFile(
+    new URL('../src/renderer/src/offscreen.tsx', import.meta.url),
+    'utf8'
+  )
   return Promise.all([viewerSource, offscreenSource]).then(([viewer, offscreen]) => {
     assert.doesNotMatch(viewer, /terrainRegistry\[id\] \?\? terrainRegistry\.ellipsoid/)
     assert.doesNotMatch(offscreen, /terrainRegistry\[terrain\.providerId\] \?\?/)

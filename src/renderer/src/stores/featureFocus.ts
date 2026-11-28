@@ -25,7 +25,7 @@ export function createInitialFeatureFocusState(): FeatureFocusState {
 }
 
 export const useFeatureFocusStore = create<FeatureFocusStore>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector(set => ({
     ...createInitialFeatureFocusState(),
     setFocus(feature: FocusedFeature): void {
       set({ focused: feature })

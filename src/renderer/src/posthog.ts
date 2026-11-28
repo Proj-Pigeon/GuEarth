@@ -1,6 +1,7 @@
 import posthog from 'posthog-js/no-external'
-import { filterPosthogEvent } from '../../common/privacy';
-import type { PrivacySettings } from '../../common/privacy';
+
+import { filterPosthogEvent } from '../../common/privacy'
+import type { PrivacySettings } from '../../common/privacy'
 
 const posthogToken = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN
 const posthogHost = import.meta.env.VITE_POSTHOG_HOST
@@ -18,13 +19,19 @@ function anyPosthogEnabled(privacy: PrivacySettings): boolean {
 }
 
 function ensureInitialized(): boolean {
-  if (initialized) {return true}
-  if (!anyPosthogEnabled(currentPrivacy)) {return false}
+  if (initialized) {
+    return true
+  }
+  if (!anyPosthogEnabled(currentPrivacy)) {
+    return false
+  }
   if (!posthogToken || !posthogHost) {
     if (!missingWarned && import.meta.env.DEV) {
       missingWarned = true
       const missingVariable = posthogToken ? 'VITE_POSTHOG_HOST' : 'VITE_POSTHOG_PROJECT_TOKEN'
-      console.warn(`${missingVariable} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingVariable} is configured`)
+      console.warn(
+        `${missingVariable} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingVariable} is configured`
+      )
     }
     return false
   }
@@ -40,7 +47,7 @@ function ensureInitialized(): boolean {
     capture_pageview: false,
     capture_pageleave: false,
     capture_exceptions: false,
-    before_send: (event) => filterPosthogEvent(event, currentPrivacy)
+    before_send: event => filterPosthogEvent(event, currentPrivacy)
   })
   initialized = true
   posthog.stopExceptionAutocapture()
@@ -54,10 +61,14 @@ function ensureInitialized(): boolean {
 export function syncPosthogPrivacy(next: PrivacySettings): void {
   const previousTelemetry = currentPrivacy.telemetryEnabled
   currentPrivacy = { ...next }
-  if (!initialized) {return}
+  if (!initialized) {
+    return
+  }
   if (!anyPosthogEnabled(currentPrivacy)) {
     posthog.stopExceptionAutocapture()
-    if (posthog._isIdentified()) {posthog.reset()}
+    if (posthog._isIdentified()) {
+      posthog.reset()
+    }
     posthog.opt_out_capturing()
     return
   }
@@ -69,27 +80,40 @@ export function syncPosthogPrivacy(next: PrivacySettings): void {
 }
 
 export function captureTelemetryEvent(event: string, properties?: Record<string, unknown>): void {
-  if (!currentPrivacy.telemetryEnabled || !ensureInitialized()) {return}
+  if (!currentPrivacy.telemetryEnabled || !ensureInitialized()) {
+    return
+  }
   posthog.capture(event, properties)
 }
 
 export function captureAiUsageEvent(event: string, properties?: Record<string, unknown>): void {
-  if (!currentPrivacy.aiTelemetryEnabled || !ensureInitialized()) {return}
+  if (!currentPrivacy.aiTelemetryEnabled || !ensureInitialized()) {
+    return
+  }
   posthog.capture(event, properties)
 }
 
 export function capturePosthogException(error: unknown): void {
-  if (!currentPrivacy.errorReportingEnabled || !ensureInitialized()) {return}
+  if (!currentPrivacy.errorReportingEnabled || !ensureInitialized()) {
+    return
+  }
   posthog.captureException(error)
 }
 
-export function identifyTelemetryUser(distinctId: string, properties?: Record<string, string>): void {
-  if (!currentPrivacy.telemetryEnabled || !ensureInitialized()) {return}
+export function identifyTelemetryUser(
+  distinctId: string,
+  properties?: Record<string, string>
+): void {
+  if (!currentPrivacy.telemetryEnabled || !ensureInitialized()) {
+    return
+  }
   posthog.identify(distinctId, properties)
 }
 
 export function resetTelemetryIdentity(): void {
-  if (!initialized) {return}
+  if (!initialized) {
+    return
+  }
   posthog.reset()
   if (anyPosthogEnabled(currentPrivacy)) {
     posthog.opt_in_capturing({ captureEventName: false })

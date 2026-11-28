@@ -1,20 +1,22 @@
-import * as Sentry from '@sentry/electron/renderer'
-import { useEffect, useLayoutEffect } from 'react'
-import { createRoot } from 'react-dom/client'
-import dayjs from 'dayjs'
-import 'dayjs/locale/zh-cn'
 import { CSPProvider } from '@base-ui/react/csp-provider'
+import * as Sentry from '@sentry/electron/renderer'
+import dayjs from 'dayjs'
+import { useEffect, useLayoutEffect } from 'react'
+import 'dayjs/locale/zh-cn'
+import { createRoot } from 'react-dom/client'
+
 import App from './App'
+// Global styles load after App, so they override Cesium's widget styles.
 import './assets/main.css'
 import './assets/touch.css'
-import { attachConsoleLogTee, logger } from '../../common/logger'
 import { surfaceFailureAlreadyShown } from '../../common/globeSurface'
+import { attachConsoleLogTee, logger } from '../../common/logger'
 import { requestErrorRejectionLabel } from '../../common/resourceFailure'
+import { ConfirmDialogProvider, ToastProvider, TooltipProvider } from './components/ui'
 import { describeError, installGlobalErrorListeners, notifyCrashMessage } from './lib/crashReporter'
 import { isErrorReportingEnabled, onPrivacySettingsChange } from './lib/privacyRuntime'
 import { capturePosthogException, syncPosthogPrivacy } from './posthog'
 import { useGlobeStore } from './stores/globe'
-import { ConfirmDialogProvider, ToastProvider, TooltipProvider } from './components/ui'
 
 attachConsoleLogTee('renderer')
 
@@ -23,23 +25,31 @@ Sentry.init({
   enabled: false,
   sendClientReports: false,
   ignoreErrors: [requestErrorRejectionLabel()],
-  integrations: (defaults) =>
-    defaults.filter((integration) => integration.name !== 'Breadcrumbs' && integration.name !== 'Console'),
+  integrations: defaults =>
+    defaults.filter(
+      integration => integration.name !== 'Breadcrumbs' && integration.name !== 'Console'
+    ),
   beforeSend(event) {
     const level = event.level ?? (event.exception ? 'error' : 'info')
     if ((level === 'error' || level === 'fatal') && !surfaceFailureAlreadyShown(event.extra)) {
       const exception = event.exception?.values?.at(-1)
-      notifyCrashMessage([exception?.type, exception?.value ?? event.message].filter(Boolean).join(': '))
+      notifyCrashMessage(
+        [exception?.type, exception?.value ?? event.message].filter(Boolean).join(': ')
+      )
     }
-    if (!isErrorReportingEnabled()) {return null}
+    if (!isErrorReportingEnabled()) {
+      return null
+    }
     event.extra = { ...event.extra, rendererLogs: logger.dump(80) }
     return event
   }
 })
 
-onPrivacySettingsChange((next) => {
+onPrivacySettingsChange(next => {
   const client = Sentry.getClient()
-  if (client) {client.getOptions().enabled = next.errorReportingEnabled}
+  if (client) {
+    client.getOptions().enabled = next.errorReportingEnabled
+  }
   syncPosthogPrivacy(next)
 })
 
@@ -67,8 +77,8 @@ if (window.guEarth?.platform) {
 applyDocumentTheme(useGlobeStore.getState().resolvedTheme)
 
 function Root() {
-  const touchInteractionActive = useGlobeStore((state) => state.touchInteractionActive)
-  const resolvedTheme = useGlobeStore((state) => state.resolvedTheme)
+  const touchInteractionActive = useGlobeStore(state => state.touchInteractionActive)
+  const resolvedTheme = useGlobeStore(state => state.resolvedTheme)
 
   useEffect(() => {
     document.documentElement.classList.toggle('touch-ui', touchInteractionActive)

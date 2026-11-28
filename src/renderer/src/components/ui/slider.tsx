@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
 import { Slider as BaseSlider } from '@base-ui/react/slider'
 import { cn } from '@renderer/lib/utils'
+import { useMemo } from 'react'
 
 export interface SliderProps {
   value: number
@@ -26,7 +26,9 @@ export function Slider({
   onChange
 }: SliderProps) {
   const markEntries = useMemo(() => {
-    if (!marks) {return []}
+    if (!marks) {
+      return []
+    }
     const span = max - min || 1
     return Object.entries(marks).map(([key, label]) => {
       const numeric = Number(key)
@@ -42,24 +44,26 @@ export function Slider({
       max={max}
       step={step}
       disabled={disabled}
-      onValueChange={(next) => {
+      onValueChange={next => {
         const numeric = Array.isArray(next) ? next[0] : next
-        if (typeof numeric === 'number') {onChange?.(numeric)}
+        if (typeof numeric === 'number') {
+          onChange?.(numeric)
+        }
       }}
       className={cn('w-full select-none', markEntries.length > 0 && 'pb-4', className)}
     >
-      <BaseSlider.Control className="flex h-5 w-full cursor-pointer items-center touch-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45">
-        <BaseSlider.Track className="relative h-1 w-full rounded-full bg-border-strong">
-          <BaseSlider.Indicator className="h-full rounded-full bg-primary" />
+      <BaseSlider.Control className='flex h-5 w-full cursor-pointer touch-none items-center data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45'>
+        <BaseSlider.Track className='bg-border-strong relative h-1 w-full rounded-full'>
+          <BaseSlider.Indicator className='bg-primary h-full rounded-full' />
           <BaseSlider.Thumb
             aria-label={ariaLabel}
-            className="size-3.5 rounded-full border-2 border-primary bg-surface shadow-xs outline-none transition-transform duration-100 hover:scale-110 focus-visible:ring-2 focus-visible:ring-ring/35"
+            className='border-primary bg-surface focus-visible:ring-ring/35 size-3.5 rounded-full border-2 shadow-xs transition-transform duration-100 outline-none hover:scale-110 focus-visible:ring-2'
           />
         </BaseSlider.Track>
       </BaseSlider.Control>
       {markEntries.length > 0 && (
-        <div className="relative mt-0.5 h-3.5 w-full">
-          {markEntries.map((mark) => (
+        <div className='relative mt-0.5 h-3.5 w-full'>
+          {markEntries.map(mark => (
             <span
               key={mark.key}
               style={{ left: `${mark.percent}%` }}

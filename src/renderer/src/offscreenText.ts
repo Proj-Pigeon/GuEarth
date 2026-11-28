@@ -15,8 +15,12 @@ export function wrapText(context: TextMeasureContext, text: string, maxWidth: nu
     if (line && context.measureText(candidate).width > maxWidth) {
       lines.push(line)
       line = character
-    } else {line = candidate}
+    } else {
+      line = candidate
+    }
   }
-  if (line) {lines.push(line)}
+  if (line) {
+    lines.push(line)
+  }
   return lines.slice(0, 3)
 }

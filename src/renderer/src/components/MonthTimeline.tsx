@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
-import { PauseIcon, PlayIcon } from 'lucide-react'
-import type * as Cesium from 'cesium'
 import { Button, Slider } from '@renderer/components/ui'
 import { useVisibleAnimation } from '@renderer/composables/useVisibleAnimation'
 import { useClimateStore } from '@renderer/stores/climate'
 import { useFlightStopsStore } from '@renderer/stores/flightStops'
+import type * as Cesium from 'cesium'
+import { PauseIcon, PlayIcon } from 'lucide-react'
+import { useEffect } from 'react'
+
 import styles from './MonthTimeline.module.css'
 
 export interface MonthTimelineProps {
@@ -14,26 +15,34 @@ export interface MonthTimelineProps {
 const marks = { 1: '1月', 3: '3月', 5: '5月', 7: '7月', 9: '9月', 11: '11月', 12: '12月' }
 
 export function MonthTimeline({ viewer }: MonthTimelineProps) {
-  const month = useClimateStore((state) => state.month)
-  const isPlaying = useClimateStore((state) => state.isPlaying)
-  const hasSeasonalOverlay = useClimateStore((state) => state.hasSeasonalOverlay)
-  const summerStrength = useClimateStore((state) => state.summerStrength)
-  const winterStrength = useClimateStore((state) => state.winterStrength)
-  const advance = useClimateStore((state) => state.advance)
-  const togglePlaying = useClimateStore((state) => state.togglePlaying)
-  const setMonth = useClimateStore((state) => state.setMonth)
-  const flightStopsVisible = useFlightStopsStore((state) => state.visible)
+  const month = useClimateStore(state => state.month)
+  const isPlaying = useClimateStore(state => state.isPlaying)
+  const hasSeasonalOverlay = useClimateStore(state => state.hasSeasonalOverlay)
+  const summerStrength = useClimateStore(state => state.summerStrength)
+  const winterStrength = useClimateStore(state => state.winterStrength)
+  const advance = useClimateStore(state => state.advance)
+  const togglePlaying = useClimateStore(state => state.togglePlaying)
+  const setMonth = useClimateStore(state => state.setMonth)
+  const flightStopsVisible = useFlightStopsStore(state => state.visible)
 
-  useVisibleAnimation(isPlaying && hasSeasonalOverlay, (dt) => {
-    if (dt > 0) {advance(dt)}
-    if (viewer && !viewer.isDestroyed()) {viewer.scene.requestRender()}
+  useVisibleAnimation(isPlaying && hasSeasonalOverlay, dt => {
+    if (dt > 0) {
+      advance(dt)
+    }
+    if (viewer && !viewer.isDestroyed()) {
+      viewer.scene.requestRender()
+    }
   })
 
   useEffect(() => {
-    if (viewer && !viewer.isDestroyed()) {viewer.scene.requestRender()}
+    if (viewer && !viewer.isDestroyed()) {
+      viewer.scene.requestRender()
+    }
   }, [month, viewer])
 
-  if (!hasSeasonalOverlay) {return null}
+  if (!hasSeasonalOverlay) {
+    return null
+  }
 
   const displayMonth = Math.min(12, Math.floor(month))
   const seasonText =
@@ -52,14 +61,14 @@ export function MonthTimeline({ viewer }: MonthTimelineProps) {
           ? `${styles.monthTimeline} ${styles.monthTimelineStacked}`
           : styles.monthTimeline
       }
-      role="group"
-      aria-label="月份时间轴"
+      role='group'
+      aria-label='月份时间轴'
     >
       <Button
         variant={isPlaying ? 'primary' : 'default'}
-        shape="circle"
+        shape='circle'
         aria-label={isPlaying ? '暂停月份播放' : '播放月份动画'}
-        icon={isPlaying ? <PauseIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
+        icon={isPlaying ? <PauseIcon className='size-3.5' /> : <PlayIcon className='size-3.5' />}
         onClick={togglePlaying}
       />
       <div className={styles.monthReadout}>
@@ -73,7 +82,7 @@ export function MonthTimeline({ viewer }: MonthTimelineProps) {
         step={1}
         marks={marks}
         className={styles.monthSlider}
-        aria-label="月份选择"
+        aria-label='月份选择'
         onChange={(value: number) => setMonth(value)}
       />
     </div>

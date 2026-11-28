@@ -19,21 +19,28 @@ export function normalizeLookupText(value: string): string {
 export function extractQueryTerms(query: string): string[] {
   const normalized = normalizeLookupText(query)
   const terms = new Set<string>()
-  if (normalized) {terms.add(normalized)}
-  const words = query.toLocaleLowerCase('zh-CN').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+  if (normalized) {
+    terms.add(normalized)
+  }
+  const words = query
+    .toLocaleLowerCase('zh-CN')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
   for (const word of words) {
     const clean = normalizeLookupText(word)
-    if (clean) {terms.add(clean)}
+    if (clean) {
+      terms.add(clean)
+    }
   }
   const cjk = normalized.replaceAll(/[^㐀-鿿]/g, '')
   for (let index = 0; index < cjk.length - 1; index += 1) {
     terms.add(cjk.slice(index, index + 2))
   }
-  return [...terms].filter((term) => term.length > 0)
+  return [...terms].filter(term => term.length > 0)
 }
 
 export function buildKnowledgeSearchText(entry: KnowledgeEntry): string {
-  const places = (entry.typicalPlaces ?? []).map((place) => `${place.name} ${place.note}`).join(' ')
+  const places = (entry.typicalPlaces ?? []).map(place => `${place.name} ${place.note}`).join(' ')
   return [
     entry.name,
     ...entry.aliases,
@@ -53,44 +60,64 @@ export function buildKnowledgeSearchText(entry: KnowledgeEntry): string {
 export function buildConversationSearchText(conversation: StoredAiConversation): string {
   const summary = conversation.compression?.summary
   const summaryBudget = summary ? Math.min(summary.length, 4000) : 0
-  let messageBudget = MAX_CONVERSATION_SEARCH_CHARS
-    - conversation.title.length
-    - (summaryBudget > 0 ? summaryBudget + 1 : 0)
-  if (messageBudget <= 0) {messageBudget = 0}
+  let messageBudget =
+    MAX_CONVERSATION_SEARCH_CHARS -
+    conversation.title.length -
+    (summaryBudget > 0 ? summaryBudget + 1 : 0)
+  if (messageBudget <= 0) {
+    messageBudget = 0
+  }
   const messageChunks: string[] = []
   for (let i = conversation.messages.length - 1; i >= 0 && messageBudget > 0; i -= 1) {
     const message = conversation.messages[i]
     let text = message.content.trim()
     if (!text && message.parts.length > 0) {
       text = message.parts
-        .filter((part): part is { kind: 'text'; text: string } => part.kind === 'text' && Boolean(part.text.trim()))
-        .map((part) => part.text.trim())
+        .filter(
+          (part): part is { kind: 'text'; text: string } =>
+            part.kind === 'text' && Boolean(part.text.trim())
+        )
+        .map(part => part.text.trim())
         .join(' ')
     }
-    if (!text) {continue}
+    if (!text) {
+      continue
+    }
     const chunk = text.length > messageBudget ? text.slice(0, messageBudget) : text
     messageChunks.unshift(chunk)
     messageBudget -= chunk.length + 1
   }
   const chunks: string[] = [conversation.title]
-  if (summary && summaryBudget > 0) {chunks.push(summary.slice(0, summaryBudget))}
+  if (summary && summaryBudget > 0) {
+    chunks.push(summary.slice(0, summaryBudget))
+  }
   chunks.push(...messageChunks)
   return chunks.join('\n').slice(0, MAX_CONVERSATION_SEARCH_CHARS)
 }
 
-export function buildConversationSnippet(conversation: StoredAiConversation, query: string): string {
+export function buildConversationSnippet(
+  conversation: StoredAiConversation,
+  query: string
+): string {
   const candidates: string[] = [conversation.title]
-  if (conversation.compression?.summary) {candidates.push(conversation.compression.summary)}
+  if (conversation.compression?.summary) {
+    candidates.push(conversation.compression.summary)
+  }
   for (let i = conversation.messages.length - 1; i >= 0; i -= 1) {
     const msg = conversation.messages[i]
     if (msg.content.trim()) {
       candidates.push(msg.content.trim())
     } else {
       const partText = msg.parts
-        .filter((part): part is { kind: 'text'; text: string } => part.kind === 'text' && Boolean(part.text.trim()))
-        .map((part) => part.text.trim())
+        .filter(
+          (part): part is { kind: 'text'; text: string } =>
+            part.kind === 'text' && Boolean(part.text.trim())
+        )
+        .map(part => part.text.trim())
         .join(' ')
-      if (partText) {candidates.push(partText)}
+      if (partText) {
+        candidates.push(partText)
+      }
     }
   }
   const terms = extractQueryTerms(query).sort((left, right) => right.length - left.length)
@@ -119,16 +146,20 @@ function pairKey(a: string, b: string): string {
 function candidateLabels(entry: KnowledgeEntry): string[] {
   const labels = new Set<string>()
   const name = normalizeLookupText(entry.name)
-  if (name.length >= 2) {labels.add(name)}
+  if (name.length >= 2) {
+    labels.add(name)
+  }
   for (const alias of entry.aliases) {
     const clean = normalizeLookupText(alias)
-    if (clean.length >= 2) {labels.add(clean)}
+    if (clean.length >= 2) {
+      labels.add(clean)
+    }
   }
   return [...labels]
 }
 
 export function extractKnowledgeGraphEdges(entries: KnowledgeEntry[]): KnowledgeGraphEdge[] {
-  const active = entries.filter((entry) => entry.status !== 'deprecated')
+  const active = entries.filter(entry => entry.status !== 'deprecated')
   const labelsById = new Map<string, string[]>()
   for (const entry of active) {
     labelsById.set(entry.id, candidateLabels(entry))
@@ -138,16 +169,24 @@ export function extractKnowledgeGraphEdges(entries: KnowledgeEntry[]): Knowledge
 
   for (const source of active) {
     const confusions = source.commonConfusions ?? []
-    if (confusions.length === 0) {continue}
+    if (confusions.length === 0) {
+      continue
+    }
     for (const sentence of confusions) {
       const normSentence = normalizeLookupText(sentence)
-      if (!normSentence) {continue}
+      if (!normSentence) {
+        continue
+      }
       for (const target of active) {
-        if (target.id === source.id) {continue}
+        if (target.id === source.id) {
+          continue
+        }
         const key = pairKey(source.id, target.id)
-        if (seenPairs.has(key)) {continue}
+        if (seenPairs.has(key)) {
+          continue
+        }
         const targetLabels = labelsById.get(target.id) ?? []
-        if (targetLabels.some((label) => normSentence.includes(label))) {
+        if (targetLabels.some(label => normSentence.includes(label))) {
           seenPairs.add(key)
           edges.push({
             fromId: source.id,
@@ -164,15 +203,25 @@ export function extractKnowledgeGraphEdges(entries: KnowledgeEntry[]): Knowledge
     const bodyText = normalizeLookupText(
       [source.definition, ...(source.formation ?? []), ...(source.features ?? [])].join(' ')
     )
-    if (!bodyText) {continue}
+    if (!bodyText) {
+      continue
+    }
     let added = 0
     for (const target of active) {
-      if (added >= MAX_RELATED_PER_ENTRY) {break}
-      if (target.id === source.id) {continue}
+      if (added >= MAX_RELATED_PER_ENTRY) {
+        break
+      }
+      if (target.id === source.id) {
+        continue
+      }
       const key = pairKey(source.id, target.id)
-      if (seenPairs.has(key)) {continue}
+      if (seenPairs.has(key)) {
+        continue
+      }
       const targetName = normalizeLookupText(target.name)
-      if (targetName.length < 2) {continue}
+      if (targetName.length < 2) {
+        continue
+      }
       if (bodyText.includes(targetName)) {
         seenPairs.add(key)
         edges.push({

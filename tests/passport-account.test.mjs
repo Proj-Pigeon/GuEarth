@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { randomBytes } from 'node:crypto'
+
 import { test } from 'vite-plus/test'
+
 import {
   accountPhaseLabel,
   buildDeviceName,
@@ -43,11 +45,11 @@ test('encodeBase64Url produces the 43-character unpadded installation identifier
 })
 
 test('encodeBase64Url uses the URL-safe alphabet and never emits padding', () => {
-  const encoded = encodeBase64Url(new Uint8Array([0xFB, 0xFF, 0xFE, 0x00, 0x10]))
+  const encoded = encodeBase64Url(new Uint8Array([0xfb, 0xff, 0xfe, 0x00, 0x10]))
   assert.ok(!encoded.includes('='))
   assert.ok(!encoded.includes('+'))
   assert.ok(!encoded.includes('/'))
-  assert.equal(encoded, encodeBase64Url(new Uint8Array([0xFB, 0xFF, 0xFE, 0x00, 0x10])))
+  assert.equal(encoded, encodeBase64Url(new Uint8Array([0xfb, 0xff, 0xfe, 0x00, 0x10])))
 })
 
 test('isValidInstallationId rejects every shape Passport would answer with invalid_request', () => {
@@ -62,7 +64,9 @@ test('isValidInstallationId rejects every shape Passport would answer with inval
     undefined,
     42
   ]
-  for (const value of rejected) {assert.equal(isValidInstallationId(value), false, String(value))}
+  for (const value of rejected) {
+    assert.equal(isValidInstallationId(value), false, String(value))
+  }
 })
 
 test('passportPlatform maps Electron process.platform values onto the Passport enum', () => {
@@ -154,7 +158,10 @@ test('parseDiscovery rejects mismatched issuers, foreign origins and missing end
     revocation_endpoint: `${ISSUER}/oauth2/revoke`
   }
   assert.equal(parseDiscovery(base, 'https://evil.example'), null)
-  assert.equal(parseDiscovery({ ...base, token_endpoint: 'https://evil.example/oauth2/token' }, ISSUER), null)
+  assert.equal(
+    parseDiscovery({ ...base, token_endpoint: 'https://evil.example/oauth2/token' }, ISSUER),
+    null
+  )
   assert.equal(parseDiscovery({ ...base, revocation_endpoint: undefined }, ISSUER), null)
   assert.equal(parseDiscovery({ ...base, issuer: undefined }, ISSUER), null)
   assert.equal(parseDiscovery(null, ISSUER), null)
@@ -164,18 +171,39 @@ test('parseDiscovery rejects mismatched issuers, foreign origins and missing end
 test('verification URIs are only trusted on the account origin at the fixed /device path', () => {
   assert.equal(isTrustedVerificationUri(`${ACCOUNT_ORIGIN}/device`, ACCOUNT_ORIGIN), true)
   assert.equal(isTrustedVerificationUri(`${ACCOUNT_ORIGIN}/device/`, ACCOUNT_ORIGIN), false)
-  assert.equal(isTrustedVerificationUri(`${ACCOUNT_ORIGIN}/account/security`, ACCOUNT_ORIGIN), false)
+  assert.equal(
+    isTrustedVerificationUri(`${ACCOUNT_ORIGIN}/account/security`, ACCOUNT_ORIGIN),
+    false
+  )
   assert.equal(isTrustedVerificationUri(`${ISSUER}/device`, ACCOUNT_ORIGIN), false)
   assert.equal(isTrustedVerificationUri('https://evil.example/device', ACCOUNT_ORIGIN), false)
-  assert.equal(isTrustedVerificationUri(`${ACCOUNT_ORIGIN}/device?user_code=BCDF-GHJK`, ACCOUNT_ORIGIN), true)
+  assert.equal(
+    isTrustedVerificationUri(`${ACCOUNT_ORIGIN}/device?user_code=BCDF-GHJK`, ACCOUNT_ORIGIN),
+    true
+  )
   assert.equal(isTrustedVerificationUri('not a url', ACCOUNT_ORIGIN), false)
 })
 
 test('verification_uri_complete only allows the user_code query parameter', () => {
-  assert.equal(isTrustedVerificationUriComplete(`${ACCOUNT_ORIGIN}/device?user_code=BCDF-GHJK`, ACCOUNT_ORIGIN), true)
+  assert.equal(
+    isTrustedVerificationUriComplete(
+      `${ACCOUNT_ORIGIN}/device?user_code=BCDF-GHJK`,
+      ACCOUNT_ORIGIN
+    ),
+    true
+  )
   assert.equal(isTrustedVerificationUriComplete(`${ACCOUNT_ORIGIN}/device`, ACCOUNT_ORIGIN), true)
-  assert.equal(isTrustedVerificationUriComplete(`${ACCOUNT_ORIGIN}/device?user_code=BCDF-GHJK&device_code=secret`, ACCOUNT_ORIGIN), false)
-  assert.equal(isTrustedVerificationUriComplete(`${ACCOUNT_ORIGIN}/device?state=x`, ACCOUNT_ORIGIN), false)
+  assert.equal(
+    isTrustedVerificationUriComplete(
+      `${ACCOUNT_ORIGIN}/device?user_code=BCDF-GHJK&device_code=secret`,
+      ACCOUNT_ORIGIN
+    ),
+    false
+  )
+  assert.equal(
+    isTrustedVerificationUriComplete(`${ACCOUNT_ORIGIN}/device?state=x`, ACCOUNT_ORIGIN),
+    false
+  )
 })
 
 test('buildVerificationUriComplete rebuilds from the trusted base and encodes the user code', () => {
@@ -234,13 +262,43 @@ test('parseDeviceAuthorization rejects cross-origin verification pages, empty co
     expires_in: 600,
     interval: 5
   }
-  assert.equal(parseDeviceAuthorization({ ...valid, verification_uri: 'https://evil.example/device' }, ACCOUNT_ORIGIN), null)
-  assert.equal(parseDeviceAuthorization({ ...valid, verification_uri_complete: 'https://evil.example/device?user_code=X' }, ACCOUNT_ORIGIN), null)
-  assert.equal(parseDeviceAuthorization({ ...valid, verification_uri_complete: `${ACCOUNT_ORIGIN}/device?user_code=X&device_code=secret` }, ACCOUNT_ORIGIN), null)
-  assert.equal(parseDeviceAuthorization({ ...valid, verification_uri_complete: `${ACCOUNT_ORIGIN}/account/security` }, ACCOUNT_ORIGIN), null)
+  assert.equal(
+    parseDeviceAuthorization(
+      { ...valid, verification_uri: 'https://evil.example/device' },
+      ACCOUNT_ORIGIN
+    ),
+    null
+  )
+  assert.equal(
+    parseDeviceAuthorization(
+      { ...valid, verification_uri_complete: 'https://evil.example/device?user_code=X' },
+      ACCOUNT_ORIGIN
+    ),
+    null
+  )
+  assert.equal(
+    parseDeviceAuthorization(
+      {
+        ...valid,
+        verification_uri_complete: `${ACCOUNT_ORIGIN}/device?user_code=X&device_code=secret`
+      },
+      ACCOUNT_ORIGIN
+    ),
+    null
+  )
+  assert.equal(
+    parseDeviceAuthorization(
+      { ...valid, verification_uri_complete: `${ACCOUNT_ORIGIN}/account/security` },
+      ACCOUNT_ORIGIN
+    ),
+    null
+  )
   assert.equal(parseDeviceAuthorization({ ...valid, device_code: '' }, ACCOUNT_ORIGIN), null)
   assert.equal(parseDeviceAuthorization({ ...valid, user_code: '  ' }, ACCOUNT_ORIGIN), null)
-  assert.equal(parseDeviceAuthorization({ ...valid, device_code: 'x'.repeat(600) }, ACCOUNT_ORIGIN), null)
+  assert.equal(
+    parseDeviceAuthorization({ ...valid, device_code: 'x'.repeat(600) }, ACCOUNT_ORIGIN),
+    null
+  )
   assert.equal(parseDeviceAuthorization(null, ACCOUNT_ORIGIN), null)
   assert.equal(parseDeviceAuthorization('device_code', ACCOUNT_ORIGIN), null)
 })
@@ -276,7 +334,10 @@ test('parseTokenResponse requires both tokens and a bearer token type', () => {
     scope: 'openid profile email'
   })
   assert.equal(parseTokenResponse({ access_token: 'at', refresh_token: 'rt' })?.tokenType, 'bearer')
-  assert.equal(parseTokenResponse({ access_token: 'at', refresh_token: 'rt', token_type: 'mac' }), null)
+  assert.equal(
+    parseTokenResponse({ access_token: 'at', refresh_token: 'rt', token_type: 'mac' }),
+    null
+  )
   assert.equal(parseTokenResponse({ access_token: 'at' }), null)
   assert.equal(parseTokenResponse({ refresh_token: 'rt' }), null)
   assert.equal(parseTokenResponse({ access_token: '', refresh_token: 'rt' }), null)
@@ -285,18 +346,33 @@ test('parseTokenResponse requires both tokens and a bearer token type', () => {
 })
 
 test('parseTokenResponse defaults a missing expiry to the documented 600 second access token lifetime', () => {
-  assert.equal(parseTokenResponse({ access_token: 'at', refresh_token: 'rt', expires_in: 0 })?.expiresIn, 600)
-  assert.equal(parseTokenResponse({ access_token: 'at', refresh_token: 'rt', expires_in: 10 ** 9 })?.expiresIn, 86_400)
+  assert.equal(
+    parseTokenResponse({ access_token: 'at', refresh_token: 'rt', expires_in: 0 })?.expiresIn,
+    600
+  )
+  assert.equal(
+    parseTokenResponse({ access_token: 'at', refresh_token: 'rt', expires_in: 10 ** 9 })?.expiresIn,
+    86_400
+  )
 })
 
 test('parseUserInfo keeps sub as the only required claim and never invents an email', () => {
-  assert.deepEqual(parseUserInfo({ sub: 'usr_123', preferred_username: 'alice', name: 'Alice', email: 'alice@example.com', email_verified: true }), {
-    sub: 'usr_123',
-    username: 'alice',
-    name: 'Alice',
-    email: 'alice@example.com',
-    emailVerified: true
-  })
+  assert.deepEqual(
+    parseUserInfo({
+      sub: 'usr_123',
+      preferred_username: 'alice',
+      name: 'Alice',
+      email: 'alice@example.com',
+      email_verified: true
+    }),
+    {
+      sub: 'usr_123',
+      username: 'alice',
+      name: 'Alice',
+      email: 'alice@example.com',
+      emailVerified: true
+    }
+  )
   assert.deepEqual(parseUserInfo({ sub: 'pw_pairwise' }), {
     sub: 'pw_pairwise',
     username: '',
@@ -312,7 +388,10 @@ test('parseUserInfo keeps sub as the only required claim and never invents an em
 
 test('deviceListUrl points at the account security page where devices can be revoked manually', () => {
   assert.equal(deviceListUrl(ACCOUNT_ORIGIN), `${ACCOUNT_ORIGIN}/account/security`)
-  assert.equal(deviceListUrl(`${ACCOUNT_ORIGIN}/device?user_code=X`), `${ACCOUNT_ORIGIN}/account/security`)
+  assert.equal(
+    deviceListUrl(`${ACCOUNT_ORIGIN}/device?user_code=X`),
+    `${ACCOUNT_ORIGIN}/account/security`
+  )
   assert.equal(deviceListUrl('not a url'), '')
 })
 
@@ -338,23 +417,43 @@ test('authorization_pending and slow_down keep the device poll alive', () => {
 })
 
 test('terminal device-flow errors stop polling and are reported in Chinese', () => {
-  for (const error of ['access_denied', 'expired_token', 'invalid_grant', 'unauthorized_client', 'invalid_request']) {
+  for (const error of [
+    'access_denied',
+    'expired_token',
+    'invalid_grant',
+    'unauthorized_client',
+    'invalid_request'
+  ]) {
     const failure = describeAuthorizationFailure(400, { error }, 0)
     assert.equal(failure.terminal, true, error)
     assert.equal(failure.retryable, false, error)
     assert.ok(failure.message.length > 0)
   }
-  assert.equal(describeAuthorizationFailure(400, { error: 'invalid_grant' }, 0).invalidatesSession, true)
-  assert.equal(describeAuthorizationFailure(400, { error: 'access_denied' }, 0).invalidatesSession, false)
+  assert.equal(
+    describeAuthorizationFailure(400, { error: 'invalid_grant' }, 0).invalidatesSession,
+    true
+  )
+  assert.equal(
+    describeAuthorizationFailure(400, { error: 'access_denied' }, 0).invalidatesSession,
+    false
+  )
 })
 
 test('rate limiting and dependency failures are retryable and surface Retry-After', () => {
-  const limited = describeAuthorizationFailure(429, { error: { code: 'rate_limited', message: 'Too many requests.' } }, 60)
+  const limited = describeAuthorizationFailure(
+    429,
+    { error: { code: 'rate_limited', message: 'Too many requests.' } },
+    60
+  )
   assert.equal(limited.retryable, true)
   assert.equal(limited.terminal, false)
   assert.equal(limited.retryAfterSeconds, 60)
 
-  const unavailable = describeAuthorizationFailure(503, { error: { code: 'dependency_unavailable' } }, 0)
+  const unavailable = describeAuthorizationFailure(
+    503,
+    { error: { code: 'dependency_unavailable' } },
+    0
+  )
   assert.equal(unavailable.retryable, true)
   assert.equal(unavailable.terminal, false)
 
@@ -384,8 +483,18 @@ test('the signed-out account snapshot never carries a profile or a pending chall
 })
 
 test('every account phase has a user-facing label', () => {
-  const phases = ['signed-out', 'creating', 'awaiting-approval', 'finalizing', 'signed-in', 'restoring', 'signing-out']
-  for (const phase of phases) {assert.ok(accountPhaseLabel(phase).length > 0, phase)}
+  const phases = [
+    'signed-out',
+    'creating',
+    'awaiting-approval',
+    'finalizing',
+    'signed-in',
+    'restoring',
+    'signing-out'
+  ]
+  for (const phase of phases) {
+    assert.ok(accountPhaseLabel(phase).length > 0, phase)
+  }
   assert.equal(accountPhaseLabel('signed-out'), '未登录')
   assert.equal(accountPhaseLabel('signed-in'), '已登录')
 })

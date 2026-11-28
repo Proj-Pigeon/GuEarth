@@ -1,6 +1,6 @@
-import type { CSSProperties, ReactNode } from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '@renderer/lib/utils'
+import type { CSSProperties, ReactNode } from 'react'
 
 export interface DrawerProps {
   open: boolean
@@ -36,8 +36,10 @@ export function Drawer({
       open={open}
       modal={false}
       disablePointerDismissal
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {onClose?.()}
+      onOpenChange={nextOpen => {
+        if (!nextOpen) {
+          onClose?.()
+        }
       }}
     >
       <BaseDialog.Portal>
@@ -52,12 +54,7 @@ export function Drawer({
           )}
         >
           {title !== undefined && (
-            <div
-              className={cn(
-                'shrink-0 border-b border-hairline px-4 py-3',
-                headerClassName
-              )}
-            >
+            <div className={cn('shrink-0 border-b border-hairline px-4 py-3', headerClassName)}>
               {title}
             </div>
           )}

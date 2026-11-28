@@ -2,12 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { resolve } from 'node:path'
-import { test } from 'vite-plus/test'
 import { pathToFileURL } from 'node:url'
-import { JSDOM } from 'jsdom'
+
 import { JsxEmit, ModuleKind, ScriptTarget, transpileModule } from '@typescript/typescript6'
+import { JSDOM } from 'jsdom'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
+import { test } from 'vite-plus/test'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -39,12 +40,17 @@ registerHooks({
     if (specifier === '@renderer/components/ui' || specifier === '@renderer/components/ui/toast') {
       return { url: uiStubUrl, shortCircuit: true }
     }
-    if (specifier === '@renderer/utils/markdown' && context.parentURL.endsWith('/UpdateDialog.tsx')) {
+    if (
+      specifier === '@renderer/utils/markdown' &&
+      context.parentURL.endsWith('/UpdateDialog.tsx')
+    ) {
       return { url: 'virtual:update-dialog-markdown', shortCircuit: true }
     }
     if (specifier.startsWith('@renderer/')) {
       const target = resolve('src/renderer/src', specifier.slice(10))
-      if (/\.[a-z]+$/i.test(target)) {return nextResolve(pathToFileURL(target).href, context)}
+      if (/\.[a-z]+$/i.test(target)) {
+        return nextResolve(pathToFileURL(target).href, context)
+      }
       try {
         return nextResolve(pathToFileURL(`${target}.ts`).href, context)
       } catch {
@@ -83,7 +89,9 @@ registerHooks({
         shortCircuit: true
       }
     }
-    if (!url.endsWith('/UpdateDialog.tsx')) {return nextLoad(url, context)}
+    if (!url.endsWith('/UpdateDialog.tsx')) {
+      return nextLoad(url, context)
+    }
     const source = transpileModule(readFileSync(new URL(url), 'utf8'), {
       compilerOptions: {
         jsx: JsxEmit.ReactJSX,
@@ -96,7 +104,9 @@ registerHooks({
 })
 
 globalThis.__testTryRenderMarkdown = (text, realTryRenderMarkdown, h) => {
-  if (forceMarkdownMode === 'null') {return null}
+  if (forceMarkdownMode === 'null') {
+    return null
+  }
   if (forceMarkdownMode === 'throw-in-vnode') {
     function BadChild() {
       throw new Error('render boom')
@@ -120,11 +130,14 @@ test('tryRenderMarkdown renders valid markdown and returns null on blank, empty 
     }),
     null
   )
-  const nodes = tryRenderMarkdown('## 更新内容\n\n- 支持 `Markdown`\n- [详情](https://example.com)', renderMarkdown)
+  const nodes = tryRenderMarkdown(
+    '## 更新内容\n\n- 支持 `Markdown`\n- [详情](https://example.com)',
+    renderMarkdown
+  )
   assert.ok(Array.isArray(nodes) && nodes.length > 0)
 })
 
-test('UpdateDialog renders markdown release notes, hides blank notes, and falls back to plain text on failure', async (t) => {
+test('UpdateDialog renders markdown release notes, hides blank notes, and falls back to plain text on failure', async t => {
   forceMarkdownMode = 'normal'
   resetUpdaterStore()
   useUpdaterStore.setState({

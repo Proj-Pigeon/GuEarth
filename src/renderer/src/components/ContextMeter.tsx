@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
-import { CheckCircle2Icon, Loader2Icon, Minimize2Icon, XCircleIcon } from 'lucide-react'
 import { Button, Popover, Progress } from '@renderer/components/ui'
-import type { AiContextStats } from '../../../preload'
 import type { ContextCompressionStatus } from '@renderer/stores/ai'
+import { CheckCircle2Icon, Loader2Icon, Minimize2Icon, XCircleIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
+
+import type { AiContextStats } from '../../../preload'
+
 import styles from './ContextMeter.module.css'
 
 export interface ContextMeterProps {
@@ -31,9 +33,15 @@ const FREE_COLOR = 'var(--muted)'
 
 function formatTokens(tokens: number): string {
   const trim = (value: string): string => value.replace(/\.0$/, '')
-  if (tokens >= 1_000_000) {return `${trim((tokens / 1_000_000).toFixed(1))}M`}
-  if (tokens <= 0) {return '0'}
-  if (tokens < 1000) {return `${Math.max(0.1, tokens / 1000).toFixed(1)}k`}
+  if (tokens >= 1_000_000) {
+    return `${trim((tokens / 1_000_000).toFixed(1))}M`
+  }
+  if (tokens <= 0) {
+    return '0'
+  }
+  if (tokens < 1000) {
+    return `${Math.max(0.1, tokens / 1000).toFixed(1)}k`
+  }
   return `${trim((tokens / 1000).toFixed(1))}k`
 }
 
@@ -53,7 +61,11 @@ export function ContextMeter({
   const percent = Math.min(100, Math.max(0, Math.round(stats.usagePercent)))
   const tone = percent >= 80 ? 'error' : percent > 70 ? 'warning' : 'normal'
   const strokeColor =
-    tone === 'error' ? 'var(--destructive)' : tone === 'warning' ? 'var(--warning)' : 'var(--primary)'
+    tone === 'error'
+      ? 'var(--destructive)'
+      : tone === 'warning'
+        ? 'var(--warning)'
+        : 'var(--primary)'
   const statusText =
     status === 'compressing'
       ? '正在整理对话…'
@@ -62,10 +74,10 @@ export function ContextMeter({
         : notice || `${percent}%`
 
   const segments = useMemo<Segment[]>(() => {
-    const used = stats.categories.filter((category) => category.tokens > 0)
+    const used = stats.categories.filter(category => category.tokens > 0)
     const free = Math.max(0, stats.contextWindow - stats.usedTokens)
     return [
-      ...used.map((category) => ({
+      ...used.map(category => ({
         key: category.key,
         label: category.label,
         tokens: category.tokens,
@@ -78,7 +90,7 @@ export function ContextMeter({
   const windowShare = useMemo(
     () =>
       new Map(
-        segments.map((segment) => [
+        segments.map(segment => [
           segment.key,
           stats.contextWindow > 0 ? (segment.tokens / stats.contextWindow) * 100 : 0
         ])
@@ -95,7 +107,7 @@ export function ContextMeter({
         </span>
       </div>
       <div className={styles.contextBar}>
-        {segments.map((segment) => (
+        {segments.map(segment => (
           <span
             key={segment.key}
             className={styles.contextBarSegment}
@@ -104,7 +116,7 @@ export function ContextMeter({
         ))}
       </div>
       <div className={styles.contextLegend}>
-        {segments.map((segment) => (
+        {segments.map(segment => (
           <div key={segment.key} className={styles.contextLegendRow}>
             <span className={styles.contextLegendChip} style={{ background: segment.color }} />
             <span className={styles.contextLegendLabel}>{segment.label}</span>
@@ -116,11 +128,11 @@ export function ContextMeter({
         ))}
       </div>
       <Button
-        variant="primary"
-        size="sm"
+        variant='primary'
+        size='sm'
         block
         loading={status === 'compressing'}
-        icon={<Minimize2Icon className="size-3.5" />}
+        icon={<Minimize2Icon className='size-3.5' />}
         disabled={disabled || stats.usedTokens === 0}
         onClick={() => onCompress?.()}
       >
@@ -130,21 +142,16 @@ export function ContextMeter({
   )
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-      placement="topLeft"
-      content={popoverContent}
-    >
+    <Popover open={open} onOpenChange={setOpen} placement='topLeft' content={popoverContent}>
       <button
-        type="button"
+        type='button'
         className={`context-meter ${styles.contextMeter}`}
         aria-expanded={open}
-        aria-label="查看上下文窗口"
+        aria-label='查看上下文窗口'
       >
         <span className={styles.contextRing}>
           <Progress
-            type="circle"
+            type='circle'
             percent={percent}
             size={18}
             strokeWidth={3}
@@ -154,11 +161,11 @@ export function ContextMeter({
         </span>
         <span className={styles.contextStatus}>
           {status === 'compressing' ? (
-            <Loader2Icon className="size-3 animate-spin" />
+            <Loader2Icon className='size-3 animate-spin' />
           ) : status === 'error' ? (
-            <XCircleIcon className="size-3 text-destructive" />
+            <XCircleIcon className='text-destructive size-3' />
           ) : notice ? (
-            <CheckCircle2Icon className="size-3 text-success" />
+            <CheckCircle2Icon className='text-success size-3' />
           ) : null}
           <span
             className={

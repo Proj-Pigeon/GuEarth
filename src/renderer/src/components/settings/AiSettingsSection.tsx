@@ -1,16 +1,3 @@
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent, Ref } from 'react';
-import {
-  EyeIcon,
-  LightbulbIcon,
-  PlusIcon,
-  RefreshCwIcon,
-  SaveIcon,
-  SearchIcon,
-  SettingsIcon,
-  Trash2Icon,
-  ZapIcon
-} from 'lucide-react'
 import {
   Alert,
   Button,
@@ -29,6 +16,29 @@ import {
   useConfirm,
   useToast
 } from '@renderer/components/ui'
+import {
+  isAiDraftDirty,
+  normalizeActiveChoice,
+  parseActiveChoice
+} from '@renderer/lib/aiSettingsDraft'
+import type { AiDraftModel, AiDraftProvider, AiPersistedState } from '@renderer/lib/aiSettingsDraft'
+import { ipcErrorMessage } from '@renderer/lib/ipcError'
+import { useAiStore } from '@renderer/stores/ai'
+import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
+import {
+  EyeIcon,
+  LightbulbIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  SaveIcon,
+  SearchIcon,
+  SettingsIcon,
+  Trash2Icon,
+  ZapIcon
+} from 'lucide-react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent, Ref } from 'react'
+
 import type {
   AiModelConfig,
   AiModelImportRow,
@@ -38,13 +48,9 @@ import type {
   AiThinkingLevel,
   ProviderCredentialStatus
 } from '../../../../preload'
-import { useAiStore } from '@renderer/stores/ai'
-import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
-import { ipcErrorMessage } from '@renderer/lib/ipcError'
-import { isAiDraftDirty, normalizeActiveChoice, parseActiveChoice } from '@renderer/lib/aiSettingsDraft';
-import type { AiDraftModel, AiDraftProvider, AiPersistedState } from '@renderer/lib/aiSettingsDraft';
-import SearchProviderSettings from '../SearchProviderSettings'
 import MemorySettings from '../MemorySettings'
+import SearchProviderSettings from '../SearchProviderSettings'
+
 import styles from './AiSettingsSection.module.css'
 
 export interface AiSettingsSectionHandle {
@@ -90,7 +96,7 @@ const EMPTY_MODEL_DRAFT: AiModelConfig = {
 }
 
 function thinkingLevelLabel(level: AiThinkingLevel): string {
-  return THINKING_LEVEL_OPTIONS.find((option) => option.value === level)?.label ?? '中'
+  return THINKING_LEVEL_OPTIONS.find(option => option.value === level)?.label ?? '中'
 }
 
 function makeKey(): string {
@@ -101,7 +107,7 @@ function toProviderDraft(provider: AiProviderConfig): AiDraftProvider {
   return {
     ...provider,
     key: makeKey(),
-    models: provider.models.map((model) => ({ ...model, key: makeKey() }))
+    models: provider.models.map(model => ({ ...model, key: makeKey() }))
   }
 }
 
@@ -116,9 +122,12 @@ function createDraftSignature(
   activeSearchProviderId: string
 ): string {
   return JSON.stringify([
-    providers.map((provider) => ({ ...provider, models: provider.models.map((model) => ({ ...model })) })),
+    providers.map(provider => ({
+      ...provider,
+      models: provider.models.map(model => ({ ...model }))
+    })),
     activeChoice,
-    searchProviders.map((provider) => ({ ...provider })),
+    searchProviders.map(provider => ({ ...provider })),
     activeSearchProviderId
   ])
 }
@@ -131,16 +140,18 @@ export function AiSettingsSection({
 }: AiSettingsSectionProps) {
   const toast = useToast()
   const confirm = useConfirm()
-  const storeSettings = useAiStore((state) => state.settings)
-  const storeHydrated = useAiStore((state) => state.hydrated)
-  const hydrate = useAiStore((state) => state.hydrate)
-  const saveSettings = useAiStore((state) => state.saveSettings)
-  const setSocraticEnabled = useAiStore((state) => state.setSocraticEnabled)
-  const closeSettingsWindow = useSettingsWindowStore((state) => state.close)
+  const storeSettings = useAiStore(state => state.settings)
+  const storeHydrated = useAiStore(state => state.hydrated)
+  const hydrate = useAiStore(state => state.hydrate)
+  const saveSettings = useAiStore(state => state.saveSettings)
+  const setSocraticEnabled = useAiStore(state => state.setSocraticEnabled)
+  const closeSettingsWindow = useSettingsWindowStore(state => state.close)
 
   const [draftProviders, setDraftProviders] = useState<AiDraftProvider[]>([])
   const [activeChoice, setActiveChoice] = useState('')
-  const [credentialStatuses, setCredentialStatuses] = useState<Record<string, ProviderCredentialStatus>>({})
+  const [credentialStatuses, setCredentialStatuses] = useState<
+    Record<string, ProviderCredentialStatus>
+  >({})
   const [selectedProviderId, setSelectedProviderId] = useState('')
   const [apiKeyDraft, setApiKeyDraft] = useState('')
   const [draftSearchProviders, setDraftSearchProviders] = useState<AiSearchProviderConfig[]>([])
@@ -180,7 +191,7 @@ export function AiSettingsSection({
   }
 
   const selectedProvider = useMemo(
-    () => draftProviders.find((provider) => provider.id === selectedProviderId),
+    () => draftProviders.find(provider => provider.id === selectedProviderId),
     [draftProviders, selectedProviderId]
   )
 
@@ -192,9 +203,11 @@ export function AiSettingsSection({
   const filteredModels = useMemo(() => {
     const query = modelSearch.trim().toLowerCase()
     const models = selectedProvider?.models ?? []
-    if (!query) {return models}
+    if (!query) {
+      return models
+    }
     return models.filter(
-      (model) => model.label.toLowerCase().includes(query) || model.id.toLowerCase().includes(query)
+      model => model.label.toLowerCase().includes(query) || model.id.toLowerCase().includes(query)
     )
   }, [modelSearch, selectedProvider])
 
@@ -217,7 +230,9 @@ export function AiSettingsSection({
   )
 
   const dirty = useMemo(() => {
-    if (settingsReading || settingsReadFailed) {return false}
+    if (settingsReading || settingsReadFailed) {
+      return false
+    }
     return isAiDraftDirty(
       {
         providers: draftProviders,
@@ -227,37 +242,51 @@ export function AiSettingsSection({
       },
       persistedState
     )
-  }, [activeChoice, activeSearchProviderId, draftProviders, draftSearchProviders, persistedState, settingsReadFailed, settingsReading])
+  }, [
+    activeChoice,
+    activeSearchProviderId,
+    draftProviders,
+    draftSearchProviders,
+    persistedState,
+    settingsReadFailed,
+    settingsReading
+  ])
 
   useEffect(() => {
     onDirtyChange?.(dirty)
   }, [dirty, onDirtyChange])
 
-  const refreshCredentialStatuses = useCallback(async (providers: AiDraftProvider[]): Promise<void> => {
-    const entries: [string, ProviderCredentialStatus][] = []
-    for (const provider of providers) {
-      try {
-        entries.push([provider.id, await window.guEarth.settings.hasProviderApiKey(credentialId(provider.id))])
-      } catch {
-        entries.push([provider.id, { configured: false, updatedAt: null }])
+  const refreshCredentialStatuses = useCallback(
+    async (providers: AiDraftProvider[]): Promise<void> => {
+      const entries: [string, ProviderCredentialStatus][] = []
+      for (const provider of providers) {
+        try {
+          entries.push([
+            provider.id,
+            await window.guEarth.settings.hasProviderApiKey(credentialId(provider.id))
+          ])
+        } catch {
+          entries.push([provider.id, { configured: false, updatedAt: null }])
+        }
       }
-    }
-    setCredentialStatuses(Object.fromEntries(entries))
-  }, [])
+      setCredentialStatuses(Object.fromEntries(entries))
+    },
+    []
+  )
 
   const syncDraftsFromStore = useCallback((): AiDraftProvider[] => {
     const settings = useAiStore.getState().settings
     const nextProviders = settings.providers.map(toProviderDraft)
     setDraftProviders(nextProviders)
-    setDraftSearchProviders(settings.searchProviders.map((provider) => ({ ...provider })))
+    setDraftSearchProviders(settings.searchProviders.map(provider => ({ ...provider })))
     setActiveSearchProviderId(settings.activeSearchProviderId)
     setActiveChoice(
       settings.activeProviderId && settings.activeModelId
         ? `${settings.activeProviderId}:${settings.activeModelId}`
         : ''
     )
-    setSelectedProviderId((current) =>
-      nextProviders.some((provider) => provider.id === current)
+    setSelectedProviderId(current =>
+      nextProviders.some(provider => provider.id === current)
         ? current
         : settings.activeProviderId || nextProviders[0]?.id || ''
     )
@@ -270,17 +299,25 @@ export function AiSettingsSection({
     void (async () => {
       try {
         await hydrate()
-        if (cancelled) {return}
+        if (cancelled) {
+          return
+        }
         const failed = !useAiStore.getState().hydrated
         setSettingsReadFailed(failed)
-        if (failed) {return}
+        if (failed) {
+          return
+        }
         const providers = syncDraftsFromStore()
         setApiKeyDraft('')
         void refreshCredentialStatuses(providers)
       } catch {
-        if (!cancelled) {setSettingsReadFailed(true)}
+        if (!cancelled) {
+          setSettingsReadFailed(true)
+        }
       } finally {
-        if (!cancelled) {setSettingsReading(false)}
+        if (!cancelled) {
+          setSettingsReading(false)
+        }
       }
     })()
     return () => {
@@ -301,13 +338,17 @@ export function AiSettingsSection({
 
   useEffect(() => {
     const lastPage = Math.max(1, Math.ceil(filteredModels.length / MODEL_PAGE_SIZE))
-    if (modelPage > lastPage) {setModelPage(lastPage)}
+    if (modelPage > lastPage) {
+      setModelPage(lastPage)
+    }
   }, [filteredModels.length, modelPage])
 
   const updateSelectedProvider = useCallback(
     (updater: (provider: AiDraftProvider) => AiDraftProvider) => {
-      setDraftProviders((previous) =>
-        previous.map((provider) => (provider.id === selectedProviderId ? updater(provider) : provider))
+      setDraftProviders(previous =>
+        previous.map(provider =>
+          provider.id === selectedProviderId ? updater(provider) : provider
+        )
       )
     },
     [selectedProviderId]
@@ -315,7 +356,7 @@ export function AiSettingsSection({
 
   const addProvider = useCallback(() => {
     const id = `p${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`
-    setDraftProviders((previous) => [
+    setDraftProviders(previous => [
       ...previous,
       {
         key: makeKey(),
@@ -331,23 +372,28 @@ export function AiSettingsSection({
 
   const removeProvider = useCallback(
     (providerId: string) => {
-      const provider = draftProviders.find((item) => item.id === providerId)
-      if (!provider) {return}
+      const provider = draftProviders.find(item => item.id === providerId)
+      if (!provider) {
+        return
+      }
       confirm({
         title: '删除服务商？',
-        content: provider.models.length > 0
-          ? `将同时删除其下的 ${provider.models.length} 个模型。`
-          : '该服务商将从列表中移除。',
+        content:
+          provider.models.length > 0
+            ? `将同时删除其下的 ${provider.models.length} 个模型。`
+            : '该服务商将从列表中移除。',
         okText: '删除',
         cancelText: '取消',
         danger: true,
         onOk: () => {
-          setDraftProviders((previous) => {
-            const next = previous.filter((item) => item.id !== providerId)
-            setSelectedProviderId((current) => (current === providerId ? next[0]?.id ?? '' : current))
+          setDraftProviders(previous => {
+            const next = previous.filter(item => item.id !== providerId)
+            setSelectedProviderId(current =>
+              current === providerId ? (next[0]?.id ?? '') : current
+            )
             return next
           })
-          setActiveChoice((current) => (current.startsWith(`${providerId}:`) ? '' : current))
+          setActiveChoice(current => (current.startsWith(`${providerId}:`) ? '' : current))
           setModelEditorOpen(false)
         }
       })
@@ -356,7 +402,9 @@ export function AiSettingsSection({
   )
 
   const addModel = useCallback(() => {
-    if (!selectedProvider) {return}
+    if (!selectedProvider) {
+      return
+    }
     setModelEditorKey('')
     setModelEditorTitle('添加模型')
     setModelDraft({ ...EMPTY_MODEL_DRAFT })
@@ -380,13 +428,17 @@ export function AiSettingsSection({
   }, [])
 
   const saveModel = useCallback(() => {
-    if (!selectedProvider) {return}
+    if (!selectedProvider) {
+      return
+    }
     const id = modelDraft.id.trim()
     if (!id) {
       toast.warning('请填写模型代号')
       return
     }
-    if (selectedProvider.models.some((model) => model.key !== modelEditorKey && model.id.trim() === id)) {
+    if (
+      selectedProvider.models.some(model => model.key !== modelEditorKey && model.id.trim() === id)
+    ) {
       toast.warning('模型代号已存在')
       return
     }
@@ -405,23 +457,29 @@ export function AiSettingsSection({
       enabled: modelDraft.enabled
     }
     if (modelEditorKey) {
-      const existing = selectedProvider.models.find((item) => item.key === modelEditorKey)
-      if (!existing) {return}
+      const existing = selectedProvider.models.find(item => item.key === modelEditorKey)
+      if (!existing) {
+        return
+      }
       const previousId = existing.id
       const providerId = selectedProvider.id
-      updateSelectedProvider((provider) => ({
+      updateSelectedProvider(provider => ({
         ...provider,
-        models: provider.models.map((item) => (item.key === modelEditorKey ? { ...item, ...next } : item))
+        models: provider.models.map(item =>
+          item.key === modelEditorKey ? { ...item, ...next } : item
+        )
       }))
       if (previousId !== id) {
-        setActiveChoice((current) => (current === `${providerId}:${previousId}` ? `${providerId}:${id}` : current))
+        setActiveChoice(current =>
+          current === `${providerId}:${previousId}` ? `${providerId}:${id}` : current
+        )
       }
     } else {
       if (selectedProvider.models.length >= 256) {
         toast.warning('最多保存 256 个模型')
         return
       }
-      updateSelectedProvider((provider) => ({
+      updateSelectedProvider(provider => ({
         ...provider,
         models: [...provider.models, { key: makeKey(), ...next }]
       }))
@@ -432,9 +490,13 @@ export function AiSettingsSection({
 
   const removeModel = useCallback(
     (modelKey: string) => {
-      if (!selectedProvider) {return}
-      const model = selectedProvider.models.find((item) => item.key === modelKey)
-      if (!model) {return}
+      if (!selectedProvider) {
+        return
+      }
+      const model = selectedProvider.models.find(item => item.key === modelKey)
+      if (!model) {
+        return
+      }
       const providerId = selectedProvider.id
       confirm({
         title: '删除模型？',
@@ -443,15 +505,15 @@ export function AiSettingsSection({
         cancelText: '取消',
         danger: true,
         onOk: () => {
-          setDraftProviders((previous) =>
-            previous.map((provider) =>
+          setDraftProviders(previous =>
+            previous.map(provider =>
               provider.id === providerId
-                ? { ...provider, models: provider.models.filter((item) => item.key !== modelKey) }
+                ? { ...provider, models: provider.models.filter(item => item.key !== modelKey) }
                 : provider
             )
           )
-          setActiveChoice((current) => (current === `${providerId}:${model.id}` ? '' : current))
-          setModelEditorOpen((open) => (modelEditorKey === modelKey ? false : open))
+          setActiveChoice(current => (current === `${providerId}:${model.id}` ? '' : current))
+          setModelEditorOpen(open => (modelEditorKey === modelKey ? false : open))
         }
       })
     },
@@ -460,14 +522,18 @@ export function AiSettingsSection({
 
   const toggleModel = useCallback(
     (model: AiDraftModel, checked: boolean) => {
-      if (!selectedProvider) {return}
+      if (!selectedProvider) {
+        return
+      }
       const providerId = selectedProvider.id
-      updateSelectedProvider((provider) => ({
+      updateSelectedProvider(provider => ({
         ...provider,
-        models: provider.models.map((item) => (item.key === model.key ? { ...item, enabled: checked } : item))
+        models: provider.models.map(item =>
+          item.key === model.key ? { ...item, enabled: checked } : item
+        )
       }))
       if (!checked) {
-        setActiveChoice((current) => (current === `${providerId}:${model.id}` ? '' : current))
+        setActiveChoice(current => (current === `${providerId}:${model.id}` ? '' : current))
       }
     },
     [selectedProvider, updateSelectedProvider]
@@ -475,7 +541,9 @@ export function AiSettingsSection({
 
   const testModel = useCallback(
     async (model: AiDraftModel): Promise<void> => {
-      if (!selectedProvider || testingModelKey) {return}
+      if (!selectedProvider || testingModelKey) {
+        return
+      }
       if (!selectedProvider.baseUrl.trim()) {
         toast.warning('请先填写接口地址')
         return
@@ -504,11 +572,17 @@ export function AiSettingsSection({
   )
 
   const importProvider = useMemo(
-    () => draftProviders.find((provider) => provider.id === importProviderId),
+    () => draftProviders.find(provider => provider.id === importProviderId),
     [draftProviders, importProviderId]
   )
-  const importFailedCount = useMemo(() => importRows.filter((row) => !row.matched).length, [importRows])
-  const importMatchedCount = useMemo(() => importRows.filter((row) => row.matched).length, [importRows])
+  const importFailedCount = useMemo(
+    () => importRows.filter(row => !row.matched).length,
+    [importRows]
+  )
+  const importMatchedCount = useMemo(
+    () => importRows.filter(row => row.matched).length,
+    [importRows]
+  )
   const pagedImportRows = useMemo(
     () => importRows.slice((importPage - 1) * importPageSize, importPage * importPageSize),
     [importPage, importPageSize, importRows]
@@ -516,12 +590,16 @@ export function AiSettingsSection({
 
   useEffect(() => {
     const lastPage = Math.max(1, Math.ceil(importRows.length / importPageSize))
-    if (importPage > lastPage) {setImportPage(lastPage)}
+    if (importPage > lastPage) {
+      setImportPage(lastPage)
+    }
   }, [importPage, importPageSize, importRows.length])
 
   const canImport = useCallback(
     (provider: AiDraftProvider | undefined): boolean =>
-      Boolean(provider?.baseUrl?.trim() && credentialStatuses[provider.id]?.configured && !settingsLocked),
+      Boolean(
+        provider?.baseUrl?.trim() && credentialStatuses[provider.id]?.configured && !settingsLocked
+      ),
     [credentialStatuses, settingsLocked]
   )
 
@@ -530,7 +608,7 @@ export function AiSettingsSection({
     setImportRows(
       [...rows]
         .sort((a, b) => Number(a.matched) - Number(b.matched) || a.id.localeCompare(b.id))
-        .map((row) => ({ ...row, key: makeKey(), selected: row.matched && !row.existing }))
+        .map(row => ({ ...row, key: makeKey(), selected: row.matched && !row.existing }))
     )
   }, [])
 
@@ -546,7 +624,9 @@ export function AiSettingsSection({
   }, [invalidateImportSession])
 
   const openImport = useCallback(async (): Promise<void> => {
-    if (!selectedProvider) {return}
+    if (!selectedProvider) {
+      return
+    }
     if (!selectedProvider.baseUrl.trim()) {
       toast.warning('请先填写接口地址')
       return
@@ -571,24 +651,34 @@ export function AiSettingsSection({
         models: selectedProvider.models.map(({ key: _key, ...model }) => model),
         modelGroupCompat
       })
-      if (requestId !== importRequestIdRef.current) {return}
+      if (requestId !== importRequestIdRef.current) {
+        return
+      }
       applyImportRows(result.models)
       toast.success(`已获取 ${result.models.length} 个模型`)
     } catch (error) {
-      if (requestId !== importRequestIdRef.current) {return}
+      if (requestId !== importRequestIdRef.current) {
+        return
+      }
       setImportOpen(false)
       toast.error(ipcErrorMessage(error, '模型导入失败'))
     } finally {
-      if (requestId === importRequestIdRef.current) {setImportLoading(false)}
+      if (requestId === importRequestIdRef.current) {
+        setImportLoading(false)
+      }
     }
   }, [applyImportRows, credentialStatuses, modelGroupCompat, selectedProvider, toast])
 
   const refreshImportMatches = useCallback(
     async (next = modelGroupCompat): Promise<void> => {
-      if (!importProvider || importLoading || importMatching) {return}
+      if (!importProvider || importLoading || importMatching) {
+        return
+      }
       const previous = modelGroupCompat
       setModelGroupCompat(next)
-      if (importRows.length === 0) {return}
+      if (importRows.length === 0) {
+        return
+      }
       const requestId = ++importRequestIdRef.current
       setImportMatching(true)
       try {
@@ -598,51 +688,78 @@ export function AiSettingsSection({
           protocol: importProvider.protocol,
           baseUrl: importProvider.baseUrl,
           models: importProvider.models.map(({ key: _key, ...model }) => model),
-          ids: importRows.map((row) => row.id),
+          ids: importRows.map(row => row.id),
           modelGroupCompat: next
         })
-        if (requestId !== importRequestIdRef.current) {return}
+        if (requestId !== importRequestIdRef.current) {
+          return
+        }
         applyImportRows(result.models)
       } catch (error) {
-        if (requestId !== importRequestIdRef.current) {return}
+        if (requestId !== importRequestIdRef.current) {
+          return
+        }
         setModelGroupCompat(previous)
         toast.error(ipcErrorMessage(error, '模型匹配失败'))
       } finally {
-        if (requestId === importRequestIdRef.current) {setImportMatching(false)}
+        if (requestId === importRequestIdRef.current) {
+          setImportMatching(false)
+        }
       }
     },
-    [applyImportRows, importLoading, importMatching, importProvider, importRows, modelGroupCompat, toast]
+    [
+      applyImportRows,
+      importLoading,
+      importMatching,
+      importProvider,
+      importRows,
+      modelGroupCompat,
+      toast
+    ]
   )
 
-  const updateImportRow = useCallback((key: string, patch: Partial<ImportRowDraft>, revalidate = false): void => {
-    setImportRows((previous) =>
-      previous.map((row) => {
-        if (row.key !== key) {return row}
-        const next: ImportRowDraft = { ...row, ...patch }
-        if (revalidate) {
-          next.matched = Boolean(next.id.trim() && next.contextWindow >= 4096)
-          if (next.matched) {next.failureReason = undefined}
-        }
-        return next
-      })
-    )
-  }, [])
+  const updateImportRow = useCallback(
+    (key: string, patch: Partial<ImportRowDraft>, revalidate = false): void => {
+      setImportRows(previous =>
+        previous.map(row => {
+          if (row.key !== key) {
+            return row
+          }
+          const next: ImportRowDraft = { ...row, ...patch }
+          if (revalidate) {
+            next.matched = Boolean(next.id.trim() && next.contextWindow >= 4096)
+            if (next.matched) {
+              next.failureReason = undefined
+            }
+          }
+          return next
+        })
+      )
+    },
+    []
+  )
 
   const deleteImportRow = useCallback((key: string): void => {
-    setImportRows((previous) => previous.filter((row) => row.key !== key))
+    setImportRows(previous => previous.filter(row => row.key !== key))
   }, [])
 
   const confirmImport = useCallback((): void => {
-    if (!importProvider) {return}
-    const invalid = importRows.find((row) => row.selected && (!row.id.trim() || row.contextWindow < 4096))
+    if (!importProvider) {
+      return
+    }
+    const invalid = importRows.find(
+      row => row.selected && (!row.id.trim() || row.contextWindow < 4096)
+    )
     if (invalid) {
       toast.warning('请先修正选中的模型')
       return
     }
-    const ids = new Set(importProvider.models.map((model) => model.id.trim()))
+    const ids = new Set(importProvider.models.map(model => model.id.trim()))
     const seenSelected = new Set<string>()
     for (const row of importRows) {
-      if (!row.selected) {continue}
+      if (!row.selected) {
+        continue
+      }
       const id = row.id.trim()
       if (seenSelected.has(id)) {
         toast.warning(`选中的模型中存在重复 ID：${id}`)
@@ -652,9 +769,13 @@ export function AiSettingsSection({
     }
     const rows: ImportRowDraft[] = []
     for (const row of importRows) {
-      if (!row.selected) {continue}
+      if (!row.selected) {
+        continue
+      }
       const id = row.id.trim()
-      if (ids.has(id)) {continue}
+      if (ids.has(id)) {
+        continue
+      }
       ids.add(id)
       rows.push(row)
     }
@@ -663,7 +784,9 @@ export function AiSettingsSection({
       return
     }
     if (importProvider.models.length + rows.length > 256) {
-      toast.warning(`最多保存 256 个模型，还可加入 ${Math.max(0, 256 - importProvider.models.length)} 个`)
+      toast.warning(
+        `最多保存 256 个模型，还可加入 ${Math.max(0, 256 - importProvider.models.length)} 个`
+      )
       return
     }
     const targetProviderId = importProvider.id
@@ -675,7 +798,7 @@ export function AiSettingsSection({
       onOk: async () => {
         setImportConfirmLoading(true)
         try {
-          const addedModels: AiDraftModel[] = rows.map((row) => ({
+          const addedModels: AiDraftModel[] = rows.map(row => ({
             key: makeKey(),
             id: row.id.trim(),
             label: row.label.trim() || row.id.trim(),
@@ -686,8 +809,8 @@ export function AiSettingsSection({
             thinkingLevel: row.thinkingLevel,
             enabled: true
           }))
-          setDraftProviders((previous) =>
-            previous.map((provider) =>
+          setDraftProviders(previous =>
+            previous.map(provider =>
               provider.id === targetProviderId
                 ? { ...provider, models: [...provider.models, ...addedModels] }
                 : provider
@@ -705,11 +828,13 @@ export function AiSettingsSection({
 
   const saveApiKey = useCallback(async (): Promise<void> => {
     const key = apiKeyDraft.trim()
-    if (!selectedProvider || !key) {return}
+    if (!selectedProvider || !key) {
+      return
+    }
     const providerId = selectedProvider.id
     try {
       const status = await window.guEarth.settings.setProviderApiKey(credentialId(providerId), key)
-      setCredentialStatuses((previous) => ({ ...previous, [providerId]: status }))
+      setCredentialStatuses(previous => ({ ...previous, [providerId]: status }))
       setApiKeyDraft('')
       toast.success('API Key 已保存')
     } catch (error) {
@@ -718,11 +843,13 @@ export function AiSettingsSection({
   }, [apiKeyDraft, selectedProvider, toast])
 
   const clearApiKey = useCallback(async (): Promise<void> => {
-    if (!selectedProvider) {return}
+    if (!selectedProvider) {
+      return
+    }
     const providerId = selectedProvider.id
     try {
       const status = await window.guEarth.settings.clearProviderApiKey(credentialId(providerId))
-      setCredentialStatuses((previous) => ({ ...previous, [providerId]: status }))
+      setCredentialStatuses(previous => ({ ...previous, [providerId]: status }))
       toast.success('API Key 已清除')
     } catch {
       toast.error('API Key 清除失败')
@@ -731,7 +858,9 @@ export function AiSettingsSection({
 
   const toggleSocratic = useCallback(
     async (value: boolean): Promise<void> => {
-      if (socraticBusy || settingsLocked) {return}
+      if (socraticBusy || settingsLocked) {
+        return
+      }
       setSocraticBusy(true)
       try {
         await setSocraticEnabled(value)
@@ -746,17 +875,25 @@ export function AiSettingsSection({
 
   const validate = useCallback((providers: AiDraftProvider[]): string => {
     for (const provider of providers) {
-      if (!provider.name.trim()) {return '供应商名称不能为空'}
-      if (!provider.baseUrl.trim()) {return `「${provider.name}」的接口地址不能为空`}
+      if (!provider.name.trim()) {
+        return '供应商名称不能为空'
+      }
+      if (!provider.baseUrl.trim()) {
+        return `「${provider.name}」的接口地址不能为空`
+      }
       for (const model of provider.models) {
-        if (!model.id.trim()) {return `「${provider.name}」下存在未填写 ID 的模型`}
+        if (!model.id.trim()) {
+          return `「${provider.name}」下存在未填写 ID 的模型`
+        }
       }
     }
     return ''
   }, [])
 
   const saveDrafts = useCallback(async (): Promise<boolean> => {
-    if (settingsReading) {return false}
+    if (settingsReading) {
+      return false
+    }
     if (settingsReadFailed) {
       toast.error('AI 设置读取失败，无法保存')
       return false
@@ -768,16 +905,18 @@ export function AiSettingsSection({
       return false
     }
     const currentStoreSettings = useAiStore.getState().settings
-    const { providerId: activeProviderId, modelId: activeModelId } = parseActiveChoice(currentDrafts.activeChoice)
+    const { providerId: activeProviderId, modelId: activeModelId } = parseActiveChoice(
+      currentDrafts.activeChoice
+    )
     const next: AiSettings = {
-      providers: currentDrafts.providers.map((provider) => ({
+      providers: currentDrafts.providers.map(provider => ({
         id: provider.id,
         name: provider.name.trim(),
         protocol: provider.protocol,
         baseUrl: provider.baseUrl.trim(),
         models: provider.models
-          .filter((model) => model.id.trim())
-          .map((model) => ({
+          .filter(model => model.id.trim())
+          .map(model => ({
             id: model.id.trim(),
             label: model.label.trim() || model.id.trim(),
             contextWindow: model.contextWindow,
@@ -790,7 +929,7 @@ export function AiSettingsSection({
       })),
       activeProviderId,
       activeModelId,
-      searchProviders: currentDrafts.searchProviders.map((provider) => ({ ...provider })),
+      searchProviders: currentDrafts.searchProviders.map(provider => ({ ...provider })),
       activeSearchProviderId: currentDrafts.activeSearchProviderId,
       skipDeleteConversationConfirm: currentStoreSettings.skipDeleteConversationConfirm,
       memoryEnabled: currentStoreSettings.memoryEnabled,
@@ -812,7 +951,9 @@ export function AiSettingsSection({
           latest.searchProviders,
           latest.activeSearchProviderId
         ) !== submittedSignature
-      if (!editedDuringSave) {syncDraftsFromStore()}
+      if (!editedDuringSave) {
+        syncDraftsFromStore()
+      }
       toast.success(editedDuringSave ? '此前的改动已保存，新的改动尚未保存' : 'AI 设置已保存')
       return true
     } catch {
@@ -827,7 +968,9 @@ export function AiSettingsSection({
 
   const handleSave = useCallback(async (): Promise<void> => {
     const saved = await saveDrafts()
-    if (!saved) {return}
+    if (!saved) {
+      return
+    }
     const latest = latestDraftsRef.current
     const currentSettings = useAiStore.getState().settings
     const stillDirty = isAiDraftDirty(latest, {
@@ -837,7 +980,9 @@ export function AiSettingsSection({
       searchProviders: currentSettings.searchProviders,
       activeSearchProviderId: currentSettings.activeSearchProviderId
     })
-    if (!stillDirty) {closeSettingsWindow()}
+    if (!stillDirty) {
+      closeSettingsWindow()
+    }
   }, [closeSettingsWindow, saveDrafts])
 
   useImperativeHandle(
@@ -853,12 +998,12 @@ export function AiSettingsSection({
   const defaultModelOptions = useMemo(
     () =>
       draftProviders
-        .filter((provider) => provider.models.some((model) => model.enabled))
-        .map((provider) => ({
+        .filter(provider => provider.models.some(model => model.enabled))
+        .map(provider => ({
           label: provider.name,
           options: provider.models
-            .filter((model) => model.enabled)
-            .map((model) => ({
+            .filter(model => model.enabled)
+            .map(model => ({
               value: `${provider.id}:${model.id}`,
               label: model.label || model.id
             }))
@@ -866,8 +1011,13 @@ export function AiSettingsSection({
     [draftProviders]
   )
 
-  const handleModelRowKeyDown = (event: KeyboardEvent<HTMLDivElement>, model: AiDraftModel): void => {
-    if (event.target !== event.currentTarget) {return}
+  const handleModelRowKeyDown = (
+    event: KeyboardEvent<HTMLDivElement>,
+    model: AiDraftModel
+  ): void => {
+    if (event.target !== event.currentTarget) {
+      return
+    }
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       editModel(model)
@@ -875,11 +1025,11 @@ export function AiSettingsSection({
   }
 
   return (
-    <section className={styles.settingsSection} data-settings-section="" aria-label="AI 设置">
+    <section className={styles.settingsSection} data-settings-section='' aria-label='AI 设置'>
       <div className={styles.sectionHeading}>
         <h3 className={styles.sectionTitle}>AI</h3>
         {dirty && (
-          <Tag tone="warning" className={styles.unsavedTag}>
+          <Tag tone='warning' className={styles.unsavedTag}>
             未保存
           </Tag>
         )}
@@ -888,9 +1038,9 @@ export function AiSettingsSection({
       {settingsReadFailed && (
         <Alert
           className={styles.readFailureAlert}
-          type="error"
+          type='error'
           showIcon
-          title="AI 设置读取失败，请重启应用后重试"
+          title='AI 设置读取失败，请重启应用后重试'
         />
       )}
 
@@ -899,19 +1049,19 @@ export function AiSettingsSection({
         <Select
           value={activeChoice || undefined}
           className={styles.fullSelect}
-          placeholder="选择服务商与模型"
+          placeholder='选择服务商与模型'
           allowClear
           options={defaultModelOptions}
-          aria-label="选择默认模型"
-          onChange={(value) => setActiveChoice(normalizeActiveChoice(value))}
+          aria-label='选择默认模型'
+          onChange={value => setActiveChoice(normalizeActiveChoice(value))}
         />
       </section>
 
-      <section className={styles.settingsBlock} data-guide-target="ai-provider-settings">
+      <section className={styles.settingsBlock} data-guide-target='ai-provider-settings'>
         <div className={styles.blockHeading}>AI 服务商</div>
         <div className={styles.providerColumns}>
           <div className={styles.providerRail}>
-            {draftProviders.map((provider) => (
+            {draftProviders.map(provider => (
               <div
                 key={provider.id}
                 className={
@@ -923,13 +1073,18 @@ export function AiSettingsSection({
               >
                 <span className={styles.providerItemName}>{provider.name}</span>
                 {credentialStatuses[provider.id]?.configured && (
-                  <Tag tone="success" className={styles.providerItemTag}>
+                  <Tag tone='success' className={styles.providerItemTag}>
                     密钥
                   </Tag>
                 )}
               </div>
             ))}
-            <Button variant="dashed" block icon={<PlusIcon className="size-3.5" />} onClick={addProvider}>
+            <Button
+              variant='dashed'
+              block
+              icon={<PlusIcon className='size-3.5' />}
+              onClick={addProvider}
+            >
               添加服务商
             </Button>
           </div>
@@ -940,10 +1095,10 @@ export function AiSettingsSection({
                 <label className={styles.fieldLabel}>名称</label>
                 <Input
                   value={selectedProvider.name}
-                  placeholder="例如 DeepSeek / 通义千问 / Claude"
-                  onChange={(event) => {
+                  placeholder='例如 DeepSeek / 通义千问 / Claude'
+                  onChange={event => {
                     const value = event.target.value
-                    updateSelectedProvider((provider) => ({ ...provider, name: value }))
+                    updateSelectedProvider(provider => ({ ...provider, name: value }))
                   }}
                 />
               </div>
@@ -952,9 +1107,9 @@ export function AiSettingsSection({
                 <Segmented<AiProviderConfig['protocol']>
                   value={selectedProvider.protocol}
                   options={PROTOCOL_OPTIONS}
-                  aria-label="接口协议"
-                  onChange={(protocol) => {
-                    updateSelectedProvider((provider) => ({ ...provider, protocol }))
+                  aria-label='接口协议'
+                  onChange={protocol => {
+                    updateSelectedProvider(provider => ({ ...provider, protocol }))
                   }}
                 />
               </div>
@@ -963,9 +1118,9 @@ export function AiSettingsSection({
                 <Input
                   value={selectedProvider.baseUrl}
                   placeholder={baseUrlPlaceholder}
-                  onChange={(event) => {
+                  onChange={event => {
                     const baseUrl = event.target.value
-                    updateSelectedProvider((provider) => ({ ...provider, baseUrl }))
+                    updateSelectedProvider(provider => ({ ...provider, baseUrl }))
                   }}
                 />
               </div>
@@ -974,20 +1129,20 @@ export function AiSettingsSection({
                 <div className={styles.keyRow}>
                   <PasswordInput
                     value={apiKeyDraft}
-                    placeholder="输入 API Key"
-                    onChange={(event) => setApiKeyDraft(event.target.value)}
+                    placeholder='输入 API Key'
+                    onChange={event => setApiKeyDraft(event.target.value)}
                   />
                   <Button
-                    variant="primary"
+                    variant='primary'
                     disabled={!apiKeyDraft.trim()}
-                    icon={<SaveIcon className="size-3.5" />}
+                    icon={<SaveIcon className='size-3.5' />}
                     onClick={() => void saveApiKey()}
                   >
                     保存
                   </Button>
                   <Button
                     disabled={!credentialStatuses[selectedProvider.id]?.configured}
-                    icon={<Trash2Icon className="size-3.5" />}
+                    icon={<Trash2Icon className='size-3.5' />}
                     onClick={() => void clearApiKey()}
                   >
                     清除
@@ -1002,21 +1157,21 @@ export function AiSettingsSection({
                 <Input
                   value={modelSearch}
                   className={styles.modelSearch}
-                  placeholder="搜索模型"
+                  placeholder='搜索模型'
                   allowClear
-                  prefix={<SearchIcon className="size-3.5" />}
-                  onChange={(event) => setModelSearch(event.target.value)}
+                  prefix={<SearchIcon className='size-3.5' />}
+                  onChange={event => setModelSearch(event.target.value)}
                 />
                 <div className={styles.modelsActions}>
                   <Button
                     disabled={!canImport(selectedProvider)}
                     loading={importLoading && importProviderId === selectedProvider.id}
-                    icon={<RefreshCwIcon className="size-3.5" />}
+                    icon={<RefreshCwIcon className='size-3.5' />}
                     onClick={() => void openImport()}
                   >
                     刷新模型
                   </Button>
-                  <Button icon={<PlusIcon className="size-3.5" />} onClick={addModel}>
+                  <Button icon={<PlusIcon className='size-3.5' />} onClick={addModel}>
                     添加模型
                   </Button>
                 </div>
@@ -1027,7 +1182,7 @@ export function AiSettingsSection({
                 <div className={styles.modelsEmpty}>没有匹配的模型。</div>
               ) : (
                 <div className={styles.modelList}>
-                  {pagedModels.map((model) => (
+                  {pagedModels.map(model => (
                     <div
                       key={model.key}
                       tabIndex={0}
@@ -1038,7 +1193,7 @@ export function AiSettingsSection({
                           : `${styles.modelListRow} ${styles.modelListRowDisabled}`
                       }
                       onClick={() => editModel(model)}
-                      onKeyDown={(event) => handleModelRowKeyDown(event, model)}
+                      onKeyDown={event => handleModelRowKeyDown(event, model)}
                     >
                       <div className={styles.modelText}>
                         <div className={styles.modelName}>{model.label || model.id}</div>
@@ -1046,44 +1201,47 @@ export function AiSettingsSection({
                           <div className={styles.modelCode}>{model.id}</div>
                         )}
                       </div>
-                      <div className={styles.modelActions} onClick={(event) => event.stopPropagation()}>
+                      <div
+                        className={styles.modelActions}
+                        onClick={event => event.stopPropagation()}
+                      >
                         <Tooltip title={model.enabled ? '停用' : '启用'}>
-                          <span className="inline-flex">
+                          <span className='inline-flex'>
                             <Switch
                               checked={model.enabled}
-                              size="sm"
+                              size='sm'
                               aria-label={model.enabled ? '停用模型' : '启用模型'}
-                              onChange={(checked) => toggleModel(model, checked)}
+                              onChange={checked => toggleModel(model, checked)}
                             />
                           </span>
                         </Tooltip>
-                        <Tooltip title="测试连接">
+                        <Tooltip title='测试连接'>
                           <Button
-                            variant="ghost"
-                            size="sm"
+                            variant='ghost'
+                            size='sm'
                             loading={testingModelKey === model.key}
                             disabled={Boolean(testingModelKey) && testingModelKey !== model.key}
-                            aria-label="测试连接"
-                            icon={<ZapIcon className="size-3.5" />}
+                            aria-label='测试连接'
+                            icon={<ZapIcon className='size-3.5' />}
                             onClick={() => void testModel(model)}
                           />
                         </Tooltip>
-                        <Tooltip title="设置">
+                        <Tooltip title='设置'>
                           <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label="模型设置"
-                            icon={<SettingsIcon className="size-3.5" />}
+                            variant='ghost'
+                            size='sm'
+                            aria-label='模型设置'
+                            icon={<SettingsIcon className='size-3.5' />}
                             onClick={() => editModel(model)}
                           />
                         </Tooltip>
-                        <Tooltip title="删除">
+                        <Tooltip title='删除'>
                           <Button
-                            variant="ghost"
-                            size="sm"
+                            variant='ghost'
+                            size='sm'
                             danger
-                            aria-label="删除模型"
-                            icon={<Trash2Icon className="size-3.5" />}
+                            aria-label='删除模型'
+                            icon={<Trash2Icon className='size-3.5' />}
                             onClick={() => removeModel(model.key)}
                           />
                         </Tooltip>
@@ -1098,12 +1256,12 @@ export function AiSettingsSection({
                   className={styles.modelPagination}
                   total={filteredModels.length}
                   pageSize={MODEL_PAGE_SIZE}
-                  onChange={(page) => setModelPage(page)}
+                  onChange={page => setModelPage(page)}
                 />
               )}
 
               <div className={styles.providerDanger}>
-                <Button danger variant="ghost" onClick={() => removeProvider(selectedProvider.id)}>
+                <Button danger variant='ghost' onClick={() => removeProvider(selectedProvider.id)}>
                   删除该服务商
                 </Button>
               </div>
@@ -1121,8 +1279,8 @@ export function AiSettingsSection({
         title={modelEditorTitle}
         width={560}
         zIndex={1360}
-        okText="保存"
-        cancelText="取消"
+        okText='保存'
+        cancelText='取消'
         onOk={saveModel}
         onCancel={() => setModelEditorOpen(false)}
       >
@@ -1131,10 +1289,10 @@ export function AiSettingsSection({
             <label className={styles.fieldLabel}>模型代号</label>
             <Input
               value={modelDraft.id}
-              placeholder="如 deepseek-chat"
-              onChange={(event) => {
+              placeholder='如 deepseek-chat'
+              onChange={event => {
                 const id = event.target.value
-                setModelDraft((previous) => ({ ...previous, id }))
+                setModelDraft(previous => ({ ...previous, id }))
               }}
             />
           </div>
@@ -1142,10 +1300,10 @@ export function AiSettingsSection({
             <label className={styles.fieldLabel}>名称</label>
             <Input
               value={modelDraft.label}
-              placeholder="可选"
-              onChange={(event) => {
+              placeholder='可选'
+              onChange={event => {
                 const label = event.target.value
-                setModelDraft((previous) => ({ ...previous, label }))
+                setModelDraft(previous => ({ ...previous, label }))
               }}
             />
           </div>
@@ -1157,9 +1315,9 @@ export function AiSettingsSection({
               min={4096}
               max={2_000_000}
               step={32_000}
-              aria-label="最大上下文长度"
-              onChange={(value) =>
-                setModelDraft((previous) => ({
+              aria-label='最大上下文长度'
+              onChange={value =>
+                setModelDraft(previous => ({
                   ...previous,
                   contextWindow: typeof value === 'number' ? value : 4096
                 }))
@@ -1171,29 +1329,29 @@ export function AiSettingsSection({
               <label>流式输出</label>
               <Switch
                 checked={modelDraft.streaming}
-                size="sm"
-                aria-label="流式输出"
-                onChange={(streaming) => setModelDraft((previous) => ({ ...previous, streaming }))}
+                size='sm'
+                aria-label='流式输出'
+                onChange={streaming => setModelDraft(previous => ({ ...previous, streaming }))}
               />
             </span>
             <span className={styles.modelField}>
-              <Tooltip title="支持识别图片和截图">
+              <Tooltip title='支持识别图片和截图'>
                 <label className={styles.visionLabel}>图像识别</label>
               </Tooltip>
               <Switch
                 checked={modelDraft.vision}
-                size="sm"
-                aria-label="图像识别"
-                onChange={(vision) => setModelDraft((previous) => ({ ...previous, vision }))}
+                size='sm'
+                aria-label='图像识别'
+                onChange={vision => setModelDraft(previous => ({ ...previous, vision }))}
               />
             </span>
             <span className={styles.modelField}>
               <label>深度思考</label>
               <Switch
                 checked={modelDraft.thinking}
-                size="sm"
-                aria-label="深度思考"
-                onChange={(thinking) => setModelDraft((previous) => ({ ...previous, thinking }))}
+                size='sm'
+                aria-label='深度思考'
+                onChange={thinking => setModelDraft(previous => ({ ...previous, thinking }))}
               />
             </span>
             <span className={styles.modelField}>
@@ -1201,12 +1359,14 @@ export function AiSettingsSection({
               <Select
                 value={modelDraft.thinkingLevel}
                 disabled={!modelDraft.thinking}
-                size="sm"
+                size='sm'
                 className={styles.levelSelect}
                 options={THINKING_LEVEL_OPTIONS}
-                aria-label="思考深度"
-                onChange={(thinkingLevel) => {
-                  if (thinkingLevel) {setModelDraft((previous) => ({ ...previous, thinkingLevel }))}
+                aria-label='思考深度'
+                onChange={thinkingLevel => {
+                  if (thinkingLevel) {
+                    setModelDraft(previous => ({ ...previous, thinkingLevel }))
+                  }
                 }}
               />
             </span>
@@ -1216,20 +1376,20 @@ export function AiSettingsSection({
 
       <Modal
         open={importOpen}
-        title="导入模型"
+        title='导入模型'
         width={960}
         zIndex={1360}
         confirmLoading={importConfirmLoading}
         okDisabled={importLoading || importMatching}
-        okText="确认导入"
-        cancelText="取消"
+        okText='确认导入'
+        cancelText='取消'
         onOk={confirmImport}
         onCancel={cancelImport}
       >
         <div className={styles.importSummary}>
           <Alert
-            className="min-w-0 flex-1"
-            type="neutral"
+            className='min-w-0 flex-1'
+            type='neutral'
             showIcon
             title={
               importMatching
@@ -1237,20 +1397,20 @@ export function AiSettingsSection({
                 : `匹配成功 ${importMatchedCount} 个，未匹配 ${importFailedCount} 个`
             }
           />
-          <Tooltip title="按“/”后的名称自动匹配模型信息">
+          <Tooltip title='按“/”后的名称自动匹配模型信息'>
             <span className={styles.importOption}>
               <span>模型组兼容</span>
               <Switch
                 checked={modelGroupCompat}
-                size="sm"
+                size='sm'
                 loading={importMatching}
                 disabled={importLoading || importMatching}
-                aria-label="模型组兼容"
-                onChange={(checked) => void refreshImportMatches(checked)}
+                aria-label='模型组兼容'
+                onChange={checked => void refreshImportMatches(checked)}
               />
               <Button
-                variant="link"
-                size="sm"
+                variant='link'
+                size='sm'
                 disabled={importLoading || importMatching}
                 onClick={() => void refreshImportMatches()}
               >
@@ -1280,40 +1440,47 @@ export function AiSettingsSection({
                     </td>
                   </tr>
                 ) : (
-                  pagedImportRows.map((record) => (
-                    <tr key={record.key} className={record.matched ? undefined : styles.importRowFailed}>
+                  pagedImportRows.map(record => (
+                    <tr
+                      key={record.key}
+                      className={record.matched ? undefined : styles.importRowFailed}
+                    >
                       <td>
                         <Checkbox
                           checked={record.selected}
                           disabled={record.existing}
                           aria-label={`导入 ${record.id}`}
-                          onChange={(checked) => updateImportRow(record.key, { selected: checked })}
+                          onChange={checked => updateImportRow(record.key, { selected: checked })}
                         />
                       </td>
                       <td>
                         <Input
-                          size="sm"
+                          size='sm'
                           value={record.id}
-                          aria-label="模型 ID"
-                          onChange={(event) => updateImportRow(record.key, { id: event.target.value }, true)}
+                          aria-label='模型 ID'
+                          onChange={event =>
+                            updateImportRow(record.key, { id: event.target.value }, true)
+                          }
                         />
                       </td>
                       <td>
                         <Input
-                          size="sm"
+                          size='sm'
                           value={record.label}
-                          aria-label="模型名称"
-                          onChange={(event) => updateImportRow(record.key, { label: event.target.value })}
+                          aria-label='模型名称'
+                          onChange={event =>
+                            updateImportRow(record.key, { label: event.target.value })
+                          }
                         />
                       </td>
                       <td>
                         <NumberInput
-                          size="sm"
+                          size='sm'
                           min={4096}
                           max={2_000_000}
                           value={record.contextWindow}
-                          aria-label="上下文窗口"
-                          onChange={(value) =>
+                          aria-label='上下文窗口'
+                          onChange={value =>
                             updateImportRow(
                               record.key,
                               { contextWindow: typeof value === 'number' ? value : 4096 },
@@ -1323,36 +1490,40 @@ export function AiSettingsSection({
                         />
                       </td>
                       <td>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className='flex flex-wrap items-center gap-2'>
                           <span className={styles.importCapabilities}>
                             {record.vision && (
-                              <Tooltip title="支持视觉输入">
-                                <span className="inline-flex" aria-label="支持视觉输入">
-                                  <EyeIcon className="size-3.5" />
+                              <Tooltip title='支持视觉输入'>
+                                <span className='inline-flex' aria-label='支持视觉输入'>
+                                  <EyeIcon className='size-3.5' />
                                 </span>
                               </Tooltip>
                             )}
                             {record.thinking && (
-                              <Tooltip title={`支持思考，等级：${thinkingLevelLabel(record.thinkingLevel)}`}>
-                                <span className="inline-flex" aria-label="支持思考">
-                                  <LightbulbIcon className="size-3.5" />
+                              <Tooltip
+                                title={`支持思考，等级：${thinkingLevelLabel(record.thinkingLevel)}`}
+                              >
+                                <span className='inline-flex' aria-label='支持思考'>
+                                  <LightbulbIcon className='size-3.5' />
                                 </span>
                               </Tooltip>
                             )}
                           </span>
                           {record.existing && <span className={styles.importNote}>已有</span>}
                           {!record.matched && (
-                            <span className={styles.importFailure}>{record.failureReason || '需检查'}</span>
+                            <span className={styles.importFailure}>
+                              {record.failureReason || '需检查'}
+                            </span>
                           )}
                         </div>
                       </td>
                       <td>
                         <Button
-                          variant="ghost"
-                          size="sm"
+                          variant='ghost'
+                          size='sm'
                           danger
-                          aria-label="删除导入项"
-                          icon={<Trash2Icon className="size-3.5" />}
+                          aria-label='删除导入项'
+                          icon={<Trash2Icon className='size-3.5' />}
                           onClick={() => deleteImportRow(record.key)}
                         />
                       </td>
@@ -1371,7 +1542,7 @@ export function AiSettingsSection({
               showSizeChanger
               showQuickJumper
               showTotal
-              className="mt-3"
+              className='mt-3'
               onChange={(page, size) => {
                 setImportPage(page)
                 setImportPageSize(size)
@@ -1406,15 +1577,15 @@ export function AiSettingsSection({
             checked={storeHydrated ? storeSettings.socraticEnabled : storeSettings.socraticEnabled}
             loading={socraticBusy}
             disabled={settingsLocked}
-            aria-label="苏格拉底模式开关"
-            onChange={(checked) => void toggleSocratic(checked)}
+            aria-label='苏格拉底模式开关'
+            onChange={checked => void toggleSocratic(checked)}
           />
         </div>
       </section>
 
       <div className={styles.aiFooter}>
         <Button onClick={onRequestClose}>取消</Button>
-        <Button variant="primary" disabled={settingsLocked} onClick={() => void handleSave()}>
+        <Button variant='primary' disabled={settingsLocked} onClick={() => void handleSave()}>
           保存设置
         </Button>
       </div>

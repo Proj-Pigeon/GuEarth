@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { test } from 'vite-plus/test'
+
 import ts from '@typescript/typescript6'
+import { test } from 'vite-plus/test'
 
 const RENDERER_ROOT = resolve('src/renderer/src')
 const BUTTON_TAGS = new Set(['Button'])
@@ -11,8 +12,11 @@ function collectTsxFiles(dir) {
   const results = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name)
-    if (entry.isDirectory()) {results.push(...collectTsxFiles(full))}
-    else if (entry.isFile() && entry.name.endsWith('.tsx')) {results.push(full)}
+    if (entry.isDirectory()) {
+      results.push(...collectTsxFiles(full))
+    } else if (entry.isFile() && entry.name.endsWith('.tsx')) {
+      results.push(full)
+    }
   }
   return results
 }
@@ -20,12 +24,20 @@ function collectTsxFiles(dir) {
 function extractImportedIcons(sourceFile) {
   const names = new Set()
   for (const statement of sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement)) {continue}
-    if (!ts.isStringLiteral(statement.moduleSpecifier)) {continue}
+    if (!ts.isImportDeclaration(statement)) {
+      continue
+    }
+    if (!ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue
+    }
     const moduleName = statement.moduleSpecifier.text
-    if (moduleName !== 'lucide-react') {continue}
+    if (moduleName !== 'lucide-react') {
+      continue
+    }
     const namedBindings = statement.importClause?.namedBindings
-    if (!namedBindings || !ts.isNamedImports(namedBindings)) {continue}
+    if (!namedBindings || !ts.isNamedImports(namedBindings)) {
+      continue
+    }
     for (const element of namedBindings.elements) {
       names.add(element.name.text)
     }
@@ -34,8 +46,12 @@ function extractImportedIcons(sourceFile) {
 }
 
 function jsxTagName(tagNameNode) {
-  if (ts.isIdentifier(tagNameNode)) {return tagNameNode.text}
-  if (ts.isPropertyAccessExpression(tagNameNode)) {return tagNameNode.getText()}
+  if (ts.isIdentifier(tagNameNode)) {
+    return tagNameNode.text
+  }
+  if (ts.isPropertyAccessExpression(tagNameNode)) {
+    return tagNameNode.getText()
+  }
   return ''
 }
 
@@ -54,7 +70,7 @@ function isIconTag(tag, importedIcons) {
 
 function findIconsInJsxChildren(children, importedIcons, sourceFile) {
   const found = []
-  const visit = (node) => {
+  const visit = node => {
     if (ts.isJsxSelfClosingElement(node)) {
       const tag = jsxTagName(node.tagName)
       if (isIconTag(tag, importedIcons)) {
@@ -71,18 +87,22 @@ function findIconsInJsxChildren(children, importedIcons, sourceFile) {
         found.push({ tag, line: line + 1 })
         return
       }
-      for (const child of node.children) {visit(child)}
+      for (const child of node.children) {
+        visit(child)
+      }
       return
     }
     if (ts.isJsxFragment(node)) {
-      for (const child of node.children) {visit(child)}
+      for (const child of node.children) {
+        visit(child)
+      }
       return
     }
     if (ts.isJsxExpression(node) && node.expression) {
       visitExpression(node.expression)
     }
   }
-  const visitExpression = (expr) => {
+  const visitExpression = expr => {
     if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
       visit(expr)
       return
@@ -101,13 +121,15 @@ function findIconsInJsxChildren(children, importedIcons, sourceFile) {
       visitExpression(expr.right)
     }
   }
-  for (const child of children) {visit(child)}
+  for (const child of children) {
+    visit(child)
+  }
   return found
 }
 
 function walkTsx(node, visitor) {
   visitor(node)
-  ts.forEachChild(node, (child) => walkTsx(child, visitor))
+  ts.forEachChild(node, child => walkTsx(child, visitor))
 }
 
 test('all loading buttons place icons in the icon prop so loading replaces the original icon', () => {
@@ -116,23 +138,37 @@ test('all loading buttons place icons in the icon prop so loading replaces the o
 
   for (const file of collectTsxFiles(RENDERER_ROOT)) {
     const source = readFileSync(file, 'utf8')
-    const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const sourceFile = ts.createSourceFile(
+      file,
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX
+    )
     const importedIcons = extractImportedIcons(sourceFile)
 
     // oxlint-disable-next-line eslint/no-loop-func -- counts buttons across files
-    walkTsx(sourceFile, (node) => {
+    walkTsx(sourceFile, node => {
       if (ts.isJsxSelfClosingElement(node)) {
         const tag = jsxTagName(node.tagName)
-        if (BUTTON_TAGS.has(tag) && hasLoadingAttr(node.attributes)) {checkedButtons++}
+        if (BUTTON_TAGS.has(tag) && hasLoadingAttr(node.attributes)) {
+          checkedButtons++
+        }
         return
       }
-      if (!ts.isJsxElement(node)) {return}
+      if (!ts.isJsxElement(node)) {
+        return
+      }
       const tag = jsxTagName(node.openingElement.tagName)
-      if (!BUTTON_TAGS.has(tag) || !hasLoadingAttr(node.openingElement.attributes)) {return}
+      if (!BUTTON_TAGS.has(tag) || !hasLoadingAttr(node.openingElement.attributes)) {
+        return
+      }
       checkedButtons++
       const misplaced = findIconsInJsxChildren(node.children, importedIcons, sourceFile)
       for (const icon of misplaced) {
-        violations.push(`${relative(RENDERER_ROOT, file)}:${icon.line} <${icon.tag}> inside loading <${tag}>`)
+        violations.push(
+          `${relative(RENDERER_ROOT, file)}:${icon.line} <${icon.tag}> inside loading <${tag}>`
+        )
       }
     })
   }

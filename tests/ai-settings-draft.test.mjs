@@ -1,19 +1,23 @@
 import assert from 'node:assert/strict'
-import { test } from 'vite-plus/test'
 import { registerHooks } from 'node:module'
+
+import { test } from 'vite-plus/test'
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {return nextResolve(`${specifier}.ts`, context)}
+      if (specifier.startsWith('.') && !/\.[a-z]+$/i.test(specifier)) {
+        return nextResolve(`${specifier}.ts`, context)
+      }
       throw error
     }
   }
 })
 
-const { draftChoiceSignature, isAiDraftDirty, normalizeActiveChoice, parseActiveChoice } = await import('../src/renderer/src/lib/aiSettingsDraft.ts')
+const { draftChoiceSignature, isAiDraftDirty, normalizeActiveChoice, parseActiveChoice } =
+  await import('../src/renderer/src/lib/aiSettingsDraft.ts')
 
 function model(id, overrides = {}) {
   return {
@@ -50,9 +54,12 @@ const persisted = {
 
 function draft(overrides = {}) {
   return {
-    providers: persisted.providers.map((item) => ({ ...item, models: item.models.map((entry) => ({ ...entry })) })),
+    providers: persisted.providers.map(item => ({
+      ...item,
+      models: item.models.map(entry => ({ ...entry }))
+    })),
     activeChoice: 'p1:p1-chat',
-    searchProviders: persisted.searchProviders.map((item) => ({ ...item })),
+    searchProviders: persisted.searchProviders.map(item => ({ ...item })),
     activeSearchProviderId: 'baidu',
     ...overrides
   }
@@ -142,8 +149,14 @@ test('normalizeActiveChoice keeps strings and coerces cleared values to empty st
 })
 
 test('parseActiveChoice splits on the first colon and resolves cleared values to an empty pair', () => {
-  assert.deepEqual(parseActiveChoice('p1:deepseek-chat'), { providerId: 'p1', modelId: 'deepseek-chat' })
-  assert.deepEqual(parseActiveChoice('p1:vendor:model'), { providerId: 'p1', modelId: 'vendor:model' })
+  assert.deepEqual(parseActiveChoice('p1:deepseek-chat'), {
+    providerId: 'p1',
+    modelId: 'deepseek-chat'
+  })
+  assert.deepEqual(parseActiveChoice('p1:vendor:model'), {
+    providerId: 'p1',
+    modelId: 'vendor:model'
+  })
 
   const empty = { providerId: '', modelId: '' }
   assert.deepEqual(parseActiveChoice(undefined), empty)

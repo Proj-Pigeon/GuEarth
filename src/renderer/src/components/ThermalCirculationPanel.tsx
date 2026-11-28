@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
-import { XIcon } from 'lucide-react'
 import { Button, Segmented } from '@renderer/components/ui'
+import { XIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
+
 import { diagramFont } from './diagram/diagramTheme'
+
 import styles from './ThermalCirculationPanel.module.css'
 
 export interface ThermalCirculationPanelProps {
@@ -66,8 +68,18 @@ function seaLandConfig(current: Period): SceneConfig {
   const sinkingX = current === 'day' ? 92 : 232
   const surfaceWind: FlowArrow =
     current === 'day'
-      ? { d: `M ${sinkingX + 2} 142 Q 162 126 ${risingX - 2} 138`, color: WIND, label: '海风（海 → 陆）', labelAt: [162, 128] }
-      : { d: `M ${sinkingX - 2} 138 Q 162 154 ${risingX + 2} 142`, color: WIND, label: '陆风（陆 → 海）', labelAt: [162, 156] }
+      ? {
+          d: `M ${sinkingX + 2} 142 Q 162 126 ${risingX - 2} 138`,
+          color: WIND,
+          label: '海风（海 → 陆）',
+          labelAt: [162, 128]
+        }
+      : {
+          d: `M ${sinkingX - 2} 138 Q 162 154 ${risingX + 2} 142`,
+          color: WIND,
+          label: '陆风（陆 → 海）',
+          labelAt: [162, 156]
+        }
   return {
     grounds: [
       { d: 'M0 152 L150 152 L150 210 L0 210 Z', fill: 'rgba(22, 119, 255, 0.18)' },
@@ -123,13 +135,16 @@ function valleyConfig(current: Period): SceneConfig {
     ? { d: 'M160 52 L160 126', color: SINKING }
     : { d: 'M160 126 L160 52', color: RISING, label: '谷中气流上升', labelAt: [172, 96] }
   return {
-    grounds: [{ d: 'M0 96 L110 146 L210 146 L320 96 L320 210 L0 210 Z', fill: 'rgba(82, 196, 26, 0.16)' }],
+    grounds: [
+      { d: 'M0 96 L110 146 L210 146 L320 96 L320 210 L0 210 Z', fill: 'rgba(82, 196, 26, 0.16)' }
+    ],
     arrows: [...slopeArrows, ...aloftArrows, centerArrow],
     placeLabels: [
       { text: '山坡（白天受热快）', at: [28, 88] },
       { text: '山谷', at: [160, 168] }
     ],
-    caption: '山谷风：白天山坡升温快，风从谷底沿坡向上吹（谷风）；夜晚山坡冷却快，冷空气沿坡下滑流入谷底（山风）。'
+    caption:
+      '山谷风：白天山坡升温快，风从谷底沿坡向上吹（谷风）；夜晚山坡冷却快，冷空气沿坡下滑流入谷底（山风）。'
   }
 }
 
@@ -160,69 +175,111 @@ export function ThermalCirculationPanel({ onClose }: ThermalCirculationPanelProp
   const [period, setPeriod] = useState<Period>('day')
 
   const sceneConfig = useMemo<SceneConfig>(() => {
-    if (scene === 'sea-land') {return seaLandConfig(period)}
-    if (scene === 'valley') {return valleyConfig(period)}
+    if (scene === 'sea-land') {
+      return seaLandConfig(period)
+    }
+    if (scene === 'valley') {
+      return valleyConfig(period)
+    }
     return urbanConfig()
   }, [scene, period])
 
   const showPeriodToggle = scene !== 'urban'
   const sceneName = scene === 'sea-land' ? '海陆风' : scene === 'valley' ? '山谷风' : '城市风'
-  const labeledArrows = useMemo(() => sceneConfig.arrows.filter((item) => item.label && item.labelAt), [sceneConfig.arrows])
+  const labeledArrows = useMemo(
+    () => sceneConfig.arrows.filter(item => item.label && item.labelAt),
+    [sceneConfig.arrows]
+  )
 
   return (
-    <div className={styles.circulationPanel} role="group" aria-label="热力环流演示">
+    <div className={styles.circulationPanel} role='group' aria-label='热力环流演示'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>热力环流</span>
         <Segmented
           value={scene}
-          size="sm"
+          size='sm'
           options={sceneOptions}
-          aria-label="环流场景"
-          onChange={(value) => setScene(value as SceneId)}
+          aria-label='环流场景'
+          onChange={value => setScene(value as SceneId)}
         />
-        {onClose && <Button variant="ghost" size="sm" aria-label="关闭热力环流" icon={<XIcon className="size-3.5" />} onClick={onClose} />}
+        {onClose && (
+          <Button
+            variant='ghost'
+            size='sm'
+            aria-label='关闭热力环流'
+            icon={<XIcon className='size-3.5' />}
+            onClick={onClose}
+          />
+        )}
       </div>
       {showPeriodToggle && (
         <div className={styles.periodRow}>
           <span className={styles.rowLabel}>时间</span>
           <Segmented
             value={period}
-            size="sm"
+            size='sm'
             options={periodOptions}
-            aria-label="昼与夜"
-            onChange={(value) => setPeriod(value as Period)}
+            aria-label='昼与夜'
+            onChange={value => setPeriod(value as Period)}
           />
         </div>
       )}
-      <svg viewBox="0 0 320 210" className={styles.circulationSvg} role="img" aria-label={`热力环流示意图：${sceneName}`}>
+      <svg
+        viewBox='0 0 320 210'
+        className={styles.circulationSvg}
+        role='img'
+        aria-label={`热力环流示意图：${sceneName}`}
+      >
         {period === 'day' ? (
-          <circle cx="292" cy="26" r="9" fill="#faad14" />
+          <circle cx='292' cy='26' r='9' fill='#faad14' />
         ) : (
           <g>
-            <circle cx="292" cy="26" r="9" fill="var(--ink-tertiary)" />
-            <circle cx="296" cy="23" r="8" fill="var(--surface)" />
+            <circle cx='292' cy='26' r='9' fill='var(--ink-tertiary)' />
+            <circle cx='296' cy='23' r='8' fill='var(--surface)' />
           </g>
         )}
         {sceneConfig.grounds.map((ground, index) => (
-          <path key={index} d={ground.d} fill={ground.fill} stroke="var(--ink-tertiary)" strokeWidth="1.5" />
+          <path
+            key={index}
+            d={ground.d}
+            fill={ground.fill}
+            stroke='var(--ink-tertiary)'
+            strokeWidth='1.5'
+          />
         ))}
         {scene === 'urban' && (
           <g>
             {BUILDINGS.map(([bx, bw, bh]) => (
-              <rect key={`b-${bx}`} x={bx} y={152 - bh} width={bw} height={bh} fill="var(--ink-tertiary)" rx="1.5" />
+              <rect
+                key={`b-${bx}`}
+                x={bx}
+                y={152 - bh}
+                width={bw}
+                height={bh}
+                fill='var(--ink-tertiary)'
+                rx='1.5'
+              />
             ))}
             {SUBURB_HOUSES.map(([hx, hw]) => (
-              <rect key={`h-${hx}`} x={hx} y={152 - hw} width={hw} height={hw} fill="var(--border-strong)" rx="1" />
+              <rect
+                key={`h-${hx}`}
+                x={hx}
+                y={152 - hw}
+                width={hw}
+                height={hw}
+                fill='var(--border-strong)'
+                rx='1'
+              />
             ))}
           </g>
         )}
         {scene === 'sea-land' && (
           <g>
             <path
-              d="M14 158 Q 21 155 28 158 M40 162 Q 47 159 54 162 M96 158 Q 103 155 110 158 M118 164 Q 125 161 132 164"
-              fill="none"
-              stroke="rgba(22, 119, 255, 0.5)"
-              strokeWidth="1.2"
+              d='M14 158 Q 21 155 28 158 M40 162 Q 47 159 54 162 M96 158 Q 103 155 110 158 M118 164 Q 125 161 132 164'
+              fill='none'
+              stroke='rgba(22, 119, 255, 0.5)'
+              strokeWidth='1.2'
             />
           </g>
         )}
@@ -230,34 +287,47 @@ export function ThermalCirculationPanel({ onClose }: ThermalCirculationPanelProp
           <g key={`a-${index}`}>
             <path
               d={arrow.d}
-              fill="none"
+              fill='none'
               stroke={arrow.color}
-              strokeWidth="2.5"
+              strokeWidth='2.5'
               className={styles.flowArrow}
-              markerEnd="url(#circ-arrowhead)"
+              markerEnd='url(#circ-arrowhead)'
             />
           </g>
         ))}
         <defs>
-          <marker id="circ-arrowhead" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 Z" fill="var(--ink-secondary)" />
+          <marker
+            id='circ-arrowhead'
+            markerWidth='7'
+            markerHeight='7'
+            refX='6'
+            refY='3.5'
+            orient='auto'
+          >
+            <path d='M0,0 L7,3.5 L0,7 Z' fill='var(--ink-secondary)' />
           </marker>
         </defs>
-        <g fontSize="11" fontFamily={diagramFont}>
+        <g fontSize='11' fontFamily={diagramFont}>
           {labeledArrows.map((arrow, index) => (
             <text
               key={`l-${index}`}
               x={arrow.labelAt![0]}
               y={arrow.labelAt![1]}
-              textAnchor="middle"
+              textAnchor='middle'
               fill={arrow.color}
-              fontWeight="600"
+              fontWeight='600'
             >
               {arrow.label}
             </text>
           ))}
           {sceneConfig.placeLabels.map((place, index) => (
-            <text key={`p-${index}`} x={place.at[0]} y={place.at[1]} textAnchor="middle" fill="var(--ink-secondary)">
+            <text
+              key={`p-${index}`}
+              x={place.at[0]}
+              y={place.at[1]}
+              textAnchor='middle'
+              fill='var(--ink-secondary)'
+            >
               {place.text}
             </text>
           ))}

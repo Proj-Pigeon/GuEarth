@@ -1,8 +1,8 @@
-import { isValidElement } from 'react';
-import type { ReactElement, ReactNode } from 'react';
 import { Menu as BaseMenu } from '@base-ui/react/menu'
-import { CheckIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { CheckIcon } from 'lucide-react'
+import { isValidElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 
 export interface DropdownMenuItem {
   type?: 'item'
@@ -33,9 +33,15 @@ function parseDropdownPlacement(placement: DropdownPlacement): {
   side: 'top' | 'bottom'
   align: 'start' | 'end'
 } {
-  if (placement === 'topLeft') {return { side: 'top', align: 'start' }}
-  if (placement === 'topRight') {return { side: 'top', align: 'end' }}
-  if (placement === 'bottomRight') {return { side: 'bottom', align: 'end' }}
+  if (placement === 'topLeft') {
+    return { side: 'top', align: 'start' }
+  }
+  if (placement === 'topRight') {
+    return { side: 'top', align: 'end' }
+  }
+  if (placement === 'bottomRight') {
+    return { side: 'bottom', align: 'end' }
+  }
   return { side: 'bottom', align: 'start' }
 }
 
@@ -82,8 +88,8 @@ export function DropdownMenu({
           item.className
         )}
       >
-        <div className="min-w-0 flex-1">{item.label}</div>
-        {selected && <CheckIcon className="size-3.5 shrink-0 text-ink" aria-hidden="true" />}
+        <div className='min-w-0 flex-1'>{item.label}</div>
+        {selected && <CheckIcon className='text-ink size-3.5 shrink-0' aria-hidden='true' />}
       </BaseMenu.Item>
     )
   }
@@ -92,7 +98,12 @@ export function DropdownMenu({
     <BaseMenu.Root open={open} onOpenChange={onOpenChange}>
       <BaseMenu.Trigger render={triggerElement} />
       <BaseMenu.Portal>
-        <BaseMenu.Positioner side={side} align={align} sideOffset={6} className="z-[1500] outline-none">
+        <BaseMenu.Positioner
+          side={side}
+          align={align}
+          sideOffset={6}
+          className='z-[1500] outline-none'
+        >
           <BaseMenu.Popup
             className={cn(
               'max-h-80 min-w-36 overflow-y-auto rounded-xl border border-hairline bg-popover p-1 text-popover-foreground shadow-[var(--shadow-popup)] outline-none transition-[opacity,transform] duration-100 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none',
@@ -100,14 +111,14 @@ export function DropdownMenu({
               menuClassName
             )}
           >
-            {items.map((entry) => {
+            {items.map(entry => {
               if (entry.type === 'divider') {
-                return <BaseMenu.Separator key={entry.key} className="my-1 h-px bg-hairline" />
+                return <BaseMenu.Separator key={entry.key} className='bg-hairline my-1 h-px' />
               }
               if (entry.type === 'group') {
                 return (
-                  <BaseMenu.Group key={entry.key} className="py-0.5">
-                    <BaseMenu.GroupLabel className="px-2.5 py-1 text-[11px] font-medium text-ink-tertiary">
+                  <BaseMenu.Group key={entry.key} className='py-0.5'>
+                    <BaseMenu.GroupLabel className='text-ink-tertiary px-2.5 py-1 text-[11px] font-medium'>
                       {entry.label}
                     </BaseMenu.GroupLabel>
                     {entry.children.map(renderItem)}

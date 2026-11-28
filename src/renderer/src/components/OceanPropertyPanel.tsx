@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
-import { XIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui'
-import LineChart from './charts/LineChart';
-import type { ChartSeries } from './charts/LineChart';
+import { XIcon } from 'lucide-react'
+import { useMemo } from 'react'
+
+import LineChart from './charts/LineChart'
+import type { ChartSeries } from './charts/LineChart'
+
 import styles from './OceanPropertyPanel.module.css'
 
 export interface OceanPropertyPanelProps {
@@ -59,16 +61,40 @@ export function OceanPropertyPanel({ onClose }: OceanPropertyPanelProps) {
   )
 
   return (
-    <div className={styles.oceanPanel} role="group" aria-label="海水温度与盐度">
+    <div className={styles.oceanPanel} role='group' aria-label='海水温度与盐度'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>海水温度与盐度</span>
-        <Button variant="ghost" size="sm" aria-label="关闭海水温度与盐度" icon={<XIcon className="size-3.5" />} onClick={onClose} />
+        <Button
+          variant='ghost'
+          size='sm'
+          aria-label='关闭海水温度与盐度'
+          icon={<XIcon className='size-3.5' />}
+          onClick={onClose}
+        />
       </div>
       <div className={styles.chartTitle}>表层海水温度随纬度分布</div>
-      <LineChart series={temperatureSeries} xMin={-60} xMax={60} xName="纬度" yName="温度(℃)" yMin={0} yMax={32} height={150} />
+      <LineChart
+        series={temperatureSeries}
+        xMin={-60}
+        xMax={60}
+        xName='纬度'
+        yName='温度(℃)'
+        yMin={0}
+        yMax={32}
+        height={150}
+      />
       <div className={styles.chartTitle}>表层海水盐度随纬度分布</div>
-      <LineChart series={salinitySeries} xMin={-60} xMax={60} xName="纬度" yName="盐度(‰)" yMin={33} yMax={38} height={150} />
-      {facts.map((fact) => (
+      <LineChart
+        series={salinitySeries}
+        xMin={-60}
+        xMax={60}
+        xName='纬度'
+        yName='盐度(‰)'
+        yMin={33}
+        yMax={38}
+        height={150}
+      />
+      {facts.map(fact => (
         <div key={fact} className={styles.fact}>
           · {fact}
         </div>

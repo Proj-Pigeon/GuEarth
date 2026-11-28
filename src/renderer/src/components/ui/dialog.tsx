@@ -1,9 +1,10 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
-import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
-import { XIcon } from 'lucide-react'
+import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '@renderer/lib/utils'
+import { XIcon } from 'lucide-react'
+import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+
 import { runGuardedAction } from './actionError'
 import { Alert } from './alert'
 import { Button } from './button'
@@ -54,9 +55,15 @@ export function Modal({
 }: ModalProps) {
   const handleOpenChange = useCallback(
     (nextOpen: boolean, details?: { reason?: string }) => {
-      if (nextOpen) {return}
-      if (details?.reason === 'escape-key' && !keyboard) {return}
-      if (details?.reason === 'outside-press' && !maskClosable) {return}
+      if (nextOpen) {
+        return
+      }
+      if (details?.reason === 'escape-key' && !keyboard) {
+        return
+      }
+      if (details?.reason === 'outside-press' && !maskClosable) {
+        return
+      }
       onCancel?.()
     },
     [keyboard, maskClosable, onCancel]
@@ -73,11 +80,11 @@ export function Modal({
       <BaseDialog.Portal>
         <BaseDialog.Backdrop
           style={{ zIndex }}
-          className="fixed inset-0 bg-[var(--backdrop)] transition-opacity duration-150 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none"
+          className='fixed inset-0 bg-[var(--backdrop)] transition-opacity duration-150 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none'
         />
         <BaseDialog.Popup
           style={{ width: resolvedWidth, zIndex: zIndex + 1 }}
-          onKeyDown={(event) => {
+          onKeyDown={event => {
             if (!keyboard && event.key === 'Escape') {
               event.stopPropagation()
               event.preventDefault()
@@ -89,20 +96,20 @@ export function Modal({
           )}
         >
           {(title !== undefined || closable) && (
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-5 py-3.5">
+            <div className='border-hairline flex shrink-0 items-center justify-between gap-3 border-b px-5 py-3.5'>
               {title === undefined ? (
                 <span />
               ) : (
-                <BaseDialog.Title className="m-0 text-[15px] leading-6 font-semibold text-ink">
+                <BaseDialog.Title className='text-ink m-0 text-[15px] leading-6 font-semibold'>
                   {title}
                 </BaseDialog.Title>
               )}
               {closable && (
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="关闭弹窗"
-                  icon={<XIcon className="size-4" />}
+                  variant='ghost'
+                  size='sm'
+                  aria-label='关闭弹窗'
+                  icon={<XIcon className='size-4' />}
                   onClick={() => onCancel?.()}
                 />
               )}
@@ -121,19 +128,21 @@ export function Modal({
           </div>
 
           {footer !== null && (
-            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-hairline px-5 py-3">
+            <div className='border-hairline flex shrink-0 items-center justify-end gap-2 border-t px-5 py-3'>
               {footer === undefined ? (
                 <>
                   <Button disabled={confirmLoading} onClick={() => onCancel?.()}>
                     {cancelText}
                   </Button>
                   <Button
-                    variant="primary"
+                    variant='primary'
                     danger={okDanger}
                     disabled={okDisabled}
                     loading={confirmLoading}
                     onClick={() => {
-                      void runGuardedAction(onOk, (message) => { appToast.error(message) })
+                      void runGuardedAction(onOk, message => {
+                        appToast.error(message)
+                      })
                     }}
                   >
                     {okText}
@@ -180,7 +189,9 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const close = useCallback(() => {
-    if (busy) {return}
+    if (busy) {
+      return
+    }
     const current = optionsRef.current
     setErrorMessage('')
     setOptions(null)
@@ -189,11 +200,13 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
 
   const accept = useCallback(async () => {
     const current = optionsRef.current
-    if (!current || busy) {return}
+    if (!current || busy) {
+      return
+    }
     setBusy(true)
     setErrorMessage('')
     try {
-      const ok = await runGuardedAction(current.onOk, (message) => {
+      const ok = await runGuardedAction(current.onOk, message => {
         setErrorMessage(message)
         appToast.error(message)
       })
@@ -211,30 +224,32 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
       {children}
       <BaseAlertDialog.Root
         open={Boolean(options)}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {close()}
+        onOpenChange={nextOpen => {
+          if (!nextOpen) {
+            close()
+          }
         }}
       >
         <BaseAlertDialog.Portal>
-          <BaseAlertDialog.Backdrop className="fixed inset-0 z-[1450] bg-[var(--backdrop)] transition-opacity duration-150 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
-          <BaseAlertDialog.Popup className="fixed top-1/2 left-1/2 z-[1451] flex w-[400px] max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl border border-hairline bg-elevated p-5 text-ink shadow-[var(--shadow-dialog)] outline-none transition-[opacity,transform] duration-150 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none">
-            <div className="flex flex-col gap-1.5">
-              <BaseAlertDialog.Title className="m-0 text-[15px] leading-6 font-semibold text-ink">
+          <BaseAlertDialog.Backdrop className='fixed inset-0 z-[1450] bg-[var(--backdrop)] transition-opacity duration-150 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none' />
+          <BaseAlertDialog.Popup className='border-hairline bg-elevated text-ink fixed top-1/2 left-1/2 z-[1451] flex w-[400px] max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl border p-5 shadow-[var(--shadow-dialog)] transition-[opacity,transform] duration-150 ease-out outline-none data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none'>
+            <div className='flex flex-col gap-1.5'>
+              <BaseAlertDialog.Title className='text-ink m-0 text-[15px] leading-6 font-semibold'>
                 {options?.title}
               </BaseAlertDialog.Title>
               {options?.content && (
-                <BaseAlertDialog.Description className="m-0 text-[13px] leading-5 text-ink-secondary">
+                <BaseAlertDialog.Description className='text-ink-secondary m-0 text-[13px] leading-5'>
                   {options.content}
                 </BaseAlertDialog.Description>
               )}
             </div>
-            {errorMessage && <Alert type="error" showIcon title={errorMessage} />}
-            <div className="flex items-center justify-end gap-2">
+            {errorMessage && <Alert type='error' showIcon title={errorMessage} />}
+            <div className='flex items-center justify-end gap-2'>
               <Button disabled={busy} onClick={close}>
                 {options?.cancelText ?? '取消'}
               </Button>
               <Button
-                variant="primary"
+                variant='primary'
                 danger={Boolean(options?.danger)}
                 loading={busy}
                 onClick={() => void accept()}
@@ -251,6 +266,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
 
 export function useConfirm() {
   const ctx = useContext(ConfirmContext)
-  if (!ctx) {throw new Error('ConfirmDialogProvider is missing')}
+  if (!ctx) {
+    throw new Error('ConfirmDialogProvider is missing')
+  }
   return ctx.confirm
 }

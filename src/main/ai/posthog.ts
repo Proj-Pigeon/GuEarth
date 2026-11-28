@@ -1,6 +1,7 @@
 import { PostHog } from 'posthog-node'
 
-const projectToken = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || process.env.VITE_POSTHOG_PROJECT_TOKEN
+const projectToken =
+  import.meta.env.VITE_POSTHOG_PROJECT_TOKEN || process.env.VITE_POSTHOG_PROJECT_TOKEN
 const host = import.meta.env.VITE_POSTHOG_HOST || process.env.VITE_POSTHOG_HOST
 
 let aiPosthogEnabled = false
@@ -8,13 +9,19 @@ let posthogClient: PostHog | null = null
 let missingWarned = false
 
 function ensureClient(): PostHog | null {
-  if (!aiPosthogEnabled) {return null}
-  if (posthogClient) {return posthogClient}
+  if (!aiPosthogEnabled) {
+    return null
+  }
+  if (posthogClient) {
+    return posthogClient
+  }
   if (!projectToken || !host) {
     if (!missingWarned && import.meta.env.DEV) {
       missingWarned = true
       const missingConfiguration = projectToken ? 'VITE_POSTHOG_HOST' : 'VITE_POSTHOG_PROJECT_TOKEN'
-      console.warn(`${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`)
+      console.warn(
+        `${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`
+      )
     }
     return null
   }
@@ -28,7 +35,9 @@ function ensureClient(): PostHog | null {
 
 export function setAiPosthogEnabled(enabled: boolean): void {
   aiPosthogEnabled = enabled
-  if (enabled) {ensureClient()}
+  if (enabled) {
+    ensureClient()
+  }
 }
 
 export function isAiPosthogEnabled(): boolean {
@@ -64,7 +73,9 @@ interface AiSpanCapture extends AiCaptureBase {
 
 export function captureAiGeneration(capture: AiGenerationCapture): void {
   const client = ensureClient()
-  if (!client) {return}
+  if (!client) {
+    return
+  }
   try {
     client.capture({
       distinctId: capture.distinctId,
@@ -91,7 +102,9 @@ export function captureAiGeneration(capture: AiGenerationCapture): void {
 
 export function captureAiSpan(capture: AiSpanCapture): void {
   const client = ensureClient()
-  if (!client) {return}
+  if (!client) {
+    return
+  }
   try {
     client.capture({
       distinctId: capture.distinctId,
@@ -113,12 +126,14 @@ export function captureAiSpan(capture: AiSpanCapture): void {
 }
 
 export async function shutdownPosthog(): Promise<void> {
-  if (!posthogClient) {return}
+  if (!posthogClient) {
+    return
+  }
   let timeout: NodeJS.Timeout | undefined
   try {
     await Promise.race([
       posthogClient.shutdown(),
-      new Promise<void>((resolve) => {
+      new Promise<void>(resolve => {
         timeout = setTimeout(resolve, 1000)
         timeout.unref()
       })
@@ -126,6 +141,8 @@ export async function shutdownPosthog(): Promise<void> {
   } catch {
     // Best effort, so the failure is ignored.
   } finally {
-    if (timeout) {clearTimeout(timeout)}
+    if (timeout) {
+      clearTimeout(timeout)
+    }
   }
 }

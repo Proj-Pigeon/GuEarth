@@ -8,7 +8,9 @@ interface AvailabilityFlagged {
 
 const availabilityStripped = new WeakSet()
 
-export function withoutTileAvailability<Terrain extends TileAvailabilitySource>(terrain: Terrain): Terrain {
+export function withoutTileAvailability<Terrain extends TileAvailabilitySource>(
+  terrain: Terrain
+): Terrain {
   availabilityStripped.add(terrain)
   const flagged = terrain as Terrain & AvailabilityFlagged
   flagged._hasAvailability = false
@@ -34,11 +36,7 @@ export function attachOriginTerrainFallback<
   TileData,
   Request,
   Terrain extends FallbackTerrainProvider<TileData, Request>
->(
-  mirrorProvider: Terrain,
-  createOrigin: () => Promise<Terrain>,
-  failureThreshold = 2
-): Terrain {
+>(mirrorProvider: Terrain, createOrigin: () => Promise<Terrain>, failureThreshold = 2): Terrain {
   const mirrorRequestTileGeometry = mirrorProvider.requestTileGeometry.bind(mirrorProvider)
   const mirrorGetTileDataAvailable = mirrorProvider.getTileDataAvailable.bind(mirrorProvider)
   let consecutiveFailures = 0
@@ -47,14 +45,16 @@ export function attachOriginTerrainFallback<
   let resolvedOrigin: Terrain | undefined
 
   const getOriginProvider = (): Promise<Terrain> => {
-    if (resolvedOrigin) {return Promise.resolve(resolvedOrigin)}
+    if (resolvedOrigin) {
+      return Promise.resolve(resolvedOrigin)
+    }
     if (!originPromise) {
       originPromise = createOrigin().then(
-        (origin) => {
+        origin => {
           resolvedOrigin = origin
           return origin
         },
-        (error) => {
+        error => {
           originPromise = undefined
           throw error
         }
@@ -65,26 +65,36 @@ export function attachOriginTerrainFallback<
 
   mirrorProvider.requestTileGeometry = (x: number, y: number, level: number, request?: Request) => {
     if (fallenBackToOrigin) {
-      if (resolvedOrigin) {return resolvedOrigin.requestTileGeometry(x, y, level, request)}
-      return getOriginProvider().then((origin) => {
+      if (resolvedOrigin) {
+        return resolvedOrigin.requestTileGeometry(x, y, level, request)
+      }
+      return getOriginProvider().then(origin => {
         const fallbackAttempt = origin.requestTileGeometry(x, y, level, request)
-        if (!fallbackAttempt) {throw new Error('Origin terrain tile request deferred');}
+        if (!fallbackAttempt) {
+          throw new Error('Origin terrain tile request deferred')
+        }
         return fallbackAttempt
       })
     }
     const attempt = mirrorRequestTileGeometry(x, y, level, request)
-    if (!attempt) {return attempt}
+    if (!attempt) {
+      return attempt
+    }
     return attempt.then(
-      (tile) => {
+      tile => {
         consecutiveFailures = 0
         return tile
       },
-      async (error) => {
+      async error => {
         consecutiveFailures += 1
-        if (consecutiveFailures >= failureThreshold) {fallenBackToOrigin = true}
+        if (consecutiveFailures >= failureThreshold) {
+          fallenBackToOrigin = true
+        }
         const origin = await getOriginProvider()
         const fallbackAttempt = origin.requestTileGeometry(x, y, level, request)
-        if (!fallbackAttempt) {throw error}
+        if (!fallbackAttempt) {
+          throw error
+        }
         return fallbackAttempt
       }
     )

@@ -1,21 +1,26 @@
 import { Alert, Button, Segmented, Select, Spinner } from '@renderer/components/ui'
 import { useClimateStore } from '@renderer/stores/climate'
-import { climateZones } from '@renderer/thematic/climateZones'
-import { koppenZones } from '@renderer/thematic/koppenZones'
-import { windRampStops } from '@renderer/thematic/windField'
-import { densityBins } from '@renderer/thematic/populationCensus'
-import { CITY_TIER_META, FUNCTIONAL_ZONES, functionalZoneCities } from '@renderer/thematic/urbanCities'
-import { AGRI_CATEGORY_META } from '@renderer/thematic/agriculturalRegions'
-import { industrialBases } from '@renderer/thematic/industrialBases'
-import { useOnlineDataStore } from '@renderer/stores/onlineData';
-import type { TyphoonMode } from '@renderer/stores/onlineData';
+import { useOnlineDataStore } from '@renderer/stores/onlineData'
+import type { TyphoonMode } from '@renderer/stores/onlineData'
 import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
-import { typhoonIntensityStyles } from '@renderer/thematic/typhoonTracks'
+import { AGRI_CATEGORY_META } from '@renderer/thematic/agriculturalRegions'
+import { climateZones } from '@renderer/thematic/climateZones'
+import { industrialBases } from '@renderer/thematic/industrialBases'
+import { koppenZones } from '@renderer/thematic/koppenZones'
 import {
   formatOnlineTime,
   liveTyphoonIntensityStyles,
   unknownTyphoonIntensityStyle
 } from '@renderer/thematic/liveTyphoons'
+import { densityBins } from '@renderer/thematic/populationCensus'
+import { typhoonIntensityStyles } from '@renderer/thematic/typhoonTracks'
+import {
+  CITY_TIER_META,
+  FUNCTIONAL_ZONES,
+  functionalZoneCities
+} from '@renderer/thematic/urbanCities'
+import { windRampStops } from '@renderer/thematic/windField'
+
 import styles from './ThematicLegend.module.css'
 
 export interface ThematicLegendProps {}
@@ -33,60 +38,62 @@ const typhoonModeOptions: { label: string; value: TyphoonMode }[] = [
   { label: '实时台风', value: 'live' },
   { label: '历史案例', value: 'history' }
 ]
-const zoneEntries = climateZones.map((zone) => ({ name: zone.name, color: zone.color }))
-const koppenEntries = koppenZones.map((zone) => ({
+const zoneEntries = climateZones.map(zone => ({ name: zone.name, color: zone.color }))
+const koppenEntries = koppenZones.map(zone => ({
   name: zone.name,
   color: zone.borderColor ?? zone.color
 }))
-const densityEntries = densityBins.map((bin) => ({ label: bin.label, color: bin.color }))
-const tierEntries = CITY_TIER_META.map((meta) => ({ name: meta.name, color: meta.color }))
-const functionalZoneEntries = FUNCTIONAL_ZONES.map((spec) => ({
+const densityEntries = densityBins.map(bin => ({ label: bin.label, color: bin.color }))
+const tierEntries = CITY_TIER_META.map(meta => ({ name: meta.name, color: meta.color }))
+const functionalZoneEntries = FUNCTIONAL_ZONES.map(spec => ({
   name: spec.name,
   color: spec.color
 }))
-const functionalZoneCityOptions = functionalZoneCities.map((city) => ({
+const functionalZoneCityOptions = functionalZoneCities.map(city => ({
   label: city.name,
   value: city.id
 }))
-const agriCategoryEntries = AGRI_CATEGORY_META.map((meta) => ({
+const agriCategoryEntries = AGRI_CATEGORY_META.map(meta => ({
   name: meta.name,
   color: meta.color
 }))
-const industrialBaseEntries = industrialBases.map((base) => ({
+const industrialBaseEntries = industrialBases.map(base => ({
   name: base.name,
   color: base.color
 }))
 
 export function ThematicLegend(_props: ThematicLegendProps) {
-  const hasActiveOverlay = useClimateStore((state) => state.hasActiveOverlay)
-  const overlays = useClimateStore((state) => state.overlays)
-  const functionalZoneCityId = useClimateStore((state) => state.functionalZoneCityId)
-  const seaLevelRise = useClimateStore((state) => state.seaLevelRise)
-  const setFunctionalZoneCity = useClimateStore((state) => state.setFunctionalZoneCity)
+  const hasActiveOverlay = useClimateStore(state => state.hasActiveOverlay)
+  const overlays = useClimateStore(state => state.overlays)
+  const functionalZoneCityId = useClimateStore(state => state.functionalZoneCityId)
+  const seaLevelRise = useClimateStore(state => state.seaLevelRise)
+  const setFunctionalZoneCity = useClimateStore(state => state.setFunctionalZoneCity)
 
-  const snapshot = useOnlineDataStore((state) => state.snapshot)
-  const loading = useOnlineDataStore((state) => state.loading)
-  const typhoonMode = useOnlineDataStore((state) => state.typhoonMode)
-  const typhoonLoading = useOnlineDataStore((state) => state.typhoonLoading)
-  const setTyphoonMode = useOnlineDataStore((state) => state.setTyphoonMode)
-  const ensureTyphoons = useOnlineDataStore((state) => state.ensureTyphoons)
+  const snapshot = useOnlineDataStore(state => state.snapshot)
+  const loading = useOnlineDataStore(state => state.loading)
+  const typhoonMode = useOnlineDataStore(state => state.typhoonMode)
+  const typhoonLoading = useOnlineDataStore(state => state.typhoonLoading)
+  const setTyphoonMode = useOnlineDataStore(state => state.setTyphoonMode)
+  const ensureTyphoons = useOnlineDataStore(state => state.ensureTyphoons)
 
-  const openSettingsWindow = useSettingsWindowStore((state) => state.open)
+  const openSettingsWindow = useSettingsWindowStore(state => state.open)
 
-  if (!hasActiveOverlay) {return null}
+  if (!hasActiveOverlay) {
+    return null
+  }
 
   const typhoonFeed = snapshot?.typhoons
   const typhoonHistory = snapshot?.typhoonConfigured === false || typhoonMode === 'history'
   const typhoonCached = Boolean(typhoonFeed && snapshot?.typhoonError)
-  const activeStormCount = typhoonFeed?.storms.filter((storm) => storm.active).length ?? 0
+  const activeStormCount = typhoonFeed?.storms.filter(storm => storm.active).length ?? 0
   const forecastErrors =
     typhoonFeed?.storms
-      .filter((storm) => storm.forecastError)
-      .map((storm) => `${storm.name}：${storm.forecastError}`)
+      .filter(storm => storm.forecastError)
+      .map(storm => `${storm.name}：${storm.forecastError}`)
       .join('；') ?? ''
 
   return (
-    <div className={styles.thematicLegend} aria-label="专题图层图例">
+    <div className={styles.thematicLegend} aria-label='专题图层图例'>
       <div className={styles.legendTitle}>图例</div>
       {overlays['wind-particles'] && (
         <div className={styles.legendGroup}>
@@ -133,7 +140,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
       )}
       {overlays['koppen-zones'] && (
         <div className={styles.legendGroup}>
-          {koppenEntries.map((zone) => (
+          {koppenEntries.map(zone => (
             <div key={zone.name} className={styles.legendItem}>
               <span className={styles.swatch} style={{ background: zone.color }} />
               <span>{zone.name}</span>
@@ -189,16 +196,16 @@ export function ThematicLegend(_props: ThematicLegendProps) {
               value={typhoonMode}
               options={typhoonModeOptions}
               block
-              aria-label="台风数据模式"
-              onChange={(value) => setTyphoonMode(value)}
+              aria-label='台风数据模式'
+              onChange={value => setTyphoonMode(value)}
             />
           )}
           {snapshot?.typhoonConfigured === false && (
-            <Alert type="info" showIcon title="尚未配置实时数据源，当前显示历史案例" />
+            <Alert type='info' showIcon title='尚未配置实时数据源，当前显示历史案例' />
           )}
           {typhoonHistory ? (
             <>
-              {historicalTyphoonEntries.map((entry) => (
+              {historicalTyphoonEntries.map(entry => (
                 <div key={entry.name} className={styles.legendItem}>
                   <span className={styles.swatch} style={{ background: entry.color }} />
                   <span>{entry.name}</span>
@@ -212,8 +219,8 @@ export function ThematicLegend(_props: ThematicLegendProps) {
           ) : (
             <>
               {(loading || typhoonLoading) && (
-                <div className={styles.legendItem} role="status">
-                  <Spinner size="sm" />
+                <div className={styles.legendItem} role='status'>
+                  <Spinner size='sm' />
                   <span>正在加载台风数据…</span>
                 </div>
               )}
@@ -225,12 +232,15 @@ export function ThematicLegend(_props: ThematicLegendProps) {
                   description={snapshot.typhoonError}
                 />
               ) : !loading && !typhoonLoading && !typhoonFeed ? (
-                <Alert type="error" showIcon title="暂无法获取台风数据" />
+                <Alert type='error' showIcon title='暂无法获取台风数据' />
               ) : null}
               {typhoonFeed && (
                 <>
                   <p className={styles.legendCopy}>
-                    更新时间：<span className={styles.legendTime}>{formatOnlineTime(typhoonFeed.fetchedAt)}</span>
+                    更新时间：
+                    <span className={styles.legendTime}>
+                      {formatOnlineTime(typhoonFeed.fetchedAt)}
+                    </span>
                   </p>
                   {activeStormCount ? (
                     <p className={styles.legendCopy}>
@@ -238,20 +248,20 @@ export function ThematicLegend(_props: ThematicLegendProps) {
                     </p>
                   ) : (
                     <Alert
-                      type="info"
+                      type='info'
                       showIcon
                       title={typhoonCached ? '当前暂无活跃台风（历史缓存）' : '当前暂无活跃台风'}
                     />
                   )}
                   {forecastErrors && (
                     <Alert
-                      type="warning"
+                      type='warning'
                       showIcon
-                      title="部分台风预报暂不可用"
+                      title='部分台风预报暂不可用'
                       description={forecastErrors}
                     />
                   )}
-                  {liveTyphoonEntries.map((entry) => (
+                  {liveTyphoonEntries.map(entry => (
                     <div key={entry.name} className={styles.legendItem}>
                       <span className={styles.swatch} style={{ background: entry.color }} />
                       <span>{entry.name}</span>
@@ -296,7 +306,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
       )}
       {overlays['climate-zones'] && (
         <div className={styles.legendGroup}>
-          {zoneEntries.map((zone) => (
+          {zoneEntries.map(zone => (
             <div key={zone.name} className={styles.legendItem}>
               <span className={styles.swatch} style={{ background: zone.color }} />
               <span>{zone.name}</span>
@@ -398,7 +408,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
       {overlays['province-population'] && (
         <div className={styles.legendGroup}>
           <div className={styles.legendHeading}>人口密度（人/km²）</div>
-          {densityEntries.map((bin) => (
+          {densityEntries.map(bin => (
             <div key={bin.label} className={styles.legendItem}>
               <span className={styles.swatch} style={{ background: bin.color }} />
               <span>{bin.label}</span>
@@ -432,7 +442,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
       {overlays['city-tiers'] && (
         <div className={styles.legendGroup}>
           <div className={styles.legendHeading}>城市等级（服务半径示意）</div>
-          {tierEntries.map((tier) => (
+          {tierEntries.map(tier => (
             <div key={tier.name} className={styles.legendItem}>
               <span
                 className={`${styles.swatch} ${styles.swatchDot}`}
@@ -447,16 +457,18 @@ export function ThematicLegend(_props: ThematicLegendProps) {
         <div className={styles.legendGroup}>
           <div className={styles.legendHeading}>城市功能分区</div>
           <Select
-            size="sm"
+            size='sm'
             value={functionalZoneCityId}
             options={functionalZoneCityOptions}
             className={styles.citySelect}
-            aria-label="选择功能分区城市"
-            onChange={(value) => {
-              if (value) {setFunctionalZoneCity(value)}
+            aria-label='选择功能分区城市'
+            onChange={value => {
+              if (value) {
+                setFunctionalZoneCity(value)
+              }
             }}
           />
-          {functionalZoneEntries.map((zone) => (
+          {functionalZoneEntries.map(zone => (
             <div key={zone.name} className={styles.legendItem}>
               <span className={styles.swatch} style={{ background: zone.color }} />
               <span>{zone.name}</span>
@@ -467,7 +479,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
       {overlays['agri-regions'] && (
         <div className={styles.legendGroup}>
           <div className={styles.legendHeading}>农业区划</div>
-          {agriCategoryEntries.map((category) => (
+          {agriCategoryEntries.map(category => (
             <div key={category.name} className={styles.legendItem}>
               <span className={styles.swatch} style={{ background: category.color }} />
               <span>{category.name}</span>
@@ -478,7 +490,7 @@ export function ThematicLegend(_props: ThematicLegendProps) {
       {overlays['industrial-bases'] && (
         <div className={styles.legendGroup}>
           <div className={styles.legendHeading}>四大工业基地</div>
-          {industrialBaseEntries.map((base) => (
+          {industrialBaseEntries.map(base => (
             <div key={base.name} className={styles.legendItem}>
               <span className={styles.swatch} style={{ background: base.color }} />
               <span>{base.name}</span>

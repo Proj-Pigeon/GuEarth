@@ -20,7 +20,7 @@ export function createInitialDecisionState(): DecisionState {
 }
 
 export const useDecisionStore = create<DecisionStore>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector(set => ({
     ...createInitialDecisionState(),
     setPanel(value: DecisionPanel): void {
       set({ panel: value })

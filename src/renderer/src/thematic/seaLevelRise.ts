@@ -112,12 +112,21 @@ interface MaskedPolygon {
 
 function pointInRing(lon: number, lat: number, ring: number[][]): boolean {
   let inside = false
-  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+  for (
+    let index = 0, previous = ring.length - 1;
+    index < ring.length;
+    previous = index, index += 1
+  ) {
     const [currentLon, currentLat] = ring[index]
     const [previousLon, previousLat] = ring[previous]
-    if ((currentLat > lat) === (previousLat > lat)) {continue}
-    const crossingLon = ((previousLon - currentLon) * (lat - currentLat)) / (previousLat - currentLat) + currentLon
-    if (lon < crossingLon) {inside = !inside}
+    if (currentLat > lat === previousLat > lat) {
+      continue
+    }
+    const crossingLon =
+      ((previousLon - currentLon) * (lat - currentLat)) / (previousLat - currentLat) + currentLon
+    if (lon < crossingLon) {
+      inside = !inside
+    }
   }
   return inside
 }
@@ -127,24 +136,48 @@ export function buildLandMask(provinces: LandMaskSource[]): (lon: number, lat: n
   for (const province of provinces) {
     for (const rings of province.polygons) {
       const [outer, ...holes] = rings
-      if (!outer || outer.length < 3) {continue}
+      if (!outer || outer.length < 3) {
+        continue
+      }
       let west = Number.POSITIVE_INFINITY
       let east = Number.NEGATIVE_INFINITY
       let south = Number.POSITIVE_INFINITY
       let north = Number.NEGATIVE_INFINITY
       for (const [lon, lat] of outer) {
-        if (lon < west) {west = lon}
-        if (lon > east) {east = lon}
-        if (lat < south) {south = lat}
-        if (lat > north) {north = lat}
+        if (lon < west) {
+          west = lon
+        }
+        if (lon > east) {
+          east = lon
+        }
+        if (lat < south) {
+          south = lat
+        }
+        if (lat > north) {
+          north = lat
+        }
       }
-      polygons.push({ outer, holes: holes.filter((hole) => hole.length >= 3), west, east, south, north })
+      polygons.push({
+        outer,
+        holes: holes.filter(hole => hole.length >= 3),
+        west,
+        east,
+        south,
+        north
+      })
     }
   }
   return (lon: number, lat: number): boolean => {
     for (const polygon of polygons) {
-      if (lon < polygon.west || lon > polygon.east || lat < polygon.south || lat > polygon.north) {continue}
-      if (pointInRing(lon, lat, polygon.outer) && !polygon.holes.some((hole) => pointInRing(lon, lat, hole))) {return true}
+      if (lon < polygon.west || lon > polygon.east || lat < polygon.south || lat > polygon.north) {
+        continue
+      }
+      if (
+        pointInRing(lon, lat, polygon.outer) &&
+        !polygon.holes.some(hole => pointInRing(lon, lat, hole))
+      ) {
+        return true
+      }
     }
     return false
   }
@@ -152,7 +185,8 @@ export function buildLandMask(provinces: LandMaskSource[]): (lon: number, lat: n
 
 export const heightCache = new Map<string, number>()
 
-export const cacheKeyOf = (lon: number, lat: number): string => `${lon.toFixed(4)},${lat.toFixed(4)}`
+export const cacheKeyOf = (lon: number, lat: number): string =>
+  `${lon.toFixed(4)},${lat.toFixed(4)}`
 
 export type LandMaskPredicate = (lon: number, lat: number) => boolean
 export type SeaSamplingStatus = 'idle' | 'sampling' | 'ready' | 'terrain-required'
@@ -176,7 +210,9 @@ export function computeSampledCoverage(): number {
   let sampled = 0
   for (const zone of coastalZones) {
     for (const [lon, lat] of gridPointsOf(zone)) {
-      if (heightCache.has(cacheKeyOf(lon, lat))) {sampled += 1}
+      if (heightCache.has(cacheKeyOf(lon, lat))) {
+        sampled += 1
+      }
     }
   }
   return sampled / totalGridCellCount
@@ -192,7 +228,7 @@ export function createInitialSeaLevelState(): SeaLevelState {
 }
 
 export const useSeaLevelStore = create<SeaLevelStore>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector(set => ({
     ...createInitialSeaLevelState(),
     setLandMask(mask: LandMaskPredicate | null): void {
       set({ landMask: mask })
@@ -201,7 +237,7 @@ export const useSeaLevelStore = create<SeaLevelStore>()(
       set({ samplingStatus: status })
     },
     bumpVersion(): void {
-      set((state) => ({
+      set(state => ({
         version: state.version + 1,
         sampledCoverage: computeSampledCoverage()
       }))
@@ -259,20 +295,24 @@ export const FALLBACK_LAND_HEIGHT = 0.05
 
 export function isLandCell(lon: number, lat: number, height: number): boolean {
   const mask = useSeaLevelStore.getState().landMask
-  if (mask?.(lon, lat)) {return true}
+  if (mask?.(lon, lat)) {
+    return true
+  }
   return height > FALLBACK_LAND_HEIGHT
 }
 
 export function recordSamples(points: [number, number][], heights: number[]): void {
   points.forEach(([lon, lat], index) => {
     const height = heights[index]
-    if (Number.isFinite(height)) {heightCache.set(cacheKeyOf(lon, lat), height)}
+    if (Number.isFinite(height)) {
+      heightCache.set(cacheKeyOf(lon, lat), height)
+    }
   })
   useSeaLevelStore.getState().bumpVersion()
 }
 
 export function seaLevelGridPoints(): [number, number][] {
-  return coastalZones.flatMap((zone) => gridPointsOf(zone))
+  return coastalZones.flatMap(zone => gridPointsOf(zone))
 }
 
 export function seedSampleHeights(heights: (number | null)[]): number {
@@ -281,18 +321,23 @@ export function seedSampleHeights(heights: (number | null)[]): number {
   const seededHeights: number[] = []
   for (let index = 0; index < points.length && index < heights.length; index += 1) {
     const height = heights[index]
-    if (typeof height !== 'number' || !Number.isFinite(height)) {continue}
+    if (typeof height !== 'number' || !Number.isFinite(height)) {
+      continue
+    }
     seededPoints.push(points[index])
     seededHeights.push(height)
   }
-  if (seededPoints.length > 0) {recordSamples(seededPoints, seededHeights)}
+  if (seededPoints.length > 0) {
+    recordSamples(seededPoints, seededHeights)
+  }
   return seededPoints.length
 }
 
 export function zoneOf(lon: number, lat: number): CoastalZone {
   return (
-    coastalZones.find((zone) => lon >= zone.west && lon <= zone.east && lat >= zone.south && lat <= zone.north) ??
-    coastalZones[coastalZones.length - 1]
+    coastalZones.find(
+      zone => lon >= zone.west && lon <= zone.east && lat >= zone.south && lat <= zone.north
+    ) ?? coastalZones[coastalZones.length - 1]
   )
 }
 
@@ -323,9 +368,13 @@ export function inundationByZone(rise: number): ZoneInundation[] {
     let areaKm2 = 0
     for (const [lon, lat] of gridPointsOf(zone)) {
       const height = heightCache.get(cacheKeyOf(lon, lat))
-      if (height === undefined) {continue}
+      if (height === undefined) {
+        continue
+      }
       sampled += 1
-      if (!isLandCell(lon, lat, height)) {continue}
+      if (!isLandCell(lon, lat, height)) {
+        continue
+      }
       if (isInundated(height, rise)) {
         floodedCells += 1
         areaKm2 += cellAreaKm2(zone, lat)

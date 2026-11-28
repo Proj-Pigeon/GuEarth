@@ -1,49 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent as ReactMouseEvent } from 'react';
-import { RotateCwIcon } from 'lucide-react'
 import { Alert, Button, Modal, Spinner, useConfirm, useToast } from '@renderer/components/ui'
+import { RotateCwIcon } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
+// Cesium's widget styles load before the components below, so component styles override them.
 import 'cesium/Build/Cesium/Widgets/widgets.css'
-import { isLikelyMainlandChinaEnv } from '../../common/tileMirror'
-import type { PlaceSuggestion } from '../../preload'
-import { registerGlobeTools } from '@renderer/ai/registerGlobeTools';
-import type { GlobeToolsBridge } from '@renderer/ai/registerGlobeTools';
-import { useCesiumViewer } from '@renderer/composables/useCesiumViewer'
-import { useDrawing } from '@renderer/composables/useDrawing'
-import { useScenePlayer } from '@renderer/composables/useScenePlayer'
-import { useThematicLayers } from '@renderer/composables/useThematicLayers'
-import { useTimezoneCompare } from '@renderer/composables/useTimezoneCompare'
-import { clearTransectOverlay } from '@renderer/composables/useTransectFlight'
-import { hidesThematicLayers } from '@renderer/lib/nightBasemap'
-import { captureTelemetryEvent } from '@renderer/posthog'
-import { useAccountStore } from '@renderer/stores/account'
-import { useAiStore } from '@renderer/stores/ai'
-import { useAtmosphereStore } from '@renderer/stores/atmosphere'
-import { thematicLayerCatalog, useClimateStore } from '@renderer/stores/climate'
-import { useDecisionStore } from '@renderer/stores/decision'
-import { useDrawingStore } from '@renderer/stores/drawing';
-import type { DrawTool } from '@renderer/stores/drawing';
-import { useEnvironmentStore } from '@renderer/stores/environment'
-import { useFailureStore } from '@renderer/stores/failure'
-import { useGlobeStore } from '@renderer/stores/globe'
-import { useHydrologyStore } from '@renderer/stores/hydrology'
-import { useLandformStore } from '@renderer/stores/landform'
-import { useOnlineDataStore } from '@renderer/stores/onlineData'
-import { usePopulationStore } from '@renderer/stores/population'
-import { usePrivacyStore } from '@renderer/stores/privacy'
-import { useScenesStore } from '@renderer/stores/scenes'
-import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
-import { useSolarStore } from '@renderer/stores/solar'
-import { useTransportStore } from '@renderer/stores/transport'
-import { updateInstallContent, useUpdaterStore } from '@renderer/stores/updater'
-import { useZonationStore } from '@renderer/stores/zonation'
+// Imports are sorted only between these comments, which keeps the stylesheet in place.
+import { registerGlobeTools } from '@renderer/ai/registerGlobeTools'
+import type { GlobeToolsBridge } from '@renderer/ai/registerGlobeTools'
 import AnnotationPanel from '@renderer/components/AnnotationPanel'
 import AtmosphereHeatingPanel from '@renderer/components/AtmosphereHeatingPanel'
 import AtmosphereLayersPanel from '@renderer/components/AtmosphereLayersPanel'
 import CameraStatus from '@renderer/components/CameraStatus'
 import CitiesPanel from '@renderer/components/CitiesPanel'
 import CrashDialog from '@renderer/components/CrashDialog'
-import DrawingEditToolbar from '@renderer/components/DrawingEditToolbar';
-import type { DrawnShapeStylePatch } from '@renderer/components/DrawingEditToolbar';
+import DrawingEditToolbar from '@renderer/components/DrawingEditToolbar'
+import type { DrawnShapeStylePatch } from '@renderer/components/DrawingEditToolbar'
 import DrawingTouchBar from '@renderer/components/DrawingTouchBar'
 import EarthLayersPanel from '@renderer/components/EarthLayersPanel'
 import EnsoPanel from '@renderer/components/EnsoPanel'
@@ -51,8 +22,8 @@ import EnvironmentPanel from '@renderer/components/EnvironmentPanel'
 import EoqAssistant from '@renderer/components/EoqAssistant'
 import ExogenicPanel from '@renderer/components/ExogenicPanel'
 import FailureBanner from '@renderer/components/FailureBanner'
-import FirstUseGuide from '@renderer/components/FirstUseGuide';
-import type { FirstUseGuideHandle } from '@renderer/components/FirstUseGuide';
+import FirstUseGuide from '@renderer/components/FirstUseGuide'
+import type { FirstUseGuideHandle } from '@renderer/components/FirstUseGuide'
 import FlightStopSwitcher from '@renderer/components/FlightStopSwitcher'
 import FoldFaultPanel from '@renderer/components/FoldFaultPanel'
 import FrontalCyclone from '@renderer/components/FrontalCyclone'
@@ -71,8 +42,8 @@ import PlaceSearchBox from '@renderer/components/PlaceSearchBox'
 import PopulationPanel from '@renderer/components/PopulationPanel'
 import RiverLandformPanel from '@renderer/components/RiverLandformPanel'
 import RotationSpeedPanel from '@renderer/components/RotationSpeedPanel'
-import SceneBookmarksPanel from '@renderer/components/SceneBookmarksPanel';
-import type { SceneEditPayload } from '@renderer/components/SceneBookmarksPanel';
+import SceneBookmarksPanel from '@renderer/components/SceneBookmarksPanel'
+import type { SceneEditPayload } from '@renderer/components/SceneBookmarksPanel'
 import ScenePlayerOverlay from '@renderer/components/ScenePlayerOverlay'
 import SettingsModal from '@renderer/components/SettingsModal'
 import SolarPathPanel from '@renderer/components/SolarPathPanel'
@@ -93,67 +64,106 @@ import WindowControls from '@renderer/components/WindowControls'
 import WindParticles from '@renderer/components/WindParticles'
 import ZonationFlightHud from '@renderer/components/ZonationFlightHud'
 import ZonationPanel from '@renderer/components/ZonationPanel'
+import { useCesiumViewer } from '@renderer/composables/useCesiumViewer'
+import { useDrawing } from '@renderer/composables/useDrawing'
+import { useScenePlayer } from '@renderer/composables/useScenePlayer'
+import { useThematicLayers } from '@renderer/composables/useThematicLayers'
+import { useTimezoneCompare } from '@renderer/composables/useTimezoneCompare'
+import { clearTransectOverlay } from '@renderer/composables/useTransectFlight'
+import { hidesThematicLayers } from '@renderer/lib/nightBasemap'
+import { captureTelemetryEvent } from '@renderer/posthog'
+import { useAccountStore } from '@renderer/stores/account'
+import { useAiStore } from '@renderer/stores/ai'
+import { useAtmosphereStore } from '@renderer/stores/atmosphere'
+import { thematicLayerCatalog, useClimateStore } from '@renderer/stores/climate'
+import { useDecisionStore } from '@renderer/stores/decision'
+import { useDrawingStore } from '@renderer/stores/drawing'
+import type { DrawTool } from '@renderer/stores/drawing'
+import { useEnvironmentStore } from '@renderer/stores/environment'
+import { useFailureStore } from '@renderer/stores/failure'
+import { useGlobeStore } from '@renderer/stores/globe'
+import { useHydrologyStore } from '@renderer/stores/hydrology'
+import { useLandformStore } from '@renderer/stores/landform'
+import { useOnlineDataStore } from '@renderer/stores/onlineData'
+import { usePopulationStore } from '@renderer/stores/population'
+import { usePrivacyStore } from '@renderer/stores/privacy'
+import { useScenesStore } from '@renderer/stores/scenes'
+import { useSettingsWindowStore } from '@renderer/stores/settingsWindow'
+import { useSolarStore } from '@renderer/stores/solar'
+import { useTransportStore } from '@renderer/stores/transport'
+import { updateInstallContent, useUpdaterStore } from '@renderer/stores/updater'
+import { useZonationStore } from '@renderer/stores/zonation'
+
+import { isLikelyMainlandChinaEnv } from '../../common/tileMirror'
+import type { PlaceSuggestion } from '../../preload'
+
 import styles from './App.module.css'
 
-const DEFAULT_SYSTEM_FONTS = ['Arial', 'Segoe UI', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei']
+const DEFAULT_SYSTEM_FONTS = [
+  'Arial',
+  'Segoe UI',
+  'Microsoft YaHei',
+  'Noto Sans CJK SC',
+  'WenQuanYi Micro Hei'
+]
 
 export function App() {
   const toast = useToast()
   const confirm = useConfirm()
 
-  const isLayerPanelOpen = useGlobeStore((state) => state.isLayerPanelOpen)
-  const layers = useGlobeStore((state) => state.layers)
-  const selectedLayerId = useGlobeStore((state) => state.selectedLayerId)
-  const globeError = useGlobeStore((state) => state.globeError)
-  const terrainError = useGlobeStore((state) => state.terrainError)
-  const isGlobeReady = useGlobeStore((state) => state.isGlobeReady)
-  const globeLoadTimedOut = useGlobeStore((state) => state.globeLoadTimedOut)
-  const globeLoadStage = useGlobeStore((state) => state.globeLoadStage)
-  const activeTerrainId = useGlobeStore((state) => state.activeTerrainId)
-  const camera = useGlobeStore((state) => state.camera)
-  const levelViewActive = useGlobeStore((state) => state.levelViewActive)
-  const terrainProviderId = useGlobeStore((state) => state.terrainProviderId)
-  const terrainExaggeration = useGlobeStore((state) => state.terrainExaggeration)
-  const terrainLighting = useGlobeStore((state) => state.terrainLighting)
-  const settingsHydrated = useGlobeStore((state) => state.settingsHydrated)
-  const mirrorConsentPrompted = useGlobeStore((state) => state.mirrorConsentPrompted)
-  const mirrorConsentOpen = useGlobeStore((state) => state.mirrorConsentOpen)
-  const touchInteractionActive = useGlobeStore((state) => state.touchInteractionActive)
+  const isLayerPanelOpen = useGlobeStore(state => state.isLayerPanelOpen)
+  const layers = useGlobeStore(state => state.layers)
+  const selectedLayerId = useGlobeStore(state => state.selectedLayerId)
+  const globeError = useGlobeStore(state => state.globeError)
+  const terrainError = useGlobeStore(state => state.terrainError)
+  const isGlobeReady = useGlobeStore(state => state.isGlobeReady)
+  const globeLoadTimedOut = useGlobeStore(state => state.globeLoadTimedOut)
+  const globeLoadStage = useGlobeStore(state => state.globeLoadStage)
+  const activeTerrainId = useGlobeStore(state => state.activeTerrainId)
+  const camera = useGlobeStore(state => state.camera)
+  const levelViewActive = useGlobeStore(state => state.levelViewActive)
+  const terrainProviderId = useGlobeStore(state => state.terrainProviderId)
+  const terrainExaggeration = useGlobeStore(state => state.terrainExaggeration)
+  const terrainLighting = useGlobeStore(state => state.terrainLighting)
+  const settingsHydrated = useGlobeStore(state => state.settingsHydrated)
+  const mirrorConsentPrompted = useGlobeStore(state => state.mirrorConsentPrompted)
+  const mirrorConsentOpen = useGlobeStore(state => state.mirrorConsentOpen)
+  const touchInteractionActive = useGlobeStore(state => state.touchInteractionActive)
 
-  const thematicOverlays = useClimateStore((state) => state.overlays)
-  const ensoPhase = useClimateStore((state) => state.ensoPhase)
-  const hasActiveOverlay = useClimateStore((state) => state.hasActiveOverlay)
+  const thematicOverlays = useClimateStore(state => state.overlays)
+  const ensoPhase = useClimateStore(state => state.ensoPhase)
+  const hasActiveOverlay = useClimateStore(state => state.hasActiveOverlay)
 
-  const solarActive = useSolarStore((state) => state.active)
-  const motionPanel = useSolarStore((state) => state.motionPanel)
-  const atmospherePanel = useAtmosphereStore((state) => state.panel)
-  const hydrologyPanel = useHydrologyStore((state) => state.panel)
-  const landformPanel = useLandformStore((state) => state.panel)
-  const populationPanel = usePopulationStore((state) => state.panel)
-  const transportPanel = useTransportStore((state) => state.panel)
-  const environmentPanel = useEnvironmentStore((state) => state.panel)
-  const decisionPanel = useDecisionStore((state) => state.panel)
-  const zonationPanel = useZonationStore((state) => state.panel)
+  const solarActive = useSolarStore(state => state.active)
+  const motionPanel = useSolarStore(state => state.motionPanel)
+  const atmospherePanel = useAtmosphereStore(state => state.panel)
+  const hydrologyPanel = useHydrologyStore(state => state.panel)
+  const landformPanel = useLandformStore(state => state.panel)
+  const populationPanel = usePopulationStore(state => state.panel)
+  const transportPanel = useTransportStore(state => state.panel)
+  const environmentPanel = useEnvironmentStore(state => state.panel)
+  const decisionPanel = useDecisionStore(state => state.panel)
+  const zonationPanel = useZonationStore(state => state.panel)
 
-  const activeTool = useDrawingStore((state) => state.activeTool)
-  const shapes = useDrawingStore((state) => state.shapes)
-  const entries = useDrawingStore((state) => state.entries)
-  const selectedShapeId = useDrawingStore((state) => state.selectedShapeId)
-  const saveError = useDrawingStore((state) => state.saveError)
+  const activeTool = useDrawingStore(state => state.activeTool)
+  const shapes = useDrawingStore(state => state.shapes)
+  const entries = useDrawingStore(state => state.entries)
+  const selectedShapeId = useDrawingStore(state => state.selectedShapeId)
+  const saveError = useDrawingStore(state => state.saveError)
 
-  const onlineDataLoading = useOnlineDataStore((state) => state.loading)
-  const onlineSnapshot = useOnlineDataStore((state) => state.snapshot)
-  const typhoonMode = useOnlineDataStore((state) => state.typhoonMode)
+  const onlineDataLoading = useOnlineDataStore(state => state.loading)
+  const onlineSnapshot = useOnlineDataStore(state => state.snapshot)
+  const typhoonMode = useOnlineDataStore(state => state.typhoonMode)
 
-  const webglNotice = useFailureStore((state) => state.notices.webgl)
-  const updaterStatus = useUpdaterStore((state) => state.status)
-  const updaterVersion = useUpdaterStore((state) => state.version)
-  const updaterPercent = useUpdaterStore((state) => state.percent)
-  const updaterPackageKind = useUpdaterStore((state) => state.packageKind)
+  const webglNotice = useFailureStore(state => state.notices.webgl)
+  const updaterStatus = useUpdaterStore(state => state.status)
+  const updaterVersion = useUpdaterStore(state => state.version)
+  const updaterPercent = useUpdaterStore(state => state.percent)
+  const updaterPackageKind = useUpdaterStore(state => state.packageKind)
 
-  const scenes = useScenesStore((state) => state.scenes)
-  const scenesSaveError = useScenesStore((state) => state.saveError)
-  const isPresenting = useScenesStore((state) => state.isPresenting)
+  const scenes = useScenesStore(state => state.scenes)
+  const scenesSaveError = useScenesStore(state => state.saveError)
+  const isPresenting = useScenesStore(state => state.isPresenting)
 
   const globeContainerRef = useRef<HTMLDivElement | null>(null)
   const firstUseGuideRef = useRef<FirstUseGuideHandle>(null)
@@ -170,7 +180,8 @@ export function App() {
     setTerrainExaggeration,
     setTerrainLighting
   } = useCesiumViewer(globeContainerRef)
-  const { flyToShape, draftCount, finishDraft, undoDraftPoint, cancelActiveTool } = useDrawing(viewer)
+  const { flyToShape, draftCount, finishDraft, undoDraftPoint, cancelActiveTool } =
+    useDrawing(viewer)
   const { comparison: timezoneComparison, closeTimezoneCompare } = useTimezoneCompare(viewer)
   useThematicLayers(viewer)
   const scenePlayer = useScenePlayer(viewer, switchBasemap)
@@ -184,7 +195,7 @@ export function App() {
   const [isLabOpen, setIsLabOpen] = useState(false)
 
   const selectedShape = useMemo(
-    () => shapes.find((shape) => shape.id === selectedShapeId) ?? null,
+    () => shapes.find(shape => shape.id === selectedShapeId) ?? null,
     [selectedShapeId, shapes]
   )
   const levelSwitcherVisible = isGlobeReady && camera.height < 5_000_000
@@ -239,7 +250,9 @@ export function App() {
 
   const handleGlobeContextMenu = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
-      if (!touchInteractionActive) {return}
+      if (!touchInteractionActive) {
+        return
+      }
       event.preventDefault()
     },
     [touchInteractionActive]
@@ -262,25 +275,33 @@ export function App() {
   const closeAllTeachingFeatures = useCallback(() => {
     closeAllTeachingPanels()
     const climate = useClimateStore.getState()
-    for (const layer of thematicLayerCatalog) {climate.setOverlay(layer.id, false)}
+    for (const layer of thematicLayerCatalog) {
+      climate.setOverlay(layer.id, false)
+    }
   }, [closeAllTeachingPanels])
 
   useEffect(() => {
-    if (!nightBasemapActive) {return}
+    if (!nightBasemapActive) {
+      return
+    }
     closeAllTeachingFeatures()
     setIsLabOpen(false)
   }, [closeAllTeachingFeatures, nightBasemapActive])
 
   const ensureRecordingDirectory = useCallback(async (): Promise<boolean> => {
     try {
-      if (await window.guEarth.recordings.getDirectory()) {return true}
+      if (await window.guEarth.recordings.getDirectory()) {
+        return true
+      }
     } catch {
       setRecordingDirectoryDialogError('暂时无法检查视频保存文件夹，请重新选择')
     }
-    if (recordingDirectoryResolverRef.current) {return false}
+    if (recordingDirectoryResolverRef.current) {
+      return false
+    }
     setRecordingDirectoryDialogError('')
     setRecordingDirectoryDialogOpen(true)
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       recordingDirectoryResolverRef.current = resolve
     })
   }, [])
@@ -296,7 +317,9 @@ export function App() {
         recordingDirectoryResolverRef.current = null
       }
     } catch (error) {
-      setRecordingDirectoryDialogError(error instanceof Error ? error.message : '选择视频保存文件夹失败')
+      setRecordingDirectoryDialogError(
+        error instanceof Error ? error.message : '选择视频保存文件夹失败'
+      )
     } finally {
       setRecordingDirectoryDialogBusy(false)
     }
@@ -337,10 +360,10 @@ export function App() {
     registerGlobeTools({
       getViewer: () => bridgeRef.current.getViewer(),
       flyTo: (longitude, latitude, height) => bridgeRef.current.flyTo(longitude, latitude, height),
-      switchBasemap: (id) => bridgeRef.current.switchBasemap(id),
-      setTerrain: (id) => bridgeRef.current.setTerrain(id),
-      setTerrainExaggeration: (value) => bridgeRef.current.setTerrainExaggeration(value),
-      setTerrainLighting: (value) => bridgeRef.current.setTerrainLighting(value),
+      switchBasemap: id => bridgeRef.current.switchBasemap(id),
+      setTerrain: id => bridgeRef.current.setTerrain(id),
+      setTerrainExaggeration: value => bridgeRef.current.setTerrainExaggeration(value),
+      setTerrainLighting: value => bridgeRef.current.setTerrainLighting(value),
       closeAllTeachingPanels: () => bridgeRef.current.closeAllTeachingPanels(),
       captureScene: (name, narration) => bridgeRef.current.captureScene(name, narration),
       recordVideo: (title, steps) => bridgeRef.current.recordVideo(title, steps),
@@ -349,8 +372,12 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    if (!settingsHydrated) {return}
-    if (mirrorConsentPrompted || mirrorConsentOpen) {return}
+    if (!settingsHydrated) {
+      return
+    }
+    if (mirrorConsentPrompted || mirrorConsentOpen) {
+      return
+    }
     const timeZone = (() => {
       try {
         return Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -366,7 +393,9 @@ export function App() {
       useGlobeStore.getState().openMirrorConsent('slow')
       return
     }
-    if (isGlobeReady) {return}
+    if (isGlobeReady) {
+      return
+    }
     const timer = window.setTimeout(() => {
       const current = useGlobeStore.getState()
       if (!current.mirrorConsentPrompted && !current.mirrorConsentOpen && !current.isGlobeReady) {
@@ -374,7 +403,15 @@ export function App() {
       }
     }, 8000)
     return () => window.clearTimeout(timer)
-  }, [globeError, globeLoadTimedOut, isGlobeReady, mirrorConsentOpen, mirrorConsentPrompted, settingsHydrated, terrainError])
+  }, [
+    globeError,
+    globeLoadTimedOut,
+    isGlobeReady,
+    mirrorConsentOpen,
+    mirrorConsentPrompted,
+    settingsHydrated,
+    terrainError
+  ])
 
   useEffect(() => {
     let cancelled = false
@@ -390,11 +427,19 @@ export function App() {
     void (async () => {
       try {
         const installedFonts = await window.guEarth.system.fonts()
-        if (cancelled) {return}
-        const existingFonts = useDrawingStore.getState().shapes.map((shape) => shape.fontFamily)
-        setSystemFonts([...new Set([...installedFonts, ...existingFonts])].sort((first, second) => first.localeCompare(second)))
+        if (cancelled) {
+          return
+        }
+        const existingFonts = useDrawingStore.getState().shapes.map(shape => shape.fontFamily)
+        setSystemFonts(
+          [...new Set([...installedFonts, ...existingFonts])].sort((first, second) =>
+            first.localeCompare(second)
+          )
+        )
       } catch {
-        if (!cancelled) {setSystemFonts(DEFAULT_SYSTEM_FONTS)}
+        if (!cancelled) {
+          setSystemFonts(DEFAULT_SYSTEM_FONTS)
+        }
       }
     })()
     return () => {
@@ -416,8 +461,12 @@ export function App() {
     const settingsWindow = useSettingsWindowStore.getState()
     settingsWindow.close()
     useAiStore.getState().setPanelOpen(false)
-    if (step === 6) {settingsWindow.open('map')}
-    if (step === 8) {settingsWindow.open('ai')}
+    if (step === 6) {
+      settingsWindow.open('map')
+    }
+    if (step === 8) {
+      settingsWindow.open('ai')
+    }
   }, [])
 
   const handleRestartGuide = useCallback(() => {
@@ -439,7 +488,9 @@ export function App() {
   const handleRetry = useCallback(() => {
     const failureStore = useFailureStore.getState()
     for (const notice of failureStore.active) {
-      if (notice.retryable) {void failureStore.retry(notice.scope)}
+      if (notice.retryable) {
+        void failureStore.retry(notice.scope)
+      }
     }
   }, [])
 
@@ -464,14 +515,14 @@ export function App() {
       toast.info('夜光模式下地理实验室不可用，切换回其他底图后恢复')
       return
     }
-    setIsLabOpen((open) => !open)
+    setIsLabOpen(open => !open)
   }, [nightBasemapActive, toast])
 
   const handleOpenScenes = useCallback(() => {
     useAiStore.getState().setPanelOpen(false)
     useGlobeStore.getState().setLayerPanelOpen(false)
     void useScenesStore.getState().hydrate()
-    setIsScenesPanelOpen((open) => !open)
+    setIsScenesPanelOpen(open => !open)
   }, [])
 
   const handleSaveScene = useCallback(
@@ -481,7 +532,9 @@ export function App() {
         const scenesStore = useScenesStore.getState()
         await scenesStore.addScene(scene)
         const nextState = useScenesStore.getState()
-        if (!nextState.saveError) {captureTelemetryEvent('scene_saved', { scene_count: nextState.scenes.length })}
+        if (!nextState.saveError) {
+          captureTelemetryEvent('scene_saved', { scene_count: nextState.scenes.length })
+        }
       } catch (error) {
         toast.warning(error instanceof Error ? error.message : '地球尚未就绪，暂时无法保存场景')
       }
@@ -491,8 +544,10 @@ export function App() {
 
   const handlePreviewScene = useCallback(
     (id: string) => {
-      const scene = useScenesStore.getState().scenes.find((item) => item.id === id)
-      if (scene) {void scenePlayer.previewScene(scene)}
+      const scene = useScenesStore.getState().scenes.find(item => item.id === id)
+      if (scene) {
+        void scenePlayer.previewScene(scene)
+      }
     },
     [scenePlayer]
   )
@@ -512,7 +567,9 @@ export function App() {
   const handlePlayScenes = useCallback(
     (mode: 'manual' | 'auto') => {
       const currentScenes = useScenesStore.getState().scenes
-      if (currentScenes.length === 0) {return}
+      if (currentScenes.length === 0) {
+        return
+      }
       const drawingStore = useDrawingStore.getState()
       drawingStore.setActiveTool(null)
       drawingStore.setSelectedShapeId(null)
@@ -550,20 +607,26 @@ export function App() {
 
   const handleFlyShape = useCallback(
     (id: string) => {
-      const shape = useDrawingStore.getState().shapes.find((item) => item.id === id)
-      if (shape) {flyToShape(shape)}
+      const shape = useDrawingStore.getState().shapes.find(item => item.id === id)
+      if (shape) {
+        flyToShape(shape)
+      }
     },
     [flyToShape]
   )
 
   const updateSelectedShape = useCallback((changes: DrawnShapeStylePatch) => {
     const id = useDrawingStore.getState().selectedShapeId
-    if (id) {useDrawingStore.getState().updateShape(id, changes)}
+    if (id) {
+      useDrawingStore.getState().updateShape(id, changes)
+    }
   }, [])
 
   const deleteSelectedShape = useCallback(() => {
     const id = useDrawingStore.getState().selectedShapeId
-    if (id) {useDrawingStore.getState().removeShape(id)}
+    if (id) {
+      useDrawingStore.getState().removeShape(id)
+    }
   }, [])
 
   return (
@@ -577,12 +640,12 @@ export function App() {
       <InlineTextEditor
         viewer={viewer}
         shape={selectedShape?.kind === 'text' ? selectedShape : null}
-        onUpdate={(annotation) => updateSelectedShape({ annotation })}
+        onUpdate={annotation => updateSelectedShape({ annotation })}
       />
       {showGlobeLoading && (
         <div className={styles.globeLoading}>
-          <Spinner spinning={!globeLoadTimedOut && !globeError && !webglNotice} size="sm" />
-          <span className={styles.globeLoadingText} role="status">
+          <Spinner spinning={!globeLoadTimedOut && !globeError && !webglNotice} size='sm' />
+          <span className={styles.globeLoadingText} role='status'>
             {globeLoadingText}
           </span>
           {webglNotice?.detail ? (
@@ -593,10 +656,17 @@ export function App() {
             <span className={styles.globeLoadingStage}>{globeLoadStage}</span>
           ) : null}
           {globeLoadingRetryable && !webglNotice && (
-            <span className={styles.globeLoadingStage}>若持续无法加载，可在「设置 → 地图」开启国内地图加速</span>
+            <span className={styles.globeLoadingStage}>
+              若持续无法加载，可在「设置 → 地图」开启国内地图加速
+            </span>
           )}
           {globeLoadingRetryable && (
-            <Button variant="ghost" size="sm" icon={<RotateCwIcon className="size-3.5" />} onClick={handleRetry}>
+            <Button
+              variant='ghost'
+              size='sm'
+              icon={<RotateCwIcon className='size-3.5' />}
+              onClick={handleRetry}
+            >
               重试
             </Button>
           )}
@@ -681,7 +751,10 @@ export function App() {
             <EnsoPanel onClose={() => useClimateStore.getState().setOverlay('enso', false)} />
           )}
           {hydrologyPanel === 'water-cycle' && (
-            <WaterCyclePanel viewer={viewer} onClose={() => useHydrologyStore.getState().setPanel(null)} />
+            <WaterCyclePanel
+              viewer={viewer}
+              onClose={() => useHydrologyStore.getState().setPanel(null)}
+            />
           )}
           {hydrologyPanel === 'ocean-property' && (
             <OceanPropertyPanel onClose={() => useHydrologyStore.getState().setPanel(null)} />
@@ -693,22 +766,37 @@ export function App() {
             <WaterBodyPanel onClose={() => useHydrologyStore.getState().setPanel(null)} />
           )}
           {landformPanel === 'fold-fault' && (
-            <FoldFaultPanel viewer={viewer} onClose={() => useLandformStore.getState().setPanel(null)} />
+            <FoldFaultPanel
+              viewer={viewer}
+              onClose={() => useLandformStore.getState().setPanel(null)}
+            />
           )}
           {landformPanel === 'river' && (
-            <RiverLandformPanel viewer={viewer} onClose={() => useLandformStore.getState().setPanel(null)} />
+            <RiverLandformPanel
+              viewer={viewer}
+              onClose={() => useLandformStore.getState().setPanel(null)}
+            />
           )}
           {landformPanel === 'landform-guide' && (
-            <LandformGuidePanel viewer={viewer} onClose={() => useLandformStore.getState().setPanel(null)} />
+            <LandformGuidePanel
+              viewer={viewer}
+              onClose={() => useLandformStore.getState().setPanel(null)}
+            />
           )}
           {landformPanel === 'exogenic' && (
-            <ExogenicPanel viewer={viewer} onClose={() => useLandformStore.getState().setPanel(null)} />
+            <ExogenicPanel
+              viewer={viewer}
+              onClose={() => useLandformStore.getState().setPanel(null)}
+            />
           )}
           {landformPanel === 'earth-layers' && (
             <EarthLayersPanel onClose={() => useLandformStore.getState().setPanel(null)} />
           )}
           {zonationPanel === 'zonation-profile' && (
-            <ZonationPanel viewer={viewer} onClose={() => useZonationStore.getState().setPanel(null)} />
+            <ZonationPanel
+              viewer={viewer}
+              onClose={() => useZonationStore.getState().setPanel(null)}
+            />
           )}
           {populationPanel === 'population' && (
             <PopulationPanel onClose={() => usePopulationStore.getState().setPanel(null)} />
@@ -717,13 +805,22 @@ export function App() {
             <CitiesPanel onClose={() => usePopulationStore.getState().setPanel(null)} />
           )}
           {transportPanel === 'transport' && (
-            <TransportPanel viewer={viewer} onClose={() => useTransportStore.getState().setPanel(null)} />
+            <TransportPanel
+              viewer={viewer}
+              onClose={() => useTransportStore.getState().setPanel(null)}
+            />
           )}
           {environmentPanel === 'environment' && (
-            <EnvironmentPanel viewer={viewer} onClose={() => useEnvironmentStore.getState().setPanel(null)} />
+            <EnvironmentPanel
+              viewer={viewer}
+              onClose={() => useEnvironmentStore.getState().setPanel(null)}
+            />
           )}
           {decisionPanel === 'location' && (
-            <LocationDecisionPanel viewer={viewer} onClose={() => useDecisionStore.getState().setPanel(null)} />
+            <LocationDecisionPanel
+              viewer={viewer}
+              onClose={() => useDecisionStore.getState().setPanel(null)}
+            />
           )}
           {timezoneComparison && (
             <TimezonePanel comparison={timezoneComparison} onClear={closeTimezoneCompare} />
@@ -750,9 +847,9 @@ export function App() {
             selectedShapeId={selectedShapeId}
             saveError={saveError}
             onClose={() => setIsAnnotationPanelOpen(false)}
-            onEdit={(id) => useDrawingStore.getState().setSelectedShapeId(id)}
+            onEdit={id => useDrawingStore.getState().setSelectedShapeId(id)}
             onFly={handleFlyShape}
-            onRemove={(id) => useDrawingStore.getState().removeShape(id)}
+            onRemove={id => useDrawingStore.getState().removeShape(id)}
           />
           <LayerPanel
             open={isLayerPanelOpen}
@@ -783,7 +880,7 @@ export function App() {
         onSave={handleSaveScene}
         onPreview={handlePreviewScene}
         onUpdate={handleUpdateScene}
-        onRemove={(id) => void useScenesStore.getState().removeScene(id)}
+        onRemove={id => void useScenesStore.getState().removeScene(id)}
         onMove={handleMoveScene}
         onPlay={handlePlayScenes}
       />
@@ -794,9 +891,9 @@ export function App() {
       />
       <Modal
         open={recordingDirectoryDialogOpen}
-        title="选择视频保存文件夹"
-        okText="选择文件夹"
-        cancelText="取消录制"
+        title='选择视频保存文件夹'
+        okText='选择文件夹'
+        cancelText='取消录制'
         maskClosable={false}
         confirmLoading={recordingDirectoryDialogBusy}
         onOk={() => void chooseRecordingDirectory()}
@@ -804,7 +901,7 @@ export function App() {
       >
         {recordingDirectoryDialogError && (
           <Alert
-            type="error"
+            type='error'
             showIcon
             title={recordingDirectoryDialogError}
             className={styles.recordingDirectoryError}

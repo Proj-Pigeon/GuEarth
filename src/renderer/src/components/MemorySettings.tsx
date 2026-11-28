@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { PlusIcon, Trash2Icon } from 'lucide-react'
 import { Button, Input, Popconfirm, Spinner, Switch, Tag, useToast } from '@renderer/components/ui'
-import type { AgentMemory } from '../../../preload'
 import { useAiStore } from '@renderer/stores/ai'
+import { PlusIcon, Trash2Icon } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+
+import type { AgentMemory } from '../../../preload'
+
 import styles from './MemorySettings.module.css'
 
 export interface MemorySettingsProps {
@@ -19,8 +21,8 @@ function formatTime(timestamp: number): string {
 
 export function MemorySettings({ active }: MemorySettingsProps) {
   const toast = useToast()
-  const memoryEnabled = useAiStore((state) => state.settings.memoryEnabled)
-  const setMemoryEnabled = useAiStore((state) => state.setMemoryEnabled)
+  const memoryEnabled = useAiStore(state => state.settings.memoryEnabled)
+  const setMemoryEnabled = useAiStore(state => state.setMemoryEnabled)
 
   const [memories, setMemories] = useState<AgentMemory[]>([])
   const [draft, setDraft] = useState('')
@@ -31,19 +33,27 @@ export function MemorySettings({ active }: MemorySettingsProps) {
   const sortedMemories = useMemo(() => [...memories].reverse(), [memories])
 
   useEffect(() => {
-    if (!active) {return}
+    if (!active) {
+      return
+    }
     let cancelled = false
     setLoading(true)
     window.guEarth.ai.memory
       .list()
-      .then((list) => {
-        if (!cancelled) {setMemories(list)}
+      .then(list => {
+        if (!cancelled) {
+          setMemories(list)
+        }
       })
       .catch(() => {
-        if (!cancelled) {toast.error('无法读取记忆列表，请重试')}
+        if (!cancelled) {
+          toast.error('无法读取记忆列表，请重试')
+        }
       })
       .finally(() => {
-        if (!cancelled) {setLoading(false)}
+        if (!cancelled) {
+          setLoading(false)
+        }
       })
     return () => {
       cancelled = true
@@ -52,7 +62,9 @@ export function MemorySettings({ active }: MemorySettingsProps) {
 
   async function addMemory(): Promise<void> {
     const content = draft.trim()
-    if (!content || adding) {return}
+    if (!content || adding) {
+      return
+    }
     setAdding(true)
     try {
       const next = await window.guEarth.ai.memory.add(content)
@@ -77,7 +89,9 @@ export function MemorySettings({ active }: MemorySettingsProps) {
   }
 
   async function toggleEnabled(value: boolean): Promise<void> {
-    if (switchBusy) {return}
+    if (switchBusy) {
+      return
+    }
     setSwitchBusy(true)
     try {
       await setMemoryEnabled(value)
@@ -99,8 +113,8 @@ export function MemorySettings({ active }: MemorySettingsProps) {
         <Switch
           checked={memoryEnabled}
           loading={switchBusy}
-          aria-label="记忆功能开关"
-          onChange={(value) => void toggleEnabled(value)}
+          aria-label='记忆功能开关'
+          onChange={value => void toggleEnabled(value)}
         />
       </div>
 
@@ -108,16 +122,16 @@ export function MemorySettings({ active }: MemorySettingsProps) {
         <Input
           value={draft}
           className={styles.memoryInput}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="添加偏好，如：我是高中地理老师，喜欢结合案例讲解"
+          onChange={event => setDraft(event.target.value)}
+          placeholder='添加偏好，如：我是高中地理老师，喜欢结合案例讲解'
           maxLength={300}
           onPressEnter={() => void addMemory()}
         />
         <Button
-          variant="primary"
+          variant='primary'
           loading={adding}
           disabled={!draft.trim()}
-          icon={<PlusIcon className="size-3.5" />}
+          icon={<PlusIcon className='size-3.5' />}
           onClick={() => void addMemory()}
         >
           添加
@@ -129,7 +143,7 @@ export function MemorySettings({ active }: MemorySettingsProps) {
           <div className={styles.memoryEmpty}>暂无记录</div>
         ) : (
           <ul className={styles.memoryList}>
-            {sortedMemories.map((memory) => (
+            {sortedMemories.map(memory => (
               <li key={memory.id} className={styles.memoryItem}>
                 <div className={styles.memoryItemBody}>
                   <p className={styles.memoryItemContent}>{memory.content}</p>
@@ -141,17 +155,17 @@ export function MemorySettings({ active }: MemorySettingsProps) {
                   </div>
                 </div>
                 <Popconfirm
-                  title="删除这条记忆？"
-                  okText="删除"
+                  title='删除这条记忆？'
+                  okText='删除'
                   okDanger
-                  cancelText="取消"
+                  cancelText='取消'
                   onConfirm={() => void removeMemory(memory)}
                 >
                   <Button
-                    variant="ghost"
-                    size="sm"
+                    variant='ghost'
+                    size='sm'
                     danger
-                    icon={<Trash2Icon className="size-3.5" />}
+                    icon={<Trash2Icon className='size-3.5' />}
                     aria-label={`删除记忆 ${memory.content.slice(0, 12)}`}
                   />
                 </Popconfirm>

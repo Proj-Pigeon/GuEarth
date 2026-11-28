@@ -4,6 +4,9 @@ export function viirsGranuleDate(now = Date.now()): string {
   return new Date(now - VIIRS_GRANULE_LAG_MS).toISOString().slice(0, 10)
 }
 
-export function viirsCacheStyleId(styleId: string, granuleDate: string = viirsGranuleDate()): string {
+export function viirsCacheStyleId(
+  styleId: string,
+  granuleDate: string = viirsGranuleDate()
+): string {
   return `${styleId}-${granuleDate.replaceAll('-', '')}`
 }

@@ -1,11 +1,14 @@
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http'
 import { resourceFromAttributes } from '@opentelemetry/resources'
-import { BatchLogRecordProcessor, LoggerProvider } from '@opentelemetry/sdk-logs';
-import type { LogRecordExporter } from '@opentelemetry/sdk-logs';
+import { BatchLogRecordProcessor, LoggerProvider } from '@opentelemetry/sdk-logs'
+import type { LogRecordExporter } from '@opentelemetry/sdk-logs'
 
 const viteEnv = import.meta.env as Partial<ImportMetaEnv> | undefined
-const projectToken = (viteEnv ? import.meta.env.VITE_POSTHOG_PROJECT_TOKEN : undefined) || process.env.VITE_POSTHOG_PROJECT_TOKEN
-const host = (viteEnv ? import.meta.env.VITE_POSTHOG_HOST : undefined) || process.env.VITE_POSTHOG_HOST
+const projectToken =
+  (viteEnv ? import.meta.env.VITE_POSTHOG_PROJECT_TOKEN : undefined) ||
+  process.env.VITE_POSTHOG_PROJECT_TOKEN
+const host =
+  (viteEnv ? import.meta.env.VITE_POSTHOG_HOST : undefined) || process.env.VITE_POSTHOG_HOST
 const isDev = viteEnv ? import.meta.env.DEV : false
 
 let posthogLogsEnabled = false
@@ -28,7 +31,9 @@ export function createGatedLogRecordExporter(
       exporter.export(logs, resultCallback)
     },
     forceFlush() {
-      if (!isEnabled()) {return Promise.resolve()}
+      if (!isEnabled()) {
+        return Promise.resolve()
+      }
       return exporter.forceFlush()
     },
     shutdown() {
@@ -38,13 +43,19 @@ export function createGatedLogRecordExporter(
 }
 
 function ensureLogger(): ReturnType<LoggerProvider['getLogger']> | null {
-  if (!posthogLogsEnabled) {return null}
-  if (posthogLogger) {return posthogLogger}
+  if (!posthogLogsEnabled) {
+    return null
+  }
+  if (posthogLogger) {
+    return posthogLogger
+  }
   if (!projectToken || !host) {
     if (!missingWarned && isDev) {
       missingWarned = true
       const missingConfiguration = projectToken ? 'VITE_POSTHOG_HOST' : 'VITE_POSTHOG_PROJECT_TOKEN'
-      console.warn(`${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`)
+      console.warn(
+        `${missingConfiguration} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingConfiguration} is configured`
+      )
     }
     return null
   }
@@ -60,14 +71,19 @@ function ensureLogger(): ReturnType<LoggerProvider['getLogger']> | null {
       }),
       processors: [
         new BatchLogRecordProcessor({
-          exporter: createGatedLogRecordExporter(otlpExporter, () => controller.active && posthogLogsEnabled)
+          exporter: createGatedLogRecordExporter(
+            otlpExporter,
+            () => controller.active && posthogLogsEnabled
+          )
         })
       ]
     })
     activeExporterController = controller
     posthogLogger = provider.getLogger('guearth.posthog')
   } catch (error) {
-    if (isDev) {console.warn('PostHog log export could not be initialized', error)}
+    if (isDev) {
+      console.warn('PostHog log export could not be initialized', error)
+    }
   }
   return posthogLogger
 }
@@ -82,7 +98,9 @@ export function setPosthogLogsEnabled(enabled: boolean): void {
     const activeProvider = provider
     provider = null
     posthogLogger = null
-    if (activeProvider) {void activeProvider.shutdown().catch(() => {})}
+    if (activeProvider) {
+      void activeProvider.shutdown().catch(() => {})
+    }
     return
   }
   ensureLogger()
@@ -94,7 +112,9 @@ export function capturePosthogLog(
   attributes?: Record<string, string | number | boolean>
 ): void {
   const activeLogger = ensureLogger()
-  if (!activeLogger) {return}
+  if (!activeLogger) {
+    return
+  }
   try {
     activeLogger.emit({ severityText, body, attributes })
   } catch {
@@ -105,7 +125,9 @@ export function capturePosthogLog(
 export async function shutdownPosthogLogs(): Promise<void> {
   const activeProvider = provider
   const controller = activeExporterController
-  if (!activeProvider) {return}
+  if (!activeProvider) {
+    return
+  }
   provider = null
   posthogLogger = null
   activeExporterController = null
@@ -113,7 +135,7 @@ export async function shutdownPosthogLogs(): Promise<void> {
   try {
     await Promise.race([
       activeProvider.shutdown(),
-      new Promise<void>((resolve) => {
+      new Promise<void>(resolve => {
         timeout = setTimeout(resolve, 1000)
         timeout.unref()
       })
@@ -121,7 +143,11 @@ export async function shutdownPosthogLogs(): Promise<void> {
   } catch {
     // Best effort, so the failure is ignored.
   } finally {
-    if (controller) {controller.active = false}
-    if (timeout) {clearTimeout(timeout)}
+    if (controller) {
+      controller.active = false
+    }
+    if (timeout) {
+      clearTimeout(timeout)
+    }
   }
 }

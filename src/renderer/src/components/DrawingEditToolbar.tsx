@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
-import { Trash2Icon } from 'lucide-react'
 import { Button, Input, NumberInput, Select, Switch, Tooltip } from '@renderer/components/ui'
 import type { DrawnShape } from '@renderer/stores/drawing'
 import { useFlightStopsStore } from '@renderer/stores/flightStops'
+import { Trash2Icon } from 'lucide-react'
+import { useMemo } from 'react'
+
 import styles from './DrawingEditToolbar.module.css'
 
 export type DrawnShapeStylePatch = Partial<
@@ -20,12 +21,9 @@ export interface DrawingEditToolbarProps {
 }
 
 export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: DrawingEditToolbarProps) {
-  const flightStopsVisible = useFlightStopsStore((state) => state.visible)
+  const flightStopsVisible = useFlightStopsStore(state => state.visible)
 
-  const fontOptions = useMemo(
-    () => fonts.map((font) => ({ label: font, value: font })),
-    [fonts]
-  )
+  const fontOptions = useMemo(() => fonts.map(font => ({ label: font, value: font })), [fonts])
 
   return (
     <div
@@ -34,27 +32,27 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
           ? `${styles.drawingEditToolbar} ${styles.drawingEditToolbarStacked}`
           : styles.drawingEditToolbar
       }
-      role="toolbar"
-      aria-label="绘图样式"
+      role='toolbar'
+      aria-label='绘图样式'
     >
       {shape.kind !== 'text' && (
         <Input
           value={shape.annotation}
           className={styles.annotationInput}
           maxLength={200}
-          placeholder="标注名称"
-          aria-label="标注名称"
-          onChange={(event) => onChange({ annotation: event.target.value })}
+          placeholder='标注名称'
+          aria-label='标注名称'
+          onChange={event => onChange({ annotation: event.target.value })}
         />
       )}
       <label className={styles.styleControl}>
         <span>{shape.kind === 'text' ? '边框色' : '颜色'}</span>
         <input
           value={shape.color}
-          type="color"
-          aria-label="绘图颜色"
+          type='color'
+          aria-label='绘图颜色'
           className={styles.colorInput}
-          onChange={(event) => onChange({ color: event.target.value })}
+          onChange={event => onChange({ color: event.target.value })}
         />
       </label>
       {(shape.kind === 'polyline' || shape.kind === 'polygon' || shape.kind === 'arrow') && (
@@ -66,9 +64,11 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
             max={12}
             step={1}
             className={styles.numberControl}
-            aria-label="线宽"
-            onChange={(value) => {
-              if (typeof value === 'number') {onChange({ lineWidth: value })}
+            aria-label='线宽'
+            onChange={value => {
+              if (typeof value === 'number') {
+                onChange({ lineWidth: value })
+              }
             }}
           />
         </label>
@@ -79,10 +79,10 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
             <span>文字色</span>
             <input
               value={shape.textColor}
-              type="color"
-              aria-label="文字颜色"
+              type='color'
+              aria-label='文字颜色'
               className={styles.colorInput}
-              onChange={(event) => onChange({ textColor: event.target.value })}
+              onChange={event => onChange({ textColor: event.target.value })}
             />
           </label>
           <label className={`${styles.styleControl} ${styles.fontControl}`}>
@@ -92,9 +92,11 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
               options={fontOptions}
               searchable
               className={styles.fontSelect}
-              aria-label="系统字体"
-              onChange={(value) => {
-                if (value) {onChange({ fontFamily: value })}
+              aria-label='系统字体'
+              onChange={value => {
+                if (value) {
+                  onChange({ fontFamily: value })
+                }
               }}
             />
           </label>
@@ -106,9 +108,11 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
               max={72}
               step={1}
               className={styles.numberControl}
-              aria-label="字号"
-              onChange={(value) => {
-                if (typeof value === 'number') {onChange({ fontSize: value })}
+              aria-label='字号'
+              onChange={value => {
+                if (typeof value === 'number') {
+                  onChange({ fontSize: value })
+                }
               }}
             />
           </label>
@@ -116,18 +120,18 @@ export function DrawingEditToolbar({ shape, fonts, onChange, onRemove }: Drawing
             <span>边框</span>
             <Switch
               checked={shape.textFrame}
-              aria-label="显示边框"
-              onChange={(checked) => onChange({ textFrame: checked })}
+              aria-label='显示边框'
+              onChange={checked => onChange({ textFrame: checked })}
             />
           </label>
         </>
       )}
-      <Tooltip title="删除标注">
+      <Tooltip title='删除标注'>
         <Button
-          variant="ghost"
+          variant='ghost'
           danger
-          aria-label="删除标注"
-          icon={<Trash2Icon className="size-4" />}
+          aria-label='删除标注'
+          icon={<Trash2Icon className='size-4' />}
           onClick={onRemove}
         />
       </Tooltip>

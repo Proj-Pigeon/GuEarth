@@ -1,18 +1,37 @@
 import MarkdownIt from 'markdown-it'
-import { cloneElement, createElement, isValidElement } from 'react';
-import type { ReactNode } from 'react';
+import { cloneElement, createElement, isValidElement } from 'react'
+import type { ReactNode } from 'react'
 
 const SAFE_LINK_PATTERN = /^(https?:\/\/|mailto:)/i
 const SAFE_IMAGE_PATTERN = /^https?:\/\//i
 
 const markdown = new MarkdownIt({ breaks: true, linkify: true, html: false })
-markdown.validateLink = (url) => SAFE_LINK_PATTERN.test(url)
+markdown.validateLink = url => SAFE_LINK_PATTERN.test(url)
 
 type MarkdownToken = ReturnType<typeof markdown.parse>[number]
 
 const allowedTags = new Set([
-  'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'ul', 'ol', 'li',
-  'strong', 'em', 's', 'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td'
+  'p',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'blockquote',
+  'ul',
+  'ol',
+  'li',
+  'strong',
+  'em',
+  's',
+  'a',
+  'table',
+  'thead',
+  'tbody',
+  'tr',
+  'th',
+  'td'
 ])
 
 function tokenAttribute(token: MarkdownToken, name: string): string | undefined {
@@ -24,19 +43,27 @@ function tokenAttributes(token: MarkdownToken): Record<string, unknown> {
   const attributes: Record<string, unknown> = {}
   if (token.tag === 'a') {
     const href = tokenAttribute(token, 'href')
-    if (href && SAFE_LINK_PATTERN.test(href)) {attributes.href = href}
+    if (href && SAFE_LINK_PATTERN.test(href)) {
+      attributes.href = href
+    }
     attributes.target = '_blank'
     attributes.rel = 'noopener noreferrer'
     const title = tokenAttribute(token, 'title')
-    if (title) {attributes.title = title}
+    if (title) {
+      attributes.title = title
+    }
   }
   if (token.tag === 'ol') {
     const start = tokenAttribute(token, 'start')
-    if (start && /^\d{1,9}$/.test(start)) {attributes.start = Number(start)}
+    if (start && /^\d{1,9}$/.test(start)) {
+      attributes.start = Number(start)
+    }
   }
   if (token.tag === 'th' || token.tag === 'td') {
     const alignment = /^text-align:(left|center|right)$/.exec(tokenAttribute(token, 'style') ?? '')
-    if (alignment) {attributes.style = { textAlign: alignment[1] }}
+    if (alignment) {
+      attributes.style = { textAlign: alignment[1] }
+    }
   }
   return attributes
 }
@@ -47,7 +74,10 @@ interface ElementFrame {
   children: ReactNode[]
 }
 
-function renderTokens(tokens: MarkdownToken[], keyState: { seq: number } = { seq: 0 }): ReactNode[] {
+function renderTokens(
+  tokens: MarkdownToken[],
+  keyState: { seq: number } = { seq: 0 }
+): ReactNode[] {
   const root: ElementFrame = { tag: null, attrs: {}, children: [] }
   const stack: ElementFrame[] = [root]
   for (const token of tokens) {
@@ -56,7 +86,13 @@ function renderTokens(tokens: MarkdownToken[], keyState: { seq: number } = { seq
         const frame = stack.pop()!
         const parent = stack[stack.length - 1]
         if (frame.tag) {
-          parent.children.push(createElement(frame.tag, { key: `md-${keyState.seq++}`, ...frame.attrs }, ...frame.children))
+          parent.children.push(
+            createElement(
+              frame.tag,
+              { key: `md-${keyState.seq++}`, ...frame.attrs },
+              ...frame.children
+            )
+          )
         } else {
           parent.children.push(...frame.children)
         }
@@ -82,7 +118,11 @@ function renderTokens(tokens: MarkdownToken[], keyState: { seq: number } = { seq
         createElement(
           'pre',
           { key: `md-${keyState.seq++}` },
-          createElement('code', language ? { className: `language-${language}` } : null, token.content)
+          createElement(
+            'code',
+            language ? { className: `language-${language}` } : null,
+            token.content
+          )
         )
       )
     } else if (token.type === 'softbreak' || token.type === 'hardbreak') {
@@ -95,7 +135,9 @@ function renderTokens(tokens: MarkdownToken[], keyState: { seq: number } = { seq
       if (src && SAFE_IMAGE_PATTERN.test(src)) {
         const title = tokenAttribute(token, 'title')
         const props: Record<string, unknown> = { key: `md-${keyState.seq++}`, src, alt }
-        if (title) {props.title = title}
+        if (title) {
+          props.title = title
+        }
         children.push(createElement('img', props))
       } else {
         children.push(alt)
@@ -108,7 +150,9 @@ function renderTokens(tokens: MarkdownToken[], keyState: { seq: number } = { seq
     const frame = stack.pop()!
     const parent = stack[stack.length - 1]
     if (frame.tag) {
-      parent.children.push(createElement(frame.tag, { key: `md-${keyState.seq++}`, ...frame.attrs }, ...frame.children))
+      parent.children.push(
+        createElement(frame.tag, { key: `md-${keyState.seq++}`, ...frame.attrs }, ...frame.children)
+      )
     } else {
       parent.children.push(...frame.children)
     }
@@ -123,9 +167,13 @@ export function renderMarkdown(text: string): ReactNode[] {
 function hasRenderableNodes(nodes: ReactNode[]): boolean {
   for (const child of nodes) {
     if (typeof child === 'string') {
-      if (child.trim().length > 0) {return true}
+      if (child.trim().length > 0) {
+        return true
+      }
     } else if (Array.isArray(child)) {
-      if (hasRenderableNodes(child)) {return true}
+      if (hasRenderableNodes(child)) {
+        return true
+      }
     } else if (child !== null && child !== undefined && typeof child !== 'boolean') {
       return true
     }
@@ -137,7 +185,9 @@ export function tryRenderMarkdown(
   text: string,
   render: (input: string) => ReactNode[] = renderMarkdown
 ): ReactNode[] | null {
-  if (!text.trim()) {return null}
+  if (!text.trim()) {
+    return null
+  }
   try {
     const nodes = render(text)
     return hasRenderableNodes(nodes) ? nodes : null
@@ -146,7 +196,8 @@ export function tryRenderMarkdown(
   }
 }
 
-const streamingTokenPattern = /(\s+|[\u3400-\u9FFF\uF900-\uFAFF]|[^\s\p{P}\p{S}\u3400-\u9FFF\uF900-\uFAFF]+(?:[._'-][^\s\p{P}\p{S}\u3400-\u9FFF\uF900-\uFAFF]+)*|[\p{P}\p{S}])/gu
+const streamingTokenPattern =
+  /(\s+|[\u3400-\u9FFF\uF900-\uFAFF]|[^\s\p{P}\p{S}\u3400-\u9FFF\uF900-\uFAFF]+(?:[._'-][^\s\p{P}\p{S}\u3400-\u9FFF\uF900-\uFAFF]+)*|[\p{P}\p{S}])/gu
 const wordPattern = /[\p{L}\p{N}]/u
 const nonStreamingTags = new Set(['pre', 'code'])
 const streamingTailTokens = 6
@@ -195,14 +246,23 @@ interface StreamingState {
 }
 
 function normalizeChildren(children: ReactNode): ReactNode[] {
-  if (children === null || children === undefined || typeof children === 'boolean') {return []}
+  if (children === null || children === undefined || typeof children === 'boolean') {
+    return []
+  }
   return Array.isArray(children) ? children : [children]
 }
 
-function collectStreamingTokens(children: ReactNode[], tokens: StreamingTokenMeta[], offset = { value: 0 }, insideCode = false): void {
+function collectStreamingTokens(
+  children: ReactNode[],
+  tokens: StreamingTokenMeta[],
+  offset = { value: 0 },
+  insideCode = false
+): void {
   for (const child of children) {
     if (typeof child === 'string') {
-      if (insideCode) {continue}
+      if (insideCode) {
+        continue
+      }
       for (const piece of child.match(streamingTokenPattern) ?? [child]) {
         if (!/^\s+$/.test(piece)) {
           tokens.push({ position: offset.value, word: wordPattern.test(piece) })
@@ -225,29 +285,47 @@ function collectStreamingTokens(children: ReactNode[], tokens: StreamingTokenMet
   }
 }
 
-function updateStreamingDelays(text: string, tokens: StreamingTokenMeta[], tailStartIndex: number, delayState: StreamingDelayState): { windowStart: number; delays: Map<number, number> } {
+function updateStreamingDelays(
+  text: string,
+  tokens: StreamingTokenMeta[],
+  tailStartIndex: number,
+  delayState: StreamingDelayState
+): { windowStart: number; delays: Map<number, number> } {
   const total = tokens.length
-  if ((delayState.lastText && !text.startsWith(delayState.lastText)) || (delayState.settledText && !text.startsWith(delayState.settledText))) {
+  if (
+    (delayState.lastText && !text.startsWith(delayState.lastText)) ||
+    (delayState.settledText && !text.startsWith(delayState.settledText))
+  ) {
     resetStreamingDelayState(delayState)
   } else if (total < delayState.seenCount) {
     delayState.seenCount = total
     delayState.settledCount = Math.min(delayState.settledCount, total)
   }
   const activeStartIndex = Math.max(tailStartIndex, Math.min(delayState.settledCount, total))
-  const windowStart = activeStartIndex < total ? tokens[activeStartIndex].position : Number.POSITIVE_INFINITY
+  const windowStart =
+    activeStartIndex < total ? tokens[activeStartIndex].position : Number.POSITIVE_INFINITY
   delayState.delays.clear()
   const newlyAdded = tokens.slice(Math.max(delayState.seenCount, activeStartIndex))
-  const stepMs = newlyAdded.length > 1 ? Math.min(maxTokenStepMs, Math.floor(maxBatchStaggerMs / newlyAdded.length)) : 0
+  const stepMs =
+    newlyAdded.length > 1
+      ? Math.min(maxTokenStepMs, Math.floor(maxBatchStaggerMs / newlyAdded.length))
+      : 0
   newlyAdded.forEach((token, index) => {
     const delay = index * stepMs
-    if (delay > 0) {delayState.delays.set(token.position, delay)}
+    if (delay > 0) {
+      delayState.delays.set(token.position, delay)
+    }
   })
   delayState.seenCount = total
   delayState.lastText = text
   return { windowStart, delays: delayState.delays }
 }
 
-function wrapStreamingTokens(children: ReactNode[], state: StreamingState, insideCode = false): ReactNode[] {
+function wrapStreamingTokens(
+  children: ReactNode[],
+  state: StreamingState,
+  insideCode = false
+): ReactNode[] {
   const result: ReactNode[] = []
   let containsLastToken = false
   for (const child of children) {
@@ -261,7 +339,9 @@ function wrapStreamingTokens(children: ReactNode[], state: StreamingState, insid
         const position = state.position
         state.position += 1
         const isSpace = /^\s+$/.test(piece)
-        if (!isSpace && position === state.lastTokenPosition) {containsLastToken = true}
+        if (!isSpace && position === state.lastTokenPosition) {
+          containsLastToken = true
+        }
         if (isSpace || position < state.windowStart) {
           plain += piece
           continue
@@ -273,11 +353,18 @@ function wrapStreamingTokens(children: ReactNode[], state: StreamingState, insid
         const isFreshWord = wordPattern.test(piece) && position >= state.freshStart
         const tokenClass = isFreshWord ? 'stream-token stream-token-fresh' : 'stream-token'
         const delay = state.delays?.get(position)
-        const props: Record<string, unknown> = { key: `stream-token-${position}`, className: tokenClass }
-        if (delay) {props.style = { animationDelay: `${delay}ms` }}
+        const props: Record<string, unknown> = {
+          key: `stream-token-${position}`,
+          className: tokenClass
+        }
+        if (delay) {
+          props.style = { animationDelay: `${delay}ms` }
+        }
         result.push(createElement('span', props, piece))
       }
-      if (plain) {result.push(plain)}
+      if (plain) {
+        result.push(plain)
+      }
     } else if (Array.isArray(child)) {
       result.push(...wrapStreamingTokens(child, state, insideCode))
     } else if (isValidElement<{ children?: ReactNode }>(child)) {
@@ -298,22 +385,35 @@ function wrapStreamingTokens(children: ReactNode[], state: StreamingState, insid
     }
   }
   if (containsLastToken) {
-    result.push(createElement('span', { key: 'stream-caret', className: 'stream-caret', 'aria-hidden': 'true' }))
+    result.push(
+      createElement('span', {
+        key: 'stream-caret',
+        className: 'stream-caret',
+        'aria-hidden': 'true'
+      })
+    )
   }
   return result
 }
 
-export function renderStreamingMarkdown(text: string, delayState?: StreamingDelayState): ReactNode[] {
+export function renderStreamingMarkdown(
+  text: string,
+  delayState?: StreamingDelayState
+): ReactNode[] {
   const nodes = renderMarkdown(text)
   const tokens: StreamingTokenMeta[] = []
   collectStreamingTokens(nodes, tokens)
-  const words = tokens.filter((token) => token.word)
+  const words = tokens.filter(token => token.word)
   const tailStartIndex = Math.max(0, tokens.length - streamingTailTokens)
-  const defaultWindowStart = tokens.length > 0 ? tokens[tailStartIndex].position : Number.POSITIVE_INFINITY
+  const defaultWindowStart =
+    tokens.length > 0 ? tokens[tailStartIndex].position : Number.POSITIVE_INFINITY
   const { windowStart, delays } = delayState
     ? updateStreamingDelays(text, tokens, tailStartIndex, delayState)
     : { windowStart: defaultWindowStart, delays: undefined }
-  const freshStart = words.length > 0 ? Math.max(windowStart, words[Math.max(0, words.length - streamingFreshWords)].position) : Number.POSITIVE_INFINITY
+  const freshStart =
+    words.length > 0
+      ? Math.max(windowStart, words[Math.max(0, words.length - streamingFreshWords)].position)
+      : Number.POSITIVE_INFINITY
   const lastTokenPosition = tokens.length > 0 ? tokens[tokens.length - 1].position : -1
   const state: StreamingState = {
     position: 0,

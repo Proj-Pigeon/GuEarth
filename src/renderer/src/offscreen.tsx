@@ -1,34 +1,63 @@
 import * as Cesium from 'cesium'
+
 import 'cesium/Build/Cesium/Widgets/widgets.css'
+// Components load after Cesium's widget styles, so their styles override them.
 import { createRoot } from 'react-dom/client'
-import type { OffscreenPrewarmQuality, OffscreenRecordingProgress, OffscreenRecordingScript, SceneCamera, TeachingScene } from '../../preload'
+
+import type {
+  OffscreenPrewarmQuality,
+  OffscreenRecordingProgress,
+  OffscreenRecordingScript,
+  SceneCamera,
+  TeachingScene
+} from '../../preload'
+import FrontalCyclone from './components/FrontalCyclone'
+import HuLineOverlay from './components/HuLineOverlay'
+import TyphoonOverlay from './components/TyphoonOverlay'
+import WalkerCirculationOverlay from './components/WalkerCirculationOverlay'
+import WindParticles from './components/WindParticles'
 import { createBasemapImageryProvider } from './composables/basemapImagery'
 import { ensureSeaLevelSamples } from './composables/seaLevelSampling'
 import { useThematicLayers } from './composables/useThematicLayers'
-import { RECORD_PREWARM_QUALITY_CONFIG, recordingPrewarmViews, sceneCameraView } from './lib/sceneCamera';
-import type { PrewarmView, SceneCameraView } from './lib/sceneCamera';
 import { visibleThematicLayers } from './lib/nightBasemap'
-import { centroidOf, pointGraphics, polygonGraphics, polylineOptions, ringOf, sanitizePositions, shapeColorOf, shapeLabelOptions, surfacePosition, terrainSurfacePositions, toCartesian } from './lib/shapeGraphics';
-import type { ShapeVisual } from './lib/shapeGraphics';
+import {
+  RECORD_PREWARM_QUALITY_CONFIG,
+  recordingPrewarmViews,
+  sceneCameraView
+} from './lib/sceneCamera'
+import type { PrewarmView, SceneCameraView } from './lib/sceneCamera'
+import {
+  centroidOf,
+  pointGraphics,
+  polygonGraphics,
+  polylineOptions,
+  ringOf,
+  sanitizePositions,
+  shapeColorOf,
+  shapeLabelOptions,
+  surfacePosition,
+  terrainSurfacePositions,
+  toCartesian
+} from './lib/shapeGraphics'
+import type { ShapeVisual } from './lib/shapeGraphics'
+import { wrapText } from './offscreenText'
 import { thematicLayerCatalog, useClimateStore } from './stores/climate'
 import { styleFor } from './stores/globe'
 import { useSolarStore } from './stores/solar'
 import { useTransportStore } from './stores/transport'
 import { terrainProviderFactory, terrainRegistry } from './terrain/terrainRegistry'
 import { seedSampleHeights } from './thematic/seaLevelRise'
-import { wrapText } from './offscreenText'
-import FrontalCyclone from './components/FrontalCyclone'
-import HuLineOverlay from './components/HuLineOverlay'
-import TyphoonOverlay from './components/TyphoonOverlay'
-import WalkerCirculationOverlay from './components/WalkerCirculationOverlay'
-import WindParticles from './components/WindParticles'
 import './offscreenEncoder'
 
 const container = document.getElementById('cesium-container')
-if (!container) {throw new Error('Offscreen Cesium 容器不存在')}
+if (!container) {
+  throw new Error('Offscreen Cesium 容器不存在')
+}
 
 const overlayLayer = document.getElementById('recording-overlays')
-if (!overlayLayer) {throw new Error('Offscreen 叠加层容器不存在')}
+if (!overlayLayer) {
+  throw new Error('Offscreen 叠加层容器不存在')
+}
 
 const viewer = new Cesium.Viewer(container, {
   baseLayer: false,
@@ -51,8 +80,8 @@ viewer.scene.msaaSamples = 1
 
 function OffscreenOverlays({ viewer: cesiumViewer }: { viewer: Cesium.Viewer }) {
   useThematicLayers(cesiumViewer, { autoFocus: false })
-  const overlays = useClimateStore((state) => state.overlays)
-  const ensoPhase = useClimateStore((state) => state.ensoPhase)
+  const overlays = useClimateStore(state => state.overlays)
+  const ensoPhase = useClimateStore(state => state.ensoPhase)
 
   return (
     <>
@@ -95,7 +124,9 @@ function requestSkipPrewarm(): void {
 }
 
 function setPrewarmQuality(quality: OffscreenPrewarmQuality): void {
-  if (prewarmQuality === quality) {return}
+  if (prewarmQuality === quality) {
+    return
+  }
   prewarmQuality = quality
   prewarmRevision += 1
 }
@@ -108,11 +139,15 @@ function next(): void {
 }
 
 function sleep(ms: number): Promise<void> {
-  if (ms <= 0) {return Promise.resolve()}
-  return new Promise((resolve) => {
+  if (ms <= 0) {
+    return Promise.resolve()
+  }
+  return new Promise(resolve => {
     const finish = (): void => {
       window.clearTimeout(timer)
-      if (advanceResolve === finish) {advanceResolve = null}
+      if (advanceResolve === finish) {
+        advanceResolve = null
+      }
       resolve()
     }
     const timer = window.setTimeout(finish, ms)
@@ -138,7 +173,9 @@ async function holdScene(ms: number): Promise<void> {
 }
 
 function resizeOverlay(): void {
-  if (!overlayCanvas) {return}
+  if (!overlayCanvas) {
+    return
+  }
   const width = Math.max(2, viewer.canvas.clientWidth || window.innerWidth)
   const height = Math.max(2, viewer.canvas.clientHeight || window.innerHeight)
   if (overlayCanvas.width !== width || overlayCanvas.height !== height) {
@@ -149,7 +186,9 @@ function resizeOverlay(): void {
 
 function drawOverlay(): void {
   resizeOverlay()
-  if (!overlayContext || !overlayCanvas) {return}
+  if (!overlayContext || !overlayCanvas) {
+    return
+  }
   const { width, height } = overlayCanvas
   overlayContext.clearRect(0, 0, width, height)
   if (currentTitle) {
@@ -163,7 +202,9 @@ function drawOverlay(): void {
     overlayContext.strokeText(currentTitle, width * 0.04, height * 0.045)
     overlayContext.fillText(currentTitle, width * 0.04, height * 0.045)
   }
-  if (!currentNarration) {return}
+  if (!currentNarration) {
+    return
+  }
   const size = Math.max(22, Math.round(height * 0.036))
   overlayContext.font = `600 ${size}px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif`
   overlayContext.textBaseline = 'bottom'
@@ -193,18 +234,24 @@ function clearAnnotations(): void {
     window.clearTimeout(drapeRefreshTimer)
     drapeRefreshTimer = undefined
   }
-  for (const entity of visibleAnnotations) {viewer.entities.remove(entity)}
+  for (const entity of visibleAnnotations) {
+    viewer.entities.remove(entity)
+  }
   visibleAnnotations = []
   drapedAnnotations.clear()
 }
 
 function scheduleDrapeRefresh(): void {
-  if (drapedAnnotations.size === 0 || drapeRefreshTimer !== undefined) {return}
+  if (drapedAnnotations.size === 0 || drapeRefreshTimer !== undefined) {
+    return
+  }
   drapeRefreshTimer = window.setTimeout(() => {
     drapeRefreshTimer = undefined
     for (const [entity, path] of drapedAnnotations) {
       const polyline = entity.polyline
-      if (polyline) {polyline.positions = new Cesium.ConstantProperty(terrainSurfacePositions(viewer, path))}
+      if (polyline) {
+        polyline.positions = new Cesium.ConstantProperty(terrainSurfacePositions(viewer, path))
+      }
     }
   }, OFFSCREEN_DRAPE_REFRESH_MS)
 }
@@ -212,7 +259,7 @@ function scheduleDrapeRefresh(): void {
 function addAnnotations(script: OffscreenRecordingScript, sceneId: string): void {
   clearAnnotations()
   const entities: Cesium.Entity[] = []
-  for (const annotation of script.annotations.filter((entry) => entry.sceneId === sceneId)) {
+  for (const annotation of script.annotations.filter(entry => entry.sceneId === sceneId)) {
     const shape: ShapeVisual = {
       kind: annotation.kind,
       positions: annotation.positions,
@@ -225,7 +272,9 @@ function addAnnotations(script: OffscreenRecordingScript, sceneId: string): void
       lineWidth: annotation.lineWidth
     }
     const cartesians = shape.positions.map(toCartesian)
-    if (cartesians.length === 0) {continue}
+    if (cartesians.length === 0) {
+      continue
+    }
     const color = shapeColorOf(shape)
     const options: Cesium.Entity.ConstructorOptions = {}
     let drapedPath: Cesium.Cartographic[] | undefined
@@ -236,19 +285,30 @@ function addAnnotations(script: OffscreenRecordingScript, sceneId: string): void
       options.position = surfacePosition(centroidOf(cartesians))
       if (shape.kind === 'polygon') {
         const hierarchy = sanitizePositions(cartesians)
-        if (hierarchy.length >= 3) {options.polygon = polygonGraphics(color, hierarchy)}
+        if (hierarchy.length >= 3) {
+          options.polygon = polygonGraphics(color, hierarchy)
+        }
       }
-      const polyline = polylineOptions(viewer, shape.kind === 'polygon' ? ringOf(cartesians) : cartesians, shape.lineWidth, color)
+      const polyline = polylineOptions(
+        viewer,
+        shape.kind === 'polygon' ? ringOf(cartesians) : cartesians,
+        shape.lineWidth,
+        color
+      )
       if (polyline) {
         options.polyline = polyline.graphics
         drapedPath = polyline.drapedPath
       }
     }
     const label = shapeLabelOptions(shape, cartesians)
-    if (label) {options.label = label}
+    if (label) {
+      options.label = label
+    }
     const entity = viewer.entities.add(options)
     entities.push(entity)
-    if (drapedPath) {drapedAnnotations.set(entity, drapedPath)}
+    if (drapedPath) {
+      drapedAnnotations.set(entity, drapedPath)
+    }
   }
   visibleAnnotations = entities
   scheduleDrapeRefresh()
@@ -271,7 +331,9 @@ async function applySnapshot(snapshot: TeachingScene['snapshot']): Promise<void>
       reportNotice(`录制画面的底图「${basemapId}」加载失败，成片可能缺少地图底图`)
     }
   }
-  imageryLayers.forEach((layer, id) => { layer.show = id === imageryKey })
+  imageryLayers.forEach((layer, id) => {
+    layer.show = id === imageryKey
+  })
   const climateStore = useClimateStore.getState()
   const solarStore = useSolarStore.getState()
   const transportStore = useTransportStore.getState()
@@ -290,20 +352,26 @@ async function applySnapshot(snapshot: TeachingScene['snapshot']): Promise<void>
   } else {
     solarStore.setActive(false)
   }
-  solarStore.setMotionPanel(snapshot.motionPanel as Parameters<typeof solarStore.setMotionPanel>[0] ?? null)
+  solarStore.setMotionPanel(
+    (snapshot.motionPanel as Parameters<typeof solarStore.setMotionPanel>[0]) ?? null
+  )
   viewer.scene.requestRender()
 }
 
 function applySceneState(snapshot: TeachingScene['snapshot']): void {
   viewer.scene.globe.enableLighting = terrainLighting || snapshot.simTime !== null
-  if (snapshot.simTime) {viewer.clock.currentTime = Cesium.JulianDate.fromDate(new Date(useSolarStore.getState().utcMs))}
+  if (snapshot.simTime) {
+    viewer.clock.currentTime = Cesium.JulianDate.fromDate(new Date(useSolarStore.getState().utcMs))
+  }
   viewer.scene.requestRender()
 }
 
 let pitchClampReported = false
 
 function reportCameraClamp(view: SceneCameraView): void {
-  if (!view.pitchClamped || pitchClampReported) {return}
+  if (!view.pitchClamped || pitchClampReported) {
+    return
+  }
   pitchClampReported = true
   reportNotice('录制相机俯角超出该高度可用的取景范围，已自动调整俯角以保证教学目标居中')
 }
@@ -318,7 +386,7 @@ function setCamera(camera: SceneCamera): void {
 function flyCamera(camera: SceneCamera, durationMs: number): Promise<void> {
   const view = sceneCameraView(camera, centerTarget)
   reportCameraClamp(view)
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     viewer.camera.flyTo({
       destination: view.destination,
       orientation: view.orientation,
@@ -342,7 +410,12 @@ async function applyTerrain(terrain: OffscreenRecordingScript['terrain']): Promi
   viewer.scene.requestRender()
 }
 
-function reportProgress(phase: OffscreenRecordingProgress['phase'], sceneIndex: number, totalScenes: number, timedOut = false): void {
+function reportProgress(
+  phase: OffscreenRecordingProgress['phase'],
+  sceneIndex: number,
+  totalScenes: number,
+  timedOut = false
+): void {
   window.guEarth?.recordings?.offscreenProgress?.({ phase, sceneIndex, totalScenes, timedOut })
 }
 
@@ -350,12 +423,18 @@ async function waitTilesLoaded(timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
   let stableSince = 0
   while (Date.now() < deadline) {
-    if (prewarmSkipped) {return false}
+    if (prewarmSkipped) {
+      return false
+    }
     viewer.scene.requestRender()
     await holdWhileWaiting(120)
     if (viewer.scene.globe.tilesLoaded) {
-      if (!stableSince) {stableSince = Date.now()}
-      if (Date.now() - stableSince >= OFFSCREEN_STABLE_SURFACE_MS) {return true}
+      if (!stableSince) {
+        stableSince = Date.now()
+      }
+      if (Date.now() - stableSince >= OFFSCREEN_STABLE_SURFACE_MS) {
+        return true
+      }
     } else {
       stableSince = 0
     }
@@ -379,7 +458,9 @@ async function prewarm(script: OffscreenRecordingScript, views: PrewarmView[]): 
   const startedAt = Date.now()
   let timedOut = false
   for (let index = 0; index < views.length; index += 1) {
-    if (prewarmSkipped) {break}
+    if (prewarmSkipped) {
+      break
+    }
     await prewarmScene(script, views[index].sceneIndex)
     setCamera(views[index].camera)
     reportProgress('preparing', index + 1, views.length, timedOut)
@@ -392,15 +473,24 @@ async function prewarm(script: OffscreenRecordingScript, views: PrewarmView[]): 
       viewer.scene.globe.maximumScreenSpaceError = config.screenSpaceError
       const remainingBudget = config.totalTimeoutMs - (Date.now() - startedAt)
       loaded = await waitTilesLoaded(Math.max(0, Math.min(config.viewTimeoutMs, remainingBudget)))
-      if (prewarmSkipped) {break}
-    } while (revision !== prewarmRevision && Date.now() - viewStartedAt < RECORD_PREWARM_QUALITY_CONFIG[prewarmQuality].viewTimeoutMs)
-    if (!loaded && !prewarmSkipped) {timedOut = true}
+      if (prewarmSkipped) {
+        break
+      }
+    } while (
+      revision !== prewarmRevision &&
+      Date.now() - viewStartedAt < RECORD_PREWARM_QUALITY_CONFIG[prewarmQuality].viewTimeoutMs
+    )
+    if (!loaded && !prewarmSkipped) {
+      timedOut = true
+    }
   }
   prewarmTimedOut = timedOut
 }
 
 async function prepareSeaLevel(script: OffscreenRecordingScript): Promise<void> {
-  if (!script.scenes.some((scene) => scene.snapshot.overlays.includes('sea-level-rise'))) {return}
+  if (!script.scenes.some(scene => scene.snapshot.overlays.includes('sea-level-rise'))) {
+    return
+  }
   const seeded = seedSampleHeights(script.seaLevelHeights ?? [])
   const outcome = await ensureSeaLevelSamples(viewer)
   if (outcome === 'terrain-required') {
@@ -411,7 +501,9 @@ async function prepareSeaLevel(script: OffscreenRecordingScript): Promise<void> 
     reportNotice(`淹没模拟地形采样失败（已预置 ${seeded} 个高程点），成片可能缺少淹没格网`)
     return
   }
-  if (outcome === 'partial') {reportNotice(`淹没模拟地形采样不完整（已预置 ${seeded} 个高程点），成片可能缺少部分淹没格网`)}
+  if (outcome === 'partial') {
+    reportNotice(`淹没模拟地形采样不完整（已预置 ${seeded} 个高程点），成片可能缺少部分淹没格网`)
+  }
 }
 
 async function prepare(script: OffscreenRecordingScript): Promise<void> {
@@ -475,4 +567,12 @@ window.addEventListener('beforeunload', () => {
   viewer.destroy()
 })
 
-Object.assign(window, { guEarthOffscreenRecorder: { play, prepare, next, skipPrewarm: requestSkipPrewarm, setPrewarmQuality } })
+Object.assign(window, {
+  guEarthOffscreenRecorder: {
+    play,
+    prepare,
+    next,
+    skipPrewarm: requestSkipPrewarm,
+    setPrewarmQuality
+  }
+})

@@ -26,11 +26,26 @@ export interface AiPersistedState {
 
 function modelSignature(model: AiModelConfig): string {
   const id = model.id.trim()
-  return JSON.stringify([id, model.label.trim() || id, model.contextWindow, model.streaming, model.vision, model.thinking, model.thinkingLevel, model.enabled])
+  return JSON.stringify([
+    id,
+    model.label.trim() || id,
+    model.contextWindow,
+    model.streaming,
+    model.vision,
+    model.thinking,
+    model.thinkingLevel,
+    model.enabled
+  ])
 }
 
 function providerSignature(provider: AiProviderConfig): string {
-  return JSON.stringify([provider.id, provider.name.trim(), provider.protocol, provider.baseUrl.trim(), provider.models.map(modelSignature)])
+  return JSON.stringify([
+    provider.id,
+    provider.name.trim(),
+    provider.protocol,
+    provider.baseUrl.trim(),
+    provider.models.map(modelSignature)
+  ])
 }
 
 function searchSignature(provider: AiSearchProviderConfig): string {
@@ -49,7 +64,9 @@ export function normalizeActiveChoice(choice: unknown): string {
 export function parseActiveChoice(choice: unknown): ActiveModelPair {
   const value = normalizeActiveChoice(choice)
   const separatorIndex = value.indexOf(':')
-  if (separatorIndex === -1) {return { providerId: '', modelId: '' }}
+  if (separatorIndex === -1) {
+    return { providerId: '', modelId: '' }
+  }
   return { providerId: value.slice(0, separatorIndex), modelId: value.slice(separatorIndex + 1) }
 }
 
@@ -67,8 +84,20 @@ export function providerListSignature(providers: AiProviderConfig[]): string {
 }
 
 export function isAiDraftDirty(draft: AiDraftState, persisted: AiPersistedState): boolean {
-  if (providerListSignature(draft.providers) !== providerListSignature(persisted.providers)) {return true}
-  if (draftChoiceSignature(draft.activeChoice) !== activePairSignature(persisted.activeProviderId, persisted.activeModelId)) {return true}
-  if (JSON.stringify(draft.searchProviders.map(searchSignature)) !== JSON.stringify(persisted.searchProviders.map(searchSignature))) {return true}
+  if (providerListSignature(draft.providers) !== providerListSignature(persisted.providers)) {
+    return true
+  }
+  if (
+    draftChoiceSignature(draft.activeChoice) !==
+    activePairSignature(persisted.activeProviderId, persisted.activeModelId)
+  ) {
+    return true
+  }
+  if (
+    JSON.stringify(draft.searchProviders.map(searchSignature)) !==
+    JSON.stringify(persisted.searchProviders.map(searchSignature))
+  ) {
+    return true
+  }
   return draft.activeSearchProviderId !== persisted.activeSearchProviderId
 }

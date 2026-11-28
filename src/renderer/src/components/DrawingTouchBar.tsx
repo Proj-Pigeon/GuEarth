@@ -1,6 +1,7 @@
-import { CheckIcon, Undo2Icon, XIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui'
 import type { DrawTool } from '@renderer/stores/drawing'
+import { CheckIcon, Undo2Icon, XIcon } from 'lucide-react'
+
 import styles from './DrawingTouchBar.module.css'
 
 export interface DrawingTouchBarProps {
@@ -18,7 +19,9 @@ export function DrawingTouchBar({
   onUndo,
   onFinish
 }: DrawingTouchBarProps) {
-  if (!activeTool) {return null}
+  if (!activeTool) {
+    return null
+  }
 
   const canUndo = activeTool === 'line' || activeTool === 'polygon' || activeTool === 'arrow'
   const canFinish = activeTool === 'line' || activeTool === 'polygon'
@@ -27,13 +30,13 @@ export function DrawingTouchBar({
   const undoDisabled = draftCount === 0
 
   return (
-    <div className={styles.drawingTouchBar} role="toolbar" aria-label="触摸绘图操作">
+    <div className={styles.drawingTouchBar} role='toolbar' aria-label='触摸绘图操作'>
       {canUndo && (
         <Button
           className={styles.touchBarBtn}
           disabled={undoDisabled}
-          icon={<Undo2Icon className="size-4" />}
-          aria-label="撤销上一个点"
+          icon={<Undo2Icon className='size-4' />}
+          aria-label='撤销上一个点'
           onClick={onUndo}
         >
           撤销
@@ -41,11 +44,11 @@ export function DrawingTouchBar({
       )}
       {canFinish && (
         <Button
-          variant="primary"
+          variant='primary'
           className={styles.touchBarBtn}
           disabled={finishDisabled}
-          icon={<CheckIcon className="size-4" />}
-          aria-label="完成绘制"
+          icon={<CheckIcon className='size-4' />}
+          aria-label='完成绘制'
           onClick={onFinish}
         >
           完成
@@ -54,8 +57,8 @@ export function DrawingTouchBar({
       <Button
         className={styles.touchBarBtn}
         danger
-        icon={<XIcon className="size-4" />}
-        aria-label="取消绘制"
+        icon={<XIcon className='size-4' />}
+        aria-label='取消绘制'
         onClick={onCancel}
       >
         取消

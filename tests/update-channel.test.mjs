@@ -1,9 +1,19 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
+
 import { test } from 'vite-plus/test'
-import { updateInstallContent, updateReadyHint } from '../src/renderer/src/stores/updateCopy.ts'
+
 import {
   DEB_INSTALL_EXECUTABLE,
   DEB_INSTALL_RESOURCES,
@@ -21,6 +31,7 @@ import {
   resolveUpdateTarget,
   updateFeedPath
 } from '../src/main/updateChannel.ts'
+import { updateInstallContent, updateReadyHint } from '../src/renderer/src/stores/updateCopy.ts'
 
 const RELEASE_ASSETS = {
   debX64: 'guearth-0.1.17-amd64.deb',
@@ -82,9 +93,18 @@ test('asset names are taken from the download URL path', () => {
 })
 
 test('feed paths keep the hazel /update/{platform}/{version} shape', () => {
-  assert.equal(updateFeedPath('https://guearth-updater.isla.fan', 'win32', '0.1.16'), 'https://guearth-updater.isla.fan/update/win32/0.1.16')
-  assert.equal(updateFeedPath('https://guearth-updater.isla.fan/', 'appimage_arm64', '0.1.16'), 'https://guearth-updater.isla.fan/update/appimage_arm64/0.1.16')
-  assert.equal(updateFeedPath('https://guearth-updater.isla.fan', 'deb', '0.1.16'), 'https://guearth-updater.isla.fan/update/deb/0.1.16')
+  assert.equal(
+    updateFeedPath('https://guearth-updater.isla.fan', 'win32', '0.1.16'),
+    'https://guearth-updater.isla.fan/update/win32/0.1.16'
+  )
+  assert.equal(
+    updateFeedPath('https://guearth-updater.isla.fan/', 'appimage_arm64', '0.1.16'),
+    'https://guearth-updater.isla.fan/update/appimage_arm64/0.1.16'
+  )
+  assert.equal(
+    updateFeedPath('https://guearth-updater.isla.fan', 'deb', '0.1.16'),
+    'https://guearth-updater.isla.fan/update/deb/0.1.16'
+  )
 })
 
 function runtime(patch) {
@@ -104,17 +124,32 @@ test('update targets follow the packaged Windows and Linux channels', () => {
     feedPlatform: 'win32'
   })
   assert.equal(resolveUpdateTarget(runtime({ platform: 'win32', arch: 'arm64' })), null)
-  assert.equal(resolveUpdateTarget(runtime({ platform: 'darwin', arch: 'arm64', appImagePath: '/tmp/GuEarth.AppImage' })), null)
-  assert.deepEqual(resolveUpdateTarget(runtime({ arch: 'x64', appImagePath: '/home/teacher/guearth-0.1.17-x86_64.AppImage' })), {
-    kind: 'appimage',
-    arch: 'x64',
-    feedPlatform: 'appimage'
-  })
-  assert.deepEqual(resolveUpdateTarget(runtime({ arch: 'arm64', appImagePath: '/home/teacher/guearth-0.1.17-arm64.AppImage' })), {
-    kind: 'appimage',
-    arch: 'arm64',
-    feedPlatform: 'appimage_arm64'
-  })
+  assert.equal(
+    resolveUpdateTarget(
+      runtime({ platform: 'darwin', arch: 'arm64', appImagePath: '/tmp/GuEarth.AppImage' })
+    ),
+    null
+  )
+  assert.deepEqual(
+    resolveUpdateTarget(
+      runtime({ arch: 'x64', appImagePath: '/home/teacher/guearth-0.1.17-x86_64.AppImage' })
+    ),
+    {
+      kind: 'appimage',
+      arch: 'x64',
+      feedPlatform: 'appimage'
+    }
+  )
+  assert.deepEqual(
+    resolveUpdateTarget(
+      runtime({ arch: 'arm64', appImagePath: '/home/teacher/guearth-0.1.17-arm64.AppImage' })
+    ),
+    {
+      kind: 'appimage',
+      arch: 'arm64',
+      feedPlatform: 'appimage_arm64'
+    }
+  )
   assert.deepEqual(resolveUpdateTarget(runtime({ arch: 'x64', debInstalled: true })), {
     kind: 'deb',
     arch: 'x64',
@@ -126,50 +161,107 @@ test('update targets follow the packaged Windows and Linux channels', () => {
     feedPlatform: 'deb_arm64'
   })
   assert.equal(resolveUpdateTarget(runtime({ arch: 'x64' })), null)
-  assert.equal(resolveUpdateTarget(runtime({ arch: 'ia32', appImagePath: '/tmp/guearth.AppImage' })), null)
+  assert.equal(
+    resolveUpdateTarget(runtime({ arch: 'ia32', appImagePath: '/tmp/guearth.AppImage' })),
+    null
+  )
 })
 
 test('AppImage detection wins over a deb install, and the dev override is explicit', () => {
-  assert.equal(resolveLinuxPackageKind(runtime({ appImagePath: '/tmp/guearth.AppImage', debInstalled: true })), 'appimage')
+  assert.equal(
+    resolveLinuxPackageKind(runtime({ appImagePath: '/tmp/guearth.AppImage', debInstalled: true })),
+    'appimage'
+  )
   assert.equal(resolveLinuxPackageKind(runtime({ appImagePath: '   ', debInstalled: true })), 'deb')
-  assert.equal(resolveLinuxPackageKind(runtime({ packageKindOverride: 'deb', allowPackageKindOverride: true })), 'deb')
-  assert.equal(resolveLinuxPackageKind(runtime({ packageKindOverride: 'deb', allowPackageKindOverride: false, appImagePath: '/tmp/guearth.AppImage' })), 'appimage')
-  assert.equal(resolveLinuxPackageKind(runtime({ packageKindOverride: 'AppImage', allowPackageKindOverride: true })), null)
+  assert.equal(
+    resolveLinuxPackageKind(
+      runtime({ packageKindOverride: 'deb', allowPackageKindOverride: true })
+    ),
+    'deb'
+  )
+  assert.equal(
+    resolveLinuxPackageKind(
+      runtime({
+        packageKindOverride: 'deb',
+        allowPackageKindOverride: false,
+        appImagePath: '/tmp/guearth.AppImage'
+      })
+    ),
+    'appimage'
+  )
+  assert.equal(
+    resolveLinuxPackageKind(
+      runtime({ packageKindOverride: 'AppImage', allowPackageKindOverride: true })
+    ),
+    null
+  )
   assert.equal(DEB_INSTALL_EXECUTABLE, '/opt/GuEarth/guearth')
   assert.equal(DEB_INSTALL_RESOURCES, '/opt/GuEarth/resources')
   assert.equal(isDebInstallLocation(['/opt/GuEarth/guearth']), true)
   assert.equal(isDebInstallLocation(['/usr/bin/guearth', '/opt/GuEarth/resources']), true)
-  assert.equal(isDebInstallLocation(['/tmp/.mount_guearth/guearth', '/tmp/.mount_guearth/resources']), false)
+  assert.equal(
+    isDebInstallLocation(['/tmp/.mount_guearth/guearth', '/tmp/.mount_guearth/resources']),
+    false
+  )
   assert.equal(isDebInstallLocation(['/opt/GuEarth-extra/resources']), false)
 })
 
 test('installer paths must stay inside the updates directory', () => {
-  assert.equal(isPathInsideDirectory('/tmp/guearth-updates/guearth-0.1.17-x64.deb', '/tmp/guearth-updates'), true)
-  assert.equal(isPathInsideDirectory('/tmp/guearth-updates/nested/guearth.deb', '/tmp/guearth-updates'), true)
-  assert.equal(isPathInsideDirectory('/tmp/guearth-updates-evil/guearth.deb', '/tmp/guearth-updates'), false)
-  assert.equal(isPathInsideDirectory('/tmp/guearth-updates/../guearth.deb', '/tmp/guearth-updates'), false)
+  assert.equal(
+    isPathInsideDirectory('/tmp/guearth-updates/guearth-0.1.17-x64.deb', '/tmp/guearth-updates'),
+    true
+  )
+  assert.equal(
+    isPathInsideDirectory('/tmp/guearth-updates/nested/guearth.deb', '/tmp/guearth-updates'),
+    true
+  )
+  assert.equal(
+    isPathInsideDirectory('/tmp/guearth-updates-evil/guearth.deb', '/tmp/guearth-updates'),
+    false
+  )
+  assert.equal(
+    isPathInsideDirectory('/tmp/guearth-updates/../guearth.deb', '/tmp/guearth-updates'),
+    false
+  )
   assert.equal(isPathInsideDirectory('/tmp/guearth-updates', '/tmp/guearth-updates'), false)
 })
 
-const skipAppImageOnWindows = process.platform === 'win32' ? 'AppImage paths and permissions are POSIX-only' : false
+const skipAppImageOnWindows =
+  process.platform === 'win32' ? 'AppImage paths and permissions are POSIX-only' : false
 
-test('AppImage destination keeps a custom filename and otherwise adopts the release name', { skip: skipAppImageOnWindows }, () => {
-  assert.equal(
-    appImageInstallDestination('/home/teacher/GuEarth.AppImage', RELEASE_ASSETS.appImageX64),
-    '/home/teacher/GuEarth.AppImage'
-  )
-  assert.equal(
-    appImageInstallDestination('/home/teacher/guearth-0.1.16-x86_64.AppImage', RELEASE_ASSETS.appImageX64),
-    `/home/teacher/${RELEASE_ASSETS.appImageX64}`
-  )
-  assert.equal(
-    appImageInstallDestination(`/home/teacher/${RELEASE_ASSETS.appImageX64}`, RELEASE_ASSETS.appImageX64),
-    `/home/teacher/${RELEASE_ASSETS.appImageX64}`
-  )
-  assert.equal(appImageInstallDestination('guearth.AppImage', RELEASE_ASSETS.appImageX64), null)
-  assert.equal(appImageInstallDestination('/home/teacher/guearth.AppImage', '../guearth.AppImage'), null)
-  assert.equal(appImageInstallDestination('/home/teacher/guearth.AppImage\0', RELEASE_ASSETS.appImageX64), null)
-})
+test(
+  'AppImage destination keeps a custom filename and otherwise adopts the release name',
+  { skip: skipAppImageOnWindows },
+  () => {
+    assert.equal(
+      appImageInstallDestination('/home/teacher/GuEarth.AppImage', RELEASE_ASSETS.appImageX64),
+      '/home/teacher/GuEarth.AppImage'
+    )
+    assert.equal(
+      appImageInstallDestination(
+        '/home/teacher/guearth-0.1.16-x86_64.AppImage',
+        RELEASE_ASSETS.appImageX64
+      ),
+      `/home/teacher/${RELEASE_ASSETS.appImageX64}`
+    )
+    assert.equal(
+      appImageInstallDestination(
+        `/home/teacher/${RELEASE_ASSETS.appImageX64}`,
+        RELEASE_ASSETS.appImageX64
+      ),
+      `/home/teacher/${RELEASE_ASSETS.appImageX64}`
+    )
+    assert.equal(appImageInstallDestination('guearth.AppImage', RELEASE_ASSETS.appImageX64), null)
+    assert.equal(
+      appImageInstallDestination('/home/teacher/guearth.AppImage', '../guearth.AppImage'),
+      null
+    )
+    assert.equal(
+      appImageInstallDestination('/home/teacher/guearth.AppImage\0', RELEASE_ASSETS.appImageX64),
+      null
+    )
+  }
+)
 
 function withTempDir(run) {
   const dir = mkdtempSync(join(tmpdir(), 'guearth-appimage-'))
@@ -180,49 +272,64 @@ function withTempDir(run) {
   }
 }
 
-test('installing an AppImage replaces a versioned file with the release asset', { skip: skipAppImageOnWindows }, () => {
-  withTempDir((dir) => {
-    const current = join(dir, 'guearth-0.1.16-x86_64.AppImage')
-    const installerDir = join(dir, 'download')
-    const installer = join(installerDir, 'guearth-0.1.17-x64.AppImage')
-    mkdirSync(installerDir)
-    writeFileSync(current, 'old-image')
-    writeFileSync(installer, 'new-image')
-    const destination = installAppImageFile(installer, current, RELEASE_ASSETS.appImageX64)
-    assert.equal(destination, join(dir, RELEASE_ASSETS.appImageX64))
-    assert.equal(readFileSync(destination, 'utf8'), 'new-image')
-    assert.equal(statSync(destination).mode & 0o777, 0o755)
-    assert.throws(() => statSync(current))
-    assert.throws(() => statSync(installer))
-    assert.throws(() => statSync(join(dir, `.${RELEASE_ASSETS.appImageX64}.update`)))
-  })
-})
+test(
+  'installing an AppImage replaces a versioned file with the release asset',
+  { skip: skipAppImageOnWindows },
+  () => {
+    withTempDir(dir => {
+      const current = join(dir, 'guearth-0.1.16-x86_64.AppImage')
+      const installerDir = join(dir, 'download')
+      const installer = join(installerDir, 'guearth-0.1.17-x64.AppImage')
+      mkdirSync(installerDir)
+      writeFileSync(current, 'old-image')
+      writeFileSync(installer, 'new-image')
+      const destination = installAppImageFile(installer, current, RELEASE_ASSETS.appImageX64)
+      assert.equal(destination, join(dir, RELEASE_ASSETS.appImageX64))
+      assert.equal(readFileSync(destination, 'utf8'), 'new-image')
+      assert.equal(statSync(destination).mode & 0o777, 0o755)
+      assert.throws(() => statSync(current))
+      assert.throws(() => statSync(installer))
+      assert.throws(() => statSync(join(dir, `.${RELEASE_ASSETS.appImageX64}.update`)))
+    })
+  }
+)
 
-test('installing an AppImage overwrites a custom filename in place', { skip: skipAppImageOnWindows }, () => {
-  withTempDir((dir) => {
-    const current = join(dir, 'GuEarth.AppImage')
-    const installer = join(dir, 'download.bin')
-    writeFileSync(current, 'old-image')
-    writeFileSync(installer, 'new-image')
-    const destination = installAppImageFile(installer, current, RELEASE_ASSETS.appImageArm64)
-    assert.equal(destination, current)
-    assert.equal(readFileSync(current, 'utf8'), 'new-image')
-    assert.equal(statSync(current).mode & 0o777, 0o755)
-    assert.throws(() => statSync(installer))
-  })
-})
+test(
+  'installing an AppImage overwrites a custom filename in place',
+  { skip: skipAppImageOnWindows },
+  () => {
+    withTempDir(dir => {
+      const current = join(dir, 'GuEarth.AppImage')
+      const installer = join(dir, 'download.bin')
+      writeFileSync(current, 'old-image')
+      writeFileSync(installer, 'new-image')
+      const destination = installAppImageFile(installer, current, RELEASE_ASSETS.appImageArm64)
+      assert.equal(destination, current)
+      assert.equal(readFileSync(current, 'utf8'), 'new-image')
+      assert.equal(statSync(current).mode & 0o777, 0o755)
+      assert.throws(() => statSync(installer))
+    })
+  }
+)
 
-test('a rejected AppImage path leaves the current file untouched', { skip: skipAppImageOnWindows }, () => {
-  withTempDir((dir) => {
-    const current = join(dir, 'guearth-0.1.16-x86_64.AppImage')
-    const installer = join(dir, 'download.bin')
-    writeFileSync(current, 'old-image')
-    writeFileSync(installer, 'new-image')
-    assert.throws(() => installAppImageFile(installer, 'relative.AppImage', RELEASE_ASSETS.appImageX64), /AppImage 路径无效/)
-    assert.equal(readFileSync(current, 'utf8'), 'old-image')
-    assert.equal(readFileSync(installer, 'utf8'), 'new-image')
-  })
-})
+test(
+  'a rejected AppImage path leaves the current file untouched',
+  { skip: skipAppImageOnWindows },
+  () => {
+    withTempDir(dir => {
+      const current = join(dir, 'guearth-0.1.16-x86_64.AppImage')
+      const installer = join(dir, 'download.bin')
+      writeFileSync(current, 'old-image')
+      writeFileSync(installer, 'new-image')
+      assert.throws(
+        () => installAppImageFile(installer, 'relative.AppImage', RELEASE_ASSETS.appImageX64),
+        /AppImage 路径无效/
+      )
+      assert.equal(readFileSync(current, 'utf8'), 'old-image')
+      assert.equal(readFileSync(installer, 'utf8'), 'new-image')
+    })
+  }
+)
 
 test('install prompts describe the package that will actually be applied', () => {
   assert.equal(updateInstallContent(''), '应用将退出并启动安装程序，完成后可重新打开咕咕地球。')
@@ -264,7 +371,7 @@ test('deb tools resolve only from trusted directories', () => {
   const pkexec = findTrustedExecutable('pkexec')
   assert.equal(dpkg === null || /^\/(?:usr\/s?bin|s?bin)\/dpkg$/.test(dpkg), true)
   assert.equal(pkexec === null || /^\/(?:usr\/s?bin|s?bin)\/pkexec$/.test(pkexec), true)
-  withTempDir((dir) => {
+  withTempDir(dir => {
     const trusted = join(dir, 'bin')
     const outside = join(dir, 'outside')
     mkdirSync(trusted)
@@ -290,13 +397,18 @@ test('deb tools resolve only from trusted directories', () => {
       assert.equal(resolvedDpkg === null || !resolvedDpkg.startsWith(planted), true)
       assert.equal(resolvedPkexec === null || !resolvedPkexec.startsWith(planted), true)
     } finally {
-      if (previousPath === undefined) {delete process.env.PATH}
-      else {process.env.PATH = previousPath}
+      if (previousPath === undefined) {
+        delete process.env.PATH
+      } else {
+        process.env.PATH = previousPath
+      }
     }
     try {
       symlinkSync(evil, join(trusted, 'pkexec'))
     } catch (error) {
-      if (process.platform === 'win32') {return}
+      if (process.platform === 'win32') {
+        return
+      }
       throw error
     }
     assert.equal(findTrustedExecutable('pkexec', [trusted]), null)

@@ -12,16 +12,14 @@ function tableExists(db: HawdbDatabase, tableName: string): boolean {
 }
 
 function ensureTable(db: HawdbDatabase, tableName: string, ddl: string): void {
-  if (tableExists(db, tableName)) {return}
+  if (tableExists(db, tableName)) {
+    return
+  }
   db.querySQL(ddl)
 }
 
 export function ensureEoqSchema(db: HawdbDatabase): void {
-  ensureTable(
-    db,
-    'eoq_meta',
-    'CREATE TABLE eoq_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)'
-  )
+  ensureTable(db, 'eoq_meta', 'CREATE TABLE eoq_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
   ensureTable(
     db,
     'eoq_memories',

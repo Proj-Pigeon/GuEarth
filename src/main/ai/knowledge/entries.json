@@ -8,9 +8,19 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "地貌是地球表面各种形态的总称，既包括山地、高原、平原等宏观地表形态，也包括由内外力作用形成的具体地貌形态。",
-    "features": ["强调地表形态", "需要结合形成过程和作用力分析", "可从形态、物质组成和成因进行判读"],
+    "features": [
+      "强调地表形态",
+      "需要结合形成过程和作用力分析",
+      "可从形态、物质组成和成因进行判读"
+    ],
     "commonConfusions": ["地形更强调地表高低起伏和空间形态，地貌通常还包含成因和演化过程"],
-    "sources": [{"title": "普通高中地理课程标准（2017年版2020年修订）", "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html", "type": "curriculum"}],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   },
@@ -23,9 +33,19 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "风化作用是地表或接近地表的岩石在温度变化、水、空气和生物等因素作用下发生破碎、分解或性质改变的过程。",
-    "features": ["发生在岩石所在位置附近", "可以是物理破碎，也可以是化学分解", "为侵蚀、搬运和沉积提供物质"],
+    "features": [
+      "发生在岩石所在位置附近",
+      "可以是物理破碎，也可以是化学分解",
+      "为侵蚀、搬运和沉积提供物质"
+    ],
     "commonConfusions": ["风化不等同于风力侵蚀，风化强调原地破碎或分解，侵蚀强调外力对物质的剥蚀"],
-    "sources": [{"title": "普通高中地理课程标准（2017年版2020年修订）", "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html", "type": "curriculum"}],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   },
@@ -38,11 +58,38 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "喀斯特地貌是可溶性岩石，尤其是石灰岩，在水的溶蚀和侵蚀作用下形成的一类地貌。",
-    "formation": ["可溶性岩石为地貌发育提供物质基础", "水中含有的弱酸性物质增强对石灰岩的溶蚀", "地表水和地下水共同塑造溶沟、峰林、溶洞和地下河等形态"],
-    "features": ["常见峰林、峰丛、溶沟、溶洞、地下河等形态", "地表和地下水文联系明显", "发育程度受岩性、气候、构造和水循环影响"],
-    "typicalPlaces": [{"name": "桂林漓江", "longitude": 110.3, "latitude": 25.3, "note": "中国南方喀斯特峰林和峰丛景观的典型区域"}, {"name": "贵州荔波", "longitude": 107.9, "latitude": 25.4, "note": "典型喀斯特自然景观区域"}],
+    "formation": [
+      "可溶性岩石为地貌发育提供物质基础",
+      "水中含有的弱酸性物质增强对石灰岩的溶蚀",
+      "地表水和地下水共同塑造溶沟、峰林、溶洞和地下河等形态"
+    ],
+    "features": [
+      "常见峰林、峰丛、溶沟、溶洞、地下河等形态",
+      "地表和地下水文联系明显",
+      "发育程度受岩性、气候、构造和水循环影响"
+    ],
+    "typicalPlaces": [
+      {
+        "name": "桂林漓江",
+        "longitude": 110.3,
+        "latitude": 25.3,
+        "note": "中国南方喀斯特峰林和峰丛景观的典型区域"
+      },
+      { "name": "贵州荔波", "longitude": 107.9, "latitude": 25.4, "note": "典型喀斯特自然景观区域" }
+    ],
     "commonConfusions": ["喀斯特地貌的主要成因是可溶性岩石与水的化学溶蚀，不应只概括为流水冲刷"],
-    "sources": [{"title": "普通高中地理课程标准（2017年版2020年修订）", "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html", "type": "curriculum"}, {"title": "义务教育地理课程标准（2022年版）", "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf", "type": "curriculum"}],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      },
+      {
+        "title": "义务教育地理课程标准（2022年版）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf",
+        "type": "curriculum"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   },
@@ -55,11 +102,32 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "雅丹地貌是干旱地区较松软沉积物或岩层经长期风化、风力侵蚀和流水偶尔冲刷，形成的垄槽相间地貌。",
-    "formation": ["干旱环境使植被稀少、地表物质易受侵蚀", "风力沿优势方向长期吹蚀并扩大软弱部位", "差异侵蚀使坚硬部分保留为垄，较软部分形成槽或沟"],
-    "features": ["通常位于干旱或极干旱地区", "地貌形态常呈垄槽相间并具有方向性", "地表物质和岩性差异会影响侵蚀形态"],
-    "typicalPlaces": [{"name": "敦煌雅丹国家地质公园", "longitude": 93.9, "latitude": 40.3, "note": "中国西北干旱区雅丹地貌典型案例"}],
+    "formation": [
+      "干旱环境使植被稀少、地表物质易受侵蚀",
+      "风力沿优势方向长期吹蚀并扩大软弱部位",
+      "差异侵蚀使坚硬部分保留为垄，较软部分形成槽或沟"
+    ],
+    "features": [
+      "通常位于干旱或极干旱地区",
+      "地貌形态常呈垄槽相间并具有方向性",
+      "地表物质和岩性差异会影响侵蚀形态"
+    ],
+    "typicalPlaces": [
+      {
+        "name": "敦煌雅丹国家地质公园",
+        "longitude": 93.9,
+        "latitude": 40.3,
+        "note": "中国西北干旱区雅丹地貌典型案例"
+      }
+    ],
     "commonConfusions": ["雅丹地貌主要体现风力侵蚀和差异侵蚀，不应简单等同于风积沙丘"],
-    "sources": [{"title": "普通高中地理课程标准（2017年版2020年修订）", "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html", "type": "curriculum"}],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   },
@@ -72,11 +140,38 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "丹霞地貌通常指以红色陆相碎屑岩为基础，在构造抬升、流水侵蚀和重力崩塌等作用下形成的红色峰、壁、谷和洞穴组合景观。",
-    "formation": ["红色砂岩或砾岩等岩性提供物质基础", "构造抬升使地表获得侵蚀势能", "流水切割、风化和崩塌共同塑造陡崖、峰丛和峡谷"],
-    "features": ["常见红色岩壁、方山、峰柱和峡谷", "岩层节理与流水侵蚀共同控制形态", "不同地区的具体形态受岩性和构造条件影响"],
-    "typicalPlaces": [{"name": "广东丹霞山", "longitude": 113.7, "latitude": 24.9, "note": "丹霞地貌命名地和典型案例"}, {"name": "福建泰宁", "longitude": 117.2, "latitude": 26.9, "note": "中国东南红层地貌典型区域"}],
+    "formation": [
+      "红色砂岩或砾岩等岩性提供物质基础",
+      "构造抬升使地表获得侵蚀势能",
+      "流水切割、风化和崩塌共同塑造陡崖、峰丛和峡谷"
+    ],
+    "features": [
+      "常见红色岩壁、方山、峰柱和峡谷",
+      "岩层节理与流水侵蚀共同控制形态",
+      "不同地区的具体形态受岩性和构造条件影响"
+    ],
+    "typicalPlaces": [
+      {
+        "name": "广东丹霞山",
+        "longitude": 113.7,
+        "latitude": 24.9,
+        "note": "丹霞地貌命名地和典型案例"
+      },
+      {
+        "name": "福建泰宁",
+        "longitude": 117.2,
+        "latitude": 26.9,
+        "note": "中国东南红层地貌典型区域"
+      }
+    ],
     "commonConfusions": ["丹霞地貌不是所有红色山地的统称，岩性、构造和侵蚀组合共同构成其地貌特征"],
-    "sources": [{"title": "联合国教科文组织世界地质公园资料入口", "url": "https://www.unesco.org/en/iggp/geoparks", "type": "official"}],
+    "sources": [
+      {
+        "title": "联合国教科文组织世界地质公园资料入口",
+        "url": "https://www.unesco.org/en/iggp/geoparks",
+        "type": "official"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   },
@@ -89,11 +184,32 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "黄土地貌是以黄土沉积物为主要物质基础，在流水侵蚀、重力作用和人类活动等影响下形成的沟壑、塬、梁、峁等地貌组合。",
-    "formation": ["风力搬运和沉积形成较厚黄土层", "黄土垂直节理发育且遇水易被侵蚀", "降水集中和地表径流切割形成沟壑网络"],
-    "features": ["沟壑纵横", "塬、梁、峁等地貌形态明显", "水土流失强度受降水、坡度、植被和土地利用影响"],
-    "typicalPlaces": [{"name": "黄土高原", "longitude": 110.0, "latitude": 37.5, "note": "中国黄土地貌和水土流失研究的典型区域"}],
+    "formation": [
+      "风力搬运和沉积形成较厚黄土层",
+      "黄土垂直节理发育且遇水易被侵蚀",
+      "降水集中和地表径流切割形成沟壑网络"
+    ],
+    "features": [
+      "沟壑纵横",
+      "塬、梁、峁等地貌形态明显",
+      "水土流失强度受降水、坡度、植被和土地利用影响"
+    ],
+    "typicalPlaces": [
+      {
+        "name": "黄土高原",
+        "longitude": 110.0,
+        "latitude": 37.5,
+        "note": "中国黄土地貌和水土流失研究的典型区域"
+      }
+    ],
     "commonConfusions": ["黄土高原的沟壑形成不能只归因于黄土沉积，还需结合流水侵蚀和降水条件"],
-    "sources": [{"title": "义务教育地理课程标准（2022年版）", "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf", "type": "curriculum"}],
+    "sources": [
+      {
+        "title": "义务教育地理课程标准（2022年版）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf",
+        "type": "curriculum"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   },
@@ -106,11 +222,35 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "三角洲是河流入海或入湖处，因流速降低、泥沙沉积并在河口附近逐渐堆积形成的沉积地貌。",
-    "formation": ["河流携带泥沙进入较开阔的河口水域", "流速降低使部分泥沙沉积", "波浪、潮汐和沿岸流会影响沉积物的再搬运与三角洲形态"],
-    "features": ["常见河网分汊", "地势低平、沉积物较新", "形态和发育程度受河流来沙、流量、海岸动力和海平面变化影响"],
-    "typicalPlaces": [{"name": "长江三角洲", "longitude": 121.0, "latitude": 31.0, "note": "中国东部典型河口三角洲区域"}, {"name": "尼罗河三角洲", "longitude": 31.0, "latitude": 31.2, "note": "世界典型河口三角洲"}],
-    "commonConfusions": ["三角洲形成于河流入海或入湖的沉积环境，冲积扇主要形成于河流出山口等陆地环境"],
-    "sources": [{"title": "普通高中地理课程标准（2017年版2020年修订）", "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html", "type": "curriculum"}],
+    "formation": [
+      "河流携带泥沙进入较开阔的河口水域",
+      "流速降低使部分泥沙沉积",
+      "波浪、潮汐和沿岸流会影响沉积物的再搬运与三角洲形态"
+    ],
+    "features": [
+      "常见河网分汊",
+      "地势低平、沉积物较新",
+      "形态和发育程度受河流来沙、流量、海岸动力和海平面变化影响"
+    ],
+    "typicalPlaces": [
+      {
+        "name": "长江三角洲",
+        "longitude": 121.0,
+        "latitude": 31.0,
+        "note": "中国东部典型河口三角洲区域"
+      },
+      { "name": "尼罗河三角洲", "longitude": 31.0, "latitude": 31.2, "note": "世界典型河口三角洲" }
+    ],
+    "commonConfusions": [
+      "三角洲形成于河流入海或入湖的沉积环境，冲积扇主要形成于河流出山口等陆地环境"
+    ],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   },
@@ -123,11 +263,32 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "冲积扇是河流或洪流出山口后，坡度减小、流速降低，携带的砾石和泥沙在山麓堆积形成的扇形地貌。",
-    "formation": ["河流从山地进入地势较平缓的山前地带", "坡度和流速下降导致搬运能力减弱", "砾石、砂和细颗粒物由近及远逐渐沉积"],
-    "features": ["平面上常呈扇形", "顶部靠近出山口、沉积物较粗", "扇缘沉积物相对较细，常与多个冲积扇连接形成冲积平原"],
-    "typicalPlaces": [{"name": "祁连山山麓冲积扇", "longitude": 99.0, "latitude": 39.0, "note": "中国西北山前干旱区冲积扇典型区域"}],
+    "formation": [
+      "河流从山地进入地势较平缓的山前地带",
+      "坡度和流速下降导致搬运能力减弱",
+      "砾石、砂和细颗粒物由近及远逐渐沉积"
+    ],
+    "features": [
+      "平面上常呈扇形",
+      "顶部靠近出山口、沉积物较粗",
+      "扇缘沉积物相对较细，常与多个冲积扇连接形成冲积平原"
+    ],
+    "typicalPlaces": [
+      {
+        "name": "祁连山山麓冲积扇",
+        "longitude": 99.0,
+        "latitude": 39.0,
+        "note": "中国西北山前干旱区冲积扇典型区域"
+      }
+    ],
     "commonConfusions": ["冲积扇主要位于出山口或山前地带，三角洲主要位于河流入海或入湖处"],
-    "sources": [{"title": "义务教育地理课程标准（2022年版）", "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf", "type": "curriculum"}],
+    "sources": [
+      {
+        "title": "义务教育地理课程标准（2022年版）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf",
+        "type": "curriculum"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   },
@@ -140,11 +301,33 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "冰川地貌是冰川运动对地表进行侵蚀、搬运和堆积形成的地貌，包括冰蚀地貌和冰碛地貌。",
-    "formation": ["冰体在重力作用下缓慢流动", "冰川底部和两侧对基岩产生磨蚀与掘蚀", "冰川消融后，冰川搬运的碎屑物发生堆积"],
-    "features": ["冰蚀地貌可见U形谷、冰斗和角峰", "冰碛物粒径混杂、磨圆度通常较低", "现代冰川地貌常见于高纬度和高海拔地区"],
-    "typicalPlaces": [{"name": "青藏高原冰川区", "longitude": 88.0, "latitude": 32.0, "note": "高海拔冰川和冰川地貌集中区域"}, {"name": "阿尔卑斯山", "longitude": 10.0, "latitude": 46.5, "note": "欧洲典型山地冰川区域"}],
+    "formation": [
+      "冰体在重力作用下缓慢流动",
+      "冰川底部和两侧对基岩产生磨蚀与掘蚀",
+      "冰川消融后，冰川搬运的碎屑物发生堆积"
+    ],
+    "features": [
+      "冰蚀地貌可见U形谷、冰斗和角峰",
+      "冰碛物粒径混杂、磨圆度通常较低",
+      "现代冰川地貌常见于高纬度和高海拔地区"
+    ],
+    "typicalPlaces": [
+      {
+        "name": "青藏高原冰川区",
+        "longitude": 88.0,
+        "latitude": 32.0,
+        "note": "高海拔冰川和冰川地貌集中区域"
+      },
+      { "name": "阿尔卑斯山", "longitude": 10.0, "latitude": 46.5, "note": "欧洲典型山地冰川区域" }
+    ],
     "commonConfusions": ["U形谷主要与冰川侵蚀有关，V形谷主要与河流下切有关"],
-    "sources": [{"title": "USGS Educational Resources", "url": "https://www.usgs.gov/educational-resources", "type": "official"}],
+    "sources": [
+      {
+        "title": "USGS Educational Resources",
+        "url": "https://www.usgs.gov/educational-resources",
+        "type": "official"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   },
@@ -157,11 +340,40 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "火山地貌是岩浆沿地壳裂隙或火山通道喷出或侵入后形成的地貌，包括火山锥、火山口、熔岩台地等。",
-    "formation": ["地壳内部岩浆沿构造薄弱带上升", "熔岩、火山灰和火山碎屑物在地表堆积", "多次喷发和侵蚀改造共同形成火山地貌组合"],
-    "features": ["常见火山锥、火山口和熔岩流遗迹", "分布与板块边界和热点等岩浆活动区有关", "不同岩浆黏度和喷发方式会形成不同形态"],
-    "typicalPlaces": [{"name": "富士山", "longitude": 138.7, "latitude": 35.4, "note": "日本典型层状火山"}, {"name": "夏威夷火山群", "longitude": -155.3, "latitude": 19.4, "note": "热点和盾状火山典型区域"}],
-    "commonConfusions": ["火山地貌的形成与岩浆活动直接相关，但并非所有火山都位于板块边界，热点也可形成火山"],
-    "sources": [{"title": "USGS Educational Resources", "url": "https://www.usgs.gov/educational-resources", "type": "official"}, {"title": "NPS Geology", "url": "https://www.nps.gov/subjects/geology/park-maps.htm", "type": "official"}],
+    "formation": [
+      "地壳内部岩浆沿构造薄弱带上升",
+      "熔岩、火山灰和火山碎屑物在地表堆积",
+      "多次喷发和侵蚀改造共同形成火山地貌组合"
+    ],
+    "features": [
+      "常见火山锥、火山口和熔岩流遗迹",
+      "分布与板块边界和热点等岩浆活动区有关",
+      "不同岩浆黏度和喷发方式会形成不同形态"
+    ],
+    "typicalPlaces": [
+      { "name": "富士山", "longitude": 138.7, "latitude": 35.4, "note": "日本典型层状火山" },
+      {
+        "name": "夏威夷火山群",
+        "longitude": -155.3,
+        "latitude": 19.4,
+        "note": "热点和盾状火山典型区域"
+      }
+    ],
+    "commonConfusions": [
+      "火山地貌的形成与岩浆活动直接相关，但并非所有火山都位于板块边界，热点也可形成火山"
+    ],
+    "sources": [
+      {
+        "title": "USGS Educational Resources",
+        "url": "https://www.usgs.gov/educational-resources",
+        "type": "official"
+      },
+      {
+        "title": "NPS Geology",
+        "url": "https://www.nps.gov/subjects/geology/park-maps.htm",
+        "type": "official"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   },
@@ -174,11 +386,33 @@
     "module": "地表形态的塑造",
     "grade": "高中",
     "definition": "板块边界是岩石圈板块相互作用的地带，板块的汇聚、离散和相对错动会形成山脉、海沟、洋中脊、断层以及地震和火山活动带。",
-    "features": ["汇聚边界可形成褶皱山脉、海沟和火山弧", "离散边界常形成洋中脊或裂谷", "转换边界以相对水平错动和地震活动为主要特征"],
-    "formation": ["地幔对流、板块俯冲和洋底扩张等过程驱动板块运动", "板块相互作用使地壳发生挤压、张裂或剪切", "长期构造作用与岩浆活动共同塑造大型地貌"],
-    "typicalPlaces": [{"name": "安第斯山脉", "longitude": -70.0, "latitude": -20.0, "note": "海洋板块俯冲形成的大陆边缘山脉和火山带"}, {"name": "东非大裂谷", "longitude": 36.0, "latitude": 2.0, "note": "大陆裂谷发育的典型区域"}],
+    "features": [
+      "汇聚边界可形成褶皱山脉、海沟和火山弧",
+      "离散边界常形成洋中脊或裂谷",
+      "转换边界以相对水平错动和地震活动为主要特征"
+    ],
+    "formation": [
+      "地幔对流、板块俯冲和洋底扩张等过程驱动板块运动",
+      "板块相互作用使地壳发生挤压、张裂或剪切",
+      "长期构造作用与岩浆活动共同塑造大型地貌"
+    ],
+    "typicalPlaces": [
+      {
+        "name": "安第斯山脉",
+        "longitude": -70.0,
+        "latitude": -20.0,
+        "note": "海洋板块俯冲形成的大陆边缘山脉和火山带"
+      },
+      { "name": "东非大裂谷", "longitude": 36.0, "latitude": 2.0, "note": "大陆裂谷发育的典型区域" }
+    ],
     "commonConfusions": ["地震和火山常集中在板块边界，但分布并非完全重合；热点火山是重要例外"],
-    "sources": [{"title": "普通高中地理课程标准（2017年版2020年修订）", "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html", "type": "curriculum"}],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
     "status": "reviewed",
     "updatedAt": "2026-10-02"
   }

@@ -1,11 +1,13 @@
-import { useMemo } from 'react'
-import { use as registerEcharts } from 'echarts/core';
-import type { EChartsCoreOption } from 'echarts/core';
+import { useGlobeStore } from '@renderer/stores/globe'
 import { BarChart as EChartsBarChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { use as registerEcharts } from 'echarts/core'
+import type { EChartsCoreOption } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
-import { useGlobeStore } from '@renderer/stores/globe'
+import { useMemo } from 'react'
+
 import EChartBase from './EChartBase'
+
 import styles from './BarChart.module.css'
 
 registerEcharts([EChartsBarChart, GridComponent, TooltipComponent, LegendComponent, SVGRenderer])
@@ -41,7 +43,9 @@ const MONO_FONT = 'SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace
 
 function formatNumber(value: number): string {
   const magnitude = Math.abs(value)
-  const text = Number.isInteger(magnitude) ? String(magnitude) : (Math.round(magnitude * 10) / 10).toString()
+  const text = Number.isInteger(magnitude)
+    ? String(magnitude)
+    : (Math.round(magnitude * 10) / 10).toString()
   return value < 0 ? `-${text}` : text
 }
 
@@ -58,7 +62,7 @@ export function BarChart({
   yName,
   height = 180
 }: BarChartProps) {
-  const resolvedTheme = useGlobeStore((state) => state.resolvedTheme)
+  const resolvedTheme = useGlobeStore(state => state.resolvedTheme)
 
   const option = useMemo<EChartsCoreOption>(() => {
     const isDark = resolvedTheme === 'dark'
@@ -80,7 +84,8 @@ export function BarChart({
         color: axisInk,
         fontFamily: MONO_FONT,
         fontSize: 11,
-        formatter: (value: number) => (absValues ? formatNumber(Math.abs(value)) : formatNumber(value))
+        formatter: (value: number) =>
+          absValues ? formatNumber(Math.abs(value)) : formatNumber(value)
       },
       axisLine: { show: false },
       axisTick: { show: false },
@@ -117,11 +122,13 @@ export function BarChart({
         textStyle: { color: '#ffffff', fontSize: 12, lineHeight: 20 },
         formatter: (params: unknown) => {
           const list = Array.isArray(params) ? (params as TooltipParam[]) : [params as TooltipParam]
-          if (list.length === 0) {return ''}
+          if (list.length === 0) {
+            return ''
+          }
           const rows = list
-            .filter((item) => item?.seriesName)
+            .filter(item => item?.seriesName)
             .map(
-              (item) =>
+              item =>
                 `${item.marker}${item.seriesName} ${absValues ? formatNumber(Math.abs(item.value)) : formatNumber(item.value)}`
             )
             .join('<br/>')
@@ -130,7 +137,7 @@ export function BarChart({
       },
       xAxis: horizontal ? valueAxis : categoryAxis,
       yAxis: horizontal ? { ...categoryAxis } : { ...valueAxis },
-      series: series.map((item) => ({
+      series: series.map(item => ({
         type: 'bar',
         name: item.name,
         data: item.values,
@@ -140,9 +147,23 @@ export function BarChart({
         emphasis: { disabled: true }
       }))
     }
-  }, [categories, series, orientation, stacked, showLegend, absValues, valueMin, valueMax, xName, yName, resolvedTheme])
+  }, [
+    categories,
+    series,
+    orientation,
+    stacked,
+    showLegend,
+    absValues,
+    valueMin,
+    valueMax,
+    xName,
+    yName,
+    resolvedTheme
+  ])
 
-  return <EChartBase className={styles.barChart} option={option} style={{ height: `${height}px` }} />
+  return (
+    <EChartBase className={styles.barChart} option={option} style={{ height: `${height}px` }} />
+  )
 }
 
 export default BarChart

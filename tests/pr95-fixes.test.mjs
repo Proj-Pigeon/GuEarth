@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+
 import { test } from 'vite-plus/test'
-import { formatActionError, runGuardedAction } from '../src/renderer/src/components/ui/actionError.ts'
+
+import {
+  formatActionError,
+  runGuardedAction
+} from '../src/renderer/src/components/ui/actionError.ts'
 import { computeGuideCardPosition } from '../src/renderer/src/lib/guidePosition.ts'
 import { flattenVisibleTree, resolveTreeKeyAction } from '../src/renderer/src/lib/treeNavigation.ts'
 
@@ -43,7 +48,7 @@ test('flattenVisibleTree and resolveTreeKeyAction support WAI-ARIA tree navigati
   const collapsed = new Set()
   const collapsedVisible = flattenVisibleTree(nodes, collapsed)
   assert.deepEqual(
-    collapsedVisible.map((item) => item.key),
+    collapsedVisible.map(item => item.key),
     ['folder:a', 'shape:3']
   )
   assert.deepEqual(resolveTreeKeyAction('ArrowRight', 'folder:a', collapsedVisible, collapsed), {
@@ -58,7 +63,7 @@ test('flattenVisibleTree and resolveTreeKeyAction support WAI-ARIA tree navigati
   const expanded = new Set(['folder:a'])
   const expandedVisible = flattenVisibleTree(nodes, expanded)
   assert.deepEqual(
-    expandedVisible.map((item) => item.key),
+    expandedVisible.map(item => item.key),
     ['folder:a', 'shape:1', 'folder:b', 'shape:3']
   )
   assert.deepEqual(resolveTreeKeyAction('ArrowRight', 'folder:a', expandedVisible, expanded), {
@@ -93,7 +98,12 @@ test('flattenVisibleTree and resolveTreeKeyAction support WAI-ARIA tree navigati
 
 test('runGuardedAction catches sync and async rejections without propagating', async () => {
   const errors = []
-  const okSync = await runGuardedAction(() => {}, (message) => { errors.push(message) })
+  const okSync = await runGuardedAction(
+    () => {},
+    message => {
+      errors.push(message)
+    }
+  )
   assert.equal(okSync, true)
   assert.deepEqual(errors, [])
 
@@ -101,7 +111,9 @@ test('runGuardedAction catches sync and async rejections without propagating', a
     async () => {
       throw new Error('删除失败')
     },
-    (message) => { errors.push(message) }
+    message => {
+      errors.push(message)
+    }
   )
   assert.equal(failAsync, false)
   assert.deepEqual(errors, ['删除失败'])
@@ -110,7 +122,9 @@ test('runGuardedAction catches sync and async rejections without propagating', a
     () => {
       throw null
     },
-    (message) => { errors.push(message) }
+    message => {
+      errors.push(message)
+    }
   )
   assert.equal(failUnknown, false)
   assert.equal(errors.at(-1), '操作失败，请重试')
@@ -135,5 +149,8 @@ test('window chrome, theme sync, and accessibility contracts are wired', () => {
   assert.match(preloadSource, /ipcRenderer\.sendSync\('app:initial-theme'\)/)
   assert.match(controlsSource, /state\.platform === 'darwin'/)
   assert.doesNotMatch(controlsSource, /onDoubleClick/)
-  assert.match(controlsCss, /\.dragStrip\s*\{[^}]*top:\s*6px;[^}]*left:\s*16px;[^}]*right:\s*16px;/s)
+  assert.match(
+    controlsCss,
+    /\.dragStrip\s*\{[^}]*top:\s*6px;[^}]*left:\s*16px;[^}]*right:\s*16px;/s
+  )
 })

@@ -1,7 +1,14 @@
-import { useLayoutEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
-import { createStreamingDelayState, renderMarkdown, renderStreamingMarkdown, resetStreamingDelayState, settleStreamingDelayState } from '@renderer/utils/markdown';
-import type { StreamingDelayState } from '@renderer/utils/markdown';
+import {
+  createStreamingDelayState,
+  renderMarkdown,
+  renderStreamingMarkdown,
+  resetStreamingDelayState,
+  settleStreamingDelayState
+} from '@renderer/utils/markdown'
+import type { StreamingDelayState } from '@renderer/utils/markdown'
+import { useLayoutEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+
 import styles from './StreamingMarkdown.module.css'
 
 const STREAM_RENDER_INTERVAL_MS = 50
@@ -50,7 +57,9 @@ export function StreamingMarkdown({ text, streaming = false, onRendered }: Strea
   function settle(): void {
     settleTimerRef.current = undefined
     const current = latestPropsRef.current
-    if (!current.streaming) {return}
+    if (!current.streaming) {
+      return
+    }
     settledRef.current = true
     settleStreamingDelayState(delayStateRef.current!, current.text)
     const nextNodes = renderMarkdown(current.text)
@@ -103,11 +112,12 @@ export function StreamingMarkdown({ text, streaming = false, onRendered }: Strea
     }
   }, [text, streaming])
 
-  useLayoutEffect(() => 
-    () => {
+  useLayoutEffect(
+    () => () => {
       clearTimers()
-    }
-  , [])
+    },
+    []
+  )
 
   return <div className={`answer-text ${styles.answerText}`}>{nodes}</div>
 }

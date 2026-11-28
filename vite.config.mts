@@ -1,8 +1,8 @@
 import { liangmi } from '@liangmi/vp-config'
 
 export default liangmi({
-  // Formatting is enabled in a follow-up. Until then, `vp check` skips it.
-  check: { fmt: false },
+  // GeoJSON data and third-party license texts keep their upstream layout.
+  fmt: { ignorePatterns: ['resources/**'] },
   lint: [
     {
       name: 'guearth/conventions',

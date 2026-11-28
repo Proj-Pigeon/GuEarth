@@ -1,11 +1,13 @@
-import { useMemo } from 'react'
-import { use as registerEcharts } from 'echarts/core';
-import type { EChartsCoreOption } from 'echarts/core';
+import { useGlobeStore } from '@renderer/stores/globe'
 import { LineChart as EChartsLineChart } from 'echarts/charts'
 import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
+import { use as registerEcharts } from 'echarts/core'
+import type { EChartsCoreOption } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
-import { useGlobeStore } from '@renderer/stores/globe'
+import { useMemo } from 'react'
+
 import EChartBase from './EChartBase'
+
 import styles from './LineChart.module.css'
 
 registerEcharts([EChartsLineChart, GridComponent, TooltipComponent, MarkLineComponent, SVGRenderer])
@@ -47,7 +49,7 @@ export function LineChart({
   yMax,
   height = 180
 }: LineChartProps) {
-  const resolvedTheme = useGlobeStore((state) => state.resolvedTheme)
+  const resolvedTheme = useGlobeStore(state => state.resolvedTheme)
 
   const option = useMemo<EChartsCoreOption>(() => {
     const isDark = resolvedTheme === 'dark'
@@ -70,10 +72,12 @@ export function LineChart({
         textStyle: { color: '#ffffff', fontSize: 12, lineHeight: 20 },
         formatter: (params: unknown) => {
           const list = Array.isArray(params) ? (params as TooltipParam[]) : []
-          if (list.length === 0) {return ''}
+          if (list.length === 0) {
+            return ''
+          }
           const head = xFormatter ? xFormatter(list[0].value[0]) : String(list[0].value[0])
           const rows = list
-            .map((item) => `${item.marker}${item.seriesName} ${Math.round(item.value[1] * 10) / 10}`)
+            .map(item => `${item.marker}${item.seriesName} ${Math.round(item.value[1] * 10) / 10}`)
             .join('<br/>')
           return `${head}<br/>${rows}`
         }
@@ -111,7 +115,7 @@ export function LineChart({
         axisTick: { show: false },
         splitLine: { lineStyle: { color: splitLine } }
       },
-      series: series.map((item) => ({
+      series: series.map(item => ({
         type: 'line',
         name: item.name,
         data: item.points,
@@ -126,14 +130,16 @@ export function LineChart({
               symbol: ['none', 'none'],
               label: { show: false },
               lineStyle: { color: markLineColor, type: 'dashed', width: 1 },
-              data: item.markY.map((y) => ({ yAxis: y }))
+              data: item.markY.map(y => ({ yAxis: y }))
             }
           : undefined
       }))
     }
   }, [series, xName, xMin, xMax, xFormatter, yName, yMin, yMax, resolvedTheme])
 
-  return <EChartBase className={styles.lineChart} option={option} style={{ height: `${height}px` }} />
+  return (
+    <EChartBase className={styles.lineChart} option={option} style={{ height: `${height}px` }} />
+  )
 }
 
 export default LineChart

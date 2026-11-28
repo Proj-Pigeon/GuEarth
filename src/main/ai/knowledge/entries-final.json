@@ -1,17 +1,330 @@
 [
-  {"id":"terrain-mountain","type":"terminology","name":"山地","aliases":["山地地形","山地地貌"],"keywords":["海拔","起伏","山脉","山峰"],"module":"地表形态的塑造","grade":"初中","definition":"山地是地表起伏较大、相对高度较高的地形类型，常由构造运动、岩浆活动和外力侵蚀共同塑造。","features":["相对高度和坡度通常较大","山地内部可包含山峰、山谷、山脊和盆地"],"sources":[{"title":"义务教育地理课程标准（2022年版）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"terrain-plateau","type":"terminology","name":"高原","aliases":["高原地形"],"keywords":["高地","顶部平坦","相对高度","青藏高原"],"module":"地表形态的塑造","grade":"初中","definition":"高原是海拔较高、顶部相对平坦或起伏较小、边缘常较陡的高地形。","features":["高原内部仍可能有山地、河谷和湖盆","判读时需要结合海拔和相对高度，不能只看绝对高度"],"sources":[{"title":"义务教育地理课程标准（2022年版）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"terrain-plain","type":"terminology","name":"平原","aliases":["平原地形","冲积平原"],"keywords":["低平","沉积","河流","地势平坦"],"module":"地表形态的塑造","grade":"初中","definition":"平原是地表起伏较小、相对平坦的地形类型，常由河流、海洋或冰川沉积作用形成，也可由侵蚀夷平形成。","features":["坡度通常较小","河流沉积平原常具有较厚的松散沉积物"],"sources":[{"title":"义务教育地理课程标准（2022年版）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"atmosphere-pressure","type":"terminology","name":"气压","aliases":["大气压强","气压场"],"keywords":["空气重量","高压","低压","气压梯度"],"module":"地球上的大气","grade":"高中","definition":"气压是单位面积上空气柱产生的压力。气压差是空气产生水平运动和形成风的重要原因之一。","features":["近地面气压受海拔、温度和空气密度影响","等压线疏密可反映水平气压梯度大小"],"sources":[{"title":"中国气象局气象科普资源","url":"https://www.cma.gov.cn/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"atmosphere-precipitation","type":"process","name":"降水","aliases":["降水类型","降水形成"],"keywords":["水汽上升","凝结","对流雨","地形雨","锋面雨"],"module":"地球上的大气","grade":"高中","definition":"降水是大气中的水汽在上升、冷却和凝结后，以雨、雪、雹等形式降落到地面的过程。","features":["空气上升冷却是形成降水的重要条件","对流、地形和锋面是常见的上升机制"],"sources":[{"title":"NOAA JetStream: Precipitation","url":"https://www.weather.gov/jetstream/precip","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"orographic-rain","type":"process","name":"地形雨","aliases":["地形抬升降水","迎风坡降水"],"keywords":["迎风坡","背风坡","地形抬升","焚风"],"module":"地球上的大气","grade":"高中","definition":"湿润气流遇到山地被迫抬升，冷却凝结并形成降水的过程称为地形雨。山地背风侧可能形成相对干燥的雨影区。","features":["迎风坡通常较湿润","降水差异还受风向、季节、山体高度和水汽来源影响"],"sources":[{"title":"中国气象局气象科普资源","url":"https://www.cma.gov.cn/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"warm-cold-current","type":"process","name":"暖流与寒流","aliases":["暖洋流","寒洋流"],"keywords":["洋流性质","沿岸气候","渔场","海温"],"module":"地球上的水","grade":"高中","definition":"暖流通常把较低纬度的热量输送到较高纬度，寒流通常把较高纬度或深层的冷水带向较低纬度。二者会影响沿岸气候、雾和渔场。","features":["暖流通常增温增湿","寒流通常降温减湿，并可能与上升流共同形成渔场"],"sources":[{"title":"NOAA Ocean Service: Ocean Currents","url":"https://oceanservice.noaa.gov/education/tutorial_currents/welcome.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"upwelling","type":"process","name":"上升流","aliases":["海水上升流","沿岸上升流"],"keywords":["深层海水","营养盐","渔场","离岸风"],"module":"地球上的水","grade":"高中","definition":"上升流是深层海水向上运动的过程，常把低温且富含营养盐的海水带到表层。沿岸上升流可形成重要渔场。","features":["常与风场、海岸方向和地转偏向力有关","表层海水温度较低但生物生产力可能较高"],"sources":[{"title":"NOAA Ocean Service: Upwelling","url":"https://oceanservice.noaa.gov/facts/upwelling.html","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"mountain-snowline","type":"process","name":"雪线","aliases":["永久雪线","雪线高度"],"keywords":["积雪","融化","海拔","纬度","山地"],"module":"自然环境的地域分异","grade":"高中","definition":"雪线是山地上年降雪量与年消融量大致平衡的界线，雪线高度受纬度、降水、坡向和地形等因素影响。","features":["通常低纬度高山雪线较高、高纬度地区较低","同一山体不同坡向雪线高度可能不同"],"sources":[{"title":"NASA Earth Observatory: Glaciers","url":"https://earthobservatory.nasa.gov/biome/glaciers","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"mountain-vertical-belt","type":"process","name":"山地垂直带谱","aliases":["垂直自然带","山地植被带"],"keywords":["海拔","自然带更替","基带","雪线"],"module":"自然环境的地域分异","grade":"高中","definition":"山地垂直带谱是自然带随海拔升高而依次更替的序列，实质上反映水热条件随高度变化的地域分异。","features":["带谱基带与山地所在纬度和水平自然带有关","高度不足或水分条件特殊时带谱可能不完整"],"sources":[{"title":"普通高中地理课程标准（2017年版2020年修订）","url":"http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html","type":"curriculum"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-nile-delta","type":"place","name":"尼罗河三角洲","aliases":["尼罗河口","Nile Delta"],"keywords":["三角洲","河口","沉积","埃及"],"module":"地表形态的塑造","grade":"高中","definition":"尼罗河三角洲是世界典型的河口三角洲，适合用于说明河流入海后的沉积和三角洲农业区域。","typicalPlaces":[{"name":"尼罗河三角洲","longitude":31.0,"latitude":31.2,"note":"世界典型河口三角洲"}],"sources":[{"title":"NASA Earth Observatory","url":"https://earthobservatory.nasa.gov/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-sahara","type":"place","name":"撒哈拉沙漠","aliases":["撒哈拉","Sahara"],"keywords":["沙漠","热带沙漠气候","风成地貌","副热带高压"],"module":"地球上的大气","grade":"高中","definition":"撒哈拉沙漠是全球典型的热带沙漠区域，可用于联系副热带高压、干旱气候、风成地貌和水循环。","typicalPlaces":[{"name":"撒哈拉沙漠","longitude":10.0,"latitude":23.0,"note":"北非热带沙漠和风成地貌典型区域"}],"sources":[{"title":"NASA Earth Observatory: Sahara","url":"https://earthobservatory.nasa.gov/world-of-change/sahara","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-tibetan-plateau","type":"place","name":"青藏高原","aliases":["世界屋脊","青藏高原地区"],"keywords":["高原","板块碰撞","垂直地带性","冰川"],"module":"自然环境的地域分异","grade":"高中","definition":"青藏高原是印度板块与欧亚板块碰撞抬升形成的高原区域，也是研究高原气候、冰川和垂直自然带的典型案例。","typicalPlaces":[{"name":"青藏高原","longitude":88.0,"latitude":32.0,"note":"高原地貌、冰川和垂直地带性典型区域"}],"sources":[{"title":"中国科学院青藏高原科学数据中心","url":"http://data.tpdc.ac.cn/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-amazon","type":"place","name":"亚马孙河流域","aliases":["亚马孙盆地","Amazon Basin"],"keywords":["热带雨林","水循环","河流流域","赤道低压"],"module":"地球上的水","grade":"高中","definition":"亚马孙河流域是赤道附近大型流域和热带雨林区域，可用于联系热带雨林气候、水循环和流域整体性。","typicalPlaces":[{"name":"亚马孙河流域","longitude":-60.0,"latitude":-3.0,"note":"赤道热带雨林和大型流域典型区域"}],"sources":[{"title":"NASA Earth Observatory","url":"https://earthobservatory.nasa.gov/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"},
-  {"id":"place-ganges-delta","type":"place","name":"恒河—布拉马普特拉三角洲","aliases":["孟加拉三角洲","恒河三角洲"],"keywords":["三角洲","河口","沉积","孟加拉湾"],"module":"地表形态的塑造","grade":"高中","definition":"恒河—布拉马普特拉三角洲是大型河流沉积和海岸动力共同作用形成的三角洲区域，也是洪水和海平面变化研究案例。","typicalPlaces":[{"name":"恒河—布拉马普特拉三角洲","longitude":90.0,"latitude":23.5,"note":"世界大型河口三角洲和洪泛区"}],"sources":[{"title":"NASA Earth Observatory","url":"https://earthobservatory.nasa.gov/","type":"official"}],"status":"reviewed","updatedAt":"2026-10-02"}
+  {
+    "id": "terrain-mountain",
+    "type": "terminology",
+    "name": "山地",
+    "aliases": ["山地地形", "山地地貌"],
+    "keywords": ["海拔", "起伏", "山脉", "山峰"],
+    "module": "地表形态的塑造",
+    "grade": "初中",
+    "definition": "山地是地表起伏较大、相对高度较高的地形类型，常由构造运动、岩浆活动和外力侵蚀共同塑造。",
+    "features": ["相对高度和坡度通常较大", "山地内部可包含山峰、山谷、山脊和盆地"],
+    "sources": [
+      {
+        "title": "义务教育地理课程标准（2022年版）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "terrain-plateau",
+    "type": "terminology",
+    "name": "高原",
+    "aliases": ["高原地形"],
+    "keywords": ["高地", "顶部平坦", "相对高度", "青藏高原"],
+    "module": "地表形态的塑造",
+    "grade": "初中",
+    "definition": "高原是海拔较高、顶部相对平坦或起伏较小、边缘常较陡的高地形。",
+    "features": [
+      "高原内部仍可能有山地、河谷和湖盆",
+      "判读时需要结合海拔和相对高度，不能只看绝对高度"
+    ],
+    "sources": [
+      {
+        "title": "义务教育地理课程标准（2022年版）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "terrain-plain",
+    "type": "terminology",
+    "name": "平原",
+    "aliases": ["平原地形", "冲积平原"],
+    "keywords": ["低平", "沉积", "河流", "地势平坦"],
+    "module": "地表形态的塑造",
+    "grade": "初中",
+    "definition": "平原是地表起伏较小、相对平坦的地形类型，常由河流、海洋或冰川沉积作用形成，也可由侵蚀夷平形成。",
+    "features": ["坡度通常较小", "河流沉积平原常具有较厚的松散沉积物"],
+    "sources": [
+      {
+        "title": "义务教育地理课程标准（2022年版）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582354066450.pdf",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "atmosphere-pressure",
+    "type": "terminology",
+    "name": "气压",
+    "aliases": ["大气压强", "气压场"],
+    "keywords": ["空气重量", "高压", "低压", "气压梯度"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "气压是单位面积上空气柱产生的压力。气压差是空气产生水平运动和形成风的重要原因之一。",
+    "features": ["近地面气压受海拔、温度和空气密度影响", "等压线疏密可反映水平气压梯度大小"],
+    "sources": [
+      { "title": "中国气象局气象科普资源", "url": "https://www.cma.gov.cn/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "atmosphere-precipitation",
+    "type": "process",
+    "name": "降水",
+    "aliases": ["降水类型", "降水形成"],
+    "keywords": ["水汽上升", "凝结", "对流雨", "地形雨", "锋面雨"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "降水是大气中的水汽在上升、冷却和凝结后，以雨、雪、雹等形式降落到地面的过程。",
+    "features": ["空气上升冷却是形成降水的重要条件", "对流、地形和锋面是常见的上升机制"],
+    "sources": [
+      {
+        "title": "NOAA JetStream: Precipitation",
+        "url": "https://www.weather.gov/jetstream/precip",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "orographic-rain",
+    "type": "process",
+    "name": "地形雨",
+    "aliases": ["地形抬升降水", "迎风坡降水"],
+    "keywords": ["迎风坡", "背风坡", "地形抬升", "焚风"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "湿润气流遇到山地被迫抬升，冷却凝结并形成降水的过程称为地形雨。山地背风侧可能形成相对干燥的雨影区。",
+    "features": ["迎风坡通常较湿润", "降水差异还受风向、季节、山体高度和水汽来源影响"],
+    "sources": [
+      { "title": "中国气象局气象科普资源", "url": "https://www.cma.gov.cn/", "type": "official" }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "warm-cold-current",
+    "type": "process",
+    "name": "暖流与寒流",
+    "aliases": ["暖洋流", "寒洋流"],
+    "keywords": ["洋流性质", "沿岸气候", "渔场", "海温"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "暖流通常把较低纬度的热量输送到较高纬度，寒流通常把较高纬度或深层的冷水带向较低纬度。二者会影响沿岸气候、雾和渔场。",
+    "features": ["暖流通常增温增湿", "寒流通常降温减湿，并可能与上升流共同形成渔场"],
+    "sources": [
+      {
+        "title": "NOAA Ocean Service: Ocean Currents",
+        "url": "https://oceanservice.noaa.gov/education/tutorial_currents/welcome.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "upwelling",
+    "type": "process",
+    "name": "上升流",
+    "aliases": ["海水上升流", "沿岸上升流"],
+    "keywords": ["深层海水", "营养盐", "渔场", "离岸风"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "上升流是深层海水向上运动的过程，常把低温且富含营养盐的海水带到表层。沿岸上升流可形成重要渔场。",
+    "features": ["常与风场、海岸方向和地转偏向力有关", "表层海水温度较低但生物生产力可能较高"],
+    "sources": [
+      {
+        "title": "NOAA Ocean Service: Upwelling",
+        "url": "https://oceanservice.noaa.gov/facts/upwelling.html",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "mountain-snowline",
+    "type": "process",
+    "name": "雪线",
+    "aliases": ["永久雪线", "雪线高度"],
+    "keywords": ["积雪", "融化", "海拔", "纬度", "山地"],
+    "module": "自然环境的地域分异",
+    "grade": "高中",
+    "definition": "雪线是山地上年降雪量与年消融量大致平衡的界线，雪线高度受纬度、降水、坡向和地形等因素影响。",
+    "features": ["通常低纬度高山雪线较高、高纬度地区较低", "同一山体不同坡向雪线高度可能不同"],
+    "sources": [
+      {
+        "title": "NASA Earth Observatory: Glaciers",
+        "url": "https://earthobservatory.nasa.gov/biome/glaciers",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "mountain-vertical-belt",
+    "type": "process",
+    "name": "山地垂直带谱",
+    "aliases": ["垂直自然带", "山地植被带"],
+    "keywords": ["海拔", "自然带更替", "基带", "雪线"],
+    "module": "自然环境的地域分异",
+    "grade": "高中",
+    "definition": "山地垂直带谱是自然带随海拔升高而依次更替的序列，实质上反映水热条件随高度变化的地域分异。",
+    "features": [
+      "带谱基带与山地所在纬度和水平自然带有关",
+      "高度不足或水分条件特殊时带谱可能不完整"
+    ],
+    "sources": [
+      {
+        "title": "普通高中地理课程标准（2017年版2020年修订）",
+        "url": "http://www.moe.gov.cn/srcsite/A26/s8001/202006/t20200603_462199.html",
+        "type": "curriculum"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-nile-delta",
+    "type": "place",
+    "name": "尼罗河三角洲",
+    "aliases": ["尼罗河口", "Nile Delta"],
+    "keywords": ["三角洲", "河口", "沉积", "埃及"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "尼罗河三角洲是世界典型的河口三角洲，适合用于说明河流入海后的沉积和三角洲农业区域。",
+    "typicalPlaces": [
+      { "name": "尼罗河三角洲", "longitude": 31.0, "latitude": 31.2, "note": "世界典型河口三角洲" }
+    ],
+    "sources": [
+      {
+        "title": "NASA Earth Observatory",
+        "url": "https://earthobservatory.nasa.gov/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-sahara",
+    "type": "place",
+    "name": "撒哈拉沙漠",
+    "aliases": ["撒哈拉", "Sahara"],
+    "keywords": ["沙漠", "热带沙漠气候", "风成地貌", "副热带高压"],
+    "module": "地球上的大气",
+    "grade": "高中",
+    "definition": "撒哈拉沙漠是全球典型的热带沙漠区域，可用于联系副热带高压、干旱气候、风成地貌和水循环。",
+    "typicalPlaces": [
+      {
+        "name": "撒哈拉沙漠",
+        "longitude": 10.0,
+        "latitude": 23.0,
+        "note": "北非热带沙漠和风成地貌典型区域"
+      }
+    ],
+    "sources": [
+      {
+        "title": "NASA Earth Observatory: Sahara",
+        "url": "https://earthobservatory.nasa.gov/world-of-change/sahara",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-tibetan-plateau",
+    "type": "place",
+    "name": "青藏高原",
+    "aliases": ["世界屋脊", "青藏高原地区"],
+    "keywords": ["高原", "板块碰撞", "垂直地带性", "冰川"],
+    "module": "自然环境的地域分异",
+    "grade": "高中",
+    "definition": "青藏高原是印度板块与欧亚板块碰撞抬升形成的高原区域，也是研究高原气候、冰川和垂直自然带的典型案例。",
+    "typicalPlaces": [
+      {
+        "name": "青藏高原",
+        "longitude": 88.0,
+        "latitude": 32.0,
+        "note": "高原地貌、冰川和垂直地带性典型区域"
+      }
+    ],
+    "sources": [
+      {
+        "title": "中国科学院青藏高原科学数据中心",
+        "url": "http://data.tpdc.ac.cn/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-amazon",
+    "type": "place",
+    "name": "亚马孙河流域",
+    "aliases": ["亚马孙盆地", "Amazon Basin"],
+    "keywords": ["热带雨林", "水循环", "河流流域", "赤道低压"],
+    "module": "地球上的水",
+    "grade": "高中",
+    "definition": "亚马孙河流域是赤道附近大型流域和热带雨林区域，可用于联系热带雨林气候、水循环和流域整体性。",
+    "typicalPlaces": [
+      {
+        "name": "亚马孙河流域",
+        "longitude": -60.0,
+        "latitude": -3.0,
+        "note": "赤道热带雨林和大型流域典型区域"
+      }
+    ],
+    "sources": [
+      {
+        "title": "NASA Earth Observatory",
+        "url": "https://earthobservatory.nasa.gov/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  },
+  {
+    "id": "place-ganges-delta",
+    "type": "place",
+    "name": "恒河—布拉马普特拉三角洲",
+    "aliases": ["孟加拉三角洲", "恒河三角洲"],
+    "keywords": ["三角洲", "河口", "沉积", "孟加拉湾"],
+    "module": "地表形态的塑造",
+    "grade": "高中",
+    "definition": "恒河—布拉马普特拉三角洲是大型河流沉积和海岸动力共同作用形成的三角洲区域，也是洪水和海平面变化研究案例。",
+    "typicalPlaces": [
+      {
+        "name": "恒河—布拉马普特拉三角洲",
+        "longitude": 90.0,
+        "latitude": 23.5,
+        "note": "世界大型河口三角洲和洪泛区"
+      }
+    ],
+    "sources": [
+      {
+        "title": "NASA Earth Observatory",
+        "url": "https://earthobservatory.nasa.gov/",
+        "type": "official"
+      }
+    ],
+    "status": "reviewed",
+    "updatedAt": "2026-10-02"
+  }
 ]

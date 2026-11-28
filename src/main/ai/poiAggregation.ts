@@ -22,14 +22,19 @@ export function aggregatePois(target: PoiAggregation, pois: readonly PoiSample[]
   for (const poi of pois) {
     target.fetched += 1
     const code = poiBigCategory(poi)
-    if (!code) {continue}
+    if (!code) {
+      continue
+    }
     target.counts.set(code, (target.counts.get(code) ?? 0) + 1)
     target.sampled += 1
   }
 }
 
 export function poiPageCount(reportedTotal: number, maxSamples: number): number {
-  return Math.min(POI_STATS_MAX_PAGES, Math.ceil(Math.min(reportedTotal, maxSamples) / POI_STATS_PAGE_SIZE))
+  return Math.min(
+    POI_STATS_MAX_PAGES,
+    Math.ceil(Math.min(reportedTotal, maxSamples) / POI_STATS_PAGE_SIZE)
+  )
 }
 
 export function poiTruncated(reportedTotal: number, pagesFetched: number): boolean {

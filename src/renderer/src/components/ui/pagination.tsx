@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import { useState } from 'react'
+
 import { Button } from './button'
 import { Select } from './select'
 
@@ -23,9 +24,15 @@ function buildPages(current: number, totalPages: number): (number | 'ellipsis')[
   const pages: (number | 'ellipsis')[] = [1]
   const start = Math.max(2, current - 1)
   const end = Math.min(totalPages - 1, current + 1)
-  if (start > 2) {pages.push('ellipsis')}
-  for (let page = start; page <= end; page += 1) {pages.push(page)}
-  if (end < totalPages - 1) {pages.push('ellipsis')}
+  if (start > 2) {
+    pages.push('ellipsis')
+  }
+  for (let page = start; page <= end; page += 1) {
+    pages.push(page)
+  }
+  if (end < totalPages - 1) {
+    pages.push('ellipsis')
+  }
   pages.push(totalPages)
   return pages
 }
@@ -53,36 +60,45 @@ export function Pagination({
   function submitJump(): void {
     const parsed = Number.parseInt(jumpDraft.trim(), 10)
     setJumpDraft('')
-    if (!Number.isFinite(parsed)) {return}
+    if (!Number.isFinite(parsed)) {
+      return
+    }
     const target = Math.min(totalPages, Math.max(1, parsed))
-    if (target !== safeCurrent) {onChange(target, pageSize)}
+    if (target !== safeCurrent) {
+      onChange(target, pageSize)
+    }
   }
 
   return (
-    <div className={cn('flex flex-wrap items-center justify-end gap-2 text-[12px] text-ink-secondary', className)}>
+    <div
+      className={cn(
+        'flex flex-wrap items-center justify-end gap-2 text-[12px] text-ink-secondary',
+        className
+      )}
+    >
       {showTotal && (
-        <span className="font-mono text-ink-tertiary">
+        <span className='text-ink-tertiary font-mono'>
           {rangeStart}-{rangeEnd} / {total}
         </span>
       )}
-      <div className="flex items-center gap-1">
+      <div className='flex items-center gap-1'>
         <Button
-          variant="ghost"
-          size="sm"
+          variant='ghost'
+          size='sm'
           disabled={safeCurrent <= 1}
-          aria-label="上一页"
-          icon={<ChevronLeftIcon className="size-3.5" />}
+          aria-label='上一页'
+          icon={<ChevronLeftIcon className='size-3.5' />}
           onClick={() => onChange(safeCurrent - 1, pageSize)}
         />
         {pages.map((item, index) =>
           item === 'ellipsis' ? (
-            <span key={`ellipsis-${index}`} className="px-1 text-ink-tertiary">
+            <span key={`ellipsis-${index}`} className='text-ink-tertiary px-1'>
               …
             </span>
           ) : (
             <button
               key={item}
-              type="button"
+              type='button'
               aria-current={item === safeCurrent ? 'page' : undefined}
               onClick={() => onChange(item, pageSize)}
               className={cn(
@@ -97,40 +113,44 @@ export function Pagination({
           )
         )}
         <Button
-          variant="ghost"
-          size="sm"
+          variant='ghost'
+          size='sm'
           disabled={safeCurrent >= totalPages}
-          aria-label="下一页"
-          icon={<ChevronRightIcon className="size-3.5" />}
+          aria-label='下一页'
+          icon={<ChevronRightIcon className='size-3.5' />}
           onClick={() => onChange(safeCurrent + 1, pageSize)}
         />
       </div>
       {showSizeChanger && (
         <Select
-          size="sm"
+          size='sm'
           value={String(pageSize)}
-          className="w-24"
-          aria-label="每页条数"
-          options={pageSizeOptions.map((size) => ({ value: String(size), label: `${size} 条/页` }))}
-          onChange={(next) => {
+          className='w-24'
+          aria-label='每页条数'
+          options={pageSizeOptions.map(size => ({ value: String(size), label: `${size} 条/页` }))}
+          onChange={next => {
             const parsed = Number(next)
-            if (Number.isFinite(parsed) && parsed > 0) {onChange(1, parsed)}
+            if (Number.isFinite(parsed) && parsed > 0) {
+              onChange(1, parsed)
+            }
           }}
         />
       )}
       {showQuickJumper && (
-        <span className="inline-flex items-center gap-1 text-ink-tertiary">
+        <span className='text-ink-tertiary inline-flex items-center gap-1'>
           <span>跳至</span>
           <input
             value={jumpDraft}
-            inputMode="numeric"
-            aria-label="跳转页码"
-            onChange={(event) => setJumpDraft(event.target.value.replaceAll(/[^\d]/g, ''))}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {submitJump()}
+            inputMode='numeric'
+            aria-label='跳转页码'
+            onChange={event => setJumpDraft(event.target.value.replaceAll(/[^\d]/g, ''))}
+            onKeyDown={event => {
+              if (event.key === 'Enter') {
+                submitJump()
+              }
             }}
             onBlur={submitJump}
-            className="h-7 w-11 rounded-md border border-border-strong bg-elevated px-1.5 text-center font-mono text-[12px] text-ink outline-none focus:border-ring"
+            className='border-border-strong bg-elevated text-ink focus:border-ring h-7 w-11 rounded-md border px-1.5 text-center font-mono text-[12px] outline-none'
           />
           <span>页</span>
         </span>

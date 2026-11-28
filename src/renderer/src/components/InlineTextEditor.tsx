@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import type { CSSProperties } from 'react';
-import * as Cesium from 'cesium'
 import type { DrawnShape } from '@renderer/stores/drawing'
+import * as Cesium from 'cesium'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import type { CSSProperties } from 'react'
+
 import styles from './InlineTextEditor.module.css'
 
 export interface InlineTextEditorProps {
@@ -11,9 +12,13 @@ export interface InlineTextEditorProps {
 }
 
 function editorTextShadow(color: string, framed: boolean): string {
-  if (framed) {return 'none'}
+  if (framed) {
+    return 'none'
+  }
   const match = /^#([\da-f]{6})$/i.exec(color)
-  if (!match) {return '0 0 3px rgba(0, 0, 0, 0.9)'}
+  if (!match) {
+    return '0 0 3px rgba(0, 0, 0, 0.9)'
+  }
   const red = Number.parseInt(match[1].slice(0, 2), 16)
   const green = Number.parseInt(match[1].slice(2, 4), 16)
   const blue = Number.parseInt(match[1].slice(4, 6), 16)
@@ -36,8 +41,16 @@ export function InlineTextEditor({ viewer, shape, onUpdate }: InlineTextEditorPr
     const currentShape = shapeRef.current
     const root = rootRef.current
     const editor = editorRef.current
-    if (!editor) {return}
-    if (!currentViewer || currentViewer.isDestroyed() || !root || !currentShape || currentShape.kind !== 'text') {
+    if (!editor) {
+      return
+    }
+    if (
+      !currentViewer ||
+      currentViewer.isDestroyed() ||
+      !root ||
+      !currentShape ||
+      currentShape.kind !== 'text'
+    ) {
       editor.style.visibility = 'hidden'
       return
     }
@@ -68,7 +81,9 @@ export function InlineTextEditor({ viewer, shape, onUpdate }: InlineTextEditorPr
 
   const resizeEditor = useCallback((): void => {
     const editor = editorRef.current
-    if (!editor) {return}
+    if (!editor) {
+      return
+    }
     editor.style.height = 'auto'
     editor.style.height = `${Math.max(32, editor.scrollHeight)}px`
   }, [])
@@ -86,7 +101,9 @@ export function InlineTextEditor({ viewer, shape, onUpdate }: InlineTextEditorPr
   }, [viewer, updatePosition])
 
   useLayoutEffect(() => {
-    if (shape?.kind !== 'text') {return}
+    if (shape?.kind !== 'text') {
+      return
+    }
     const editor = editorRef.current
     if (editor) {
       editor.focus()
@@ -97,13 +114,26 @@ export function InlineTextEditor({ viewer, shape, onUpdate }: InlineTextEditorPr
   }, [shape?.id, shape?.kind, resizeEditor, updatePosition])
 
   useLayoutEffect(() => {
-    if (shape?.kind !== 'text') {return}
+    if (shape?.kind !== 'text') {
+      return
+    }
     resizeEditor()
     updatePosition()
-  }, [shape?.annotation, shape?.positions, shape?.fontSize, shape?.fontFamily, shape?.textFrame, shape?.kind, resizeEditor, updatePosition])
+  }, [
+    shape?.annotation,
+    shape?.positions,
+    shape?.fontSize,
+    shape?.fontFamily,
+    shape?.textFrame,
+    shape?.kind,
+    resizeEditor,
+    updatePosition
+  ])
 
   const editorStyle = useMemo<CSSProperties>(() => {
-    if (shape?.kind !== 'text') {return {}}
+    if (shape?.kind !== 'text') {
+      return {}
+    }
     return {
       color: shape.textColor,
       fontFamily: `"${shape.fontFamily}", sans-serif`,
@@ -124,9 +154,9 @@ export function InlineTextEditor({ viewer, shape, onUpdate }: InlineTextEditorPr
           className={styles.textEditor}
           rows={1}
           maxLength={200}
-          aria-label="编辑文本框"
-          placeholder="输入文本"
-          onChange={(event) => {
+          aria-label='编辑文本框'
+          placeholder='输入文本'
+          onChange={event => {
             onUpdate(event.target.value)
             resizeEditor()
           }}

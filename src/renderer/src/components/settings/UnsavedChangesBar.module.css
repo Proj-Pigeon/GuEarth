@@ -17,7 +17,9 @@
   box-shadow: var(--shadow-popup);
   opacity: 0;
   transform: translateY(16px);
-  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+  transition:
+    opacity 0.2s ease-in-out,
+    transform 0.2s ease-in-out;
 }
 
 .unsavedBarVisible {

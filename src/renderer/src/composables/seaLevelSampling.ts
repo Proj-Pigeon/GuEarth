@@ -1,9 +1,16 @@
-import * as Cesium from 'cesium'
-import {
-  buildLandMask, cacheKeyOf, coastalZones, gridPointsOf, heightCache, landMask, recordSamples,
-  seaSamplingStatus, setLandMask
-} from '@renderer/thematic/seaLevelRise'
 import { useFailureStore } from '@renderer/stores/failure'
+import {
+  buildLandMask,
+  cacheKeyOf,
+  coastalZones,
+  gridPointsOf,
+  heightCache,
+  landMask,
+  recordSamples,
+  seaSamplingStatus,
+  setLandMask
+} from '@renderer/thematic/seaLevelRise'
+import * as Cesium from 'cesium'
 
 export type SeaSampleOutcome = 'ready' | 'partial' | 'terrain-required' | 'failed'
 
@@ -12,13 +19,17 @@ let maskDegradeReported = false
 let samplePromise: Promise<SeaSampleOutcome> | undefined
 
 const allPointsCached = (): boolean =>
-  coastalZones.every((zone) => gridPointsOf(zone).every(([lon, lat]) => heightCache.has(cacheKeyOf(lon, lat))))
+  coastalZones.every(zone =>
+    gridPointsOf(zone).every(([lon, lat]) => heightCache.has(cacheKeyOf(lon, lat)))
+  )
 
 export function ensureLandMask(): Promise<boolean> {
-  if (landMask.value) {return Promise.resolve(true)}
+  if (landMask.value) {
+    return Promise.resolve(true)
+  }
   maskPromise ??= window.guEarth.datasets
     .getProvinces()
-    .then((document) => {
+    .then(document => {
       setLandMask(buildLandMask(document.features))
       return true
     })
@@ -49,13 +60,19 @@ export function ensureSeaLevelSamples(viewer: Cesium.Viewer): Promise<SeaSampleO
       seaSamplingStatus.value = 'terrain-required'
       return 'terrain-required'
     }
-    const points = coastalZones.flatMap((zone) => gridPointsOf(zone))
+    const points = coastalZones.flatMap(zone => gridPointsOf(zone))
     const cartographics = points.map(([lon, lat]) => Cesium.Cartographic.fromDegrees(lon, lat))
     try {
       const sampled = await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, cartographics)
-      recordSamples(points, sampled.map((cartographic) => cartographic.height))
+      recordSamples(
+        points,
+        sampled.map(cartographic => cartographic.height)
+      )
     } catch {
-      recordSamples(points, cartographics.map((cartographic) => viewer.scene.globe.getHeight(cartographic) ?? Number.NaN))
+      recordSamples(
+        points,
+        cartographics.map(cartographic => viewer.scene.globe.getHeight(cartographic) ?? Number.NaN)
+      )
     }
     if (heightCache.size === 0) {
       seaSamplingStatus.value = 'idle'

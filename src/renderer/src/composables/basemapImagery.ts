@@ -8,9 +8,14 @@ const basemapOptions: Record<string, { maximumLevel: number; credit: string }> =
   'viirs-night': { maximumLevel: 8, credit: 'NASA GIBS / Black Marble (VIIRS)' }
 }
 
-export function createBasemapImageryProvider(id: string, styleId: string): UrlTemplateImageryProvider {
+export function createBasemapImageryProvider(
+  id: string,
+  styleId: string
+): UrlTemplateImageryProvider {
   const options = basemapOptions[id]
-  if (!options) {throw new Error(`Unknown basemap provider: ${id}`)}
+  if (!options) {
+    throw new Error(`Unknown basemap provider: ${id}`)
+  }
   return new UrlTemplateImageryProvider({
     url: `guearth-tile://${id}/${styleId}/{z}/{x}/{y}`,
     ...options

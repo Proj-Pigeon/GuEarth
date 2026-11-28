@@ -1,20 +1,22 @@
-import { useEffect, useState } from 'react'
 import { Button, Modal, Switch, Tag, useToast } from '@renderer/components/ui'
-import { PRIVACY_DISCLOSURES, privacyDisclosureFor } from '../../../../common/privacy';
-import type { PrivacySettingKey } from '../../../../common/privacy';
 import { usePrivacyStore } from '@renderer/stores/privacy'
+import { useEffect, useState } from 'react'
+
+import { PRIVACY_DISCLOSURES, privacyDisclosureFor } from '../../../../common/privacy'
+import type { PrivacySettingKey } from '../../../../common/privacy'
+
 import styles from './PrivacySettings.module.css'
 
 export interface PrivacySettingsProps {}
 
 export function PrivacySettings(_props: PrivacySettingsProps) {
   const toast = useToast()
-  const errorReportingEnabled = usePrivacyStore((state) => state.errorReportingEnabled)
-  const telemetryEnabled = usePrivacyStore((state) => state.telemetryEnabled)
-  const aiTelemetryEnabled = usePrivacyStore((state) => state.aiTelemetryEnabled)
-  const hydrated = usePrivacyStore((state) => state.hydrated)
-  const hydrate = usePrivacyStore((state) => state.hydrate)
-  const setPrivacySetting = usePrivacyStore((state) => state.setPrivacySetting)
+  const errorReportingEnabled = usePrivacyStore(state => state.errorReportingEnabled)
+  const telemetryEnabled = usePrivacyStore(state => state.telemetryEnabled)
+  const aiTelemetryEnabled = usePrivacyStore(state => state.aiTelemetryEnabled)
+  const hydrated = usePrivacyStore(state => state.hydrated)
+  const hydrate = usePrivacyStore(state => state.hydrate)
+  const setPrivacySetting = usePrivacyStore(state => state.setPrivacySetting)
 
   const [savingKey, setSavingKey] = useState<PrivacySettingKey | null>(null)
   const [pendingKey, setPendingKey] = useState<PrivacySettingKey | null>(null)
@@ -27,13 +29,19 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
   }, [hydrate])
 
   function isEnabled(key: PrivacySettingKey): boolean {
-    if (key === 'errorReportingEnabled') {return errorReportingEnabled}
-    if (key === 'telemetryEnabled') {return telemetryEnabled}
+    if (key === 'errorReportingEnabled') {
+      return errorReportingEnabled
+    }
+    if (key === 'telemetryEnabled') {
+      return telemetryEnabled
+    }
     return aiTelemetryEnabled
   }
 
   async function handleSwitchChange(key: PrivacySettingKey, checked: boolean): Promise<void> {
-    if (!hydrated || savingKey || confirmLoading) {return}
+    if (!hydrated || savingKey || confirmLoading) {
+      return
+    }
     if (checked) {
       setPendingKey(key)
       return
@@ -41,21 +49,28 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
     setSavingKey(key)
     try {
       const saved = await setPrivacySetting(key, false)
-      if (saved) {toast.success(`已关闭“${privacyDisclosureFor(key).title}”`)}
-      else {toast.error('隐私设置保存失败，请重试')}
+      if (saved) {
+        toast.success(`已关闭“${privacyDisclosureFor(key).title}”`)
+      } else {
+        toast.error('隐私设置保存失败，请重试')
+      }
     } finally {
       setSavingKey(null)
     }
   }
 
   function cancelEnable(): void {
-    if (confirmLoading) {return}
+    if (confirmLoading) {
+      return
+    }
     setPendingKey(null)
   }
 
   async function confirmEnable(): Promise<void> {
     const key = pendingKey
-    if (!key || confirmLoading) {return}
+    if (!key || confirmLoading) {
+      return
+    }
     setConfirmLoading(true)
     try {
       const saved = await setPrivacySetting(key, true)
@@ -71,10 +86,10 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
   }
 
   return (
-    <section className={styles.settingsSection} data-settings-section="" aria-label="隐私设置">
+    <section className={styles.settingsSection} data-settings-section='' aria-label='隐私设置'>
       <h3 className={styles.sectionTitle}>隐私</h3>
 
-      {PRIVACY_DISCLOSURES.map((item) => {
+      {PRIVACY_DISCLOSURES.map(item => {
         const enabled = isEnabled(item.key)
         return (
           <div key={item.key} className={styles.settingsBlock}>
@@ -91,7 +106,7 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
                 loading={savingKey === item.key}
                 disabled={!hydrated || confirmLoading}
                 aria-label={item.title}
-                onChange={(checked) => void handleSwitchChange(item.key, checked)}
+                onChange={checked => void handleSwitchChange(item.key, checked)}
               />
             </div>
           </div>
@@ -112,7 +127,7 @@ export function PrivacySettings(_props: PrivacySettingsProps) {
             <Button disabled={confirmLoading} onClick={cancelEnable}>
               取消
             </Button>
-            <Button variant="primary" loading={confirmLoading} onClick={() => void confirmEnable()}>
+            <Button variant='primary' loading={confirmLoading} onClick={() => void confirmEnable()}>
               已知晓并开启
             </Button>
           </div>

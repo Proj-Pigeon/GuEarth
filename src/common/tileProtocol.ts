@@ -25,15 +25,19 @@ export function isRetryableTileStatus(status: number): boolean {
 }
 
 export function tileRetryDelayMs(attempt: number, baseDelayMs = TILE_RETRY_BASE_DELAY_MS): number {
-  return baseDelayMs * (2 ** attempt)
+  return baseDelayMs * 2 ** attempt
 }
 
 function defaultSleep(ms: number): Promise<void> {
-  return new Promise((resolve) => { setTimeout(resolve, ms) })
+  return new Promise(resolve => {
+    setTimeout(resolve, ms)
+  })
 }
 
 function normalizeRetryAttempts(attempts: number | undefined): number {
-  if (attempts === undefined || !Number.isFinite(attempts)) {return TILE_FETCH_ATTEMPTS}
+  if (attempts === undefined || !Number.isFinite(attempts)) {
+    return TILE_FETCH_ATTEMPTS
+  }
   return Math.max(1, Math.trunc(attempts))
 }
 
@@ -60,7 +64,9 @@ export async function fetchTilePayloadWithRetry(
       await sleep(tileRetryDelayMs(attempt, baseDelayMs))
     } catch (error) {
       lastError = error
-      if (attempt < attempts - 1) {await sleep(tileRetryDelayMs(attempt, baseDelayMs))}
+      if (attempt < attempts - 1) {
+        await sleep(tileRetryDelayMs(attempt, baseDelayMs))
+      }
     }
   }
   throw lastError
@@ -94,7 +100,10 @@ export function tileFailureResponse(): Response {
   return new Response('Tile unavailable', { status: TILE_FAILURE_STATUS })
 }
 
-export async function serveTileResponse(load: () => Promise<Response> | Response, onFailure?: (error: unknown) => void): Promise<Response> {
+export async function serveTileResponse(
+  load: () => Promise<Response> | Response,
+  onFailure?: (error: unknown) => void
+): Promise<Response> {
   try {
     return await load()
   } catch (error) {

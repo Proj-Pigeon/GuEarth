@@ -5,10 +5,14 @@ export interface RequestErrorShape {
 }
 
 export function isRequestErrorShape(reason: unknown): reason is RequestErrorShape {
-  if (!reason || typeof reason !== 'object' || reason instanceof Error || Array.isArray(reason)) {return false}
+  if (!reason || typeof reason !== 'object' || reason instanceof Error || Array.isArray(reason)) {
+    return false
+  }
   const keys = Object.keys(reason)
-  if (keys.length !== REQUEST_ERROR_KEYS.length) {return false}
-  return REQUEST_ERROR_KEYS.every((key) => keys.includes(key))
+  if (keys.length !== REQUEST_ERROR_KEYS.length) {
+    return false
+  }
+  return REQUEST_ERROR_KEYS.every(key => keys.includes(key))
 }
 
 export function describeRequestError(reason: RequestErrorShape): string {

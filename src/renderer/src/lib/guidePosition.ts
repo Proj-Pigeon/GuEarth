@@ -38,9 +38,11 @@ export function computeGuideCardPosition(
   }
 
   const spaceAbove = targetRect.top - VIEWPORT_MARGIN - TARGET_GAP
-  const spaceBelow = viewportHeight - (targetRect.top + targetRect.height) - VIEWPORT_MARGIN - TARGET_GAP
+  const spaceBelow =
+    viewportHeight - (targetRect.top + targetRect.height) - VIEWPORT_MARGIN - TARGET_GAP
   const spaceLeft = targetRect.left - VIEWPORT_MARGIN - TARGET_GAP
-  const spaceRight = viewportWidth - (targetRect.left + targetRect.width) - VIEWPORT_MARGIN - TARGET_GAP
+  const spaceRight =
+    viewportWidth - (targetRect.left + targetRect.width) - VIEWPORT_MARGIN - TARGET_GAP
 
   let top: number
   let left: number

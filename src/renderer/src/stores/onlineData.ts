@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+
 import type { OnlineDataSnapshot } from '../../../common/onlineData'
 import { useFailureStore } from './failure'
 
@@ -39,7 +40,9 @@ let unsubscribeOnlineData: (() => void) | null = null
 
 function applySnapshot(data: OnlineDataSnapshot): void {
   const previous = useOnlineDataStore.getState().snapshot
-  if (previous && data.revision <= previous.revision) {return}
+  if (previous && data.revision <= previous.revision) {
+    return
+  }
   useOnlineDataStore.setState({
     snapshot: data,
     typhoonLoading: selectTyphoonLoading({ snapshot: data })
@@ -54,11 +57,17 @@ function applySnapshot(data: OnlineDataSnapshot): void {
 }
 
 function ensureSubscribed(): () => void {
-  if (!unsubscribeOnlineData && typeof window !== 'undefined' && typeof window.guEarth?.datasets?.onOnlineData === 'function') {
+  if (
+    !unsubscribeOnlineData &&
+    typeof window !== 'undefined' &&
+    typeof window.guEarth?.datasets?.onOnlineData === 'function'
+  ) {
     unsubscribeOnlineData = window.guEarth.datasets.onOnlineData(applySnapshot)
   }
   return () => {
-    if (!unsubscribeOnlineData) {return}
+    if (!unsubscribeOnlineData) {
+      return
+    }
     const dispose = unsubscribeOnlineData
     unsubscribeOnlineData = null
     dispose()
@@ -73,7 +82,9 @@ export const useOnlineDataStore = create<OnlineDataStore>()(
     },
     load(): Promise<void> {
       ensureSubscribed()
-      if (pending) {return pending}
+      if (pending) {
+        return pending
+      }
       pending = (async () => {
         try {
           applySnapshot(await window.guEarth.datasets.getOnlineData())
@@ -88,7 +99,9 @@ export const useOnlineDataStore = create<OnlineDataStore>()(
     async ensureTyphoons(retry = false): Promise<void> {
       await get().load()
       const status = get().snapshot?.typhoonStatus
-      if (status !== 'pending' && !(retry && status === 'error')) {return}
+      if (status !== 'pending' && !(retry && status === 'error')) {
+        return
+      }
       try {
         applySnapshot(await window.guEarth.datasets.ensureTyphoons(retry))
       } catch {

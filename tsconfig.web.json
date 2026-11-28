@@ -16,9 +16,5 @@
       "@/*": ["./src/renderer/src/*"]
     }
   },
-  "include": [
-    "src/common/**/*",
-    "src/renderer/src/**/*",
-    "src/preload/index.d.ts"
-  ]
+  "include": ["src/common/**/*", "src/renderer/src/**/*", "src/preload/index.d.ts"]
 }

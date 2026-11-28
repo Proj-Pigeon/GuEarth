@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
 import { AuiIf, ComposerPrimitive, useAui, useAuiState } from '@assistant-ui/react'
-import { ArrowUpIcon, ChevronUpIcon, SquareIcon } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { DropdownMenu } from '@renderer/components/ui';
-import type { DropdownMenuEntry } from '@renderer/components/ui';
-import { useAiStore } from '@renderer/stores/ai'
-import type { AiModelConfig, AiProviderConfig } from '../../../../preload'
+import { DropdownMenu } from '@renderer/components/ui'
+import type { DropdownMenuEntry } from '@renderer/components/ui'
 import { cn } from '@renderer/lib/utils'
+import { useAiStore } from '@renderer/stores/ai'
+import { ArrowUpIcon, ChevronUpIcon, SquareIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
+
+import type { AiModelConfig, AiProviderConfig } from '../../../../preload'
 import ContextMeter from '../ContextMeter'
 import EoqIconButton from './EoqIconButton'
+
 import styles from '../EoqAssistant.module.css'
 
 export interface EoqSlashCommand {
@@ -29,15 +31,15 @@ function modelKey(provider: AiProviderConfig, model: AiModelConfig): string {
 
 export function EoqComposer({ commands }: EoqComposerProps) {
   const aui = useAui()
-  const composerText = useAuiState((state) => state.composer.text)
-  const isRunning = useAuiState((state) => state.thread.isRunning)
+  const composerText = useAuiState(state => state.composer.text)
+  const isRunning = useAuiState(state => state.thread.isRunning)
 
-  const settings = useAiStore((state) => state.settings)
-  const contextStats = useAiStore((state) => state.contextStats)
-  const contextCompressionStatus = useAiStore((state) => state.contextCompressionStatus)
-  const contextCompressionNotice = useAiStore((state) => state.contextCompressionNotice)
-  const setActiveModel = useAiStore((state) => state.setActiveModel)
-  const compressContext = useAiStore((state) => state.compressContext)
+  const settings = useAiStore(state => state.settings)
+  const contextStats = useAiStore(state => state.contextStats)
+  const contextCompressionStatus = useAiStore(state => state.contextCompressionStatus)
+  const contextCompressionNotice = useAiStore(state => state.contextCompressionNotice)
+  const setActiveModel = useAiStore(state => state.setActiveModel)
+  const compressContext = useAiStore(state => state.compressContext)
 
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [commandDismissed, setCommandDismissed] = useState(false)
@@ -50,15 +52,13 @@ export function EoqComposer({ commands }: EoqComposerProps) {
     : ''
 
   const filteredCommands = useMemo(
-    () => commands.filter((command) => !commandQuery || command.name.slice(1).startsWith(commandQuery)),
+    () =>
+      commands.filter(command => !commandQuery || command.name.slice(1).startsWith(commandQuery)),
     [commands, commandQuery]
   )
 
   const commandMenuOpen =
-    trimmedStart.startsWith('/') &&
-    !isRunning &&
-    !commandDismissed &&
-    filteredCommands.length > 0
+    trimmedStart.startsWith('/') && !isRunning && !commandDismissed && filteredCommands.length > 0
 
   const safeActiveIndex =
     filteredCommands.length > 0 ? activeCommandIndex % filteredCommands.length : 0
@@ -81,12 +81,18 @@ export function EoqComposer({ commands }: EoqComposerProps) {
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.nativeEvent.isComposing || event.keyCode === 229) {return}
-      if (!commandMenuOpen || filteredCommands.length === 0) {return}
+      if (event.nativeEvent.isComposing || event.keyCode === 229) {
+        return
+      }
+      if (!commandMenuOpen || filteredCommands.length === 0) {
+        return
+      }
 
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         const offset = event.key === 'ArrowDown' ? 1 : -1
-        setActiveCommandIndex((prev) => (prev + offset + filteredCommands.length) % filteredCommands.length)
+        setActiveCommandIndex(
+          prev => (prev + offset + filteredCommands.length) % filteredCommands.length
+        )
         event.preventDefault()
         return
       }
@@ -111,18 +117,19 @@ export function EoqComposer({ commands }: EoqComposerProps) {
   const modelProviders = useMemo(
     () =>
       settings.providers
-        .map((provider) => ({ ...provider, models: provider.models.filter((model) => model.enabled) }))
-        .filter((provider) => provider.models.length > 0),
+        .map(provider => ({ ...provider, models: provider.models.filter(model => model.enabled) }))
+        .filter(provider => provider.models.length > 0),
     [settings.providers]
   )
 
   const activeProvider = useMemo(
-    () => settings.providers.find((provider) => provider.id === settings.activeProviderId),
+    () => settings.providers.find(provider => provider.id === settings.activeProviderId),
     [settings.activeProviderId, settings.providers]
   )
 
   const activeModel = useMemo(
-    () => activeProvider?.models.find((model) => model.id === settings.activeModelId && model.enabled),
+    () =>
+      activeProvider?.models.find(model => model.id === settings.activeModelId && model.enabled),
     [activeProvider, settings.activeModelId]
   )
 
@@ -131,7 +138,9 @@ export function EoqComposer({ commands }: EoqComposerProps) {
   const handleModelSelect = useCallback(
     (choice: string) => {
       const separatorIndex = choice.indexOf(':')
-      if (separatorIndex === -1) {return}
+      if (separatorIndex === -1) {
+        return
+      }
       setModelMenuOpen(false)
       void setActiveModel(choice.slice(0, separatorIndex), choice.slice(separatorIndex + 1))
     },
@@ -148,11 +157,11 @@ export function EoqComposer({ commands }: EoqComposerProps) {
         }
       ]
     }
-    return modelProviders.map((provider) => ({
+    return modelProviders.map(provider => ({
       type: 'group' as const,
       key: provider.id,
       label: provider.name,
-      children: provider.models.map((model) => ({
+      children: provider.models.map(model => ({
         key: modelKey(provider, model),
         label: (
           <span className={styles.modelMenuItem}>
@@ -167,12 +176,12 @@ export function EoqComposer({ commands }: EoqComposerProps) {
   }, [modelProviders])
 
   return (
-    <div className="relative flex flex-col">
+    <div className='relative flex flex-col'>
       {commandMenuOpen && (
         <div
-          role="listbox"
-          aria-label="快捷指令"
-          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 animate-eoq-fade-up rounded-xl border border-hairline bg-popover p-1 shadow-[var(--shadow-popup)] motion-reduce:animate-none"
+          role='listbox'
+          aria-label='快捷指令'
+          className='animate-eoq-fade-up border-hairline bg-popover absolute inset-x-0 bottom-[calc(100%+8px)] z-20 rounded-xl border p-1 shadow-[var(--shadow-popup)] motion-reduce:animate-none'
         >
           {filteredCommands.map((command, index) => {
             const IconComponent = command.icon
@@ -180,27 +189,28 @@ export function EoqComposer({ commands }: EoqComposerProps) {
             return (
               <button
                 key={command.name}
-                type="button"
-                role="option"
+                type='button'
+                role='option'
                 aria-selected={active}
                 onMouseEnter={() => setActiveCommandIndex(index)}
-                onMouseDown={(event) => event.preventDefault()}
+                onMouseDown={event => event.preventDefault()}
                 onClick={() => selectCommand(command)}
                 className={cn(
                   'flex w-full cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2.5 py-1.5 text-left text-[13px] leading-[22px] transition-colors duration-100',
-                  active ? 'bg-active-fill text-ink' : 'text-ink-secondary hover:bg-hover-fill hover:text-ink'
+                  active
+                    ? 'bg-active-fill text-ink'
+                    : 'text-ink-secondary hover:bg-hover-fill hover:text-ink'
                 )}
               >
                 <IconComponent
-                  className={cn(
-                    'size-3.5 shrink-0',
-                    active ? 'text-ink' : 'text-ink-tertiary'
-                  )}
+                  className={cn('size-3.5 shrink-0', active ? 'text-ink' : 'text-ink-tertiary')}
                 />
-                <span className={cn('w-20 shrink-0 font-mono text-[12px]', active && 'font-semibold')}>
+                <span
+                  className={cn('w-20 shrink-0 font-mono text-[12px]', active && 'font-semibold')}
+                >
                   {command.name}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[12px] text-ink-tertiary">
+                <span className='text-ink-tertiary min-w-0 flex-1 truncate text-[12px]'>
                   {command.label}
                 </span>
               </button>
@@ -209,27 +219,29 @@ export function EoqComposer({ commands }: EoqComposerProps) {
         </div>
       )}
 
-      <ComposerPrimitive.Root className="flex w-full flex-col">
+      <ComposerPrimitive.Root className='flex w-full flex-col'>
         <div
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {inputRef.current?.focus()}
+          onClick={event => {
+            if (event.target === event.currentTarget) {
+              inputRef.current?.focus()
+            }
           }}
-          className="flex cursor-text flex-col gap-2 rounded-2xl border border-border-strong bg-elevated px-3 pt-2.5 pb-2 transition-[border-color,box-shadow] duration-200 hover:border-ink/25 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/12 motion-reduce:transition-none"
+          className='border-border-strong bg-elevated hover:border-ink/25 focus-within:border-ring focus-within:ring-ring/12 flex cursor-text flex-col gap-2 rounded-2xl border px-3 pt-2.5 pb-2 transition-[border-color,box-shadow] duration-200 focus-within:ring-2 motion-reduce:transition-none'
         >
           <ComposerPrimitive.Input
             ref={inputRef}
             minRows={1}
             maxRows={5}
-            placeholder="问一问地球，例如：帮我找典型的流水侵蚀地貌"
-            aria-label="输入问题"
-            enterKeyHint="send"
+            placeholder='问一问地球，例如：帮我找典型的流水侵蚀地貌'
+            aria-label='输入问题'
+            enterKeyHint='send'
             cancelOnEscape={false}
             onKeyDown={handleKeyDown}
-            className="w-full resize-none border-0 bg-transparent p-0 text-[14px] leading-[22px] text-foreground shadow-none outline-none ring-0 placeholder:text-muted-foreground focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none"
+            className='text-foreground placeholder:text-muted-foreground w-full resize-none border-0 bg-transparent p-0 text-[14px] leading-[22px] shadow-none ring-0 outline-none focus:border-0 focus:ring-0 focus:outline-none focus-visible:outline-none'
           />
 
-          <div className="flex items-center justify-between gap-2 pt-0.5">
-            <div className="flex min-w-0 flex-1 items-center gap-1">
+          <div className='flex items-center justify-between gap-2 pt-0.5'>
+            <div className='flex min-w-0 flex-1 items-center gap-1'>
               <ContextMeter
                 stats={contextStats}
                 status={contextCompressionStatus}
@@ -240,21 +252,21 @@ export function EoqComposer({ commands }: EoqComposerProps) {
               <DropdownMenu
                 open={modelMenuOpen}
                 onOpenChange={setModelMenuOpen}
-                placement="topLeft"
+                placement='topLeft'
                 menuClassName={styles.modelMenu}
                 selectedKeys={[`${settings.activeProviderId}:${settings.activeModelId}`]}
                 items={modelMenuItems}
                 onSelect={handleModelSelect}
               >
                 <button
-                  type="button"
+                  type='button'
                   disabled={isRunning}
-                  aria-label="选择模型"
-                  aria-haspopup="menu"
+                  aria-label='选择模型'
+                  aria-haspopup='menu'
                   aria-expanded={modelMenuOpen}
-                  className="inline-flex h-7 max-w-[168px] min-w-0 cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent px-2 text-[12px] leading-5 text-ink-secondary transition-colors duration-100 hover:bg-hover-fill hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-40"
+                  className='text-ink-secondary hover:bg-hover-fill hover:text-ink focus-visible:ring-ring/30 inline-flex h-7 max-w-[168px] min-w-0 cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent px-2 text-[12px] leading-5 transition-colors duration-100 focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40'
                 >
-                  <span className="truncate">{activeModelLabel}</span>
+                  <span className='truncate'>{activeModelLabel}</span>
                   <ChevronUpIcon
                     className={cn(
                       'size-3.5 shrink-0 opacity-60 transition-transform duration-200 motion-reduce:transition-none',
@@ -265,31 +277,31 @@ export function EoqComposer({ commands }: EoqComposerProps) {
               </DropdownMenu>
             </div>
 
-            <div className="flex shrink-0 items-center">
-              <AuiIf condition={(state) => !state.thread.isRunning}>
+            <div className='flex shrink-0 items-center'>
+              <AuiIf condition={state => !state.thread.isRunning}>
                 <ComposerPrimitive.Send asChild>
                   <EoqIconButton
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    tooltip="发送"
-                    aria-label="发送"
+                    type='submit'
+                    variant='primary'
+                    size='md'
+                    tooltip='发送'
+                    aria-label='发送'
                     disabled={!composerText.trim()}
                   >
-                    <ArrowUpIcon className="size-4" />
+                    <ArrowUpIcon className='size-4' />
                   </EoqIconButton>
                 </ComposerPrimitive.Send>
               </AuiIf>
-              <AuiIf condition={(state) => state.thread.isRunning}>
+              <AuiIf condition={state => state.thread.isRunning}>
                 <ComposerPrimitive.Cancel asChild>
                   <EoqIconButton
-                    type="button"
-                    variant="ink"
-                    size="md"
-                    tooltip="停止生成"
-                    aria-label="停止生成"
+                    type='button'
+                    variant='ink'
+                    size='md'
+                    tooltip='停止生成'
+                    aria-label='停止生成'
                   >
-                    <SquareIcon className="size-3 fill-current" />
+                    <SquareIcon className='size-3 fill-current' />
                   </EoqIconButton>
                 </ComposerPrimitive.Cancel>
               </AuiIf>

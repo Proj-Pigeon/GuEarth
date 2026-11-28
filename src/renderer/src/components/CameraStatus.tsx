@@ -1,4 +1,5 @@
 import type { CameraReadout } from '@renderer/stores/globe'
+
 import styles from './CameraStatus.module.css'
 
 export interface CameraStatusProps {
@@ -12,8 +13,12 @@ function formatCoordinate(value: number, isLongitude: boolean): string {
 }
 
 function formatHeight(height: number): string {
-  if (height > 1_000_000) {return `${(height / 1_000_000).toFixed(2)} Mm`}
-  if (height > 1000) {return `${(height / 1000).toFixed(2)} km`}
+  if (height > 1_000_000) {
+    return `${(height / 1_000_000).toFixed(2)} Mm`
+  }
+  if (height > 1000) {
+    return `${(height / 1000).toFixed(2)} km`
+  }
   return `${height.toFixed(0)} m`
 }
 

@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import * as Cesium from 'cesium'
-import { Loader2Icon, XIcon } from 'lucide-react'
 import { Alert, Button, Select } from '@renderer/components/ui'
-import { mountainById, snowlineM, zonationMountains, zonationPrinciples } from '@renderer/thematic/mountainZonation';
-import type { ZonationMountain, ZonationSlope } from '@renderer/thematic/mountainZonation';
-import { greatCircleKm } from '@renderer/lib/transect'
 import {
   cancelTransectFlight,
   clearTransectOverlay,
   flyTransect,
   sampleTransectGround
 } from '@renderer/composables/useTransectFlight'
+import { greatCircleKm } from '@renderer/lib/transect'
+import {
+  mountainById,
+  snowlineM,
+  zonationMountains,
+  zonationPrinciples
+} from '@renderer/thematic/mountainZonation'
+import type { ZonationMountain, ZonationSlope } from '@renderer/thematic/mountainZonation'
+import * as Cesium from 'cesium'
+import { Loader2Icon, XIcon } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
 import styles from './ZonationPanel.module.css'
 
 export interface ZonationPanelProps {
@@ -30,7 +36,7 @@ const PROFILE_RIGHT = 6
 const PROFILE_TOP = 10
 const PROFILE_BOTTOM = 20
 
-const mountainOptions = zonationMountains.map((mountain) => ({
+const mountainOptions = zonationMountains.map(mountain => ({
   label: `${mountain.name} · ${mountain.range}`,
   value: mountain.id
 }))
@@ -61,7 +67,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
     return active.slopes.map((slope: ZonationSlope, index: number) => {
       const cx = paired ? (index === 0 ? 104 : 274) : 189
       const halfW = paired ? 64 : 105
-      const belts = slope.belts.map((belt) => ({
+      const belts = slope.belts.map(belt => ({
         ...belt,
         y: spectrumY(active, belt.toM),
         height: Math.max(1, spectrumY(active, belt.fromM) - spectrumY(active, belt.toM))
@@ -82,19 +88,24 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
   const profileLayout = useMemo(() => {
     const maxKm = Math.max(40, Math.ceil(profile[profile.length - 1]?.[0] ?? 40))
     const elevMax = Math.max(1, active.summitM * 1.08)
-    const toX = (km: number): number => PROFILE_LEFT + (km / maxKm) * (PROFILE_W - PROFILE_LEFT - PROFILE_RIGHT)
+    const toX = (km: number): number =>
+      PROFILE_LEFT + (km / maxKm) * (PROFILE_W - PROFILE_LEFT - PROFILE_RIGHT)
     const toY = (elevationM: number): number =>
       PROFILE_TOP + (1 - elevationM / elevMax) * (PROFILE_H - PROFILE_TOP - PROFILE_BOTTOM)
     let summit: { x: number; y: number; elevationM: number } | undefined
     for (const [km, elevationM] of profile) {
-      if (!summit || elevationM > summit.elevationM) {summit = { x: toX(km), y: toY(elevationM), elevationM }}
+      if (!summit || elevationM > summit.elevationM) {
+        summit = { x: toX(km), y: toY(elevationM), elevationM }
+      }
     }
     const stripeSlope = active.slopes[0]
     const snow = snowlineM(stripeSlope)
     return {
       maxKm,
-      linePoints: profile.map(([km, elevationM]) => `${toX(km).toFixed(1)},${toY(elevationM).toFixed(1)}`).join(' '),
-      stripes: stripeSlope.belts.map((belt) => ({
+      linePoints: profile
+        .map(([km, elevationM]) => `${toX(km).toFixed(1)},${toY(elevationM).toFixed(1)}`)
+        .join(' '),
+      stripes: stripeSlope.belts.map(belt => ({
         color: belt.color,
         y: toY(belt.toM),
         height: Math.max(1, toY(belt.fromM) - toY(belt.toM))
@@ -112,17 +123,20 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
       profileRequestIdRef.current += 1
       const requestId = profileRequestIdRef.current
       setProfile([])
-      if (!targetViewer || targetViewer.isDestroyed()) {return}
+      if (!targetViewer || targetViewer.isDestroyed()) {
+        return
+      }
       setSampling(true)
       setDegraded(false)
       try {
-        const { path, heights, degraded: sampledDegraded } = await sampleTransectGround(
-          targetViewer,
-          mountain.transect,
-          undefined,
-          mountain.summitM
-        )
-        if (requestId !== profileRequestIdRef.current) {return}
+        const {
+          path,
+          heights,
+          degraded: sampledDegraded
+        } = await sampleTransectGround(targetViewer, mountain.transect, undefined, mountain.summitM)
+        if (requestId !== profileRequestIdRef.current) {
+          return
+        }
         setDegraded(sampledDegraded)
         let distance = 0
         setProfile(
@@ -135,7 +149,9 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
           })
         )
       } finally {
-        if (requestId === profileRequestIdRef.current) {setSampling(false)}
+        if (requestId === profileRequestIdRef.current) {
+          setSampling(false)
+        }
       }
     },
     []
@@ -145,7 +161,11 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
     (mountain: ZonationMountain, targetViewer: Cesium.Viewer | undefined): void => {
       if (targetViewer && !targetViewer.isDestroyed()) {
         targetViewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(mountain.longitude, mountain.latitude, mountain.viewHeight),
+          destination: Cesium.Cartesian3.fromDegrees(
+            mountain.longitude,
+            mountain.latitude,
+            mountain.viewHeight
+          ),
           duration: 1.4
         })
       }
@@ -174,7 +194,9 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
 
   function selectMountain(mountainId: string): void {
     const mountain = mountainById(mountainId)
-    if (!mountain) {return}
+    if (!mountain) {
+      return
+    }
     activeIdRef.current = mountain.id
     setActiveId(mountain.id)
     setFlightNote('')
@@ -182,7 +204,9 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
   }
 
   async function startFlight(): Promise<void> {
-    if (flying) {return}
+    if (flying) {
+      return
+    }
     if (!viewer || viewer.isDestroyed()) {
       setFlightNote('地球尚未就绪，稍后再试')
       return
@@ -193,7 +217,9 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
       const result = await flyTransect(viewer, active.transect, {
         expectedMaxGroundM: active.summitM,
         onProgress: ({ stage, completed, total }) => {
-          if (!mountedRef.current) {return}
+          if (!mountedRef.current) {
+            return
+          }
           if (stage === 'prewarm') {
             setFlightNote(`飞行准备：并发预载沿线影像（画面短暂降暗）${completed}/${total}…`)
           } else if (stage === 'flying') {
@@ -201,7 +227,9 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
           }
         }
       })
-      if (!mountedRef.current) {return}
+      if (!mountedRef.current) {
+        return
+      }
       if ('error' in result) {
         setFlightNote(result.error)
       } else if (result.status === 'interrupted') {
@@ -222,45 +250,70 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
         )
       }
     } finally {
-      if (mountedRef.current) {setFlying(false)}
+      if (mountedRef.current) {
+        setFlying(false)
+      }
     }
   }
 
   return (
-    <div className={styles.zonationPanel} role="group" aria-label="山地垂直带谱剖面">
+    <div className={styles.zonationPanel} role='group' aria-label='山地垂直带谱剖面'>
       <div className={styles.panelHeader}>
         <span className={styles.panelTitle}>山地垂直带谱剖面</span>
-        <Button variant="ghost" size="sm" aria-label="关闭山地垂直带谱剖面" icon={<XIcon className="size-3.5" />} onClick={onClose} />
+        <Button
+          variant='ghost'
+          size='sm'
+          aria-label='关闭山地垂直带谱剖面'
+          icon={<XIcon className='size-3.5' />}
+          onClick={onClose}
+        />
       </div>
 
       <Select
-        size="sm"
+        size='sm'
         value={activeId}
         options={mountainOptions}
-        aria-label="选择山脉"
-        onChange={(value) => {
-          if (value) {selectMountain(String(value))}
+        aria-label='选择山脉'
+        onChange={value => {
+          if (value) {
+            selectMountain(String(value))
+          }
         }}
       />
 
-      <svg viewBox={`0 0 ${SPECTRUM_W} ${SPECTRUM_H}`} className={styles.spectrum} role="img" aria-label="垂直带谱示意">
+      <svg
+        viewBox={`0 0 ${SPECTRUM_W} ${SPECTRUM_H}`}
+        className={styles.spectrum}
+        role='img'
+        aria-label='垂直带谱示意'
+      >
         <defs>
-          {slopeLayouts.map((layout) => (
+          {slopeLayouts.map(layout => (
             <clipPath id={layout.clipId} key={layout.clipId}>
               <path d={layout.triangle} />
             </clipPath>
           ))}
         </defs>
-        <text x={SPECTRUM_LEFT - 4} y={SPECTRUM_BASE_Y + 3} textAnchor="end" className={styles.axisLabel}>
+        <text
+          x={SPECTRUM_LEFT - 4}
+          y={SPECTRUM_BASE_Y + 3}
+          textAnchor='end'
+          className={styles.axisLabel}
+        >
           0
         </text>
-        <text x={SPECTRUM_LEFT - 4} y={SPECTRUM_TOP_Y + 4} textAnchor="end" className={styles.axisLabel}>
+        <text
+          x={SPECTRUM_LEFT - 4}
+          y={SPECTRUM_TOP_Y + 4}
+          textAnchor='end'
+          className={styles.axisLabel}
+        >
           {active.summitM}
         </text>
-        {slopeLayouts.map((layout) => (
+        {slopeLayouts.map(layout => (
           <g key={layout.slope.label}>
             <g clipPath={`url(#${layout.clipId})`}>
-              {layout.belts.map((belt) => (
+              {layout.belts.map(belt => (
                 <rect
                   key={belt.id}
                   x={layout.cx - layout.halfW}
@@ -271,7 +324,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
                 />
               ))}
             </g>
-            <path d={layout.triangle} fill="none" stroke="var(--ink-tertiary)" strokeWidth="1" />
+            <path d={layout.triangle} fill='none' stroke='var(--ink-tertiary)' strokeWidth='1' />
             {layout.snowY !== undefined && (
               <>
                 <line
@@ -279,17 +332,26 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
                   x2={layout.cx + layout.halfW}
                   y1={layout.snowY}
                   y2={layout.snowY}
-                  stroke="#f5222d"
-                  strokeWidth="1"
-                  strokeDasharray="4 3"
-                  opacity="0.7"
+                  stroke='#f5222d'
+                  strokeWidth='1'
+                  strokeDasharray='4 3'
+                  opacity='0.7'
                 />
-                <text x={layout.cx + layout.halfW + 2} y={layout.snowY + 3} className={styles.snowlineLabel}>
+                <text
+                  x={layout.cx + layout.halfW + 2}
+                  y={layout.snowY + 3}
+                  className={styles.snowlineLabel}
+                >
                   雪线
                 </text>
               </>
             )}
-            <text x={layout.cx} y={SPECTRUM_BASE_Y + 14} textAnchor="middle" className={styles.slopeLabel}>
+            <text
+              x={layout.cx}
+              y={SPECTRUM_BASE_Y + 14}
+              textAnchor='middle'
+              className={styles.slopeLabel}
+            >
               {layout.slope.label}
             </text>
           </g>
@@ -303,9 +365,9 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
             : styles.slopeLegends
         }
       >
-        {slopeLayouts.map((layout) => (
+        {slopeLayouts.map(layout => (
           <div key={layout.slope.label} className={styles.slopeLegend}>
-            {[...layout.slope.belts].reverse().map((belt) => (
+            {[...layout.slope.belts].reverse().map(belt => (
               <div key={belt.id} className={styles.beltChip} title={belt.note}>
                 <span className={styles.beltSwatch} style={{ background: belt.color }} />
                 <span className={styles.beltName}>{belt.name}</span>
@@ -319,11 +381,11 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
       </div>
 
       <div className={styles.flightRow}>
-        <Button variant="primary" size="sm" loading={flying} onClick={() => void startFlight()}>
+        <Button variant='primary' size='sm' loading={flying} onClick={() => void startFlight()}>
           沿剖面飞行
         </Button>
         {flying && (
-          <Button size="sm" onClick={cancelTransectFlight}>
+          <Button size='sm' onClick={cancelTransectFlight}>
             停止
           </Button>
         )}
@@ -335,7 +397,12 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
         {sampling && <Loader2Icon className={`${styles.loadingIcon} size-3.5 animate-spin`} />}
       </div>
 
-      <svg viewBox={`0 0 ${PROFILE_W} ${PROFILE_H}`} className={styles.profile} role="img" aria-label="沿剖面真实地形高程">
+      <svg
+        viewBox={`0 0 ${PROFILE_W} ${PROFILE_H}`}
+        className={styles.profile}
+        role='img'
+        aria-label='沿剖面真实地形高程'
+      >
         {profileLayout.stripes.map((stripe, index) => (
           <rect
             key={index}
@@ -344,7 +411,7 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
             width={PROFILE_W - PROFILE_LEFT - PROFILE_RIGHT}
             height={stripe.height}
             fill={stripe.color}
-            opacity="0.16"
+            opacity='0.16'
           />
         ))}
         {profileLayout.snowY !== undefined && (
@@ -353,10 +420,10 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
             x2={PROFILE_W - PROFILE_RIGHT}
             y1={profileLayout.snowY}
             y2={profileLayout.snowY}
-            stroke="#f5222d"
-            strokeWidth="1"
-            strokeDasharray="4 3"
-            opacity="0.6"
+            stroke='#f5222d'
+            strokeWidth='1'
+            strokeDasharray='4 3'
+            opacity='0.6'
           />
         )}
         <line
@@ -364,62 +431,85 @@ export function ZonationPanel({ viewer, onClose }: ZonationPanelProps) {
           x2={PROFILE_W - PROFILE_RIGHT}
           y1={profileLayout.baseY}
           y2={profileLayout.baseY}
-          stroke="var(--border-strong)"
-          strokeWidth="1"
+          stroke='var(--border-strong)'
+          strokeWidth='1'
         />
         <polyline
           points={profileLayout.linePoints}
-          fill="none"
-          stroke="#1677ff"
-          strokeWidth="2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
+          fill='none'
+          stroke='#1677ff'
+          strokeWidth='2'
+          strokeLinejoin='round'
+          strokeLinecap='round'
         />
         {profileLayout.summit && (
           <g>
-            <circle cx={profileLayout.summit.x} cy={profileLayout.summit.y} r="3.5" fill="#1677ff" />
+            <circle
+              cx={profileLayout.summit.x}
+              cy={profileLayout.summit.y}
+              r='3.5'
+              fill='#1677ff'
+            />
             <text
               x={profileLayout.summit.x}
               y={profileLayout.summit.y - 6}
-              textAnchor="middle"
+              textAnchor='middle'
               className={styles.peakLabel}
             >
               {profileLayout.peakElevation} m
             </text>
           </g>
         )}
-        <text x={PROFILE_LEFT - 4} y={profileLayout.baseY + 3} textAnchor="end" className={styles.axisLabel}>
+        <text
+          x={PROFILE_LEFT - 4}
+          y={profileLayout.baseY + 3}
+          textAnchor='end'
+          className={styles.axisLabel}
+        >
           0
         </text>
-        <text x={PROFILE_LEFT - 4} y={PROFILE_TOP + 8} textAnchor="end" className={styles.axisLabel}>
+        <text
+          x={PROFILE_LEFT - 4}
+          y={PROFILE_TOP + 8}
+          textAnchor='end'
+          className={styles.axisLabel}
+        >
           {profileLayout.peakElevation}
         </text>
-        {profileLayout.kmTicks.map((tick) => (
+        {profileLayout.kmTicks.map(tick => (
           <text
             key={tick}
-            x={PROFILE_LEFT + ((PROFILE_W - PROFILE_LEFT - PROFILE_RIGHT) * tick) / profileLayout.maxKm}
+            x={
+              PROFILE_LEFT +
+              ((PROFILE_W - PROFILE_LEFT - PROFILE_RIGHT) * tick) / profileLayout.maxKm
+            }
             y={PROFILE_H - 6}
-            textAnchor="middle"
+            textAnchor='middle'
             className={styles.axisLabel}
           >
             {tick}
           </text>
         ))}
-        <text x={PROFILE_W - PROFILE_RIGHT} y={PROFILE_H - 6} textAnchor="end" className={styles.axisUnit}>
+        <text
+          x={PROFILE_W - PROFILE_RIGHT}
+          y={PROFILE_H - 6}
+          textAnchor='end'
+          className={styles.axisUnit}
+        >
           km
         </text>
       </svg>
 
-      {degraded && <Alert type="warning" showIcon title="部分地形数据未加载，当前剖面仅供参考" />}
+      {degraded && <Alert type='warning' showIcon title='部分地形数据未加载，当前剖面仅供参考' />}
 
       <div className={styles.sectionTitle}>带谱解读</div>
-      {active.facts.map((fact) => (
+      {active.facts.map(fact => (
         <div key={fact} className={styles.fact}>
           · {fact}
         </div>
       ))}
       <div className={styles.sectionTitle}>垂直地域分异要点</div>
-      {zonationPrinciples.map((principle) => (
+      {zonationPrinciples.map(principle => (
         <div key={principle} className={styles.fact}>
           · {principle}
         </div>

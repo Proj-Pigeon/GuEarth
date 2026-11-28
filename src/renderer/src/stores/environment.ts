@@ -20,7 +20,7 @@ export function createInitialEnvironmentState(): EnvironmentState {
 }
 
 export const useEnvironmentStore = create<EnvironmentStore>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector(set => ({
     ...createInitialEnvironmentState(),
     setPanel(value: EnvironmentPanel): void {
       set({ panel: value })
