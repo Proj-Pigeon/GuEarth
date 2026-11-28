@@ -10,3 +10,5 @@ csdn-blog.md
 updater-server/.vercel
 .env
 .vitest/
+.zcode/
+acceptance-videos/

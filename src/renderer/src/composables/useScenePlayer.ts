@@ -15,6 +15,7 @@ import { cacheKeyOf, heightCache, seaLevelGridPoints } from '@renderer/thematic/
 import * as Cesium from 'cesium'
 import { useEffect, useMemo, useState } from 'react'
 
+import { performanceBudget } from '../../../common/performanceBudget'
 import type {
   OffscreenRecordingAnnotation,
   OffscreenRecordingScript,
@@ -617,6 +618,8 @@ export function createScenePlayerController(
     failureStore.clearFailure('recording-quality')
     offscreenRecordingActive = true
     const previousMirrorResolutionScale = current.resolutionScale
+    const previousPerformanceMode = useGlobeStore.getState().performanceMode
+    useGlobeStore.getState().setRecordingMirrorActive(true)
     current.resolutionScale = RECORDING_MIRROR_RESOLUTION_SCALE
     failureStore.registerRetry('recording', async () => {
       const retried = await recordVideo(title, steps)
@@ -672,6 +675,7 @@ export function createScenePlayerController(
       ]
     })
     const recordsSeaLevel = steps.some(step => step.overlays.includes('sea-level-rise'))
+    const recordingBudget = performanceBudget(globeStore.performanceMode)
     const script: OffscreenRecordingScript = {
       title,
       scenes,
@@ -687,10 +691,11 @@ export function createScenePlayerController(
         lighting: globeStore.terrainLighting
       },
       prewarmQuality: scenesStore.recording.prewarmQuality,
+      performanceMode: globeStore.performanceMode,
       centerTarget: true,
-      width: 1920,
-      height: 1080,
-      fps: 30
+      width: recordingBudget.recordingWidth,
+      height: recordingBudget.recordingHeight,
+      fps: recordingBudget.recordingFps
     }
     updatePlayerState({
       active: true,
@@ -771,8 +776,13 @@ export function createScenePlayerController(
       })
     })
     void saveOffscreenRecording(script).finally(() => {
+      useGlobeStore.getState().setRecordingMirrorActive(false)
       if (!current.isDestroyed()) {
-        current.resolutionScale = previousMirrorResolutionScale
+        const mode = useGlobeStore.getState().performanceMode
+        current.resolutionScale =
+          mode === previousPerformanceMode
+            ? previousMirrorResolutionScale
+            : performanceBudget(mode).resolutionScale
       }
       unsubscribeProgress()
       unsubscribeNotice()

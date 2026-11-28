@@ -208,6 +208,24 @@ test('canvas backing stores are nudged only when Cesium would assign the same si
   assert.deepEqual(nudgedCanvasSize(300, 150, 1440, 900), { width: 1440, height: 900 })
 })
 
+test('the owned loop renders every frame and lets requestRenderMode skip the draw', async () => {
+  const viewerSource = await readFile(
+    new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url),
+    'utf8'
+  )
+  assert.match(viewerSource, /requestRenderMode: true/)
+  assert.match(viewerSource, /useDefaultRenderLoop: false/)
+  assert.match(viewerSource, /const decision = decideRenderFrame\(size, surfaceRecoveryAttempted\)/)
+  assert.match(viewerSource, /widget\.render\(\)/)
+  assert.doesNotMatch(viewerSource, /shouldDrawFrame|settleFrames|pointerActive|renderRequested/)
+  assert.match(viewerSource, /function revealBasemap\(id: string\)/)
+  const revealBody = viewerSource.slice(
+    viewerSource.indexOf('function revealBasemap'),
+    viewerSource.indexOf('function retireImageryLayer')
+  )
+  assert.match(revealBody, /scene\.requestRender\(\)/)
+})
+
 test('the globe viewer keeps rendering ownership and surfaces WebGL failure in Chinese', async () => {
   const viewerSource = await readFile(
     new URL('../src/renderer/src/composables/useCesiumViewer.ts', import.meta.url),

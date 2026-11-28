@@ -14,6 +14,8 @@ import { useZonationStore } from '@renderer/stores/zonation'
 import { detailedSamplingTerrain } from '@renderer/terrain/terrainRegistry'
 import * as Cesium from 'cesium'
 
+import { performanceBudget } from '../../../common/performanceBudget'
+import type { PerformanceMode } from '../../../common/performanceBudget'
 import { isAvailabilityStripped } from '../../../common/terrainAvailability'
 
 const SAMPLE_DEADLINE_MS = 30_000
@@ -23,11 +25,10 @@ const FLIGHT_CLEARANCE_M = 2000
 const MIN_FLIGHT_ALTITUDE_M = 2500
 const MIN_BLIND_ALTITUDE_M = 9000
 const TRANSECT_LINE_COLOR = '#1677ff'
-const MAX_TOTAL_SAMPLES = 128
+const MAX_SAMPLES_PER_LEG = 32
 const FLIGHT_SPEED_KM_PER_S = 25
 const MIN_FLIGHT_DURATION_S = 6
 const MAX_FLIGHT_DURATION_S = 30
-const FLIGHT_TILE_CACHE_SIZE = 600
 const PREWARM_HOP_TIMEOUT_MS = 6000
 const PREWARM_TOTAL_BUDGET_MS = 45_000
 const PREWARM_MAX_HOPS = 24
@@ -77,6 +78,7 @@ let activeTransect: { viewer: Cesium.Viewer; entities: Cesium.Entity[]; token: s
 let animationInputLocks = 0
 const prewarmDimStates = new WeakMap<HTMLCanvasElement, { locks: number; original: string }>()
 let tileCacheOriginal: number | null = null
+let tileCacheOriginalMode: PerformanceMode | null = null
 const groundSampleCache = new WeakMap<
   Cesium.Viewer,
   {
@@ -151,7 +153,11 @@ function validateWaypoints(waypoints: TransectWaypoint[]): string | null {
 }
 
 function samplesPerLeg(waypointCount: number): number {
-  return Math.min(32, Math.max(8, Math.floor(MAX_TOTAL_SAMPLES / Math.max(1, waypointCount - 1))))
+  const cap = performanceBudget(useGlobeStore.getState().performanceMode).terrainSampleCap
+  return Math.min(
+    MAX_SAMPLES_PER_LEG,
+    Math.max(8, Math.floor(cap / Math.max(1, waypointCount - 1)))
+  )
 }
 
 const detailedTerrainProviders = new Map<string, Promise<Cesium.TerrainProvider>>()
@@ -181,10 +187,11 @@ export async function sampleTransectGround(
   onProgress?: (progress: TransectFlightProgress) => void,
   expectedMaxGroundM?: number
 ): Promise<TransectGroundSample> {
-  const path = interpolateWaypoints(waypoints, samplesPerLeg(waypoints.length))
+  const perLeg = samplesPerLeg(waypoints.length)
+  const path = interpolateWaypoints(waypoints, perLeg)
   const terrainProvider = viewer.terrainProvider
   const samplingProviderId = useGlobeStore.getState().terrainProviderId
-  const key = JSON.stringify({ waypoints, expectedMaxGroundM })
+  const key = JSON.stringify({ waypoints, expectedMaxGroundM, perLeg })
   const cached = groundSampleCache.get(viewer)
   if (
     cached?.key === key &&
@@ -563,8 +570,13 @@ export async function flyTransect(
   const scene = viewer.scene
   if (tileCacheOriginal === null) {
     tileCacheOriginal = scene.globe.tileCacheSize
+    tileCacheOriginalMode = useGlobeStore.getState().performanceMode
   }
-  scene.globe.tileCacheSize = Math.max(scene.globe.tileCacheSize, FLIGHT_TILE_CACHE_SIZE)
+  useZonationStore.getState().setFlightTileCacheActive(true)
+  const flightTileCacheSize = performanceBudget(
+    useGlobeStore.getState().performanceMode
+  ).flightTileCacheSize
+  scene.globe.tileCacheSize = Math.max(scene.globe.tileCacheSize, flightTileCacheSize)
   const [startLon, startLat] = waypoints[0]
   scene.camera.flyTo({
     destination: Cesium.Cartesian3.fromDegrees(
@@ -677,9 +689,16 @@ export async function flyTransect(
       zonationStore.setFlightHud(null)
       activeRun = null
       if (tileCacheOriginal !== null) {
-        scene.globe.tileCacheSize = tileCacheOriginal
+        const mode = useGlobeStore.getState().performanceMode
+        if (mode === tileCacheOriginalMode) {
+          scene.globe.tileCacheSize = tileCacheOriginal
+        } else {
+          scene.globe.tileCacheSize = performanceBudget(mode).tileCacheSize
+        }
         tileCacheOriginal = null
+        tileCacheOriginalMode = null
       }
+      zonationStore.setFlightTileCacheActive(false)
     }
     if (activeTransect && activeTransect.token === run.token) {
       clearTransectOverlay(viewer)

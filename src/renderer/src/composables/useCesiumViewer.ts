@@ -3,6 +3,7 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { useGlobeStore, providerCatalog, terrainCatalog } from '@renderer/stores/globe'
 import type { ProviderMeta } from '@renderer/stores/globe'
 import { useSolarStore } from '@renderer/stores/solar'
+import { useZonationStore } from '@renderer/stores/zonation'
 import { terrainProviderFactory, terrainRegistry } from '@renderer/terrain/terrainRegistry'
 import * as Cesium from 'cesium'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -37,6 +38,7 @@ import type {
   WebGlContextAttempt
 } from '../../../common/globeSurface'
 import { logger, stringifyLogValue } from '../../../common/logger'
+import { performanceBudget } from '../../../common/performanceBudget'
 import {
   DEFAULT_MIRROR_ENDPOINT,
   isLikelyMainlandChinaEnv,
@@ -165,6 +167,8 @@ function createCesiumViewerController(
   let bootstrapGeneration = 0
   let renderLoopGeneration = 0
   let renderLoopRunning = false
+  let defaultMsaaSamples = 1
+  let softwareRenderHinted = false
   let renderHalted = false
   let webglContextLost = false
   let surfaceRecoveryAttempted = false
@@ -486,6 +490,10 @@ function createCesiumViewerController(
       layer.show = layerId === id
     })
     activeBasemapId = id
+    const currentViewer = viewerRef.current
+    if (currentViewer && !currentViewer.isDestroyed()) {
+      currentViewer.scene.requestRender()
+    }
     useFailureStore.getState().clearFailure('basemap')
     evaluateGlobeReady()
   }
@@ -1134,6 +1142,8 @@ function createCesiumViewerController(
   }
 
   function viewerOptions(attempt: WebGlContextAttempt): Cesium.Viewer.ConstructorOptions {
+    const budget = performanceBudget(useGlobeStore.getState().performanceMode)
+    const contextAttempt = budget.antialias ? attempt : { ...attempt, antialias: false }
     return {
       baseLayer: false,
       baseLayerPicker: false,
@@ -1152,7 +1162,7 @@ function createCesiumViewerController(
       useBrowserRecommendedResolution: true,
       useDefaultRenderLoop: false,
       showRenderLoopErrors: false,
-      contextOptions: contextOptionsForAttempt(attempt)
+      contextOptions: contextOptionsForAttempt(contextAttempt)
     }
   }
 
@@ -1195,9 +1205,16 @@ function createCesiumViewerController(
           logger.warn('globe', '已放宽图形上下文选项以启动地球，截图可能无法保存当前画面')
         }
         const rendererName = canvasRendererName(created.canvas)
+        defaultMsaaSamples = created.scene.msaaSamples
         if (shouldUseSoftwareMsaaWorkaround(rendererName)) {
           created.scene.msaaSamples = 1
           logger.info('globe', '检测到软件渲染，已关闭多重采样', rendererName)
+          if (!softwareRenderHinted && useGlobeStore.getState().performanceMode !== 'fluent') {
+            softwareRenderHinted = true
+            useFailureStore
+              .getState()
+              .reportDegrade('检测到图形性能较弱，可在设置的地图页切换到「流畅优先」')
+          }
         }
         return created
       } catch (error) {
@@ -1329,7 +1346,7 @@ function createCesiumViewerController(
       attachContextRecovery(currentViewer.canvas)
       startOwnedRenderLoop(currentViewer.cesiumWidget)
       currentViewer.scene.globe.show = true
-      currentViewer.scene.globe.tileCacheSize = 256
+      applyPerformanceBudget()
       useGlobeStore.getState().setGlobeLoadStage('正在准备画面…')
       currentViewer.camera.setView({
         destination: Cesium.Cartesian3.fromDegrees(105, 35, 15_000_000)
@@ -1635,6 +1652,27 @@ function createCesiumViewerController(
     }
   }
 
+  function applyPerformanceBudget(): void {
+    const currentViewer = viewerRef.current
+    if (!currentViewer || currentViewer.isDestroyed()) {
+      return
+    }
+    const budget = performanceBudget(useGlobeStore.getState().performanceMode)
+    const software = shouldUseSoftwareMsaaWorkaround(canvasRendererName(currentViewer.canvas))
+    if (!useGlobeStore.getState().recordingMirrorActive) {
+      currentViewer.resolutionScale = budget.resolutionScale
+    }
+    currentViewer.scene.globe.maximumScreenSpaceError = budget.screenSpaceError
+    if (useZonationStore.getState().flightTileCacheActive) {
+      currentViewer.scene.globe.tileCacheSize = budget.flightTileCacheSize
+    } else {
+      currentViewer.scene.globe.tileCacheSize = budget.tileCacheSize
+    }
+    currentViewer.scene.globe.depthTestAgainstTerrain = budget.depthTestAgainstTerrain
+    currentViewer.scene.msaaSamples = software ? 1 : (budget.msaaSamples ?? defaultMsaaSamples)
+    currentViewer.scene.requestRender()
+  }
+
   function applyTerrainRendering(): void {
     const currentViewer = viewerRef.current
     if (!currentViewer || currentViewer.isDestroyed()) {
@@ -1642,10 +1680,11 @@ function createCesiumViewerController(
     }
     const store = useGlobeStore.getState()
     const solarStore = useSolarStore.getState()
+    const budget = performanceBudget(store.performanceMode)
     currentViewer.scene.verticalExaggeration = store.terrainExaggeration
     currentViewer.scene.globe.enableLighting = store.terrainLighting || solarStore.active
+    currentViewer.scene.globe.depthTestAgainstTerrain = budget.depthTestAgainstTerrain
     currentViewer.scene.requestRender()
-    currentViewer.scene.globe.depthTestAgainstTerrain = true
   }
 
   function toggleLevelView(): void {
@@ -1816,6 +1855,12 @@ function createCesiumViewerController(
 
   function mount(): () => void {
     let cancelled = false
+    const unsubscribePerformance = useGlobeStore.subscribe(
+      state => state.performanceMode,
+      () => {
+        applyPerformanceBudget()
+      }
+    )
     const unsubscribeSolar = useSolarStore.subscribe(
       state => [state.active, state.utcMs] as const,
       () => {
@@ -1894,6 +1939,7 @@ function createCesiumViewerController(
     })()
     return () => {
       cancelled = true
+      unsubscribePerformance()
       unsubscribeSolar()
       unsubscribeMirror()
       bootstrapGeneration += 1

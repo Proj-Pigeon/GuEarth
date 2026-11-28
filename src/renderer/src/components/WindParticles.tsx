@@ -1,12 +1,17 @@
 import { useClimateStore } from '@renderer/stores/climate'
+import { useGlobeStore } from '@renderer/stores/globe'
 import { sampleWind, windRampStops, WIND_RAMP_MAX_SPEED } from '@renderer/thematic/windField'
 import * as Cesium from 'cesium'
 import { useEffect, useRef } from 'react'
+
+import { performanceBudget } from '../../../common/performanceBudget'
+import type { PerformanceMode } from '../../../common/performanceBudget'
 
 import styles from './WindParticles.module.css'
 
 export interface WindParticlesProps {
   viewer?: Cesium.Viewer
+  performanceMode?: PerformanceMode
 }
 
 interface Particle {
@@ -26,9 +31,12 @@ const TRAIL_SAMPLE_PIXELS = 3
 const TRAIL_LENGTH_PIXELS = 32
 const SPEED_PIXELS_PER_SEC_PER_UNIT = 3.4
 const OFFSCREEN_MARGIN = 40
-const MAX_PARTICLES = 1100
-const MIN_PARTICLES = 250
 const AREA_PER_PARTICLE = 1000
+const WIND_MAX_STEP_SECONDS = 0.1
+
+function particleBudget(mode: PerformanceMode | undefined) {
+  return performanceBudget(mode ?? useGlobeStore.getState().performanceMode)
+}
 const TRAIL_REPROJECT_BUDGET = 250
 const SPAWN_COLUMNS = 16
 const SPAWN_ROWS = 12
@@ -60,8 +68,11 @@ function wrapLon(lon: number): number {
   return ((((lon + 180) % 360) + 360) % 360) - 180
 }
 
-export function WindParticles({ viewer }: WindParticlesProps) {
+export function WindParticles({ viewer, performanceMode }: WindParticlesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const storeMode = useGlobeStore(state => state.performanceMode)
+  const modeRef = useRef(performanceMode ?? storeMode)
+  modeRef.current = performanceMode ?? storeMode
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -95,6 +106,7 @@ export function WindParticles({ viewer }: WindParticlesProps) {
     let previousMode: Cesium.SceneMode | undefined
     let trailsStale = true
     let reprojectIndex = 0
+    let appliedParticleCap = particleBudget(modeRef.current).maxWindParticles
 
     function projectToScreen(
       position: Cesium.Cartesian3,
@@ -205,11 +217,12 @@ export function WindParticles({ viewer }: WindParticlesProps) {
         }
       }
       const visibleArea = (cssWidth * cssHeight * spawnCells.length) / (SPAWN_COLUMNS * SPAWN_ROWS)
+      const budget = particleBudget(modeRef.current)
       const target =
         spawnCells.length > 0
           ? Math.min(
-              MAX_PARTICLES,
-              Math.max(MIN_PARTICLES, Math.round(visibleArea / AREA_PER_PARTICLE))
+              budget.maxWindParticles,
+              Math.max(budget.minWindParticles, Math.round(visibleArea / AREA_PER_PARTICLE))
             )
           : 0
       if (particles.length > target) {
@@ -237,7 +250,10 @@ export function WindParticles({ viewer }: WindParticlesProps) {
       if (!canvas) {
         return
       }
-      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      const dpr = Math.min(
+        particleBudget(modeRef.current).resolutionScale < 1 ? 1 : 2,
+        window.devicePixelRatio || 1
+      )
       if (
         cssWidth === canvas.clientWidth &&
         cssHeight === canvas.clientHeight &&
@@ -359,12 +375,19 @@ export function WindParticles({ viewer }: WindParticlesProps) {
         return
       }
       const now = performance.now()
-      const dt = lastTime ? Math.min(0.05, (now - lastTime) / 1000) : 0
+      const dt = lastTime ? Math.min(WIND_MAX_STEP_SECONDS, (now - lastTime) / 1000) : 0
       lastTime = now
       ctx.clearRect(0, 0, cssWidth, cssHeight)
+      resizeCanvas()
       if (currentViewer.scene.mode === Cesium.SceneMode.MORPHING) {
         viewDirty = true
         return
+      }
+      const nextCap = particleBudget(modeRef.current).maxWindParticles
+      if (nextCap !== appliedParticleCap) {
+        appliedParticleCap = nextCap
+        viewDirty = true
+        particles.length = 0
       }
       const viewMoved =
         viewDirty ||
@@ -467,7 +490,7 @@ export function WindParticles({ viewer }: WindParticlesProps) {
       if (document.hidden || !activeViewer || activeViewer.isDestroyed()) {
         return
       }
-      if (!lastTime || now - lastTime >= 1000 / 60) {
+      if (!lastTime || now - lastTime >= particleBudget(modeRef.current).windFrameIntervalMs) {
         frame()
       }
       animationFrame = requestAnimationFrame(animate)

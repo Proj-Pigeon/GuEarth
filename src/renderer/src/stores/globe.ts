@@ -2,6 +2,12 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 
 import type { MirrorPolicyId } from '../../../common/mirrorPolicies'
+import {
+  clampPrewarmQuality,
+  normalizePerformanceMode,
+  performanceBudget
+} from '../../../common/performanceBudget'
+import type { PerformanceMode } from '../../../common/performanceBudget'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
 import { normalizeThemeMode, resolveTheme } from '../../../common/themeMode'
 import type { ResolvedTheme, ThemeMode } from '../../../common/themeMode'
@@ -24,6 +30,8 @@ import {
 import type { TouchEnvironment, TouchInteractionMode } from '../../../common/touchInteraction'
 import type { GuEarthSettingsPatch, TileMirrorStatus } from '../../../preload'
 import { useFailureStore } from './failure'
+import { useScenesStore } from './scenes'
+import type { RecordingPrewarmQuality } from './scenes'
 
 export type MirrorConsentReason = 'china' | 'slow' | 'settings'
 
@@ -235,7 +243,9 @@ export interface GlobeState {
   terrainError: string
   camera: CameraReadout
   sceneMode: SceneMode
+  performanceMode: PerformanceMode
   levelViewActive: boolean
+  recordingMirrorActive: boolean
 }
 
 export interface GlobeActions {
@@ -244,6 +254,7 @@ export interface GlobeActions {
   setGlobeReady: (value: boolean) => void
   setGlobeLoadTimedOut: (value: boolean) => void
   setGlobeLoadStage: (value: string) => void
+  setRecordingMirrorActive: (value: boolean) => void
   setActiveTerrainId: (id: string) => void
   setGlobeError: (message: string, detail?: string) => void
   setTerrainError: (message: string, detail?: string) => void
@@ -273,6 +284,7 @@ export interface GlobeActions {
     status: { configured: boolean; updatedAt: number | null }
   ) => void
   setSceneMode: (mode: SceneMode) => void
+  setPerformanceMode: (value: unknown) => Promise<void>
   setLevelViewActive: (value: boolean) => void
   setTouchInteractionMode: (value: unknown) => Promise<void>
   setThemeMode: (value: unknown) => Promise<void>
@@ -361,7 +373,9 @@ export function createInitialGlobeState(): GlobeState {
     terrainError: '',
     camera: { longitude: 105, latitude: 35, height: 15_000_000, heading: 0, pitch: 0 },
     sceneMode: '3D',
-    levelViewActive: false
+    performanceMode: 'balanced',
+    levelViewActive: false,
+    recordingMirrorActive: false
   }
 }
 
@@ -379,6 +393,21 @@ let mirrorSourcePersistSeq = 0
 let mirrorSourceSettledSeq = 0
 let touchModePersistSeq = 0
 let themeModePersistSeq = 0
+let performanceModePersistSeq = 0
+let prewarmQualityBaseline: {
+  original: RecordingPrewarmQuality
+  adjusted: RecordingPrewarmQuality
+} | null = null
+
+function clampRecordingForMode(mode: PerformanceMode): void {
+  if (performanceBudget(mode).maxPrewarmQuality !== 'standard') {
+    return
+  }
+  const scenes = useScenesStore.getState()
+  if (scenes.recording.prewarmQuality !== 'standard') {
+    scenes.setRecording({ prewarmQuality: 'standard' })
+  }
+}
 
 async function persistSettingsPatch(patch: GuEarthSettingsPatch): Promise<boolean> {
   if (!apiAvailable()) {
@@ -578,9 +607,11 @@ export const useGlobeStore = create<GlobeStore>()(
             ),
             providerCredentials: settings.providerCredentials,
             sceneMode: settings.sceneMode ?? '3D',
+            performanceMode: normalizePerformanceMode(settings.performanceMode),
             settingsHydrated: true
           }))
           useFailureStore.getState().clearFailure('settings')
+          clampRecordingForMode(normalizePerformanceMode(settings.performanceMode))
         } catch {
           mirrorConsentKnown = false
           set({ settingsHydrated: true })
@@ -787,8 +818,61 @@ export const useGlobeStore = create<GlobeStore>()(
         set({ sceneMode: mode })
         void persistSettings()
       },
+      async setPerformanceMode(value: unknown): Promise<void> {
+        const mode = normalizePerformanceMode(value)
+        const previousMode = get().performanceMode
+        if (mode === previousMode) {
+          return
+        }
+        set({ performanceMode: mode })
+        const before = useScenesStore.getState().recording.prewarmQuality
+        clampRecordingForMode(mode)
+        const after = useScenesStore.getState().recording.prewarmQuality
+        prewarmQualityBaseline = {
+          original: (prewarmQualityBaseline ?? { original: before }).original,
+          adjusted: after
+        }
+        const seq = ++performanceModePersistSeq
+        const saved = await persistSettingsPatch({ performanceMode: mode })
+        if (seq !== performanceModePersistSeq) {
+          return
+        }
+        if (saved) {
+          prewarmQualityBaseline = null
+          return
+        }
+        let restored: PerformanceMode
+        try {
+          const settings = await window.guEarth.settings.get()
+          restored = normalizePerformanceMode(settings.performanceMode)
+        } catch {
+          restored = previousMode
+        }
+        if (seq !== performanceModePersistSeq) {
+          return
+        }
+        if (get().performanceMode === mode) {
+          set({ performanceMode: restored })
+          clampRecordingForMode(restored)
+          const baseline = prewarmQualityBaseline
+          const scenesStore = useScenesStore.getState()
+          if (
+            baseline &&
+            scenesStore.recording.prewarmQuality === baseline.adjusted &&
+            baseline.original !== baseline.adjusted &&
+            clampPrewarmQuality(restored, baseline.original) === baseline.original
+          ) {
+            scenesStore.setRecording({ prewarmQuality: baseline.original })
+          }
+          prewarmQualityBaseline = null
+        }
+        useFailureStore.getState().reportDegrade('性能模式保存失败，已恢复原设置')
+      },
       setLevelViewActive(value: boolean): void {
         set({ levelViewActive: value })
+      },
+      setRecordingMirrorActive(value: boolean): void {
+        set({ recordingMirrorActive: value })
       },
       async setTouchInteractionMode(value: unknown): Promise<void> {
         const mode = normalizeTouchInteractionMode(value)

@@ -12,6 +12,7 @@ import type {
   AccountProfile,
   AccountState
 } from '../common/passport'
+import type { PerformanceMode } from '../common/performanceBudget'
 import type { PoiStatisticsRequest, PoiStatisticsResult } from '../common/poiStatistics'
 import type { EnsoPhase } from '../common/thematicState'
 import { isThemeMode } from '../common/themeMode'
@@ -49,6 +50,7 @@ export interface GuEarthSettings {
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
   sceneMode: '2D' | '3D'
+  performanceMode: PerformanceMode
   setupGuideDismissed: boolean | null
   errorReportingEnabled: boolean
   telemetryEnabled: boolean
@@ -69,6 +71,7 @@ export interface GuEarthSettingsPatch {
   networkProxy?: string
   providerStyles?: Record<string, string>
   sceneMode?: '2D' | '3D'
+  performanceMode?: PerformanceMode
   setupGuideDismissed?: boolean
   errorReportingEnabled?: boolean
   telemetryEnabled?: boolean
@@ -480,6 +483,7 @@ export interface OffscreenRecordingScript {
   terrain: OffscreenRecordingTerrain
   seaLevelHeights?: (number | null)[]
   prewarmQuality: OffscreenPrewarmQuality
+  performanceMode?: PerformanceMode
   centerTarget: boolean
   width: number
   height: number
