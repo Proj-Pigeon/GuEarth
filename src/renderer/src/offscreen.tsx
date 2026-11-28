@@ -2,8 +2,11 @@ import * as Cesium from 'cesium'
 
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 // Components load after Cesium's widget styles, so their styles override them.
+import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import { normalizePerformanceMode, performanceBudget } from '../../common/performanceBudget'
+import type { PerformanceMode } from '../../common/performanceBudget'
 import type {
   OffscreenPrewarmQuality,
   OffscreenRecordingProgress,
@@ -78,14 +81,25 @@ const viewer = new Cesium.Viewer(container, {
 })
 viewer.scene.msaaSamples = 1
 
+let setRecordingPerformanceMode: (mode: PerformanceMode) => void = () => {}
+
 function OffscreenOverlays({ viewer: cesiumViewer }: { viewer: Cesium.Viewer }) {
   useThematicLayers(cesiumViewer, { autoFocus: false })
   const overlays = useClimateStore(state => state.overlays)
   const ensoPhase = useClimateStore(state => state.ensoPhase)
+  const [performanceMode, setPerformanceMode] = useState<PerformanceMode>('balanced')
+  useEffect(() => {
+    setRecordingPerformanceMode = setPerformanceMode
+    return () => {
+      setRecordingPerformanceMode = () => {}
+    }
+  }, [])
 
   return (
     <>
-      {overlays['wind-particles'] && <WindParticles viewer={cesiumViewer} />}
+      {overlays['wind-particles'] && (
+        <WindParticles viewer={cesiumViewer} performanceMode={performanceMode} />
+      )}
       {overlays['frontal-cyclone'] && <FrontalCyclone viewer={cesiumViewer} />}
       {overlays.typhoon && <TyphoonOverlay viewer={cesiumViewer} />}
       {overlays.enso && <WalkerCirculationOverlay viewer={cesiumViewer} phase={ensoPhase} />}
@@ -121,6 +135,18 @@ let terrainLighting = false
 function requestSkipPrewarm(): void {
   prewarmSkipped = true
   advanceResolve?.()
+}
+
+function applyRecordingBudget(script: OffscreenRecordingScript): void {
+  const mode = normalizePerformanceMode(script.performanceMode)
+  setRecordingPerformanceMode(mode)
+  const budget = performanceBudget(mode)
+  viewer.resolutionScale = budget.resolutionScale
+  viewer.scene.globe.maximumScreenSpaceError = budget.screenSpaceError
+  viewer.scene.globe.tileCacheSize = budget.tileCacheSize
+  viewer.scene.globe.depthTestAgainstTerrain = budget.depthTestAgainstTerrain
+  viewer.scene.msaaSamples = 1
+  viewer.scene.requestRender()
 }
 
 function setPrewarmQuality(quality: OffscreenPrewarmQuality): void {
@@ -509,6 +535,7 @@ async function prepareSeaLevel(script: OffscreenRecordingScript): Promise<void> 
 async function prepare(script: OffscreenRecordingScript): Promise<void> {
   document.title = script.title || 'GuEarth Offscreen Recorder'
   viewer.resize()
+  applyRecordingBudget(script)
   const views = recordingPrewarmViews(script.scenes)
   const originalScreenSpaceError = viewer.scene.globe.maximumScreenSpaceError
   centerTarget = script.centerTarget

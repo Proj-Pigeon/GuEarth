@@ -15,6 +15,7 @@ import { cacheKeyOf, heightCache, seaLevelGridPoints } from '@renderer/thematic/
 import * as Cesium from 'cesium'
 import { useEffect, useMemo, useState } from 'react'
 
+import { performanceBudget } from '../../../common/performanceBudget'
 import type {
   OffscreenRecordingAnnotation,
   OffscreenRecordingScript,
@@ -672,6 +673,7 @@ export function createScenePlayerController(
       ]
     })
     const recordsSeaLevel = steps.some(step => step.overlays.includes('sea-level-rise'))
+    const recordingBudget = performanceBudget(globeStore.performanceMode)
     const script: OffscreenRecordingScript = {
       title,
       scenes,
@@ -687,10 +689,11 @@ export function createScenePlayerController(
         lighting: globeStore.terrainLighting
       },
       prewarmQuality: scenesStore.recording.prewarmQuality,
+      performanceMode: globeStore.performanceMode,
       centerTarget: true,
-      width: 1920,
-      height: 1080,
-      fps: 30
+      width: recordingBudget.recordingWidth,
+      height: recordingBudget.recordingHeight,
+      fps: recordingBudget.recordingFps
     }
     updatePlayerState({
       active: true,

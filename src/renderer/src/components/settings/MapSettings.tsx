@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { networkProxyMode, normalizeNetworkProxy } from '../../../../common/networkProxy'
 import type { NetworkProxyMode } from '../../../../common/networkProxy'
+import type { PerformanceMode } from '../../../../common/performanceBudget'
 import { mirrorEndpointLabel, mirrorEndpointShortLabel } from '../../../../common/tileMirror'
 import type { MirrorEndpointPreference } from '../../../../common/tileMirror'
 import {
@@ -39,6 +40,18 @@ const touchInteractionModeDescriptions: Record<TouchInteractionMode, string> = {
   auto: '软件自动识别触控情况，在特定情况下启用触屏模式。',
   on: '始终启用触摸交互界面。',
   off: '始终使用桌面键鼠界面。'
+}
+
+const performanceModeOptions: { value: PerformanceMode; label: string }[] = [
+  { value: 'fluent', label: '流畅优先' },
+  { value: 'balanced', label: '均衡' },
+  { value: 'quality', label: '画质优先' }
+]
+
+const performanceModeDescriptions: Record<PerformanceMode, string> = {
+  fluent: '降低分辨率和地形细节，适合核显机房。录课使用标准画质和 1280×720。',
+  balanced: '保持当前地形细节，适合大多数教室电脑。',
+  quality: '更细的地形和抗锯齿，适合演示机。静止时同样不会持续重绘。'
 }
 
 const touchInteractionModeOptions = touchInteractionModes.map(mode => ({
@@ -73,6 +86,8 @@ export function MapSettings(_props: MapSettingsProps) {
   const providerCredentials = useGlobeStore(state => state.providerCredentials)
   const touchInteractionMode = useGlobeStore(state => state.touchInteractionMode)
   const touchInteractionActive = useGlobeStore(state => state.touchInteractionActive)
+  const performanceMode = useGlobeStore(state => state.performanceMode)
+  const setPerformanceMode = useGlobeStore(state => state.setPerformanceMode)
   const applyTileMirrorStatus = useGlobeStore(state => state.applyTileMirrorStatus)
   const setTileMirrorSource = useGlobeStore(state => state.setTileMirrorSource)
   const openMirrorConsent = useGlobeStore(state => state.openMirrorConsent)
@@ -340,6 +355,20 @@ export function MapSettings(_props: MapSettingsProps) {
   return (
     <section className={styles.settingsSection} data-settings-section='' aria-label='地图设置'>
       <h3 className={styles.sectionTitle}>地图</h3>
+
+      <section className={styles.settingsBlock}>
+        <div className={styles.settingCopy}>
+          <div className={styles.settingTitle}>性能模式</div>
+          <p className={styles.settingDesc}>{performanceModeDescriptions[performanceMode]}</p>
+        </div>
+        <Segmented<PerformanceMode>
+          className={styles.performanceMode}
+          value={performanceMode}
+          options={performanceModeOptions}
+          aria-label='性能模式'
+          onChange={value => void setPerformanceMode(value)}
+        />
+      </section>
 
       {keyProviders.length > 0 && (
         <section className={styles.settingsBlock} data-guide-target='map-credentials'>

@@ -37,6 +37,7 @@ import type {
   WebGlContextAttempt
 } from '../../../common/globeSurface'
 import { logger, stringifyLogValue } from '../../../common/logger'
+import { performanceBudget } from '../../../common/performanceBudget'
 import {
   DEFAULT_MIRROR_ENDPOINT,
   isLikelyMainlandChinaEnv,
@@ -165,6 +166,15 @@ function createCesiumViewerController(
   let bootstrapGeneration = 0
   let renderLoopGeneration = 0
   let renderLoopRunning = false
+  let renderLoopDetach: (() => void) | undefined
+  let renderRequested = true
+  let pointerActive = false
+  let settleFrames = 24
+  let renderViewReady = false
+  let defaultMsaaSamples = 1
+  let softwareRenderHinted = false
+  const renderViewScratch = new Cesium.Matrix4()
+  const renderRequestBound = new WeakSet<Cesium.Scene>()
   let renderHalted = false
   let webglContextLost = false
   let surfaceRecoveryAttempted = false
@@ -1022,11 +1032,77 @@ function createCesiumViewerController(
   function stopOwnedRenderLoop(): void {
     renderLoopGeneration += 1
     renderLoopRunning = false
+    renderLoopDetach?.()
+    renderLoopDetach = undefined
+    pointerActive = false
+    renderViewReady = false
+  }
+
+  function bindSceneRenderRequests(scene: Cesium.Scene): void {
+    if (renderRequestBound.has(scene)) {
+      return
+    }
+    renderRequestBound.add(scene)
+    const original = scene.requestRender.bind(scene)
+    scene.requestRender = () => {
+      renderRequested = true
+      original()
+    }
+  }
+
+  function bindCanvasActivity(canvas: HTMLCanvasElement): void {
+    renderLoopDetach?.()
+    const press = (): void => {
+      pointerActive = true
+    }
+    const release = (): void => {
+      pointerActive = false
+      settleFrames = Math.max(settleFrames, 24)
+    }
+    const bump = (): void => {
+      settleFrames = Math.max(settleFrames, 24)
+    }
+    canvas.addEventListener('pointerdown', press)
+    canvas.addEventListener('pointerup', release)
+    canvas.addEventListener('pointercancel', release)
+    canvas.addEventListener('wheel', bump, { passive: true })
+    canvas.addEventListener('keydown', bump)
+    renderLoopDetach = () => {
+      canvas.removeEventListener('pointerdown', press)
+      canvas.removeEventListener('pointerup', release)
+      canvas.removeEventListener('pointercancel', release)
+      canvas.removeEventListener('wheel', bump)
+      canvas.removeEventListener('keydown', bump)
+    }
+  }
+
+  function shouldDrawFrame(): boolean {
+    const requested = renderRequested
+    renderRequested = false
+    return pointerActive || settleFrames > 0 || requested || !renderViewReady
+  }
+
+  function noteCameraMotion(widget: Cesium.CesiumWidget): void {
+    const viewMatrix = widget.scene.camera.viewMatrix
+    const moved =
+      renderViewReady && !Cesium.Matrix4.equalsEpsilon(renderViewScratch, viewMatrix, 1e-7)
+    Cesium.Matrix4.clone(viewMatrix, renderViewScratch)
+    renderViewReady = true
+    if (pointerActive || moved) {
+      settleFrames = pointerActive ? 8 : 24
+    } else if (settleFrames > 0) {
+      settleFrames -= 1
+    }
   }
 
   function startOwnedRenderLoop(widget: Cesium.CesiumWidget): void {
     const runId = ++renderLoopGeneration
     renderLoopRunning = true
+    renderRequested = true
+    settleFrames = 24
+    renderViewReady = false
+    bindSceneRenderRequests(widget.scene)
+    bindCanvasActivity(widget.canvas)
     let lastClientWidth = -1
     let lastClientHeight = -1
     const frame = (): void => {
@@ -1054,16 +1130,22 @@ function createCesiumViewerController(
         const decision = decideRenderFrame(size, surfaceRecoveryAttempted)
         if (decision.action === 'render') {
           surfaceRecoveryAttempted = false
-          const faultsBefore = consecutiveRenderFaults
-          widget.render()
-          if (runId !== renderLoopGeneration || renderHalted) {
-            if (runId === renderLoopGeneration) {
-              renderLoopRunning = false
+          if (shouldDrawFrame()) {
+            const faultsBefore = consecutiveRenderFaults
+            widget.render()
+            if (runId !== renderLoopGeneration || renderHalted) {
+              if (runId === renderLoopGeneration) {
+                renderLoopRunning = false
+              }
+              return
             }
-            return
-          }
-          if (consecutiveRenderFaults === faultsBefore) {
-            consecutiveRenderFaults = 0
+            noteCameraMotion(widget)
+            if (consecutiveRenderFaults === faultsBefore) {
+              consecutiveRenderFaults = 0
+              noteSurfaceFrame('rendered')
+            }
+          } else {
+            widget.clock.tick()
             noteSurfaceFrame('rendered')
           }
         } else if (decision.action === 'recover-resize') {
@@ -1134,6 +1216,8 @@ function createCesiumViewerController(
   }
 
   function viewerOptions(attempt: WebGlContextAttempt): Cesium.Viewer.ConstructorOptions {
+    const budget = performanceBudget(useGlobeStore.getState().performanceMode)
+    const contextAttempt = budget.antialias ? attempt : { ...attempt, antialias: false }
     return {
       baseLayer: false,
       baseLayerPicker: false,
@@ -1152,7 +1236,7 @@ function createCesiumViewerController(
       useBrowserRecommendedResolution: true,
       useDefaultRenderLoop: false,
       showRenderLoopErrors: false,
-      contextOptions: contextOptionsForAttempt(attempt)
+      contextOptions: contextOptionsForAttempt(contextAttempt)
     }
   }
 
@@ -1195,9 +1279,16 @@ function createCesiumViewerController(
           logger.warn('globe', '已放宽图形上下文选项以启动地球，截图可能无法保存当前画面')
         }
         const rendererName = canvasRendererName(created.canvas)
+        defaultMsaaSamples = created.scene.msaaSamples
         if (shouldUseSoftwareMsaaWorkaround(rendererName)) {
           created.scene.msaaSamples = 1
           logger.info('globe', '检测到软件渲染，已关闭多重采样', rendererName)
+          if (!softwareRenderHinted && useGlobeStore.getState().performanceMode !== 'fluent') {
+            softwareRenderHinted = true
+            useFailureStore
+              .getState()
+              .reportDegrade('检测到图形性能较弱，可在设置的地图页切换到「流畅优先」')
+          }
         }
         return created
       } catch (error) {
@@ -1329,7 +1420,7 @@ function createCesiumViewerController(
       attachContextRecovery(currentViewer.canvas)
       startOwnedRenderLoop(currentViewer.cesiumWidget)
       currentViewer.scene.globe.show = true
-      currentViewer.scene.globe.tileCacheSize = 256
+      applyPerformanceBudget()
       useGlobeStore.getState().setGlobeLoadStage('正在准备画面…')
       currentViewer.camera.setView({
         destination: Cesium.Cartesian3.fromDegrees(105, 35, 15_000_000)
@@ -1635,6 +1726,21 @@ function createCesiumViewerController(
     }
   }
 
+  function applyPerformanceBudget(): void {
+    const currentViewer = viewerRef.current
+    if (!currentViewer || currentViewer.isDestroyed()) {
+      return
+    }
+    const budget = performanceBudget(useGlobeStore.getState().performanceMode)
+    const software = shouldUseSoftwareMsaaWorkaround(canvasRendererName(currentViewer.canvas))
+    currentViewer.resolutionScale = budget.resolutionScale
+    currentViewer.scene.globe.maximumScreenSpaceError = budget.screenSpaceError
+    currentViewer.scene.globe.tileCacheSize = budget.tileCacheSize
+    currentViewer.scene.globe.depthTestAgainstTerrain = budget.depthTestAgainstTerrain
+    currentViewer.scene.msaaSamples = software ? 1 : (budget.msaaSamples ?? defaultMsaaSamples)
+    currentViewer.scene.requestRender()
+  }
+
   function applyTerrainRendering(): void {
     const currentViewer = viewerRef.current
     if (!currentViewer || currentViewer.isDestroyed()) {
@@ -1642,10 +1748,11 @@ function createCesiumViewerController(
     }
     const store = useGlobeStore.getState()
     const solarStore = useSolarStore.getState()
+    const budget = performanceBudget(store.performanceMode)
     currentViewer.scene.verticalExaggeration = store.terrainExaggeration
     currentViewer.scene.globe.enableLighting = store.terrainLighting || solarStore.active
+    currentViewer.scene.globe.depthTestAgainstTerrain = budget.depthTestAgainstTerrain
     currentViewer.scene.requestRender()
-    currentViewer.scene.globe.depthTestAgainstTerrain = true
   }
 
   function toggleLevelView(): void {
@@ -1816,6 +1923,12 @@ function createCesiumViewerController(
 
   function mount(): () => void {
     let cancelled = false
+    const unsubscribePerformance = useGlobeStore.subscribe(
+      state => state.performanceMode,
+      () => {
+        applyPerformanceBudget()
+      }
+    )
     const unsubscribeSolar = useSolarStore.subscribe(
       state => [state.active, state.utcMs] as const,
       () => {
@@ -1894,6 +2007,7 @@ function createCesiumViewerController(
     })()
     return () => {
       cancelled = true
+      unsubscribePerformance()
       unsubscribeSolar()
       unsubscribeMirror()
       bootstrapGeneration += 1

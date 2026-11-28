@@ -33,6 +33,12 @@ import {
 import icon from '../../resources/icon.png?asset'
 import { attachConsoleLogTee, logger } from '../common/logger'
 import { normalizeNetworkProxy } from '../common/networkProxy'
+import {
+  clampPrewarmQuality,
+  isPerformanceMode,
+  normalizePerformanceMode
+} from '../common/performanceBudget'
+import type { PerformanceMode } from '../common/performanceBudget'
 import { DEFAULT_PRIVACY_SETTINGS, resolvePrivacySettings } from '../common/privacy'
 import { TERRAIN_PROVIDER_ID_SET } from '../common/terrainProviders'
 import { THEMATIC_LAYER_ID_SET } from '../common/thematicLayers'
@@ -220,6 +226,7 @@ interface PersistedSettings {
   providerStyles: Record<string, string>
   providerCredentials: Record<string, ProviderCredentialStatus>
   sceneMode: '2D' | '3D'
+  performanceMode: PerformanceMode
   setupGuideDismissed: boolean | null
   errorReportingEnabled: boolean
   telemetryEnabled: boolean
@@ -247,6 +254,7 @@ const defaultSettings: PersistedSettings = {
   },
   providerCredentials: {},
   sceneMode: '3D',
+  performanceMode: 'balanced',
   setupGuideDismissed: null,
   ...DEFAULT_PRIVACY_SETTINGS,
   recordingDirectory: null
@@ -379,6 +387,7 @@ async function readSettings(): Promise<PersistedSettings> {
       providerStyles: normalizedStyles,
       providerCredentials,
       sceneMode: parsed.sceneMode === '2D' ? '2D' : '3D',
+      performanceMode: normalizePerformanceMode(parsed.performanceMode),
       setupGuideDismissed:
         typeof parsed.setupGuideDismissed === 'boolean' ? parsed.setupGuideDismissed : null,
       ...resolvedPrivacy,
@@ -1834,6 +1843,12 @@ function registerIpcHandlers(): void {
           }
           nextSettings.touchInteractionMode = patch.touchInteractionMode
         }
+        if (patch.performanceMode !== undefined) {
+          if (!isPerformanceMode(patch.performanceMode)) {
+            throw new Error('无效的性能模式')
+          }
+          nextSettings.performanceMode = patch.performanceMode
+        }
         if (patch.themeMode !== undefined) {
           if (!isThemeMode(patch.themeMode)) {
             throw new Error('无效的外观主题设置')
@@ -2509,10 +2524,8 @@ function normalizeOffscreenRecordingScript(value: unknown): OffscreenRecordingSc
               : null
           )
       : [],
-    prewarmQuality:
-      value.prewarmQuality === 'standard' || value.prewarmQuality === 'ultra'
-        ? value.prewarmQuality
-        : 'high',
+    performanceMode: normalizePerformanceMode(value.performanceMode),
+    prewarmQuality: clampPrewarmQuality(value.performanceMode, value.prewarmQuality),
     centerTarget: value.centerTarget === true,
     width: Math.min(1920, Math.max(320, Math.round(normalizeNumber(value.width, 320, 1920, 1280)))),
     height: Math.min(

@@ -96,6 +96,10 @@
   text-underline-offset: 2px;
 }
 
+.performanceMode {
+  margin-top: 12px;
+}
+
 .proxyModeGroup {
   max-width: 420px;
 }

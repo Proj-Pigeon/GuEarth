@@ -1,9 +1,13 @@
 import { Button, Segmented, Spinner } from '@renderer/components/ui'
+import type { SegmentedOption } from '@renderer/components/ui'
 import type { PlayerState } from '@renderer/composables/useScenePlayer'
+import { useGlobeStore } from '@renderer/stores/globe'
 import { useScenesStore } from '@renderer/stores/scenes'
 import type { RecordingPrewarmQuality } from '@renderer/stores/scenes'
 import { SkipForwardIcon } from 'lucide-react'
 import { useEffect } from 'react'
+
+import { performanceBudget } from '../../../common/performanceBudget'
 
 import styles from './ScenePlayerOverlay.module.css'
 
@@ -13,16 +17,19 @@ export interface ScenePlayerOverlayProps {
   onStop: () => void
 }
 
-const prewarmQualityOptions: { label: string; value: RecordingPrewarmQuality }[] = [
-  { label: '标准', value: 'standard' },
-  { label: '高清', value: 'high' },
-  { label: '极清', value: 'ultra' }
-]
+const prewarmRank: Record<RecordingPrewarmQuality, number> = { standard: 0, high: 1, ultra: 2 }
 
 export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverlayProps) {
   const recording = useScenesStore(state => state.recording)
   const setRecording = useScenesStore(state => state.setRecording)
   const skipRecordingPrewarm = useScenesStore(state => state.skipRecordingPrewarm)
+  const performanceMode = useGlobeStore(state => state.performanceMode)
+  const prewarmCap = performanceBudget(performanceMode).maxPrewarmQuality
+  const prewarmQualityOptions: SegmentedOption<RecordingPrewarmQuality>[] = [
+    { label: '标准', value: 'standard' },
+    { label: '高清', value: 'high', disabled: prewarmRank.high > prewarmRank[prewarmCap] },
+    { label: '极清', value: 'ultra', disabled: prewarmRank.ultra > prewarmRank[prewarmCap] }
+  ]
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent): void {
@@ -85,7 +92,12 @@ export function ScenePlayerOverlay({ player, onNext, onStop }: ScenePlayerOverla
                 value={recording.prewarmQuality}
                 options={prewarmQualityOptions}
                 size='sm'
-                onChange={value => setRecording({ prewarmQuality: value })}
+                onChange={value => {
+                  const requested = value === 'ultra' || value === 'standard' ? value : 'high'
+                  const quality =
+                    prewarmRank[requested] > prewarmRank[prewarmCap] ? prewarmCap : requested
+                  setRecording({ prewarmQuality: quality })
+                }}
               />
             </div>
           )}
