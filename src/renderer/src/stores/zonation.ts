@@ -15,11 +15,13 @@ export interface ZonationFlightHud {
 export interface ZonationState {
   panel: ZonationPanel | null
   flightHud: ZonationFlightHud | null
+  flightTileCacheActive: boolean
 }
 
 export interface ZonationActions {
   setPanel: (value: ZonationPanel | null) => void
   setFlightHud: (value: ZonationFlightHud | null) => void
+  setFlightTileCacheActive: (value: boolean) => void
 }
 
 export type ZonationStore = ZonationState & ZonationActions
@@ -27,7 +29,8 @@ export type ZonationStore = ZonationState & ZonationActions
 export function createInitialZonationState(): ZonationState {
   return {
     panel: null,
-    flightHud: null
+    flightHud: null,
+    flightTileCacheActive: false
   }
 }
 
@@ -39,6 +42,9 @@ export const useZonationStore = create<ZonationStore>()(
     },
     setFlightHud(value: ZonationFlightHud | null): void {
       set({ flightHud: value })
+    },
+    setFlightTileCacheActive(value: boolean): void {
+      set({ flightTileCacheActive: value })
     }
   }))
 )

@@ -3,6 +3,7 @@ import { useFailureStore } from '@renderer/stores/failure'
 import { useGlobeStore, providerCatalog, terrainCatalog } from '@renderer/stores/globe'
 import type { ProviderMeta } from '@renderer/stores/globe'
 import { useSolarStore } from '@renderer/stores/solar'
+import { useZonationStore } from '@renderer/stores/zonation'
 import { terrainProviderFactory, terrainRegistry } from '@renderer/terrain/terrainRegistry'
 import * as Cesium from 'cesium'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -1658,9 +1659,15 @@ function createCesiumViewerController(
     }
     const budget = performanceBudget(useGlobeStore.getState().performanceMode)
     const software = shouldUseSoftwareMsaaWorkaround(canvasRendererName(currentViewer.canvas))
-    currentViewer.resolutionScale = budget.resolutionScale
+    if (!useGlobeStore.getState().recordingMirrorActive) {
+      currentViewer.resolutionScale = budget.resolutionScale
+    }
     currentViewer.scene.globe.maximumScreenSpaceError = budget.screenSpaceError
-    currentViewer.scene.globe.tileCacheSize = budget.tileCacheSize
+    if (useZonationStore.getState().flightTileCacheActive) {
+      currentViewer.scene.globe.tileCacheSize = budget.flightTileCacheSize
+    } else {
+      currentViewer.scene.globe.tileCacheSize = budget.tileCacheSize
+    }
     currentViewer.scene.globe.depthTestAgainstTerrain = budget.depthTestAgainstTerrain
     currentViewer.scene.msaaSamples = software ? 1 : (budget.msaaSamples ?? defaultMsaaSamples)
     currentViewer.scene.requestRender()

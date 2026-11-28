@@ -572,6 +572,7 @@ export async function flyTransect(
     tileCacheOriginal = scene.globe.tileCacheSize
     tileCacheOriginalMode = useGlobeStore.getState().performanceMode
   }
+  useZonationStore.getState().setFlightTileCacheActive(true)
   const flightTileCacheSize = performanceBudget(
     useGlobeStore.getState().performanceMode
   ).flightTileCacheSize
@@ -697,6 +698,7 @@ export async function flyTransect(
         tileCacheOriginal = null
         tileCacheOriginalMode = null
       }
+      zonationStore.setFlightTileCacheActive(false)
     }
     if (activeTransect && activeTransect.token === run.token) {
       clearTransectOverlay(viewer)

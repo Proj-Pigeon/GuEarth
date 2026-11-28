@@ -31,6 +31,7 @@ import type { TouchEnvironment, TouchInteractionMode } from '../../../common/tou
 import type { GuEarthSettingsPatch, TileMirrorStatus } from '../../../preload'
 import { useFailureStore } from './failure'
 import { useScenesStore } from './scenes'
+import type { RecordingPrewarmQuality } from './scenes'
 
 export type MirrorConsentReason = 'china' | 'slow' | 'settings'
 
@@ -244,6 +245,7 @@ export interface GlobeState {
   sceneMode: SceneMode
   performanceMode: PerformanceMode
   levelViewActive: boolean
+  recordingMirrorActive: boolean
 }
 
 export interface GlobeActions {
@@ -252,6 +254,7 @@ export interface GlobeActions {
   setGlobeReady: (value: boolean) => void
   setGlobeLoadTimedOut: (value: boolean) => void
   setGlobeLoadStage: (value: string) => void
+  setRecordingMirrorActive: (value: boolean) => void
   setActiveTerrainId: (id: string) => void
   setGlobeError: (message: string, detail?: string) => void
   setTerrainError: (message: string, detail?: string) => void
@@ -371,7 +374,8 @@ export function createInitialGlobeState(): GlobeState {
     camera: { longitude: 105, latitude: 35, height: 15_000_000, heading: 0, pitch: 0 },
     sceneMode: '3D',
     performanceMode: 'balanced',
-    levelViewActive: false
+    levelViewActive: false,
+    recordingMirrorActive: false
   }
 }
 
@@ -390,6 +394,10 @@ let mirrorSourceSettledSeq = 0
 let touchModePersistSeq = 0
 let themeModePersistSeq = 0
 let performanceModePersistSeq = 0
+let prewarmQualityBaseline: {
+  original: RecordingPrewarmQuality
+  adjusted: RecordingPrewarmQuality
+} | null = null
 
 function clampRecordingForMode(mode: PerformanceMode): void {
   if (performanceBudget(mode).maxPrewarmQuality !== 'standard') {
@@ -817,12 +825,20 @@ export const useGlobeStore = create<GlobeStore>()(
           return
         }
         set({ performanceMode: mode })
-        const previousPrewarmQuality = useScenesStore.getState().recording.prewarmQuality
+        const before = useScenesStore.getState().recording.prewarmQuality
         clampRecordingForMode(mode)
-        const adjustedPrewarmQuality = useScenesStore.getState().recording.prewarmQuality
+        const after = useScenesStore.getState().recording.prewarmQuality
+        prewarmQualityBaseline = {
+          original: (prewarmQualityBaseline ?? { original: before }).original,
+          adjusted: after
+        }
         const seq = ++performanceModePersistSeq
         const saved = await persistSettingsPatch({ performanceMode: mode })
-        if (saved || seq !== performanceModePersistSeq) {
+        if (seq !== performanceModePersistSeq) {
+          return
+        }
+        if (saved) {
+          prewarmQualityBaseline = null
           return
         }
         let restored: PerformanceMode
@@ -838,19 +854,25 @@ export const useGlobeStore = create<GlobeStore>()(
         if (get().performanceMode === mode) {
           set({ performanceMode: restored })
           clampRecordingForMode(restored)
+          const baseline = prewarmQualityBaseline
           const scenesStore = useScenesStore.getState()
           if (
-            scenesStore.recording.prewarmQuality === adjustedPrewarmQuality &&
-            adjustedPrewarmQuality !== previousPrewarmQuality &&
-            clampPrewarmQuality(restored, previousPrewarmQuality) === previousPrewarmQuality
+            baseline &&
+            scenesStore.recording.prewarmQuality === baseline.adjusted &&
+            baseline.original !== baseline.adjusted &&
+            clampPrewarmQuality(restored, baseline.original) === baseline.original
           ) {
-            scenesStore.setRecording({ prewarmQuality: previousPrewarmQuality })
+            scenesStore.setRecording({ prewarmQuality: baseline.original })
           }
+          prewarmQualityBaseline = null
         }
         useFailureStore.getState().reportDegrade('性能模式保存失败，已恢复原设置')
       },
       setLevelViewActive(value: boolean): void {
         set({ levelViewActive: value })
+      },
+      setRecordingMirrorActive(value: boolean): void {
+        set({ recordingMirrorActive: value })
       },
       async setTouchInteractionMode(value: unknown): Promise<void> {
         const mode = normalizeTouchInteractionMode(value)

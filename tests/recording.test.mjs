@@ -388,11 +388,11 @@ test('the visible mirror reduces its resolution during recording and restores it
   assert.match(scenePlayerSource, /const RECORDING_MIRROR_RESOLUTION_SCALE = 0\.6/)
   assert.match(
     scenePlayerSource,
-    /const previousMirrorResolutionScale = current\.resolutionScale\r?\n\s+const previousPerformanceMode = useGlobeStore\.getState\(\)\.performanceMode\r?\n\s+current\.resolutionScale = RECORDING_MIRROR_RESOLUTION_SCALE/
+    /const previousMirrorResolutionScale = current\.resolutionScale\r?\n\s+const previousPerformanceMode = useGlobeStore\.getState\(\)\.performanceMode\r?\n\s+useGlobeStore\.getState\(\)\.setRecordingMirrorActive\(true\)\r?\n\s+current\.resolutionScale = RECORDING_MIRROR_RESOLUTION_SCALE/
   )
   assert.match(
     scenePlayerSource,
-    /saveOffscreenRecording\(script\)\.finally\(\(\) => \{\r?\n\s+if \(!current\.isDestroyed\(\)\) \{\r?\n\s+const mode = useGlobeStore\.getState\(\)\.performanceMode\r?\n\s+current\.resolutionScale =\r?\n\s+mode === previousPerformanceMode\r?\n\s+\? previousMirrorResolutionScale\r?\n\s+: performanceBudget\(mode\)\.resolutionScale/
+    /saveOffscreenRecording\(script\)\.finally\(\(\) => \{\r?\n\s+useGlobeStore\.getState\(\)\.setRecordingMirrorActive\(false\)\r?\n\s+if \(!current\.isDestroyed\(\)\) \{\r?\n\s+const mode = useGlobeStore\.getState\(\)\.performanceMode\r?\n\s+current\.resolutionScale =\r?\n\s+mode === previousPerformanceMode\r?\n\s+\? previousMirrorResolutionScale\r?\n\s+: performanceBudget\(mode\)\.resolutionScale/
   )
 })
 
