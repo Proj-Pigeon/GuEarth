@@ -3,7 +3,9 @@ import { access, readFile } from 'node:fs/promises'
 
 import { test } from 'vite-plus/test'
 
-const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
+const mainSource = (
+  await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
+).replaceAll('\r\n', '\n')
 const macSource = await readFile(new URL('../src/main/offscreenMac.ts', import.meta.url), 'utf8')
 const preloadSource = await readFile(new URL('../src/preload/index.ts', import.meta.url), 'utf8')
 const encoderSource = await readFile(

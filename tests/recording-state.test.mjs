@@ -26,10 +26,9 @@ const scenePlayerSource = await readFile(
   new URL('../src/renderer/src/composables/useScenePlayer.ts', import.meta.url),
   'utf8'
 )
-const appSource = await readFile(
-  new URL('../src/renderer/src/ai/registerGlobeTools.ts', import.meta.url),
-  'utf8'
-)
+const appSource = (
+  await readFile(new URL('../src/renderer/src/ai/registerGlobeTools.ts', import.meta.url), 'utf8')
+).replaceAll('\r\n', '\n')
 
 test('the shared thematic state bounds match the renderer copies', () => {
   assert.deepEqual([...SEA_LEVEL_SCENARIOS], [...rendererScenarios])

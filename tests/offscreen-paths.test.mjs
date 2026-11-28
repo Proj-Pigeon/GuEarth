@@ -9,7 +9,9 @@ import { test } from 'vite-plus/test'
 import { assertOffscreenRecordingSupported, resolveFfmpegBinary } from '../src/main/ffmpeg.ts'
 import { resolveOffscreenEntry } from '../src/main/offscreenPaths.ts'
 
-const mainSource = await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
+const mainSource = (
+  await readFile(new URL('../src/main/index.ts', import.meta.url), 'utf8')
+).replaceAll('\r\n', '\n')
 const recordingsRoot = join(tmpdir(), 'guearth-offscreen-paths')
 
 test('a direct child resolves beneath the recording directory', () => {
