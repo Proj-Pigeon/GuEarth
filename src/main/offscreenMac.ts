@@ -15,6 +15,7 @@ export interface OffscreenMacSessionHost {
   clearCancelHook(hook: () => void): void
   setTeardownHook(hook: () => void): void
   clearTeardownHook(hook: () => void): void
+  setSessionPerformanceMode(mode: OffscreenRecordingScript['performanceMode']): void
   adoptWindow(window: BrowserWindow): void
   dropWindow(): void
   notePaintFrame(): void
@@ -95,6 +96,7 @@ export function encodeMacOffscreenRecording(
     let settled = false
     let tempDir: string | null = null
     let recorderWindow: BrowserWindow | null = null
+    host.setSessionPerformanceMode(script.performanceMode)
     let videoFile: FileHandle | null = null
     let videoWrite = Promise.resolve()
     let videoCompleteResolve: (() => void) | null = null

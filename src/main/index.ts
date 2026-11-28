@@ -1637,6 +1637,9 @@ const macRecordingHost: OffscreenMacSessionHost = {
       teardownOffscreenRecording = null
     }
   },
+  setSessionPerformanceMode: mode => {
+    offscreenRecordingPerformanceMode = mode ?? null
+  },
   adoptWindow: window => {
     offscreenRecordingWindow = window
   },
@@ -2695,6 +2698,7 @@ function encodeOffscreenRecording(script: OffscreenRecordingScript): Promise<Rec
     cancelOffscreenRecording = cancel
     void (async () => {
       stopOffscreenRecordingWindow()
+      offscreenRecordingPerformanceMode = script.performanceMode ?? null
       const directory = await usableRecordingDirectory()
       if (settled) {
         return

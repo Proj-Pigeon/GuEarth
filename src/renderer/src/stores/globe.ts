@@ -2,7 +2,11 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 
 import type { MirrorPolicyId } from '../../../common/mirrorPolicies'
-import { normalizePerformanceMode, performanceBudget } from '../../../common/performanceBudget'
+import {
+  clampPrewarmQuality,
+  normalizePerformanceMode,
+  performanceBudget
+} from '../../../common/performanceBudget'
 import type { PerformanceMode } from '../../../common/performanceBudget'
 import type { TerrainProviderId } from '../../../common/terrainProviders'
 import { normalizeThemeMode, resolveTheme } from '../../../common/themeMode'
@@ -813,7 +817,9 @@ export const useGlobeStore = create<GlobeStore>()(
           return
         }
         set({ performanceMode: mode })
+        const previousPrewarmQuality = useScenesStore.getState().recording.prewarmQuality
         clampRecordingForMode(mode)
+        const adjustedPrewarmQuality = useScenesStore.getState().recording.prewarmQuality
         const seq = ++performanceModePersistSeq
         const saved = await persistSettingsPatch({ performanceMode: mode })
         if (saved || seq !== performanceModePersistSeq) {
@@ -832,6 +838,14 @@ export const useGlobeStore = create<GlobeStore>()(
         if (get().performanceMode === mode) {
           set({ performanceMode: restored })
           clampRecordingForMode(restored)
+          const scenesStore = useScenesStore.getState()
+          if (
+            scenesStore.recording.prewarmQuality === adjustedPrewarmQuality &&
+            adjustedPrewarmQuality !== previousPrewarmQuality &&
+            clampPrewarmQuality(restored, previousPrewarmQuality) === previousPrewarmQuality
+          ) {
+            scenesStore.setRecording({ prewarmQuality: previousPrewarmQuality })
+          }
         }
         useFailureStore.getState().reportDegrade('性能模式保存失败，已恢复原设置')
       },
