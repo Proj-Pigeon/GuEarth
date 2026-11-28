@@ -157,13 +157,15 @@ export function shouldDrawOwnedFrame(input: {
   renderRequested: boolean
   renderViewReady: boolean
   activeTweens: number
+  tilesPending: boolean
 }): boolean {
   return (
     input.pointerActive ||
     input.settleFrames > 0 ||
     input.renderRequested ||
     !input.renderViewReady ||
-    input.activeTweens > 0
+    input.activeTweens > 0 ||
+    input.tilesPending
   )
 }
 

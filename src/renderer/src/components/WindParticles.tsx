@@ -32,6 +32,7 @@ const TRAIL_LENGTH_PIXELS = 32
 const SPEED_PIXELS_PER_SEC_PER_UNIT = 3.4
 const OFFSCREEN_MARGIN = 40
 const AREA_PER_PARTICLE = 1000
+const WIND_MAX_STEP_SECONDS = 0.1
 
 function particleBudget(mode: PerformanceMode | undefined) {
   return performanceBudget(mode ?? useGlobeStore.getState().performanceMode)
@@ -374,7 +375,7 @@ export function WindParticles({ viewer, performanceMode }: WindParticlesProps) {
         return
       }
       const now = performance.now()
-      const dt = lastTime ? Math.min(0.05, (now - lastTime) / 1000) : 0
+      const dt = lastTime ? Math.min(WIND_MAX_STEP_SECONDS, (now - lastTime) / 1000) : 0
       lastTime = now
       ctx.clearRect(0, 0, cssWidth, cssHeight)
       resizeCanvas()

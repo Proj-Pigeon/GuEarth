@@ -1080,12 +1080,15 @@ function createCesiumViewerController(
   function shouldDrawFrame(widget: Cesium.CesiumWidget): boolean {
     const requested = renderRequested
     renderRequested = false
+    const globe = widget.scene.globe
+    const tweens = (widget.scene as unknown as { tweens: { length: number } }).tweens
     return shouldDrawOwnedFrame({
       pointerActive,
       settleFrames,
       renderRequested: requested,
       renderViewReady,
-      activeTweens: widget.scene.tweens.length
+      activeTweens: tweens.length,
+      tilesPending: globe ? !globe.tilesLoaded : false
     })
   }
 
