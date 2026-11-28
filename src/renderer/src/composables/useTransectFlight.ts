@@ -15,6 +15,7 @@ import { detailedSamplingTerrain } from '@renderer/terrain/terrainRegistry'
 import * as Cesium from 'cesium'
 
 import { performanceBudget } from '../../../common/performanceBudget'
+import type { PerformanceMode } from '../../../common/performanceBudget'
 import { isAvailabilityStripped } from '../../../common/terrainAvailability'
 
 const SAMPLE_DEADLINE_MS = 30_000
@@ -77,6 +78,7 @@ let activeTransect: { viewer: Cesium.Viewer; entities: Cesium.Entity[]; token: s
 let animationInputLocks = 0
 const prewarmDimStates = new WeakMap<HTMLCanvasElement, { locks: number; original: string }>()
 let tileCacheOriginal: number | null = null
+let tileCacheOriginalMode: PerformanceMode | null = null
 const groundSampleCache = new WeakMap<
   Cesium.Viewer,
   {
@@ -185,10 +187,11 @@ export async function sampleTransectGround(
   onProgress?: (progress: TransectFlightProgress) => void,
   expectedMaxGroundM?: number
 ): Promise<TransectGroundSample> {
-  const path = interpolateWaypoints(waypoints, samplesPerLeg(waypoints.length))
+  const perLeg = samplesPerLeg(waypoints.length)
+  const path = interpolateWaypoints(waypoints, perLeg)
   const terrainProvider = viewer.terrainProvider
   const samplingProviderId = useGlobeStore.getState().terrainProviderId
-  const key = JSON.stringify({ waypoints, expectedMaxGroundM })
+  const key = JSON.stringify({ waypoints, expectedMaxGroundM, perLeg })
   const cached = groundSampleCache.get(viewer)
   if (
     cached?.key === key &&
@@ -567,6 +570,7 @@ export async function flyTransect(
   const scene = viewer.scene
   if (tileCacheOriginal === null) {
     tileCacheOriginal = scene.globe.tileCacheSize
+    tileCacheOriginalMode = useGlobeStore.getState().performanceMode
   }
   const flightTileCacheSize = performanceBudget(
     useGlobeStore.getState().performanceMode
@@ -684,8 +688,14 @@ export async function flyTransect(
       zonationStore.setFlightHud(null)
       activeRun = null
       if (tileCacheOriginal !== null) {
-        scene.globe.tileCacheSize = tileCacheOriginal
+        const mode = useGlobeStore.getState().performanceMode
+        if (mode === tileCacheOriginalMode) {
+          scene.globe.tileCacheSize = tileCacheOriginal
+        } else {
+          scene.globe.tileCacheSize = performanceBudget(mode).tileCacheSize
+        }
         tileCacheOriginal = null
+        tileCacheOriginalMode = null
       }
     }
     if (activeTransect && activeTransect.token === run.token) {

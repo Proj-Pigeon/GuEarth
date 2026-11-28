@@ -151,24 +151,6 @@ export function surfaceIsRenderable(size: SurfaceSize): boolean {
   )
 }
 
-export function shouldDrawOwnedFrame(input: {
-  pointerActive: boolean
-  settleFrames: number
-  renderRequested: boolean
-  renderViewReady: boolean
-  activeTweens: number
-  tilesPending: boolean
-}): boolean {
-  return (
-    input.pointerActive ||
-    input.settleFrames > 0 ||
-    input.renderRequested ||
-    !input.renderViewReady ||
-    input.activeTweens > 0 ||
-    input.tilesPending
-  )
-}
-
 export function decideRenderFrame(
   size: SurfaceSize,
   recoveryAttempted: boolean

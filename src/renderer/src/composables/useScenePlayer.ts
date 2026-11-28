@@ -618,6 +618,7 @@ export function createScenePlayerController(
     failureStore.clearFailure('recording-quality')
     offscreenRecordingActive = true
     const previousMirrorResolutionScale = current.resolutionScale
+    const previousPerformanceMode = useGlobeStore.getState().performanceMode
     current.resolutionScale = RECORDING_MIRROR_RESOLUTION_SCALE
     failureStore.registerRetry('recording', async () => {
       const retried = await recordVideo(title, steps)
@@ -775,7 +776,11 @@ export function createScenePlayerController(
     })
     void saveOffscreenRecording(script).finally(() => {
       if (!current.isDestroyed()) {
-        current.resolutionScale = previousMirrorResolutionScale
+        const mode = useGlobeStore.getState().performanceMode
+        current.resolutionScale =
+          mode === previousPerformanceMode
+            ? previousMirrorResolutionScale
+            : performanceBudget(mode).resolutionScale
       }
       unsubscribeProgress()
       unsubscribeNotice()

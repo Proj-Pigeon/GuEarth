@@ -421,8 +421,7 @@ export const useGlobeStore = create<GlobeStore>()(
         tileCacheEnabled: state.tileCacheEnabled,
         networkProxy: state.networkProxy,
         providerStyles: { ...state.providerStyles },
-        sceneMode: state.sceneMode,
-        performanceMode: state.performanceMode
+        sceneMode: state.sceneMode
       })
     }
 
@@ -832,6 +831,7 @@ export const useGlobeStore = create<GlobeStore>()(
         }
         if (get().performanceMode === mode) {
           set({ performanceMode: restored })
+          clampRecordingForMode(restored)
         }
         useFailureStore.getState().reportDegrade('性能模式保存失败，已恢复原设置')
       },

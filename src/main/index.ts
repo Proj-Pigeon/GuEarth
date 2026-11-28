@@ -279,6 +279,7 @@ let scenesPath = ''
 let tileCacheNamespaceStale = false
 let mainWindow: BrowserWindow | null = null
 let offscreenRecordingWindow: BrowserWindow | null = null
+let offscreenRecordingPerformanceMode: PerformanceMode | null = null
 let offscreenRecordRequester: Electron.WebContents | null = null
 let offscreenPrewarmWarned = false
 let cancelOffscreenRecording: (() => void) | null = null
@@ -2271,7 +2272,7 @@ function registerIpcHandlers(): void {
     forwardOffscreenCommand(event, 'window.guEarthOffscreenRecorder.skipPrewarm()')
   })
   ipcMain.on('recordings:offscreen-prewarm-quality', (event, quality: unknown): void => {
-    const value = quality === 'standard' || quality === 'ultra' ? quality : 'high'
+    const value = clampPrewarmQuality(offscreenRecordingPerformanceMode ?? 'balanced', quality)
     forwardOffscreenCommand(event, `window.guEarthOffscreenRecorder.setPrewarmQuality('${value}')`)
   })
   ipcMain.handle('recordings:offscreen-cancel', (): void => {
@@ -2336,6 +2337,7 @@ function assertOffscreenRecordingIdle(): void {
 function stopOffscreenRecordingWindow(): void {
   const window = offscreenRecordingWindow
   offscreenRecordingWindow = null
+  offscreenRecordingPerformanceMode = null
   if (!window || window.isDestroyed()) {
     return
   }
@@ -2375,6 +2377,7 @@ async function startOffscreenRecordingWindow(
   script?: OffscreenRecordingScript
 ): Promise<OffscreenRecordingProbeResult> {
   stopOffscreenRecordingWindow()
+  offscreenRecordingPerformanceMode = script?.performanceMode ?? null
   const targetWidth = script?.width ?? 1280
   const targetHeight = script?.height ?? 720
   const targetFps = script?.fps ?? 30

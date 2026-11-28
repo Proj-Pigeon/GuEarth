@@ -81,15 +81,17 @@ const viewer = new Cesium.Viewer(container, {
 })
 viewer.scene.msaaSamples = 1
 
+let recordingPerformanceMode: PerformanceMode = 'balanced'
 let setRecordingPerformanceMode: (mode: PerformanceMode) => void = () => {}
 
 function OffscreenOverlays({ viewer: cesiumViewer }: { viewer: Cesium.Viewer }) {
   useThematicLayers(cesiumViewer, { autoFocus: false })
   const overlays = useClimateStore(state => state.overlays)
   const ensoPhase = useClimateStore(state => state.ensoPhase)
-  const [performanceMode, setPerformanceMode] = useState<PerformanceMode>('balanced')
+  const [performanceMode, setPerformanceMode] = useState<PerformanceMode>(recordingPerformanceMode)
   useEffect(() => {
     setRecordingPerformanceMode = setPerformanceMode
+    setPerformanceMode(recordingPerformanceMode)
     return () => {
       setRecordingPerformanceMode = () => {}
     }
@@ -139,6 +141,7 @@ function requestSkipPrewarm(): void {
 
 function applyRecordingBudget(script: OffscreenRecordingScript): void {
   const mode = normalizePerformanceMode(script.performanceMode)
+  recordingPerformanceMode = mode
   setRecordingPerformanceMode(mode)
   const budget = performanceBudget(mode)
   viewer.resolutionScale = budget.resolutionScale

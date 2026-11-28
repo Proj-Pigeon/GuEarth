@@ -20,7 +20,6 @@ import {
   nudgedCanvasSize,
   RENDER_HALTED_DETAIL,
   RENDER_HALTED_MESSAGE,
-  shouldDrawOwnedFrame,
   shouldStopRenderLoop,
   shouldUseSoftwareMsaaWorkaround,
   surfaceFailureCopy,
@@ -167,15 +166,8 @@ function createCesiumViewerController(
   let bootstrapGeneration = 0
   let renderLoopGeneration = 0
   let renderLoopRunning = false
-  let renderLoopDetach: (() => void) | undefined
-  let renderRequested = true
-  let pointerActive = false
-  let settleFrames = 24
-  let renderViewReady = false
   let defaultMsaaSamples = 1
   let softwareRenderHinted = false
-  const renderViewScratch = new Cesium.Matrix4()
-  const renderRequestBound = new WeakSet<Cesium.Scene>()
   let renderHalted = false
   let webglContextLost = false
   let surfaceRecoveryAttempted = false
@@ -497,6 +489,10 @@ function createCesiumViewerController(
       layer.show = layerId === id
     })
     activeBasemapId = id
+    const currentViewer = viewerRef.current
+    if (currentViewer && !currentViewer.isDestroyed()) {
+      currentViewer.scene.requestRender()
+    }
     useFailureStore.getState().clearFailure('basemap')
     evaluateGlobeReady()
   }
@@ -1033,86 +1029,11 @@ function createCesiumViewerController(
   function stopOwnedRenderLoop(): void {
     renderLoopGeneration += 1
     renderLoopRunning = false
-    renderLoopDetach?.()
-    renderLoopDetach = undefined
-    pointerActive = false
-    renderViewReady = false
-  }
-
-  function bindSceneRenderRequests(scene: Cesium.Scene): void {
-    if (renderRequestBound.has(scene)) {
-      return
-    }
-    renderRequestBound.add(scene)
-    const original = scene.requestRender.bind(scene)
-    scene.requestRender = () => {
-      renderRequested = true
-      original()
-    }
-  }
-
-  function bindCanvasActivity(canvas: HTMLCanvasElement): void {
-    renderLoopDetach?.()
-    const press = (): void => {
-      pointerActive = true
-    }
-    const release = (): void => {
-      pointerActive = false
-      settleFrames = Math.max(settleFrames, 24)
-    }
-    const bump = (): void => {
-      settleFrames = Math.max(settleFrames, 24)
-    }
-    canvas.addEventListener('pointerdown', press)
-    canvas.addEventListener('pointerup', release)
-    canvas.addEventListener('pointercancel', release)
-    canvas.addEventListener('wheel', bump, { passive: true })
-    canvas.addEventListener('keydown', bump)
-    renderLoopDetach = () => {
-      canvas.removeEventListener('pointerdown', press)
-      canvas.removeEventListener('pointerup', release)
-      canvas.removeEventListener('pointercancel', release)
-      canvas.removeEventListener('wheel', bump)
-      canvas.removeEventListener('keydown', bump)
-    }
-  }
-
-  function shouldDrawFrame(widget: Cesium.CesiumWidget): boolean {
-    const requested = renderRequested
-    renderRequested = false
-    const globe = widget.scene.globe
-    const tweens = (widget.scene as unknown as { tweens: { length: number } }).tweens
-    return shouldDrawOwnedFrame({
-      pointerActive,
-      settleFrames,
-      renderRequested: requested,
-      renderViewReady,
-      activeTweens: tweens.length,
-      tilesPending: globe ? !globe.tilesLoaded : false
-    })
-  }
-
-  function noteCameraMotion(widget: Cesium.CesiumWidget): void {
-    const viewMatrix = widget.scene.camera.viewMatrix
-    const moved =
-      renderViewReady && !Cesium.Matrix4.equalsEpsilon(renderViewScratch, viewMatrix, 1e-7)
-    Cesium.Matrix4.clone(viewMatrix, renderViewScratch)
-    renderViewReady = true
-    if (pointerActive || moved) {
-      settleFrames = pointerActive ? 8 : 24
-    } else if (settleFrames > 0) {
-      settleFrames -= 1
-    }
   }
 
   function startOwnedRenderLoop(widget: Cesium.CesiumWidget): void {
     const runId = ++renderLoopGeneration
     renderLoopRunning = true
-    renderRequested = true
-    settleFrames = 24
-    renderViewReady = false
-    bindSceneRenderRequests(widget.scene)
-    bindCanvasActivity(widget.canvas)
     let lastClientWidth = -1
     let lastClientHeight = -1
     const frame = (): void => {
@@ -1140,22 +1061,16 @@ function createCesiumViewerController(
         const decision = decideRenderFrame(size, surfaceRecoveryAttempted)
         if (decision.action === 'render') {
           surfaceRecoveryAttempted = false
-          if (shouldDrawFrame(widget)) {
-            const faultsBefore = consecutiveRenderFaults
-            widget.render()
-            if (runId !== renderLoopGeneration || renderHalted) {
-              if (runId === renderLoopGeneration) {
-                renderLoopRunning = false
-              }
-              return
+          const faultsBefore = consecutiveRenderFaults
+          widget.render()
+          if (runId !== renderLoopGeneration || renderHalted) {
+            if (runId === renderLoopGeneration) {
+              renderLoopRunning = false
             }
-            noteCameraMotion(widget)
-            if (consecutiveRenderFaults === faultsBefore) {
-              consecutiveRenderFaults = 0
-              noteSurfaceFrame('rendered')
-            }
-          } else {
-            widget.clock.tick()
+            return
+          }
+          if (consecutiveRenderFaults === faultsBefore) {
+            consecutiveRenderFaults = 0
             noteSurfaceFrame('rendered')
           }
         } else if (decision.action === 'recover-resize') {
